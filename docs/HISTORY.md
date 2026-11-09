@@ -19690,6 +19690,632 @@ takes a dropped file and fails on a folder, so Oleg chose to zip the folder for 
   `dav-probe3.zip`. He reported the rest of the list working too, including a local folder dragged
   across Chrome into Finder, which was to land as the folder.
 
+### M37 — Compare and merge, past M31 and M34 (M–L)
+
+**Closed 2026-11-09**, two days after it opened, in nine slices. A binary pair, or a pair past the text
+limit, opens in a byte view: hex side by side at the same offset, of any size, up before its scan ends. The
+compare window takes a side of up to 1/32 of this Mac's memory, says "Comparing…" and can be stopped. A
+member changed inside its archive behind an edit can be merged and repacked with both edits in it. A
+conflict that whitespace explains is labelled and gains a take that keeps both edits. `git mergetool`
+reaches the merge window through the app's own binary and answers git when the window closes. And
+Synchronize can keep what a sync left equal, per pair of folders and only when asked, so a file changed on
+both sides merges over the version both sides last held and is saved into both.
+
+Five findings are worth not re-deriving. **Memory, not the window, limits the text path**, about 13 times
+one side's bytes for a pair, and the slowest step was the column count walking `Character`s. **Replacing a
+pane's text that already holds millions of attribute runs ran for over four minutes** in
+`NSMutableRLEArray`, a bug the shipped app had at any size on every re-compare, and emptying the storage
+first takes 0.02 s (docs/NOTES.md ▸ Text fields and text views). **git's whitespace options drop whitespace
+edits**, so `-Xignore-all-space` writes the edit alone where the new take writes both, and no ignore option
+reaches `ThreeWayMerge`. **`open` hands an app it starts the caller's environment**, so a launch from
+`git mergetool` would carry `GIT_*` for a whole session. **A clone keeps a locked file's flag, and Spotlight
+indexes a copy under Application Support unless a folder above it ends `.noindex`**, which together decided
+how a kept version is stored (docs/NOTES.md ▸ Keeping a file's previous bytes).
+
+Some paths were not exercised by the close, and are recorded rather than argued. Escape was not pressed in
+any of the new windows, since full-screen control keeps that key for itself and a test pins each one. Nor
+were a vault inside a remembered pair, an evicted cloud placeholder in a sync's walk, a side near this Mac's
+2 GiB text limit, two real copies of Dirnex at once with `git mergetool`, Gatekeeper's first launch, or any
+language live besides German and Russian: the other twelve are the catalog and the width tests.
+
+Left deliberately undone: **aligning a byte comparison across insertions**, which needs gaps in the rows and
+a size limit and has no oracle. **Whitespace reaching a merge's regions**, labelled and offered as a take
+instead, so no edit goes missing in silence. **A sync's record with a side on a server**, which M38 takes
+up. Go to Offset, copying bytes and Swap Sides in the byte view.
+
+The section as the plan carried it through the milestone:
+
+- **A file over 64 MiB in the compare window** (M31), refused by name today and left to the
+  external tools.
+- **A binary comparison** (M31). `ByteComparator` answers "differ", and the window refuses the pair
+  by name.
+- **Synchronize as a way into a merge** (M34). A merge needs a real base, and Synchronize keeps no
+  record of the last sync, so this item starts by giving it one.
+- **Being git's merge tool** (M34). `git mergetool` hands the tool its files and waits for it to
+  exit, so this needs a command-line entry point Dirnex does not have.
+- **An archive member changed behind an edit** (M34). No base is kept for a member's edit.
+- **A merge that ignores whitespace** (M34). It was left because it would drop a whitespace edit
+  without a word, and M34's risk row names an ignore option reaching `ThreeWayMerge` as its tell. So
+  this one is a decision before it is a slice. It is built only in a form where a whitespace-only
+  change on either side still survives or is shown, and otherwise goes back to the *undone* column.
+
+Inherited from M31's and M34's risk rows (§6): lines compare as bytes, git stays the oracle for
+regions, and a merge is offered only over a base that really was the file's.
+
+**Opened 2026-11-08.** Probed on this Mac (64 GB) with git 2.54, through throwaway release harnesses
+over the real core:
+
+- **The text path grows in a straight line, and the window is not what limits it.** Log-shaped text
+  with 500 edits, both sides read, compared once, each pane built once:
+
+  | One side | Read and decode, each | Compare | Pane text, each | Footprint |
+  |---|---|---|---|---|
+  | 64 MiB (651 543 lines) | 0.5 s | 1.0 s | 2.9 s | 0.5 GiB |
+  | 256 MiB | 2.1 s | 4.3 s | 11.4 s | 2.0 GiB |
+  | 512 MiB | 4.2 s | 8.8 s | 23.5 s | 4.1 GiB |
+  | 1 GiB (10.4 million lines) | 8.4 s | 18.3 s | 47 s | 8.3 GiB |
+
+  TextKit 2 stays lazy at 256 MiB: setting the text took 0.02 s, the first draw 0.01 s and a jump
+  anywhere 3 ms, at about 0.75 GiB per pane for ASCII text. So memory is the limit, about 13 times
+  one side's bytes for a pair, and the slowest step is the pane text, where `columns(of:)` walking
+  `Character`s is the first suspect.
+- **Two hazards that a higher limit makes worse.** A dense pair (256 MiB, 868 724 changes) took 33 s
+  to compare rather than 4.3 s, with nothing on screen and no way to stop it. And a Windows-1251 file
+  takes **65 s per side at 64 MiB**, in `NSString.stringEncoding(for:)`, which is already true at
+  today's limit.
+- **A comparison at the same offset is nearly free.** Two 1 GiB files with 2 000 patches: 0.37 s from
+  the page cache, and `cmp -l` agrees on the 15 938 differing bytes. Sixteen bytes inserted 4 KiB in
+  make 1 069 480 528 bytes differ (99.6 %), in 4.2 million stretches, so the stretches need a bound.
+- **What `git mergetool` hands a tool.** Four paths, relative, with the command's working directory
+  at the top of the worktree even when `git mergetool` ran in a subfolder. The three versions are
+  temporary files beside the file (`a_LOCAL_74127.txt`), removed afterwards, and `$MERGED` holds the
+  conflict markers. `$BASE` is 0 bytes for add/add. Under `trustExitCode`, exit 0 stages the file, and
+  exit 1 prints "merge of added.txt failed" and leaves it `AA`.
+- **git's whitespace options drop whitespace edits, as M34 feared.** With `-Xignore-space-change` or
+  `-Xignore-all-space`: ours re-indents and theirs edits the same line, and the result is theirs
+  alone (`  B!`, the re-indent gone); the mirror image gives the same; and both re-indenting
+  differently takes theirs, with no conflict. Each of the three stops as a conflict without the
+  option.
+
+Decided before Slice 1 (2026-11-08, Oleg, on the probes above):
+
+- **A byte view at the same offset, of any size.** Hex rows side by side, with no alignment. It takes
+  a binary pair and a text pair too large for the text window, instead of refusing them, and says
+  plainly when nearly every byte differs from some point on, which is what an insertion looks like.
+  **Aligning across insertions goes back to the *undone* column**: it needs gaps in the rows, a size
+  limit, and has no oracle.
+- **The text window's limit becomes a share of this Mac's memory**: a side of up to 1/32 of it, and
+  never under today's 64 MiB, so a pair costs at most about 40 % of memory. The merge window keeps
+  64 MiB: it holds three or four panes, and M34's reads stay as they are.
+- **A sync keeps a base only when asked, per folder pair.** A checkbox in the Synchronize window, off
+  by default, in keeping with §6's rule about what Dirnex remembers without being asked. It keeps
+  each text file of up to 64 MiB that the sync left equal on both sides, an APFS clone where the
+  volumes allow, under a total budget with the oldest dropped first, and never a vault path.
+- **git reaches Dirnex through the app's own binary and a private socket.**
+  `Dirnex.app/Contents/MacOS/Dirnex --git-merge "$LOCAL" "$BASE" "$REMOTE" "$MERGED"` runs as a plain
+  command before any AppKit starts, launches the copy it belongs to if that copy is not up, and exits
+  when the merge window closes: 0 for saved, 1 for anything else. No new build target and no
+  Automation prompt, and it works from any terminal or IDE. M34's window and refusals are reused, and
+  Save writes `$MERGED` alone. git stays the one that stages it.
+- **Whitespace never reaches `ThreeWayMerge`.** The regions stay byte-exact. A conflict that whitespace
+  explains is labelled, and gains one more take: this side's text with the other side's indentation.
+  Save still waits for an answer to every conflict, so a whitespace edit is either kept or was chosen
+  against.
+
+#### Slices
+
+1. **The byte comparison** (core, additive). The differing stretches of two local files at the same
+   offset, bounded, cancellable and reporting as it goes; the rows a window shows; pages read on
+   demand. `cmp -l` is the oracle.
+2. **The byte window** (app). One table of hex rows for both sides, a page loaded off the main thread,
+   next and previous difference, an overview strip, and the opening routes: ⌥F3, the Synchronize row
+   and the conflict dialog, in place of the two refusals.
+3. **Larger text** (core, then app). The column count's fast path, encoding detection bounded on a
+   large file, the limit as a share of memory, "Comparing…" in the window and a Stop that really
+   stops, and the byte view past the limit.
+4. **An archive member's edit** (app, on M34's base). A base kept for a member, the member read again
+   at save when the archive moved, and Merge… in the archive's question.
+5. **Whitespace in a merge** (core, then the merge window). What whitespace explains in a conflict, the
+   extra take, and git as the check that the regions did not move.
+6. **git's merge tool** (core, then app). The request and the socket's protocol against a fake, the
+   binary's command-line entry, a merge window whose end answers the command, and a way to set it up.
+7. **The sync's record** (core). The kept versions, the budget, and which side changed since.
+8. **Merge from Synchronize** (app). The checkbox, keeping after a sync, "changed on both sides", and
+   Merge… on such a row.
+9. **Live, and the record.** Every entry point on a real pair, 14 languages, and M37 closed.
+
+**Done when:**
+- a binary pair and a pair past the text limit open and show every difference, checked against
+  `cmp -l`, with the window up before the scan ends;
+- a 256 MiB text pair opens without a beachball on this Mac, and a dense one can be stopped;
+- a member changed behind its edit merges and repacks with both edits in it;
+- `git mergetool` resolves `UU` and `AA` files through the window and reports a closed window as a
+  failure, and nothing but `$MERGED` is written;
+- a file changed on both sides of a remembered sync merges over the base that sync kept, and a pair
+  with no record offers no merge;
+- no ignore option reaches `ThreeWayMerge`, and nothing is saved while a conflict is open.
+
+#### Progress
+
+**2026-11-08: Slice 1 landed** (core only; the app is untouched).
+
+- **Core:**
+  - `BinaryDifferenceList` holds the stretches, with an exact count of differing bytes. Two differing
+    bytes join when fewer than a row's width of equal bytes lie between them. Past 100 000 stretches
+    the gap doubles and the list is joined up again, so a pathological pair loses resolution and no
+    difference.
+  - `BinaryComparison` is the scan, the bytes only one side has, stepping between changes, and the
+    dense stretch an insertion leaves. Like `ByteComparator`, it refuses an evicted placeholder.
+  - `BinaryFilePair` holds both files open and reads a page at any offset, from any thread.
+  - `BinaryHexLayout`, `BinaryHexRow`, `BinaryPage` and `BinaryPageCache` are what the window draws.
+  - `ByteComparator.requireRegularFiles` and `requireDownloaded` went from private to internal, so
+    the two comparisons share those rules.
+- **Tests:** 67 in six suites. `BinaryComparisonCmpTests` asks `/usr/bin/cmp -l` about 40 random
+  pairs at the sizes where an off-by-one would show, an inserted run, a chunk boundary and this Mac's
+  own programs. The rest pin what joins and what stays apart, every promise of the list at every
+  bound, the refusals, reports and Stop, the hex text column by column, and pages past a file's end.
+  Full run: 4 871 core tests. The app suite was not run, since the app is untouched.
+- **Measured** in release, on 1 GiB pairs:
+
+  | Pair | Time | Stretches | Differing bytes |
+  |---|---|---|---|
+  | 2 000 patches | 0.44 s | 2 000 | 15 929, as `cmp -l` counts |
+  | Sixteen bytes inserted 4 KiB in | 1.79 s | 1, named as dense from 4096 to the end | 1 069 543 201 |
+  | One byte in every 19 differing | 0.57 s | 1, the gap doubled once | 56 513 536 |
+  | A file against itself | 0.09 s | 0 | 0 |
+
+- **Negative controls:** 14 faults put in the source, one at a time. Eleven failed at once. Three
+  passed, and each was a gap in the tests, now closed: a stretch touching the bytes only one side
+  has, a scan ending exactly on a report's boundary, and a file that shrank to exactly a chunk's
+  edge.
+- **Found on the way, for Slice 6:** `VFSPath.local` with a relative path gives a path from the root
+  (`data/a.bin` became `/data/a.bin`), and `git mergetool` passes relative paths. The command-line
+  entry has to resolve them against its own working directory first.
+
+**2026-11-08: Slice 2 landed** (the byte window, and the routes to it).
+
+- **App (`Dirnex/Compare/`):**
+  - `BinaryCompareWindowController`, with `+Table`, `+Changes`, `+Layout` and `+Banner`. The window
+    knows its rows from the two sizes, so it is up before the scan ends, and closing it stops the
+    scan.
+  - `BinaryHexTable`, `BinaryHexCell` and `BinaryCompareStyle`: one table holds both sides, so they
+    are level by construction, with each cell drawn in one pass.
+  - `BinaryRowSource` reads a page off the main thread when a row needs one: one read at a time, and
+    only of a page still on screen.
+  - `ModalLevelKeeper` is the text window's rule for opening over a modal window, moved so both
+    windows share it. `CompareToolbar` can show only its arrows and counter.
+  - **Routes:** `CompareOpener` sends a binary, undecodable or too-large pair to the byte view, which
+    covers ⌥F3, the Synchronize row and the conflict dialog. A file that cannot be opened is still an
+    alert. Twelve new strings, in all 14 languages.
+- **Core:** `BinaryFilePair` keeps each file's size from `fstat` at open, and `BinaryComparison.scan`
+  takes an open pair, so the rows and the scan see the same two files. `percentScanned`, whose first
+  version overflowed `Int64` near 2^62, and `changeRows`.
+- **Tests:** 6 more in the core and 36 in the app. Full runs: 4 877 core tests, and the app suite
+  green twice in a row without the live server suites, whose code this slice does not touch.
+- **Decided in the slice:**
+  - **An ordinary table, not a custom view.** It brings the row keys, scrolling and accessibility with
+    it, and it is exact for any file up to about 16 TiB once it is kept out of Auto Layout.
+  - **"No differences" waits for the scan to end.** Before that the counter is blank, since it would
+    be a claim about bytes nobody has compared.
+  - **Left out:** a Go to Offset, copying bytes, Swap Sides, a file that changes while it is shown,
+    and a Stop short of closing the window.
+- **Negative controls:** 10 faults, one at a time, each failed its own test: the intrinsic height left
+  in, no refill on scroll, a close that keeps scanning, "No differences" said early, the next
+  difference missing one on the current row, a jump after the user moved, reading every wanted page,
+  the tail marked as a change, the header's height left out of a jump, and a page queued again while
+  it was being read.
+- **Found by a full run:** that last one, a real double read that passed alone and failed once in a
+  full suite, depending on when a redraw landed. Its test now holds the read open and asks during it.
+  The waits in these suites went from 10 s to 60 s, after a full run's other suites held the main
+  actor long enough to expire them.
+- **Run live** on the Debug build, driven from the background: the patched program pair (5 changes, 6
+  bytes, as patched), a 70 MiB text pair (24 bytes, as `cmp -l` counts) and a sparse 20 GiB pair, whose
+  window was up at "Compared 51 %" and landed on the last row. The row keys, the arrows, the close
+  button and the screen reader's tree were each tried there. Two bugs only that run could find:
+  - **An accessibility read crashed the app** on the 20 GiB pair, and the first two fixes left a real
+    client with no table at all (docs/NOTES.md ▸ A table of billions of rows).
+  - **A change opened with one row above it, not three**, since the column header floats over the
+    clip view.
+  - An earlier window-less probe had also passed a table Auto Layout then cut at 10^10 points, the
+    case the 1 TiB test now resizes for.
+- **Not run live:** the keys the window takes with its monitor (⌥⌘↓, ⌥⌘↑, ⌘W, Escape), which a
+  background run cannot send and tests pin through `handleKey`; the Synchronize row and the conflict
+  dialog, which go through the same `CompareOpener` call; the light appearance; and any translation.
+
+**2026-11-08: Slice 3 landed** (larger text).
+
+- **Probed first, in release, on 256 MiB pairs:**
+  - `columns(of:)` was 11.2 s of a pane's 11.7 s. On the dense pair, 27 s of the 32 s was row alignment,
+    not the search.
+  - Encoding detection on a sample is only as good as the sample. Over 235 legacy-encoded files of 2 to
+    8 MiB in 25 encodings, the file's start agreed with the whole-file answer on 185, and 256 KiB of
+    lines holding a non-ASCII byte on 233. The two left are KOI8-R, which the detector gets wrong on the
+    whole file as well.
+  - **Everything on the main thread was cheap but one thing:** replacing a pane's text that already held
+    1.9 million attribute runs ran for over four minutes in `NSMutableRLEArray`, a bug the shipped app
+    has at any size with enough marked words, on every re-compare. Emptying the storage first takes
+    0.02 s (docs/NOTES.md ▸ Text fields and text views).
+- **Core:** the column count's ASCII path. Detection past 4 MiB, which is all Quick View reads, shown a
+  sample and the whole file decoded by its answer. `ComparedText.windowByteLimit` and
+  `ComparedText.precheck`, which reads a few KiB so a binary of gigabytes is not read whole under the
+  larger limit. `ComparisonStop` and a `check` through `LineDiff`, `MyersDiff`, `RowAlignment`,
+  `TextComparison` and the pane text. `ComparedDocument.read` can be stopped between its steps, and
+  `isEdited` answers at once for lines nothing touched.
+- **App:**
+  - **A side past 64 MiB opens the window first**, on stand-ins with the files' names, and reads with it
+    on screen. A smaller pair is read first, as it always was, so nothing flashes for a small file that
+    turns out to be undecodable.
+  - **"Comparing…", a spinner and Stop in the toolbar** once a comparison runs past 200 ms, and ⌘. for
+    Stop. Stop, a newer comparison and closing the window each stop the work.
+  - **Stop empties the panes** and offers Compare Again. By then a swap or a copy may have changed what
+    the old panes were a comparison of, so they are not left up.
+  - The panes' attributed text, fills and kinds are built off the main thread. Three new strings, in all
+    14 languages. A Synchronize row and the conflict dialog take the same route.
+- **Measured** on the Release build, on this 64 GB Mac:
+
+  | | Before | After |
+  |---|---|---|
+  | Pane text, 256 MiB | 11.7 s | 0.7 s |
+  | `isEdited`, 256 MiB | 0.6 s | 0 |
+  | Read a 64 MiB Windows-1251 file | 65 s | 2.9 s |
+  | Stop reaching the work, dense 256 MiB, 8 moments | no way to stop | at most 0.38 s |
+  | Re-compare of a dense pane, main thread | over 4 minutes | at most 0.35 s |
+
+- **Tests:** 38 more in the core and 27 more in the app. Full runs: 4 915 core tests, and 2 289 app tests,
+  green in two runs of three without the live server suites, whose code this slice does not touch. The
+  third failed only `PanesDividerDetentTests`' queued-mouse test, which passed alone three times and in
+  the next full run.
+- **Negative controls:** 30 faults, one at a time, each failed its own test. Three passed at first, and
+  each was a gap, now closed: the loop over a block's alike pairs, the walk over the rows, and Comparing
+  shown at once.
+- **Found by the live run:** the copy arrows and pencils looked enabled while the files were still being
+  read, and the toolbar sat 2 pt higher with Stop in it, moving the panes 4 pt when it left. Both fixed,
+  pinned, and seen fixed.
+- **Run live** on a Release build driven from the background: a 256 MiB pair (window up in under half a
+  second, Comparing… and Stop on screen, 144 changes, worst main-thread answer 106 ms over 371 samples), a dense pair
+  (Stop, 0.3 % CPU after it, Compare Again, then 954 300 changes), Ignore Case on the dense pair, a
+  64 MiB Windows-1251 pair (Russian as written, its one change found), and a 3 GiB pair past the limit,
+  in the byte view with its 4 differing bytes. The sampler's control read 979 ms for a 1 s `SIGSTOP`.
+- **Decided in the slice:**
+  - **Stop empties rather than keeping the last comparison**, as above. A Show Bytes beside Compare Again
+    was left out.
+  - **The sides are read one after the other.** Reading them at once would save about 2 s at 256 MiB.
+- **Not run live:** ⌘. and Escape during a comparison, which a background run cannot send and a test pins
+  through `handleKey`; a pair from a Synchronize row or the conflict dialog; a side near this Mac's
+  2 GiB limit; and any translation.
+
+**2026-11-08: Slice 4 landed** (core, then app). A member changed inside its archive under an edit can be
+merged instead of overwritten.
+
+- **Found first:** a save back never looked at the archive. The rewrite extracts the archive as it is now
+  and replaces the member with the copy, so another member's change survived and a change to the same
+  member was replaced without a word, however long ago the copy was extracted.
+- **Decided with Oleg before writing it:** a set with changed members is asked as the server batch is:
+  Save Back, **Skip Changed Files** where some members are clean, Keep Editing. The members it skips
+  stay watched, so each one's next save asks on its own, Merge… included.
+- **Core:** `ArchiveMemberBase` is a member's bytes and the archive's `ArchiveIdentity` read just before
+  their extraction. `ArchiveMemberCheck` answers `unmoved`, `noBase`, `same`, `different` (with the
+  member's size) or `unreadable` for each member of one archive. An archive with the stamped identity
+  is one `stat` and no read; the moved members are extracted in **one** call through an injected
+  extractor and compared through `ByteComparator`, and the extraction is removed. No size bound, since
+  the rewrite that follows extracts every member anyway. `keep` reads one member again into an
+  `EditBaseStore`, stamped first, for a merge.
+- **App:**
+  - **The base** (`ArchivePreviewCache+Bases`). The cache stamps each extraction with the archive's
+    identity from before it and the copy's revision as it landed. When an edit's watch starts on a copy
+    nothing has written since, the cache keeps a clone of it in `DirnexExtract/Bases`, which the launch
+    purge clears and no watch watches. `PanelHost.watchEdit` is now the one call F4, ⏎, a user script
+    and the compare window's Edit make, keeping a server file's base or a member's.
+  - **The question** checks each member first, with the passphrase this window was given and no prompt.
+    One changed member is named before the usual body, with Merge… first where its three versions are
+    text within 64 MiB; one that could not be read says so; a set names how many and the first three.
+    With nothing found, the question is the one it was.
+  - **Merge…** reads the archive's version again through the pane's passphrase funnel, and opens M34's
+    window on it, the copy and the base. Its save writes the result into the editor's copy, makes the
+    archive's version the copy's base, and carries the copy back through the archive's own question and
+    rewrite. A landed rewrite drops the bases of the copies it took in.
+  - Eight new strings, in all 14 languages. "Skip Changed Files" is one shared title now.
+- **[LOCATION-SUPPORT.md](docs/LOCATION-SUPPORT.md):** the merge row's archive cell, with footnote zzz.
+- **Tests:** 9 in the core (`ArchiveMemberCheckTests`, over a fake extractor) and 17 in the app:
+  `ArchiveMemberBaseTests` (4), `ArchiveMemberCheckLiveTests` (4, real zips through `ArchiveExtractor`,
+  one of them the milestone's sentence end to end: extract, edit, another writer's change, the check,
+  the offer, the archive's version kept, the merge, its adoption and the rewrite, with both edits in the
+  archive after) and `ArchiveWriteBackQuestionTests` (9). Full runs: 4 924 core and 2 305 app tests,
+  without the live server suites, whose code this slice does not touch; the new suites again once the
+  last test was added.
+- **Negative controls:** 7 faults in the core and 12 in the app, one at a time. In the core, each failed
+  its own test; one first try changed nothing a test could see (a missing member already fails the byte
+  comparison) and was replaced by one that did. In the app, 11 failed their own tests. **One passed:** the
+  cache reading the archive's identity after the extraction instead of before. Only a write during a
+  `bsdtar` run tells the two apart, and no test can make one; the core's `keep` pins the same order with
+  a fake extractor that does write.
+- **Run live** on the Debug build, driven from the background, with shell writes to the copies standing
+  in for TextEdit's saves and a repack under the same name for another app:
+  - F4 kept the base beside the copy, byte for byte. With line 2 changed on both sides and line 5 in the
+    archive, the question named the change with Merge… first. The window showed the base as extracted,
+    theirs' line 5 merged and one conflict; Take Both and Save wrote the copy and left the archive's
+    version as the only base; the plain question followed and Save Back put **both edits** in the archive,
+    the other members untouched and no base left.
+  - Two members saved together after another app changed only `keep.txt`: the plain question about two
+    files. After it changed `other.txt`: "1 of them has changed inside the archive…" with Skip Changed
+    Files, which wrote back `notes.txt` alone and kept the other app's `other.txt`. The skipped copy's
+    next save asked on its own with Merge…, merged clean, and went back with both edits.
+  - The defaults domain was restored and compared unchanged.
+- **Not run live:** an encrypted archive (the check reads with the window's passphrase or not at all), a
+  member taken out of the archive, the compare window's save, ⏎ and a user script as the edit's start,
+  a tar or 7z archive, the light appearance, and any translation. The check's cost on a large compressed
+  archive was not measured; the rewrite after it reads the whole archive anyway.
+- **Left open:** a change to the same member between the check and the rewrite is replaced, as M34 left
+  the upload's window over SFTP and FTP. And a merge window saved again after its rewrite landed asks the
+  plain question, since a landed rewrite drops the copy's base.
+
+**2026-11-08: Slice 5 landed** (core, then the merge window). A conflict whitespace explains is labelled,
+and where one side changed only whitespace, the conflict can take the other side's text with that
+whitespace, which keeps both edits.
+
+- **Probed first**, with git 2.54 through `merge-tree`: `-Xignore-space-change` and `-Xignore-all-space`
+  drop a stripped trailing space and a CRLF conversion exactly as they drop a re-indent. Each settles on
+  the side with the edit and says nothing.
+- **Decided with Oleg before writing it:** the extra take carries every whitespace change a line can
+  carry, its indentation, its trailing whitespace and its line ending, rather than the indentation alone.
+  It is named for its sides: Take Theirs with Your Whitespace, or Take Yours with Their Whitespace.
+- **Core:**
+  - `ConflictWhitespace` reads each conflict once the merge is made: yours changed only whitespace,
+    theirs did, or the two sides are the same but for whitespace. Whitespace is git's `-w`, line for
+    line, so a blank line added is a line. A conflict is read with the shared lines `--zdiff3` moved out
+    of it, since its base range is still the whole stretch both sides replaced.
+  - `WhitespaceCarry` puts one side's whitespace on the other's lines. Each line is paired with its base
+    line as the compare window lays a block out, and its four parts are carried one at a time. An
+    indentation the edit deepened keeps its extra depth on top of the other side's, and a line the edit
+    added follows the paired line whose base indentation it starts with. A part both sides changed
+    differently refuses the take rather than guessing.
+  - `TextMerge.Choice.editWithWhitespace`, `TextMerge.whitespace` and `offers(_:forConflict:)`. `apply`
+    traps on a choice the conflict does not offer. `MergeRowLayout.rows` takes the columns the result
+    repeats rather than the choice.
+  - `ThreeWayMerge` is untouched, and no ignore option reaches it.
+- **App:** a fifth take, enabled only on a conflict that offers it and named for its sides in its tooltip
+  and in Edit ▸ Undo, with ⌥⌘I. The banner says what whitespace explains in the current conflict before
+  how many are open. Eight new strings, in all 14 languages.
+- **Tests:** 22 more in the core and 4 more in the app.
+  - git is the check twice, over 623 triples: this repository's files and 500 short random texts, one
+    side respaced over a stretch and the other edited inside it. The merge is git's plain `--zdiff3` byte
+    for byte from git's comparisons, and from its own but for 5 ties. Each of git's `--diff3` conflicts is
+    labelled exactly as `git diff -w` reads its three sections: 445 labelled, of all three kinds, 276 of
+    them offering the take. And on the four probed cases, `merge-tree -X` writes the edit alone where the
+    take writes both.
+  - Without git: over 3 000 random edits, the edit survives but for whitespace, line for line, and every
+    line it kept takes the other side's exactly (402 refused). Over 2 000 merges, any sequence of choices
+    with the take among them keeps every column whole and level.
+  - Full runs: 4 946 core tests, and 2 310 app tests without the live server suites, whose code this
+    slice does not touch. `check_localization_keys.py` found every extracted key in the catalog.
+- **Negative controls:** 14 faults in the core and 6 in the app, one at a time, each failed its own test.
+  Two first ended the run by trapping on the new precondition, so the tests now require the take to be
+  offered before making it, and both then failed by name. One passed at first, a take offered when carrying
+  changed nothing, since the case that tested it was refused earlier for another reason. It has a case of
+  its own now: theirs removed every line yours respaced.
+- **Found on the way:** pairing only alike lines left a short edited line unpaired (`x` made `x!`), and
+  the whitespace the other side gave it was dropped without a word. The pairing now takes the compare
+  window's rows, where the lines between two alike pairs sit side by side.
+- **Run live** on the Debug build, driven from the background, on a real `git merge` conflict in a scratch
+  repository opened through Resolve Conflict… (`reveal`, then `run operation "file.resolveConflict"`). It
+  held three conflicts: yours re-indented a function that theirs edited and added a line to, both changed
+  one line, and both re-indented another differently, spaces against a tab.
+  - The first was named "Yours changed only whitespace in this conflict…", with the fifth take enabled and
+    titled Take Theirs with Your Whitespace. Pressing it put theirs' two edits in the result at yours'
+    indentation and went on to the next.
+  - On the ordinary conflict the sentence was gone and the take dimmed. On the third the banner said the
+    two sides differ only in whitespace, and the take stayed dimmed.
+  - Save wrote exactly those choices, with no markers, and git still listed the file `UU`. The defaults
+    domain was restored and compared unchanged.
+- **Not run live:** ⌥⌘I, which the window takes with its key monitor and a background run cannot send, so
+  a test pins it through `handleKey`; a labelled conflict whose whitespace cannot be carried, pinned in the
+  core and the app tests; the server and archive entries, which open the same window; the light
+  appearance; and any translation.
+
+**2026-11-09: Slice 6 landed** (core, then app). `git mergetool` opens the merge window and waits for it.
+
+- **Probed first**, with git 2.54 on this Mac:
+  - git runs its tool with `GIT_EXEC_PATH`, `GIT_EDITOR=true` and `GIT_PREFIX` set, and `open` hands all
+    of that to an app it starts, where it would stay for the whole session.
+  - `open <path>` starts that copy with another copy of the same bundle id running, and starts nothing
+    when that copy is already up.
+  - A binary's path holding a space, a quote and a dollar sign survives `cmd`'s `eval` once single-quoted.
+- **Decided with Oleg before writing it:** a button in Settings ▸ Operations that writes all three values
+  to the global git config, naming a tool it replaces. Stop Using takes them out, and the row says when
+  the config runs another copy of Dirnex.
+- **Core:**
+  - `GitMergeArguments` reads the command line and makes each path absolute. `GitMergeRequest` and
+    `GitMergeAnswer` are what cross the socket, and only a saved result exits 0.
+  - `GitMergeWire` frames one request and one answer. `GitMergeSocketPath` names a socket per copy.
+  - `GitMergeClient` is the command's whole conversation, over an injected transport.
+  - `GitMergeToolSetup` reads, writes and removes the three values.
+- **App (`Dirnex/GitMerge/`):** `GitMergeCommand` runs first in `main.swift`, before any window. The socket
+  and `GitMergeListener`, 0600 and peer-checked. `GitMergeService` opens M34's window on the four files and
+  answers when it closes, or when the app quits with it open. Save writes `$MERGED` alone and keeps no
+  undo copy. `GitMergeToolSection` is the Settings row. Twelve new strings, in all 14 languages.
+- **Decided in the slice:**
+  - **A launched app gets a Dock launch's environment** rather than only losing `GIT_*`, since it outlives
+    the merge and a shell's `PATH` or virtual environment would otherwise stay in it.
+  - **The socket is under Application Support**, not the per-user temporary folder macOS cleans out.
+  - **A refusal waits for its alert** before answering, and goes to the terminal as well, in the app's words.
+  - **A window whose command has gone stays up**, as after ⌃C, and its Save still writes the file.
+  - **An empty `$BASE` is labelled as no base**, which a tracked empty file would also get. git's four
+    files can't tell the two apart, and it only words a pane.
+- **Tests:** 68 more in the core and 44 more in the app. A real `git mergetool` ran the command the setup
+  wrote, against a stand-in tool at a hostile path, for `UU`, `AA`, exit 0 and exit 1. The app suites use a
+  real Unix socket and the real merge window and Save. Full runs: 5 014 core and 2 354 app tests, without
+  the live server suites, whose code this slice does not touch. `check_localization_keys.py` found every
+  extracted key in the catalog.
+- **Negative controls:** 52 faults, one at a time. 47 failed their own tests at once. Three passed, and each
+  was a gap, now closed and failing by name: five paths with one empty, a session finished twice, and a client
+  that says nothing holding up the next, whose test had no time limit. One failed only by hanging the run for
+  560 s, and now fails by name. One more pass showed a redundant line in the Settings model, which is gone.
+- **Found by the live run:** `NSApp.activate(ignoringOtherApps:)` did nothing with another app in front, so
+  with Dirnex already running the window opened behind the terminal waiting for it. The command now runs
+  `open` on its own copy, which brings it forward (docs/NOTES.md ▸ Windows).
+- **Run live** on the Debug build, driven from the background, in a scratch repository with git's config kept
+  out of the real `~/.gitconfig`:
+  - With no Dirnex running, `git mergetool` started the copy it belongs to, with `launchd` as its parent, a
+    Dock launch's `PATH` and no `GIT_*`. Take Yours and Save wrote the file with no markers, with git still
+    waiting and the file still `UU`. Closing the window: exit 0, staged, the temporary files gone, nothing else
+    written.
+  - `AA`, with Dirnex up: "None: both sides added the file". Don't Save: "merge of added.txt failed", exit 1, still
+    `AA`, the file's bytes unchanged. Saved and then quit with the window open: exit 0, staged, socket gone.
+  - A binary conflict: the alert, the command waiting behind it, then the sentence on standard error and exit 1.
+  - The app killed with a window up: "Dirnex closed before the merge was finished", exit 1, and the next launch
+    took over the socket it left. The command killed with a window up: the app stayed up through that window's
+    close.
+  - The Settings row against a scratch config: `vimdiff` named and replaced, the written config driving a real
+    `git mergetool`, another copy's command shown with both buttons, and Stop Using leaving the rest of the
+    file. The defaults domain was restored and compared unchanged.
+- **Not run live:** ⌘S and ⌘W, which a background run cannot send; a rebase or a stash, whose words a test pins
+  and which M34 ran live; two real copies of Dirnex at once, measured on throwaway apps with one bundle id; a
+  Release build; Gatekeeper's first launch; the light appearance; and any translation.
+- **Left open:** a Save after ⌃C writes `$MERGED` with nothing waiting on it, so git has moved on and the file
+  stays unstaged.
+
+**2026-11-09: Slice 7 landed** (core only; the app is untouched). What a sync left equal can be kept, and a later
+look says which side moved on from it.
+
+- **Probed first**, on this Mac:
+  - `clonefile` keeps a locked file's `uchg`, and `rm` then refuses the clone, so a store could never evict it.
+    Mode 0444 comes across and removes fine, a `deny delete` ACL does not come across, and mode 000 refuses.
+  - Spotlight found a token in a file under Application Support within two seconds, even under a name with no
+    extension. In a folder ending `.noindex` it found nothing, even through `mdimport`.
+  - This repository with its build products and worktrees holds 71 945 text files of up to 64 MiB, 1.7 GiB: 6 s to
+    clone them and 14 s to compare each clone with its file. No file had a NUL past the first 8 KiB, so the sniff
+    the compare window already uses is enough here, and 13 did not decode, which a merge's own read refuses.
+- **Decided with Oleg before writing it: local pairs only.** A pair with a side on a server has no record. A
+  version is proved against both sides' bytes, which would download every text file on every sync, and no server
+  listing has a clock that can say what changed. It went to M38 with that reason.
+- **Core:**
+  - `SyncRecordPair` is the one definition of which pairs can have a record. It answers `nil` for a server side, a
+    folder with itself and a side inside a vault, and has no direction, so swapping the panes finds the same record.
+  - `SyncRecordStore` keeps one folder per pair under `SyncRecords.noindex`, excluded from backups. A record's
+    existence is the user's yes: `remember` and `forget` are the checkbox, and `keep` does nothing without one.
+    `purge` is for launch.
+  - `keep` walks the two folders as they now stand, and clones each text file of up to 64 MiB that both hold. The
+    clone is what gets compared with the other side, so a write during the comparison leaves nothing kept. Flags
+    are cleared and the mode set to 0600 on every clone. A version that still holds both sides' bytes is confirmed
+    rather than copied again. A file the sides disagree on keeps the version they last agreed on.
+  - `SyncRecordBudget` is 5 GiB across every pair, oldest dropped first, with ties settled by the file's identifier.
+  - `SyncRecord.change` says which side changed since, by bytes alone: `unchanged`, `changedOnLeft`,
+    `changedOnRight`, `changedAlike`, `changedOnBoth(base:)`, `noVersion` or `unreadable`. A `touch` is no change, and
+    an edit that kept the date and the size is one.
+- **Tests:** 65 in 8 suites, over real files. Forty random histories check every kept version and every answer
+  against a plain model, one test takes the milestone's sentence through `TextMerge` with both edits in the result,
+  and a stop is tried at every moment of a pass. Full run: 5 079 core tests. The app builds, and its suite was not run,
+  since no app file changed.
+- **Negative controls:** 60 faults, one at a time. 54 failed at once. Six passed, and each was a gap, now closed and
+  failing by name: a replaced version counted against the budget, because the test's dates spared the other record;
+  confirming a version against one side only; a stop counted as a failed file; a failed file not counted; a stop not
+  heard between files; and removing the replaced versions before the record is written.
+- **Run on real pairs**, through the real store in a release build, with `/usr/bin/cmp` as the judge:
+
+  | Pair | First pass | Second, nothing changed | After edits | Versions | `cmp` |
+  |---|---|---|---|---|---|
+  | Same volume, 29 246 files, 1.7 GiB | 9.5 s | 4.2 s | 5.5 s | 12 504 (262 MiB) | 4 168 checked against both sides, 0 differ |
+  | Store on another APFS volume, a real copy each | 0.38 s | 0.10 s | 0.12 s | 563, a locked file among them | 282 checked, 0 differ |
+
+  One edit of each kind on each pair gave the right answer, and the two-sided edit held its old version through the
+  next pass. Forget emptied both stores.
+- **Not checked:** a real evicted placeholder, whose flag no test can set, so the decision is pinned through
+  `ComparisonSubject`; and two windows syncing one pair at once, which the design leaves reading as no version.
+- **For Slice 8:** nothing in the app calls this yet. It needs the store's parent (Application Support), `purge` at
+  launch, the vault mount points, `keep` when the sync's queue jobs have finished, and `change` for a row on both sides.
+
+**2026-11-09: Slice 8 landed** (core, then app). A file changed on both sides of a remembered sync merges from its
+Synchronize row, over the version that sync kept.
+
+- **Decided with Oleg before writing it:**
+  - **Save writes both files**, so the two agree at once, the row leaves the list and the kept version becomes the
+    merge. Writing one side and letting the next sync copy it would leave the row reading as changed on both sides, and
+    a Right → Left mirror would overwrite the merge.
+  - **Both Directions leaves such a row unticked as a conflict**, where the newer file used to overwrite the older one's
+    edit. A mirror keeps its copy, with the row marked.
+- **Core:** `isRemembered`, one `stat` for the box as the window opens. `keep(relativePath:left:right:for:)`, the one file
+  a merge just wrote. `SyncRecord.changes(of:)` for a window's rows, `SyncChange.mergeBase`, and
+  `DirectorySync.defaultAction(for:direction:change:)`.
+- **App:**
+  - **The box** takes effect with Synchronize, as a dialog's controls do, so Cancel leaves the record alone and unticking
+    removes nothing until it is committed. Ticking it on two folders already in sync enables Synchronize, which is how a
+    record starts. A pair that cannot have a record has no box and the window keeps its size; the box's row otherwise
+    adds 26 pt to the window rather than taking it from the table.
+  - **After a sync**, `finishSyncRecord` waits for the copies and the deletes, then keeps. `PanelHost.runToCompletion`
+    queues the copies in order and returns once the queue has drained, which the fire-and-forget `enqueue` could not say.
+    The status line reports the count, what did not fit, or a failure.
+  - **The rows:** `readChanges` runs after every set of rows, off the main thread, by bytes. A row changed on both sides
+    has its action in orange, a tooltip saying so, and a clause in the footer.
+  - **Merge…** comes first on the row's menu, where both sides are within 64 MiB and both can take the result. Yours is
+    the left file, Theirs the right. `MergeInput.secondTarget` is the second file Save writes, each checked against what
+    was read. A second file refused leaves the result unsaved, so the window goes on saying so.
+  - `ModalLevelKeeper` raises the merge window over the app-modal Synchronize window, as the compare window is.
+  - `PanelHost` moved out to its own file, at `PanelViewController.swift`'s 500-line ceiling. `SyncRecordStorage` purges
+    at launch. Eleven new strings, in all 14 languages.
+- **[LOCATION-SUPPORT.md](docs/LOCATION-SUPPORT.md):** a new row, with footnote aam.
+- **Tests:** 13 more in the core and 34 in the app, over real folders and the real merge window. Full runs: 5 092 core and
+  2 388 app tests, without the live server suites, whose code this slice does not touch.
+  `check_localization_keys.py` found every extracted key in the catalog, and the three source checks passed.
+- **Negative controls:** 52 faults, one at a time. 46 failed their own tests at once. Two failed only by hanging the run on
+  a question nobody answered, and they now fail by name through a helper that answers only the questions a test expects.
+  Two passed, and each was a gap, now closed: a stale read landing, which the test could not tell from a fresh one, and a
+  file become a link since it was kept. Two did not apply at first, since SwiftFormat had rewrapped their text, and failed
+  by name once they did.
+- **Found on the way:**
+  - Asking the undo store once for both files would have removed the first file's copy (docs/NOTES.md ▸ Keeping a file's
+    previous bytes).
+  - Two files written a moment apart read as neither newer, which Both Directions already calls a conflict, so the first
+    tests of what the record adds passed without it. The rig now makes one side an hour newer.
+- **Run live** on the Debug build, driven from the background, in two scratch folders and the real store under Application
+  Support:
+  - The box off by default. Ticked with one row to copy: the copy landed and the record held the three text files, each
+    matching both sides by `cmp`, with the binary left out, and the store excluded from Time Machine.
+  - Edits on both sides of two files, and one side of a third: the two in orange and "2 changed on both sides", the third
+    green. The merge window over the modal window at level 8, dropping to 0 once it closed. One file merged clean and one
+    had a real conflict, whose Base read "As of the last sync" and whose Save stayed disabled until a take. Save wrote both
+    files, moved the kept version to the merge, took the row out of the list and said "Kept 3 versions for merging" after
+    the next sync. ⌘Z went one file per press.
+  - Relaunched: the box still on, the record intact, and a planted stray file and folder gone. Both Directions showed the
+    conflict unticked with its ⚠. Unticking and Cancel left the record, and unticking and Synchronize removed it.
+  - The defaults domain was restored and compared unchanged.
+- **Not run live:** the right-click itself, which a background run cannot open, so a temporary probe pressed Merge… and a
+  test pins the menu item; a vault inside the pair; an evicted cloud placeholder; a side over 64 MiB; the Save Anyway
+  question on the second file, pinned by a test; the light appearance; and any translation in the window.
+- **Left open:** under Both Directions, a file changed on one side only still goes by the clock, so an edit with an older
+  date than the other side's untouched file is overwritten. The record knows better, and this slice was not asked to use it.
+
+**2026-11-09: Slice 9, live and closed.** Every sentence of *Done when*, on a Release build of the finished
+milestone (ad-hoc, hardened runtime off) on this 64 GB Mac, with `cmp`, `diff` and `git` as the judges.
+
+| *Done when* | Seen |
+|---|---|
+| A binary pair and a pair past the limit show every difference, the window up before the scan ends | A patched `/bin/zsh`: "5 of 1 357 312", 4 changes, `cmp -l` 5. Text of 3.2 GiB: "4 of 3 219 128 320", `cmp -l` 4. A 20 GiB sparse pair: window up at "Compared 81 %", then "3 of 21 474 836 480", `cmp -l` 3 |
+| A 256 MiB text pair opens with no beachball, and a dense one can be stopped | "Change 1 of 169", `diff` 169. Worst main-thread answer 139 ms over 181 samples, against a control of 1 067 ms for a 1 s `SIGSTOP`. Dense: Comparing…, Stop, 100 % CPU to 0, Compare Again |
+| A member changed behind its edit merges and repacks with both edits | F4 on a member, the zip rewritten by another app: Merge… first, one conflict, Take Both, Save, Save Back. Both edits in the member, the other member intact, no base left |
+| `git mergetool` resolves `UU` and `AA`, reports a closed window as a failure, and writes only `$MERGED` | `UU`: Take Yours, Save, close, exit 0, staged, git's temporaries gone. `AA`: closed unsaved, "merge of aa.txt failed", exit 1, still `AA`, bytes unchanged, nothing else in the tree |
+| A file changed on both sides merges over the kept base, and a pair with no record offers no merge | A real right-click: Merge… first on the row, Base "As of the last sync", Save into both, the row gone, the kept version the merge. A binary row's menu had no Merge… |
+| No ignore option reaches `ThreeWayMerge`, and nothing is saved with a conflict open | `merge` builds `LineDiffOptions(isMinimal:)` and nothing else. Save was disabled with a conflict open in every window above |
+
+- **Routes no slice had run live:** Compare Contents… on a Synchronize row, to the byte view ("3 of 2 000") and to
+  the text window, and Compare Contents… in the copy conflict dialog, to the byte view over the dialog.
+- **Real keys**, through full-screen control: ⌥⌘↓ and ⌥⌘↑ in the byte view (1, 2, 3, 2), ⌘W in each window,
+  ⌘. on a running comparison, ⌥⌘I and ⌘S in a merge.
+- **Languages and appearance:** all 54 keys M37 added are in all 14 languages, placeholders intact. German in the
+  light appearance (the Synchronize window, the text toolbar in Comparing… and Stopped) and Russian in dark (a merge
+  window with the whitespace banner on two lines, the byte view) drew whole. The box's label and three more pane
+  subtitles joined the width tests, in every language. Those tests found **eight of Slice 8's strings with no `en`
+  entry**, unlike every other key. English fell back to the key, so nothing read wrong, and they now have one.
+- **Found by a full run:** a merge saved into both sides of a sync left the two files with different dates, so a
+  second write landing more than two seconds after the first, on a slow disk or behind a Save Anyway question, left the
+  row listed as newer over identical bytes. The second file now takes the first's modification time as it is written, so
+  the undo record and the next save's check both see the final state. Only the app suite under load showed it, and it
+  came after this slice's live pass, so a core test and the real merge window's Save pin it rather than a live run. The
+  two controls, the date ignored and the second file given none, each failed by name.
+- **Tests:** 5 094 core and 2 389 app tests, the app suite green twice in a row, without the live server suites, whose
+  code this slice does not touch. The new suites' waits went to 60 s, as Slice 2's did. The defaults domain was
+  restored and compared unchanged, and the kept versions and fixtures were removed.
+- **Not run live:** as listed at the top of this section.
+
 ### After M19 — the follow-on log (2026-08-07 → 2026-09-21)
 
 Ninety-one dated passes that landed outside a milestone of their own, between M18's close on

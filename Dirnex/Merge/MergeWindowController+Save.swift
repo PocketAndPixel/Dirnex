@@ -45,7 +45,8 @@ extension MergeWindowController {
     /// file changed since it was read. `true` when every file was written.
     ///
     /// A second file refused leaves the first written and the result still unsaved, so the window
-    /// goes on showing it and the next save writes the second file again.
+    /// goes on showing it and the next save writes the second file again. The second takes the
+    /// first's date, so a comparison by size and date reads the two as equal, as it reads a copy.
     @discardableResult
     func saveResult() async -> Bool {
         guard let merge, merge.isResolved, !isSaving else { return false }
@@ -56,7 +57,7 @@ extension MergeWindowController {
         guard let saved = await write(document, to: target) else { return false }
         target = saved
         if let second = secondTarget {
-            guard let saved = await write(document, to: second) else { return false }
+            guard let saved = await write(document, to: second, takingDateOf: target.path) else { return false }
             secondTarget = saved
         }
         savedChoices = choices
@@ -71,7 +72,8 @@ extension MergeWindowController {
     /// name, so the second file's capture, given the first's list, would remove the first's copy.
     private func write(
         _ document: ComparedDocument,
-        to target: ComparedFileSave.Target
+        to target: ComparedFileSave.Target,
+        takingDateOf dateSource: String? = nil
     ) async -> ComparedFileSave.Target? {
         let request = saving.undo()
         let undo = request.store.map { ComparedFileSave.UndoCopy(store: $0, live: request.live) }
@@ -84,7 +86,8 @@ extension MergeWindowController {
                         document,
                         to: target,
                         overwritingChanges: answer,
-                        undo: undo
+                        undo: undo,
+                        dateSource: dateSource
                     )
                 }
             }

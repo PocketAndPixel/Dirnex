@@ -45,6 +45,51 @@ struct ComparedFileSaveTests {
         #expect(saved.undo == nil)
     }
 
+    @Test("a save can take another file's date, and its witness and undo record both see it")
+    func takesAnotherFilesDate() throws {
+        let tree = try TempTree()
+        defer { tree.cleanup() }
+        let path = try tree.writeFile("plain.txt", contents: Self.text)
+        let source = try tree.writeFile("source.txt", contents: "elsewhere")
+        try tree.setModificationDate("source.txt", to: Date(timeIntervalSince1970: 1_600_000_000.25))
+        let store = ArchiveUndoStore(
+            root: tree.root.appendingPathComponent("undo", isDirectory: true)
+        )
+
+        let saved = try ComparedFileSave.save(
+            try Fixture.edited(Self.text, lastLine: "x"),
+            to: .reading(path),
+            undo: .init(store: store, live: []),
+            dateSource: source
+        )
+
+        let taken = try #require(InPlaceFileWrite.modificationTime(ofFileAt: path))
+        let wanted = try #require(InPlaceFileWrite.modificationTime(ofFileAt: source))
+        #expect(taken.tv_sec == wanted.tv_sec)
+        #expect(taken.tv_nsec == wanted.tv_nsec)
+        #expect(saved.target == .reading(path))
+        let step = try #require(saved.undo?.steps.first)
+        guard case let .restoreSavedFile(_, _, expected, _) = step else {
+            Issue.record("expected a saved file's undo step")
+            return
+        }
+        #expect(expected == ArchiveUndoWitness.current(ofFileAt: path))
+    }
+
+    @Test("a date source that is not there leaves the date the write gave")
+    func missingDateSource() throws {
+        let tree = try TempTree()
+        defer { tree.cleanup() }
+        let path = try tree.writeFile("plain.txt", contents: Self.text)
+        _ = try ComparedFileSave.save(
+            try Fixture.edited(Self.text, lastLine: "x"),
+            to: .reading(path),
+            undo: nil,
+            dateSource: tree.path("gone.txt")
+        )
+        #expect(Fixture.read(path) == "one\ntwo\nx\n")
+    }
+
     @Test("a save through a symlink writes its target and leaves the link a link")
     func writesThroughASymlink() throws {
         let tree = try TempTree()

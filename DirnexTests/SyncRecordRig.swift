@@ -111,7 +111,7 @@ final class SyncRecordRig {
             records: withRecords ? records : nil
         )
         controller.loadViewIfNeeded()
-        try await settleUntil { !controller.isScanning && !controller.isReadingChanges }
+        try await settleUntil(within: .seconds(60)) { !controller.isScanning && !controller.isReadingChanges }
         return controller
     }
 
