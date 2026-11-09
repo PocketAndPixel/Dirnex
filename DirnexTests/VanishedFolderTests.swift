@@ -62,6 +62,10 @@ struct VanishedFolderTests {
         }
     }
 
+    // The first listing and refresh share the full suite's main-actor stalls. Measured 2026-11-10:
+    // a correct operation refresh took 30.19 s, with a 10.39 s gap between polls. Waiting for work
+    // gets 60 s here; the fixed holds below still measure the same 1.5 s.
+
     /// A loaded pane that has listed `folder`. `watching: false` drops the FSEvents watcher, so a
     /// test of one refresh path is not passed by the watcher reaching the same code first.
     private static func pane(
@@ -82,7 +86,9 @@ struct VanishedFolderTests {
             pane.viewMode = .tree
             pane.applyViewMode()
         }
-        try await settleUntil { pane.panel.displayedEntries.map(\.name) == ["file.txt"] }
+        try await settleUntil(within: .seconds(60)) {
+            pane.panel.displayedEntries.map(\.name) == ["file.txt"]
+        }
         if !watching { pane.watcher = nil }
         return hosted
     }
@@ -104,7 +110,7 @@ struct VanishedFolderTests {
         hosted.pane.refreshCurrentDirectory()
 
         let kept = VFSPath.local(root.appendingPathComponent("kept").path)
-        try await settleUntil { hosted.pane.panel.path == kept }
+        try await settleUntil(within: .seconds(60)) { hosted.pane.panel.path == kept }
         #expect(hosted.pane.panel.path == kept)
     }
 
@@ -121,7 +127,7 @@ struct VanishedFolderTests {
         // `kept` goes with it, so the nearest folder left is the fixture's root.
         try FileManager.default.removeItem(at: root.appendingPathComponent("kept"))
 
-        try await settleUntil { hosted.pane.panel.path == .local(root.path) }
+        try await settleUntil(within: .seconds(60)) { hosted.pane.panel.path == .local(root.path) }
         #expect(hosted.pane.panel.path == .local(root.path))
     }
 
@@ -137,7 +143,7 @@ struct VanishedFolderTests {
         hosted.pane.refreshTree()
 
         let kept = VFSPath.local(root.appendingPathComponent("kept").path)
-        try await settleUntil { hosted.pane.panel.path == kept }
+        try await settleUntil(within: .seconds(60)) { hosted.pane.panel.path == kept }
         #expect(hosted.pane.panel.path == kept)
     }
 
@@ -152,7 +158,7 @@ struct VanishedFolderTests {
         pane.addTab()
         // Listed before it is left: a tab that never loaded is *navigated* when it comes back, which
         // is a load that reports its failure, not the refresh under test.
-        try await settleUntil { pane.activeTabIndex == 1 && pane.tabs[1].hasLoaded }
+        try await settleUntil(within: .seconds(60)) { pane.activeTabIndex == 1 && pane.tabs[1].hasLoaded }
         pane.selectTab(at: 0)
         pane.watcher = nil
 
@@ -161,7 +167,7 @@ struct VanishedFolderTests {
         pane.watcher = nil
 
         let kept = VFSPath.local(root.appendingPathComponent("kept").path)
-        try await settleUntil { pane.panel.path == kept }
+        try await settleUntil(within: .seconds(60)) { pane.panel.path == kept }
         #expect(pane.panel.path == kept)
     }
 
