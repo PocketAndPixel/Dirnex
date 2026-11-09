@@ -121,6 +121,10 @@ public extension VFSBackend {
         [] // no write verbs, so the panel over this backend's rows stays read-only
     }
 
+    func accountIdentity(at _: VFSPath, isCancelled _: () -> Bool) throws -> RemoteAccountIdentity? {
+        nil // no account here that a shell could be asked about
+    }
+
     func applyMetadata(
         _: [RemoteMetadataStep],
         at path: VFSPath

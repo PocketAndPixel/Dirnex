@@ -27,6 +27,12 @@ public enum RemoteMetadataStep: Sendable, Hashable {
     /// the local truth on a host whose own offset is not zero. The coarse, year-less, zone-less
     /// stamp FTP is known for belongs to `LIST`, not to the protocol.
     case setModificationTime(Date)
+    /// Change an item's owner, its group, or both, by the name the server knows it by — Get Info's
+    /// step (PLAN.md §M38 Slice 1), never a transfer's. A `nil` leaves that one alone.
+    ///
+    /// Only an SFTP account with an exec channel can spell it. It is skipped everywhere else, as
+    /// any step a protocol cannot spell is, because nothing builds one for those backends.
+    case setOwnership(owner: String?, group: String?)
 }
 
 /// A fact about the source that a transfer could not carry.

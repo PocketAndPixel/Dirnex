@@ -194,6 +194,114 @@ and what cannot be carried is reported rather than approximated. And from M32's:
 a namespace prefix or the `Server` header, and a capability is used only where the server's own
 answer shows it.
 
+**Opened 2026-11-09.** Probed on this Mac with OpenSSH 10.3 and `curl` 8.7.1, against the throwaway
+servers and the system Photos library:
+
+- **`sftp`'s `ls -ln` prints names on a current server.** Against OpenSSH's own `sftp-server` it gave
+  `oleg staff`, because the client resolves ids through the server's `users-groups-by-id` request. With
+  that one request withheld (`sftp-server -P users-groups-by-id`) the same command gave `501 20`. So
+  no listing supplies a number on any current server.
+- **The exec channel needs no number at all.** `chown -h -- :admin '<path>' 2>&1 && echo <token>`
+  changed the group by name, and printed a refusal in the server's words otherwise (`you are not a
+  member of group daemon`, `nosuch: illegal group name`). `--` goes before the owner operand: BSD's
+  `chgrp -h admin -- path` took `--` for a file and exited 1 after changing the link. `sftp`'s own
+  `chgrp` follows a symlink and changes the target; `-h` changed the link.
+- **Any group change clears set-uid and set-gid**, the same group included, and on a directory too.
+  `chgrp` then `chmod 6755` kept both bits. `chmod` then `chgrp` lost both.
+- **A non-root account can change a group to one of its own and no owner at all.** `chown` to another
+  uid was refused and to itself succeeded. One `id` answers uid, gid and every group with its name.
+  `getent` does not exist on macOS.
+- **Open in Terminal over `ssh`.** A `.command` file handed to Terminal with `open -a` ran with a real
+  tty, `ssh -t` got one on the server, `cd` into a folder named `it's a $dir` held, and the file
+  deleted itself first. A one-shot FIFO behind `SSH_ASKPASS_REQUIRE=force` carried a secret and left
+  nothing on disk, and a wrong secret ended cleanly with exit 255 under `NumberOfPasswordPrompts=1`.
+  Tested through a key's passphrase, since the throwaway `sshd` takes keys only. iTerm and WezTerm are
+  not installed here, so their launch is read from their documentation.
+- **Photos: the reason still holds, so this item goes back to the *undone* column.** With 33 assets over
+  12 months, one fetch per month cost 14 ms in all and one fetch for every date 3.9 ms. So the saving is
+  about 1 ms a month, while a name costs 2.0 ms an asset through the public call. A `filename` predicate
+  raises `NSInvalidArgumentException` ("Unsupported predicate"), so no fetch can filter by name. The
+  private `originalFilename` key answers in 0.0013 ms, but it names only the primary resource, so a
+  search for a Live Photo's `.MOV` would miss it in silence.
+- **WebDAV locks: nothing a lock adds is worth holding one, so this goes back to *undone*.** On Apache
+  `LOCK` gave a token, a `PUT` without it answered 423, and with it 204. A lock around the save cannot
+  see a colleague's write made before it, which is the only gap left: a write in the second the tag was
+  read, on a server whose tag cannot show it. Only a lock held from the download onward closes that, and
+  it would lock everyone else out of a file for as long as an editor has it open, and past a crash until
+  its timeout.
+- **`curl` here has NTLM, SPNEGO, GSS-API and Kerberos built in**, so both sign-ins are a transport
+  change. No server on this Mac speaks either. OAuth still needs a sign-in flow and somewhere to keep the
+  token, so it goes back to *undone*.
+- **Quota.** Apache answers 404 inside the 207 for both RFC 4331 properties, and an `allprop` volunteers
+  neither. No pane shows free space for any backend: the one reader is a volume's sidebar tooltip.
+- **`S3Backend.subtreeListing` has no cap**, because a bucket root search never needed one. A search
+  over an account needs a bound of its own.
+
+Decided before Slice 1 (2026-11-09, Oleg, on the probes above):
+
+- **Owner and group go over the exec channel, by name.** An account with no exec channel keeps today's
+  read-only rows and says why, since it has no way to learn which groups it may use. A non-root account
+  gets its own groups, on items it owns, and no owner control. Root gets both. A change that would clear
+  a set-id bit re-sends the mode after it, and its undo does too.
+- **Open in Terminal is an `ssh` session in the user's terminal**, `cd`'d to the pane's folder, for key
+  and password accounts alike. A password goes through a one-shot FIFO and never reaches `argv` or the
+  disk. An account with no exec channel is refused by name.
+- **A sync's record may have one side on a server.** A version is kept only for a file the sync itself
+  just copied, so nothing extra is downloaded, with the server row's size, date and tag beside it. A file
+  is changed on both sides when its local bytes moved and the server row's stamp moved, and Merge…
+  downloads the server's file only when pressed. A same-size SFTP edit inside the same minute stays
+  unseen, which is no worse than today.
+- **NTLM and Negotiate are built and verified on stand-ins**: a local server that checks the real NTLMv2
+  proof, and a Kerberos and Apache container. No real IIS is involved, and the record will say so.
+- **Quota is measured on Nextcloud** (the image is now on this Mac), and if a server reports one it
+  appears in the tooltip of the server's sidebar row, as a volume's does.
+- **Back to *undone*** with what the probes found: WebDAV locks, OAuth, and the faster Photos walk.
+
+##### Slices
+
+1. **Owner and group** (core, additive). `id`'s parse, the command and its token, the two new fields,
+   the set-id rule, the read-back and the undo.
+2. **Owner and group in Get Info** (app). The controls, the note for an account with no exec channel,
+   14 languages.
+3. **Open in Terminal for an SFTP account** (core, then app). The session's arguments and the one-shot
+   secret, each terminal's launch, and the refusal.
+4. **A remote folder into the sidebar** (app). `app.dirnex.locations` on the sidebar, with the endpoint
+   `reconnectEndpoint(for:)` already gives a pin.
+5. **Searching an S3 account** (core, then app). The bound, what Find Files says before it starts, and a
+   results tab across buckets.
+6. **NTLM and Negotiate** (core, then app). The schemes, the connect probe, the batch and upload
+   behaviour each one needs, and the stand-ins.
+7. **WebDAV quota** (core, then app). Nextcloud's answer first, then the row's tooltip.
+8. **A sync's record with a server side** (core). The stamp beside a version, keeping from what the sync
+   copied, and what changed since.
+9. **Merge from Synchronize over a server** (app). The checkbox for such a pair, the row, and Merge…
+   downloading the server's file and saving to both.
+10. **Live, and the record.** Every item on real servers, 14 languages, and M38 closed.
+
+**Done when:**
+- an SFTP item's group, and as root its owner, can be changed and undone from Get Info with its set-id
+  bits intact, and an account with no exec channel says why it cannot;
+- Open in Terminal lands in the pane's folder on a key account and on a password account, with no secret
+  in `argv` or on disk;
+- ⌥F7 on an S3 account pane says its bound before it starts and reports a bucket it stopped short in;
+- a remote folder dragged into the sidebar reconnects after a relaunch;
+- a WebDAV server asking for NTLM or Negotiate can be signed in to, on the stand-ins;
+- a server that reports a quota shows it, and one that does not shows nothing;
+- a file changed on both sides of a remembered sync with a server side merges over the version that sync
+  copied, and a pair with nothing copied offers no merge.
+
+##### Progress
+
+**2026-11-09: Slice 1 landed** (core only; the app is untouched). `RemoteAccountIdentity` reads `id`,
+`SSHOwnershipCommand` builds the one `chown` and reads its token, `RemoteAttributeField` gained `.owner`
+and `.group`, and `RemoteMetadataStep.setOwnership` runs over the exec channel ahead of any `chmod` in
+`SFTPBackend.applyMetadata`. A change on a set-id item sends its mode again, and so does its undo.
+`VFSBackend.accountIdentity(at:isCancelled:)` defaults to `nil`, and `CompositeBackend` forwards it in
+Slice 2. 48 new tests read real `id` output from macOS, GNU and busybox, and six negative controls each
+failed the test that watches them. The builders' exact strings also ran on a real `sshd`: a `6755` file
+went to `admin` with its mode intact, the undo brought back `staff` and `6755`, a stranger's group and an
+unknown one each came back in the server's words, and an `sftp`-only account answered no identity.
+
 #### M39 — Quick View (L)
 
 - **RTF** (M16, M18), with a source and a page view. It is `NSAttributedString`'s job and shares

@@ -64,6 +64,10 @@ public struct RemoteAttributeVerdict: Sendable, Equatable {
         if let asked = change.permissions, landed.permissions != asked.rawValue {
             refused.insert(.permissions)
         }
+        // Owner and group read back as text, which a listing reports exactly, so a clean `chown`
+        // on a server that resolved the name differently still shows up here.
+        if let asked = change.owner, !asked.matches(landed.ownerName) { refused.insert(.owner) }
+        if let asked = change.group, !asked.matches(landed.groupName) { refused.insert(.group) }
         return RemoteAttributeVerdict(refused: refused, landed: landed)
     }
 }
