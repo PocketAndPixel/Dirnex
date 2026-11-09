@@ -468,6 +468,44 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
 
 ### Waits, run loops and timing
 
+- **Closing a socket in the parent is not yet EOF at its peer during a concurrent `posix_spawn`.**
+  Measured 2026-11-10 while fixing `GitMergeSocketEdgeTests.answerToNobody`: two full app runs
+  reproduced a successful send after `connection.close()`, despite `FD_CLOEXEC`. A standalone
+  socket-pair probe got 580 successful sends out of 100,000 closes with concurrent `Process`
+  launches, and zero with no launches. Holding a spawn at a FIFO open let `proc_pidfdinfo` name
+  both holders of the same kernel socket: the parent and its child **before exec**. After exec,
+  the socket was absent from the child while the child was still alive. This was a temporary
+  reference, not a descriptor leaking into the running program. XNU copies the file table before
+  spawn's file actions and closes marked descriptors later in
+  [`fdt_exec`](https://github.com/apple-oss-distributions/xnu/blob/main/bsd/kern/kern_descrip.c).
+  - The test now reads bounded EOF off the cooperative pool before asserting `.closed` on a
+    write. Two immediate sends could both succeed while the child still held the peer. A retained
+    duplicate lasting 250 ms made the old test fail and the fixed test pass.
+  - `GitMergeSocketInheritanceTests` also starts a real child suspended **after exec**, without
+    `POSIX_SPAWN_CLOEXEC_DEFAULT`, and checks that its socket descriptor is absent. The default
+    close-all spawn flag would hide a missing `FD_CLOEXEC` in the code being tested. Removing the
+    socket's flag failed this test on `!inherited`.
+  - A fifth full run then found the same assumption in `stale`: the child could still hold its
+    closed listener. If a connection succeeds, that test now waits for the connection to end
+    before checking `.notListening`. A 250 ms duplicate made the old check fail and the fixed
+    one pass in 262 ms. Polling `connect` was a false fix: it passed in 13 ms with that duplicate
+    still held, because a full listen backlog can also return `ECONNREFUSED`.
+- **A correct vanished-folder refresh can finish after the shared 30 s wait.** Measured
+  2026-11-10 in a full live app run: `VanishedFolderTests.operationRefresh` reached the parent in
+  30.19 s, with only seven polls and a largest poll gap of 10.39 s. The failed listing, refuge
+  lookup and navigation all ran with the right token and window; main-actor turns between them
+  took seconds. Its first listing also shares that queue. The suite's waiting-for budgets now use
+  60 s, while the two 1.5 s negative holds stay fixed. A temporary 35 s pause before the refuge
+  lookup passed with the new wait and failed the old wait on the original path assertion. The
+  control kept the window and fixture alive until the late work finished, so cleanup could not
+  turn the expected failure into a modal alert. Dropping the call to `leaveVanishedFolder` still
+  failed the fixed operation test at 60 s, so the longer wait does not hide a missing refresh.
+  - After both fixes and the `stale` fix, five consecutive full app runs passed (91.35–93.96 s).
+    All 21 live suites executed with SFTP, FTP and Apache WebDAV up. S3 had no config and Docker
+    was stopped, so S3 and Nextcloud were unavailable. The 5,155 core tests and both CI-pinned
+    linters passed too. One earlier run timed out in the unchanged `EditFileRouteTests` first
+    `createCount` wait; it passed in all five final runs. That separate flake is not fixed here.
+
 - **Spinning the run loop is not the same as awaiting, and a view-shaped test cannot tell.**
   `RunLoop.current.run(until:)` drives layout, so a helper built on it produces a view with real
   frames — enough for every assertion about *structure*, which is why Quick View's hit-test suite

@@ -9,7 +9,7 @@ import Testing
 /// client that misbehaves can do, and what each descriptor is set up with.
 @Suite("git merge tool: the socket's edges")
 struct GitMergeSocketEdgeTests: GitMergeSocketTesting {
-    /// Leave a socket file nothing is listening on, as a copy that crashed does.
+    /// Leave a socket file after closing its listener, as a copy that crashed does.
     private func leaveStaleSocket(at path: String) throws {
         let descriptor = try #require(GitMergeSocket.make())
         #expect(GitMergeSocket.withAddress(of: path) { bind(descriptor, $0, $1) } == 0)
@@ -23,6 +23,21 @@ struct GitMergeSocketEdgeTests: GitMergeSocketTesting {
         let scratch = try GitMergeScratch()
         defer { scratch.cleanup() }
         try leaveStaleSocket(at: scratch.socket)
+        // A concurrent spawn can still hold the listener until exec. If it accepts a connection,
+        // wait for that connection to end. Repeated connects can fill the backlog and be refused
+        // while the listener is still open, which would be a false witness that it is stale.
+        if case let .connected(connection) = GitMergeSocket.connect(to: scratch.socket) {
+            defer { connection.close() }
+            connection.setReadTimeout(seconds: 30)
+            let end = try await offCooperativePool {
+                do {
+                    return try connection.read(upTo: 1)
+                } catch GitMergeWire.Failure.closed {
+                    return Data()
+                }
+            }
+            try #require(end.isEmpty)
+        }
         guard case .notListening = GitMergeSocket.connect(to: scratch.socket) else {
             Issue.record("expected notListening")
             return
@@ -111,9 +126,12 @@ struct GitMergeSocketEdgeTests: GitMergeSocketTesting {
         try await wait { !received.all.isEmpty }
         connection.close()
         let server = try #require(received.last)
-        // The first send can land in the peer's dead buffer; the second is the one that raises
-        // SIGPIPE on a socket that doesn't refuse it, which would end the test host here.
-        _ = try? GitMergeWire.send(GitMergeAnswer.saved, over: server)
+        // A concurrent posix_spawn briefly holds the peer until exec closes its descriptors,
+        // even with FD_CLOEXEC. Wait for EOF before asserting EPIPE (docs/NOTES.md ▸ Testing).
+        server.setReadTimeout(seconds: 30)
+        let end = try await offCooperativePool { try server.read(upTo: 1) }
+        try #require(end.isEmpty)
+        // SO_NOSIGPIPE must turn the broken pipe into an error instead of ending the test host.
         #expect(throws: GitMergeWire.Failure.closed) {
             try GitMergeWire.send(GitMergeAnswer.saved, over: server)
         }
