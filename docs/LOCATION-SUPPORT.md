@@ -366,16 +366,22 @@ when Finder takes the drop, `F5`'s own queue job stages the tree in the temp roo
 in Dirnex, and moves it to the path Finder named once all of it is here. Finder draws nothing while it
 waits, so the queue bar is the only progress; Stop or a failure leaves nothing in Finder's folder, and a
 failure is reported by Dirnex, since Finder says nothing. Run live over SFTP, FTP, WebDAV and S3
-(2026-11-08). **Every other app is handed a zip of the folder** since the same day, because Gmail in
-Chrome answers "Attachment failed" for a dropped folder: once the pointer is over such an
-app, the folder is brought down whole and zipped, and the app is handed `<folder>.zip`. A folder **on
-this disk** goes the same way, zipped where it is, while Finder still takes it by its own URL. Back
-over Finder after a crossing, Finder is handed the folder rather than the zip: a local one by its
-own URL, a server's as the staged tree, once it has arrived. The zip is made in the temp root by
-⌥F5's packer, shows "Compressing…" under the dragged row while it is made, is stopped if the drag
-ends first, and is removed at the drag's end unless an app took it, when it stays until the next
-launch for the upload that reads it. Checked by Oleg in Gmail and Teams, with a local folder and one
-off the NAS (2026-11-08). A bucket in an account pane and a share
+(2026-11-08). **Every other app is handed the folder itself** too (2026-11-09): a folder **on this
+disk** by its own URL, with nothing made, and a server's once the pointer is over the app, brought
+down whole into the temp root. **Entering an app with ⇧ held hands it `<folder>.zip` instead, Finder
+included**, because Gmail in Chrome answers "Attachment failed" for a dropped folder while VLC and
+Finder take one, and nothing tells a drag which an app wants. ⇧ counts **as the pointer enters**:
+Teams and Chrome drop what they read then, so in Oleg's logged drops a ⇧ pressed once over the app was
+read and ignored, while a drop with ⇧ held from before the entry took the zip (2026-11-09). The row's
+line says "Hold ⇧ and re-enter for a zip" over an app, "Now move out and back in" once ⇧ has changed
+over it, "Compressing…" while the zip is made and "As a zip" once it is. A local folder dragged to VLC
+landed as the folder with nothing made, and entered with ⇧ held it landed as `<folder>.zip` in Finder,
+Gmail and Teams (checked by Oleg, 2026-11-09). The zip is made in the temp root by ⌥F5's packer, is stopped if the drag ends
+first, and is removed at the drag's end unless an app took it, when it stays until the next launch
+for the upload that reads it; a server's staged tree is kept the same way only if the drop took the
+folder. The zip was checked by Oleg in Gmail and Teams, with a local folder and one off the NAS
+(2026-11-08), when every app but Finder got one. A
+bucket in an account pane and a share
 in a server pane are places rather than folders and stay inside Dirnex. And a **virtual listing** — a results tab, the merged Trash — is a
 source and never a destination: its rows carry their real paths and copy or drag out per row, while
 nothing can be pasted or dropped *into* a listing that has no directory of its own. The merged

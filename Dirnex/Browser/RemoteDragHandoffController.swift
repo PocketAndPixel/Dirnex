@@ -4,20 +4,21 @@ import DirnexCore
 /// One drag of rows whose bytes are on a server, while it is under way: what lets such a row drop into
 /// Teams, Slack, Chrome and everything else that only takes a real file. Since M36 Slice 2 a file
 /// inside an archive is one of those rows too, **extracted** where a server's file is downloaded, and
-/// since 2026-11-08 a **folder**, here or on a server, is made into a zip, because those apps take a
-/// file and fail on a folder (`DragOutZip`).
+/// since 2026-11-08 a **folder**, here or on a server, which since 2026-11-09 goes as itself and is
+/// made into a zip for an app the pointer enters with Shift held (`DragOutZip`).
 ///
 /// `RemoteDragHandoff` holds the rules and says why each is there. This object does what they ask:
-/// it watches which app is under the pointer, rewrites the drag's board, brings the bytes down and
-/// answers the reads. A drop into Finder before any other app was crossed never involves it, because
-/// Finder takes the promise or the URL the drag started with. After a crossing, a drag holding a
-/// folder writes Finder a board of its own, with the folder rather than its zip.
+/// it watches which app is under the pointer and whether Shift is down, rewrites the drag's board,
+/// brings the bytes down, makes the zips and answers the reads. A drop into Finder before any other
+/// app was crossed never involves it, because Finder takes the promise or the URL the drag started
+/// with, and neither does a folder on this disk, until Shift asks for a zip.
 ///
 /// **The bytes land in the cache and do not go through the queue.** A queued job is something the user
 /// asked for, reported per item with a Stop button in a window they have left, and this is something
 /// the pointer did on its way across the screen. So a row already fetched for a preview costs nothing
-/// here, and what this brings down serves the next preview and the next drag. A zip serves nobody
-/// after the drag, so it is never left to finish unasked, and what the drop did not use is removed.
+/// here, and what this brings down serves the next preview and the next drag. A staged tree or a zip
+/// serves nobody after the drag, so neither is left to finish unasked, and what the drop did not use
+/// is removed.
 ///
 /// **The transfer needs nothing from the main thread until it is over**, because a held read is
 /// sitting on that thread waiting for it. It runs off the main actor and leaves its outcome in a box
@@ -27,7 +28,7 @@ import DirnexCore
 /// finished. Turning the run loop bought nothing anyway, since the drag does not move during a read.
 @MainActor
 final class RemoteDragHandoffController {
-    private var handoff: RemoteDragHandoff
+    private(set) var handoff: RemoteDragHandoff
     /// The drag session's own board.
     private let board: NSPasteboard
     /// Every row of the drag, in order, including any a file URL cannot stand for (a folder inside an
@@ -38,55 +39,67 @@ final class RemoteDragHandoffController {
     private let holdLimit: Duration
     /// Who is under the pointer. Injected because a test has no pointer to move.
     private let surfaceUnderPointer: @MainActor () -> RemoteDragHandoff.Surface
-    private let showStatus: (String?) -> Void
+    /// Whether Shift is down. Injected because a test has no keyboard.
+    let shiftHeld: @MainActor () -> Bool
+    let showStatus: (String?) -> Void
     private let onLanded: () -> Void
     private let onFailure: (any Error) -> Void
     /// What each row offers another app, and what extracting a member needs.
-    private let offer: DragOutOffer
+    let offer: DragOutOffer
     /// What writes a folder's zip: ⌥F5's `bsdtar` packer, injected so a test can watch it.
     private let zipWriter: any PlainPackWriting
     /// Whether the drag has been over another app yet, so a locked row is mentioned once.
     private var hasLeftDirnex = false
+    /// Where the pointer was last, which the status line depends on.
+    private(set) var lastSurface: RemoteDragHandoff.Surface = .neutral
+    /// Notices Shift changing with the pointer still, which the drag never reports, to redraw the line.
+    private var shiftWatch: DragShiftWatch?
 
-    /// What each row is handed to an app other than Finder as: a copy brought down, a member
-    /// extracted, or a folder's zip.
+    /// What each row is handed as itself: a copy brought down, a member extracted, or a server's
+    /// folder staged. A folder on this disk is not here: it goes by its own URL.
     private var files: [VFSPath: URL] = [:]
-    /// What Finder is handed where that differs: a server folder's staged tree rather than its zip.
-    private var finderFiles: [VFSPath: URL] = [:]
-    /// The zips and staged trees this drag made, which the drag's end sorts into kept and removed.
-    private var zipped: [DragOutZip.Made] = []
+    /// Each folder's zip, handed over in its place while Shift is held.
+    private var zips: [VFSPath: URL] = [:]
+    /// What this drag left under the temp root, which its end sorts into kept and removed.
+    private var stagedTrees: [URL] = []
+    private var madeZips: [URL] = []
     /// Written by the transfer's own thread and read when the status is drawn.
-    private let moved = ByteCounter()
-    private let phase = RemoteDragPhaseBox(.downloading)
+    let moved = ByteCounter()
+    let phase = RemoteDragPhaseBox(.downloading)
     private let cancellation = CancellationFlag()
     private let outcome = RemoteDragTransferOutcome()
+    private let compressionOutcome = DragOutCompressionOutcome()
     /// Kept here because a pasteboard item does not promise to keep its data provider alive.
     private var providers: [FileURLProvider] = []
-    private var isDragging = true
+    private(set) var isDragging = true
     private var failure: (any Error)?
-    private var statusTask: Task<Void, Never>?
+    /// A zip that could not be made, reported only if the drag ended still asking for zips.
+    private var zipFailure: (any Error)?
+    var statusTask: Task<Void, Never>?
+    /// How many bytes the transfer brings down in all, when every row's size is known.
+    var progressTotal: Int64?
 
     /// Whether bytes are still on their way, which is what the end of the drag has to decide about.
     var isTransferring: Bool {
         handoff.transfer == .running
     }
 
-    /// Whether the drag makes a zip, which is never left to finish after it: nothing keeps one for a
-    /// second try, so finishing would only spend the time and the disk.
-    var makesZips: Bool {
-        remoteRows.contains { offer.routes[$0.path]?.zipsForOtherApps == true }
+    /// Whether the transfer stages a server's folder, which is never left to finish after the drag:
+    /// nothing keeps a staged tree for a second try, so finishing would only spend the time and the disk.
+    var stagesFolders: Bool {
+        offer.routes.values.contains(.downloadFolder)
     }
 
-    /// The rows of `entries` this has to bring down, extract or zip.
-    private var remoteRows: [FileEntry] {
+    /// The rows of `entries` this may have to bring down, extract, stage or zip.
+    private var handedOffRows: [FileEntry] {
         entries.filter { offer.routes[$0.path]?.isHandedOff == true }
     }
 
-    /// The rows the board offers through this object to whoever it is written for: every one for
-    /// other apps, and for Finder all but a folder on this disk, which Finder takes by its own URL.
-    private var rowsForAudience: [FileEntry] {
-        guard handoff.audience == .finder else { return remoteRows }
-        return remoteRows.filter { offer.routes[$0.path] != .folderURL }
+    /// The rows the board offers through this object in its current form: all of them while it offers
+    /// zips, and otherwise all but a folder on this disk, which goes by its own URL.
+    private var rowsOnBoard: [FileEntry] {
+        guard handoff.form == .folders else { return handedOffRows }
+        return handedOffRows.filter { offer.routes[$0.path] != .folderURL }
     }
 
     init(
@@ -96,6 +109,7 @@ final class RemoteDragHandoffController {
         backend: any VFSBackend,
         holdLimit: Duration = RemoteDragHandoff.holdLimit,
         surfaceUnderPointer: @escaping @MainActor () -> RemoteDragHandoff.Surface = RemoteDragPointer.surface,
+        shiftHeld: @escaping @MainActor () -> Bool = { NSEvent.modifierFlags.contains(.shift) },
         showStatus: @escaping (String?) -> Void,
         onLanded: @escaping () -> Void,
         onFailure: @escaping (any Error) -> Void,
@@ -104,17 +118,23 @@ final class RemoteDragHandoffController {
     ) {
         let offer = offer ?? .serverFilesOnly(entries, cache: cache)
         self.offer = offer
-        handoff = RemoteDragHandoff(finderHasItsOwnBoard: offer.finderHasItsOwnBoard)
+        handoff = RemoteDragHandoff(
+            holdsFolders: offer.holdsFolders, beganWithPromises: offer.beganWithPromises
+        )
         self.board = board
         self.entries = entries
         self.cache = cache
         self.backend = backend
         self.holdLimit = holdLimit
         self.surfaceUnderPointer = surfaceUnderPointer
+        self.shiftHeld = shiftHeld
         self.showStatus = showStatus
         self.onLanded = onLanded
         self.onFailure = onFailure
         self.zipWriter = zipWriter
+        if offer.holdsFolders {
+            shiftWatch = DragShiftWatch(keyHeld: shiftHeld) { [weak self] in self?.drawStatus() }
+        }
     }
 
     // MARK: - The drag
@@ -123,59 +143,37 @@ final class RemoteDragHandoffController {
     /// milliseconds after this returns.
     func pointerMoved() {
         let surface = surfaceUnderPointer()
+        lastSurface = surface
         if surface != .neutral, !hasLeftDirnex {
             hasLeftDirnex = true
             if offer.holdsLockedRows { offer.onLockedRowsLeaving() }
         }
-        apply(handoff.pointerMoved(over: surface))
+        apply(handoff.pointerMoved(over: surface, shiftHeld: shiftHeld()))
+        drawStatus()
     }
 
     /// The drag is over, whichever way. `mayFinish` is whether a transfer still running may carry on
-    /// with nobody watching, which a zip never may. `operation` is what the drop came to, which with
-    /// where the pointer let go says which of the drag's zips and staged trees anybody took.
+    /// with nobody watching, which a staging never may. `operation` is what the drop came to, which
+    /// with where the pointer let go says whether anybody took the drag's zips or staged trees.
     func dragEnded(mayFinish: Bool, operation: NSDragOperation = []) {
         isDragging = false
         statusTask?.cancel()
-        apply(handoff.dragEnded(mayFinish: mayFinish && !makesZips))
-        zipped.sweep(droppedOn: operation.isEmpty ? nil : surfaceUnderPointer())
-        zipped = []
-        if let failure { onFailure(failure) }
+        apply(handoff.dragEnded(mayFinish: mayFinish && !stagesFolders))
+        // What the board was written as when the pointer entered the app it let go over, which is what
+        // that app took.
+        let taken = operation.isEmpty || surfaceUnderPointer() == .neutral ? nil : handoff.form
+        RemoteDragArtifacts.sweep(zips: madeZips, stagedTrees: stagedTrees, taken: taken)
+        madeZips = []
+        stagedTrees = []
+        shiftWatch?.stop()
+        shiftWatch = nil
+        if let failure {
+            onFailure(failure)
+        } else if let zipFailure, handoff.form == .zips {
+            onFailure(zipFailure)
+        }
         failure = nil
-    }
-
-    // MARK: - Answering a read
-
-    /// What to tell an app asking for `entry`'s file URL, holding the read while the bytes are close.
-    fileprivate func fileURLString(for entry: FileEntry) -> String? {
-        let surface = surfaceUnderPointer()
-        settleTransfer()
-        var answer = handoff.readFileURL(from: surface)
-        if answer == .wait {
-            hold(over: surface)
-            answer = handoff.readFileURL(from: surface)
-        }
-        guard answer == .fileURLs else { return nil }
-        return handedFile(for: entry)?.absoluteString
-    }
-
-    /// The file the board's current audience is handed for `entry`.
-    private func handedFile(for entry: FileEntry) -> URL? {
-        if handoff.audience == .finder, let staged = finderFiles[entry.path] { return staged }
-        return files[entry.path]
-    }
-
-    /// Keep the app waiting until the bytes land, the limit runs out, or the pointer moves on from it.
-    ///
-    /// Blocks the main thread on purpose, and only for ``RemoteDragHandoff/holdLimit``: nothing else
-    /// can usefully happen, since the drag does not move during a read whatever this thread does.
-    private func hold(over surface: RemoteDragHandoff.Surface) {
-        let clock = ContinuousClock()
-        let deadline = clock.now.advanced(by: holdLimit)
-        while !outcome.isSettled, isDragging, clock.now < deadline, surfaceUnderPointer() == surface {
-            usleep(10000)
-        }
-        settleTransfer()
-        handoff.holdEnded(over: surface)
+        zipFailure = nil
     }
 
     // MARK: - Doing what the rules ask
@@ -184,7 +182,7 @@ final class RemoteDragHandoffController {
         for effect in effects {
             switch effect {
             case .writeLazyFileURLs:
-                providers = rowsForAudience.map { FileURLProvider(entry: $0, owner: self) }
+                providers = rowsOnBoard.map { FileURLProvider(entry: $0, owner: self) }
                 let byPath = Dictionary(
                     providers.map { ($0.entry.path, $0) }, uniquingKeysWith: { first, _ in first }
                 )
@@ -192,13 +190,15 @@ final class RemoteDragHandoffController {
                     byPath[entry.path].map { .answeredWhenRead($0) }
                 })
             case .writeFileURLs:
-                let offered = Set(rowsForAudience.map(\.path))
+                let offered = Set(rowsOnBoard.map(\.path))
                 write(PanelPasteboard.handoffItems(for: entries) { entry in
                     guard offered.contains(entry.path) else { return nil }
                     return self.handedFile(for: entry).map { .here($0) }
                 })
             case .startTransfer:
                 startTransfer()
+            case .startCompression:
+                startCompression()
             case .stopTransfer:
                 cancellation.isCancelled = true
             }
@@ -209,12 +209,60 @@ final class RemoteDragHandoffController {
         board.clearContents()
         board.writeObjects(items)
     }
+}
 
+// MARK: - Answering a read
+
+extension RemoteDragHandoffController {
+    /// What to tell an app asking for `entry`'s file URL, holding the read while the bytes are close.
+    fileprivate func fileURLString(for entry: FileEntry) -> String? {
+        let surface = surfaceUnderPointer()
+        settleTransfer()
+        settleCompression()
+        var answer = handoff.readFileURL(from: surface)
+        if answer == .wait {
+            hold(over: surface)
+            answer = handoff.readFileURL(from: surface)
+        }
+        guard answer == .fileURLs else { return nil }
+        return handedFile(for: entry)?.absoluteString
+    }
+
+    /// The file the board's current form hands over for `entry`.
+    private func handedFile(for entry: FileEntry) -> URL? {
+        if handoff.form == .zips, offer.routes[entry.path]?.zipsWithShift == true {
+            return zips[entry.path]
+        }
+        return files[entry.path]
+    }
+
+    /// Keep the app waiting until what it reads is made, the limit runs out, or the pointer moves on.
+    ///
+    /// Blocks the main thread on purpose, and only for ``RemoteDragHandoff/holdLimit``: nothing else
+    /// can usefully happen, since the drag does not move during a read whatever this thread does.
+    /// Settles as it goes, because a zip starts only once the transfer it is made from is taken in.
+    private func hold(over surface: RemoteDragHandoff.Surface) {
+        let clock = ContinuousClock()
+        let deadline = clock.now.advanced(by: holdLimit)
+        while isDragging, clock.now < deadline, surfaceUnderPointer() == surface {
+            settleTransfer()
+            settleCompression()
+            guard handoff.progress == .running else { break }
+            usleep(10000)
+        }
+        settleTransfer()
+        settleCompression()
+        handoff.holdEnded(over: surface)
+    }
+}
+
+// MARK: - Bringing the bytes down, and zipping them
+
+extension RemoteDragHandoffController {
     private func startTransfer() {
-        let rows = remoteRows
-        for row in rows where offer.routes[row.path]?.zipsForOtherApps != true {
-            // A folder is never "already here" as a zip: `alreadyHere` answers a folder on this disk
-            // with the folder itself, which is exactly what another app cannot take.
+        let rows = handedOffRows.filter { offer.routes[$0.path]?.isPromised == true }
+        for row in rows where row.kind != .directory {
+            // A folder is never "already here": nothing keeps a staged tree from one drag to the next.
             if let held = offer.alreadyHere(row) { files[row.path] = held }
         }
         let missing = rows.filter { files[$0.path] == nil }
@@ -234,13 +282,6 @@ final class RemoteDragHandoffController {
         let transfer = RemoteDragTransfer(
             rows: rows,
             extractions: offer.extractions,
-            zips: Dictionary(uniqueKeysWithValues: rows.compactMap { row in
-                guard offer.routes[row.path]?.zipsForOtherApps == true else { return nil }
-                return (row.path, DragOutZip(
-                    row: row, root: RemoteFileCache.temporaryRoot, backend: backend,
-                    writer: zipWriter
-                ))
-            }),
             backend: backend,
             moved: moved,
             phase: phase,
@@ -263,11 +304,13 @@ final class RemoteDragHandoffController {
             files[file.source] = URL(fileURLWithPath: file.localPath)
         }
         files.merge(settled.extracted) { _, extracted in extracted }
-        for made in settled.zipped {
-            files[made.source] = made.zip
-            if let staged = made.staged { finderFiles[made.source] = staged }
+        files.merge(settled.staged) { _, staged in staged }
+        stagedTrees += settled.staged.values
+        if !isDragging {
+            // Finished as the drag ended, after its sweep: nobody can take these now.
+            RemoteDragArtifacts.sweep(zips: [], stagedTrees: stagedTrees, taken: nil)
+            stagedTrees = []
         }
-        zipped = settled.zipped
         statusTask?.cancel()
         guard let error = settled.error else {
             landed()
@@ -289,44 +332,48 @@ final class RemoteDragHandoffController {
         Task { @MainActor in onLanded() }
     }
 
-    // MARK: - Saying how it is going
-
-    /// Keep the drag image's status current for as long as the transfer runs. Polled, for the reason
-    /// `RemoteFetchPrompt` polls: a transfer reports far more often than anybody can read.
-    private func followProgress(ofBytes sizes: [Int64]) {
-        let total = sizes.allSatisfy { $0 >= 0 } ? sizes.reduce(0, +) : nil
-        statusTask = Task { [weak self] in
-            while !Task.isCancelled, let self, handoff.transfer == .running {
-                drawStatus(total: total)
-                try? await Task.sleep(for: .milliseconds(200))
+    /// Zip every folder on a thread of its own: a folder on this disk from itself, and a server's from
+    /// the tree the transfer staged.
+    private func startCompression() {
+        let jobs = handedOffRows.compactMap { row -> DragOutZip? in
+            guard offer.routes[row.path]?.zipsWithShift == true else { return nil }
+            let folder = row.path.backend == .local ? row.path.localURL : files[row.path]
+            return folder.map {
+                DragOutZip(
+                    row: row,
+                    folder: $0,
+                    root: RemoteFileCache.temporaryRoot,
+                    writer: zipWriter
+                )
             }
+        }
+        let compression = DragOutCompression(zips: jobs, cancellation: cancellation)
+        let outcome = compressionOutcome
+        DispatchQueue.global(qos: .userInitiated).async {
+            outcome.settle(compression.run())
+            Task { @MainActor [self] in settleCompression() }
         }
     }
 
-    private func drawStatus(total: Int64? = nil) {
-        guard isDragging else { return }
-        switch handoff.transfer {
-        case .notStarted:
-            showStatus(nil)
-        case .running:
-            switch phase.value {
-            case .extracting: showStatus(RemoteDragStatus.extracting)
-            case .compressing: showStatus(RemoteDragStatus.compressing)
-            case .downloading: showStatus(
-                    RemoteDragStatus.downloading(moved: moved.value, of: total)
-                )
-            }
-        case .landed:
-            // Worth saying only to an app that was already told there was nothing, because it will
-            // not look again until the pointer leaves it and comes back.
-            showStatus(handoff.board == .fileURLs ? RemoteDragStatus.ready : nil)
-        case .failed:
-            switch phase.value {
-            case .extracting: showStatus(RemoteDragStatus.extractionFailed)
-            case .compressing: showStatus(RemoteDragStatus.compressionFailed)
-            case .downloading: showStatus(RemoteDragStatus.failed)
-            }
+    /// Take in the zips once they are made, for the reason ``settleTransfer()`` is asked twice.
+    private func settleCompression() {
+        guard handoff.compression == .running, let settled = compressionOutcome.settled else { return }
+        zips.merge(settled.zips) { _, zip in zip }
+        madeZips += settled.zips.values
+        if !isDragging {
+            // Finished as the drag ended, after its sweep: nobody can take these now.
+            RemoteDragArtifacts.sweep(zips: madeZips, stagedTrees: [], taken: nil)
+            madeZips = []
         }
+        guard let error = settled.error else {
+            apply(handoff.compressionLanded())
+            drawStatus()
+            return
+        }
+        handoff.compressionFailed()
+        guard !(error is CancellationError) else { return }
+        if isDragging { zipFailure = error }
+        drawStatus()
     }
 }
 
