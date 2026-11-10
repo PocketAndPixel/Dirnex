@@ -191,6 +191,11 @@ final class PanelTab {
     /// with five server tabs, of which one was looked at, would come back with one.
     var pendingConnection: ServerEndpoint?
 
+    /// The SMB share a **restored** tab's folder is on, while this session has not mounted it
+    /// (`PanelViewController+ShareRestore`). Consumed by the mount, after which `SMBMounter` answers
+    /// for the share; until then it is what `persistState` writes back down for a tab nobody opened.
+    var awaitedShare: AwaitedShare?
+
     /// What this tab knows about reconnecting to `backend`: its own pending endpoint when that is the
     /// one, else the one its restored trail carried. `nil` for a backend it has nothing for — which
     /// for a server is a navigation that fails the way it always has, with `serverNotConnected`.

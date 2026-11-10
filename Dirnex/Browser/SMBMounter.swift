@@ -49,11 +49,37 @@ final class SMBMounter {
             record(location, mountedAt: existing.path)
             return existing
         }
+        // Both panes can come back inside one share and ask for it at the same moment, and the
+        // second has no mount to find yet. It waits for the first one's answer rather than asking
+        // NetFS for a share that is already on its way.
+        if let inFlight = mountsInFlight[location] { return try await inFlight.value }
+        let task = Task { try await self.mountWithNetFS(
+            location,
+            username: username,
+            password: password
+        ) }
+        mountsInFlight[location] = task
+        defer { mountsInFlight[location] = nil }
+        return try await task.value
+    }
 
+    /// The mount each share being mounted right now will answer with.
+    private var mountsInFlight: [SMBLocation: Task<URL, any Error>] = [:]
+
+    /// The blocking NetFS call, as `mount` makes it. A seam for the tests, which count the calls and
+    /// answer with a temporary folder.
+    var netfsMount: @Sendable (SMBLocation, String?, String?) -> MountOutcome = { location, user, password in
+        SMBMounter.netfsMount(location, username: user, password: password)
+    }
+
+    private func mountWithNetFS(
+        _ location: SMBLocation,
+        username: String?,
+        password: String?
+    ) async throws -> URL {
         let alreadyMounted = Self.mountedVolumePaths()
-        let outcome = await BlockingWork.run {
-            Self.netfsMount(location, username: username, password: password)
-        }
+        let netfsMount = netfsMount
+        let outcome = await BlockingWork.run { netfsMount(location, username, password) }
 
         guard outcome.status == 0, let mountPoint = outcome.mountPoint else {
             throw SMBMountError(status: outcome.status, location: location)
@@ -75,6 +101,7 @@ final class SMBMounter {
     /// Forget a mount recorded at `path`. Only the tests need it, to put back what they made up.
     func forget(mountedAt path: String) {
         mountedShares[path] = nil
+        ownedMountPoints.remove(path)
     }
 
     /// The share mounted at exactly `path`, when this app mounted or reached it in this session and
@@ -123,7 +150,7 @@ final class SMBMounter {
 
     // MARK: - NetFS (off-main, no actor state)
 
-    private struct MountOutcome {
+    struct MountOutcome: Sendable {
         let status: Int32
         let mountPoint: URL?
     }

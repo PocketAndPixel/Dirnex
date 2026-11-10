@@ -1051,10 +1051,15 @@ connecting to it and its path does not list.
 A pin inside an **SMB share** is a local path, so it has no connection to read back, and it records the
 share instead (`PinnedShare`). Picking one while its volume is not mounted mounts the share with the password
 the app holds and goes in, under whatever mount point the share gets. A pin made before that record existed
-tries the saved SMB servers in sidebar order and keeps the one that mounted. It stays partial in three ways:
-a share Finder mounted is recorded only once Dirnex has connected to it, an account with no saved password is
-passed over rather than prompted for, and a restored tab inside a share is still dropped at launch, since a
-launch may not contact a server unasked.
+tries the saved SMB servers in sidebar order and keeps the one that mounted. It stays partial in two ways: a
+share Finder mounted is recorded only once Dirnex has connected to it, and an account with no saved password is
+passed over rather than prompted for.
+
+A **tab** inside a share is written down with the share the same way, and comes back even though Dirnex
+unmounted the share on quit. Its first navigation mounts the share by the rules a restored server tab
+reconnects by: the tab in front at launch mounts unless Settings ▸ Panels never contacts a server unasked, any
+gesture mounts, and an account with no saved password stands down on the status line. A tab written down
+before this, with no share recorded, is still dropped.
 
 <sup>tt</sup> Read-only since M24 Slice 7: a row that is not on this Mac opens
 `RemoteAttributesController`, which states **what the listing actually reported** and nothing else.

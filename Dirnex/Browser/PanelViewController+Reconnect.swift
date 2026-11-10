@@ -22,7 +22,8 @@ enum TabOfflineReason: Equatable {
 enum ReconnectVerdict: Equatable {
     /// Nothing: a local path, an archive, or a server that is already connected.
     case listNow
-    /// Register this endpoint on the pane's backend first.
+    /// Register this endpoint on the pane's backend first, or, for an SMB share, mount it
+    /// (`PanelViewController+ShareRestore`).
     case connect(ServerEndpoint)
     /// Do not list; leave the pane saying why.
     case standDown(TabOfflineReason)
@@ -150,7 +151,7 @@ extension PanelViewController {
     /// draws the place it is supposed to be showing (the right crumbs, the right chip, no rows)
     /// rather than the previous tab's contents, and `hasLoaded` is deliberately left `false` so the
     /// next activation tries again.
-    private func standDown(_ tab: PanelTab, reason: TabOfflineReason) {
+    func standDown(_ tab: PanelTab, reason: TabOfflineReason) {
         // The pane is now showing this, so anything still in flight for it is answering a question
         // nobody is asking — the same invalidation `navigate` performs before its own load.
         loadToken += 1

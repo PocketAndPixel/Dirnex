@@ -23,15 +23,21 @@ public enum PinnedShare {
         mounted: [MountTableEntry],
         isSymlink: (String) -> Bool
     ) -> String? {
-        guard path.backend == .local else { return nil }
-        let components = path.path.split(separator: "/")
-        guard components.count >= 2, components[0] == volumesDirectory else { return nil }
-        let name = String(components[1])
+        guard let name = volumeName(of: path) else { return nil }
         let mountPoint = "/\(volumesDirectory)/\(name)"
         guard !mounted.contains(where: { $0.mountPoint == mountPoint }), !isSymlink(mountPoint) else {
             return nil
         }
         return name
+    }
+
+    /// The name of the volume a local `path` under `/Volumes/<name>` is on, mounted or not, or `nil`
+    /// for any other path.
+    public static func volumeName(of path: VFSPath) -> String? {
+        guard path.backend == .local else { return nil }
+        let components = path.path.split(separator: "/")
+        guard components.count >= 2, components[0] == volumesDirectory else { return nil }
+        return String(components[1])
     }
 
     /// The shares that could bring `entry` back, best first.
@@ -65,6 +71,26 @@ public enum PinnedShare {
         path.path.split(separator: "/").dropFirst(2).reduce(.local(mountPoint)) { folder, component in
             folder.appending(String(component))
         }
+    }
+}
+
+/// The share a restored tab's folder is waiting on, and the volume name the folder was written down
+/// under. A tab can walk off the share before it is mounted, and the share is no business of the
+/// places it walks to.
+public struct AwaitedShare: Sendable, Equatable {
+    public let share: SMBLocation
+    public let volume: String
+
+    /// `nil` when `path` is not under `/Volumes`, where no share can be.
+    public init?(share: SMBLocation, at path: VFSPath) {
+        guard let volume = PinnedShare.volumeName(of: path) else { return nil }
+        self.share = share
+        self.volume = volume
+    }
+
+    /// Whether `path` is on the volume this share is awaited at.
+    public func holds(_ path: VFSPath) -> Bool {
+        PinnedShare.volumeName(of: path) == volume
     }
 }
 

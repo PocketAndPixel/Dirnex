@@ -65,11 +65,11 @@ public struct FavoriteEntry: Sendable, Hashable, Identifiable, Codable {
         switch TabRestorePolicy.requirement(for: row.path, endpoint: endpoint) {
         case let .connection(endpoint):
             self.init(path: row.path, endpoint: endpoint)
-        case .directoryOnDisk:
+        case let .shareMount(share):
             // A folder on a mounted share is a local path that remembers which share it is on
-            // (`PinnedShare`). No other endpoint means anything beside a local path.
-            self.init(path: row.path, endpoint: endpoint?.smbShare.map(ServerEndpoint.smb))
-        case .photosLibrary:
+            // (`PinnedShare`).
+            self.init(path: row.path, endpoint: .smb(share))
+        case .directoryOnDisk, .photosLibrary:
             self.init(path: row.path)
         case .archiveOnDisk, nil:
             return nil

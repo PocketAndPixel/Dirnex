@@ -291,6 +291,16 @@ extension PanelViewController {
         recordHistory: Bool = true,
         unasked: Bool = false
     ) {
+        // A restored tab inside a share that is not mounted mounts it first, and navigates again
+        // once it has (`PanelViewController+ShareRestore`).
+        if mountsAwaitedShareFirst(
+            to: path,
+            focus: child,
+            recordHistory: recordHistory,
+            unasked: unasked
+        ) {
+            return
+        }
         // A refusal here has already rendered the pane and invalidated whatever was in flight, so
         // there is nothing left for this navigation to do.
         guard canListAfterReconnecting(to: path, unasked: unasked) else {
