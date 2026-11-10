@@ -337,7 +337,9 @@ start_nextcloud() {
         || ! docker exec -u www-data "$NEXTCLOUD_CONTAINER" \
             php occ config:system:set skeletondirectory --value= >/dev/null 2>&1 \
         || ! docker exec -u www-data -e OC_PASS=dirnex-probe-Nc-pw "$NEXTCLOUD_CONTAINER" \
-            php occ user:add --password-from-env probe >/dev/null 2>&1; then
+            php occ user:add --password-from-env probe >/dev/null 2>&1 \
+        || ! docker exec -u www-data "$NEXTCLOUD_CONTAINER" \
+            php occ user:setting probe files quota "1 GB" >/dev/null 2>&1; then
         echo "nextcloud SKIPPED: the container did not install (docker logs $NEXTCLOUD_CONTAINER)" >&2
         return 0
     fi
@@ -352,7 +354,9 @@ start_nextcloud() {
         | python3 -c 'import json, sys; print(json.load(sys.stdin)["versionstring"])')
     # Its claims, each measured (PLAN.md §M32): names stored composed, a lock that guards only the
     # file itself, and `X-OC-Mtime` honoured. No access log or served folder: its Apache logs no
-    # user, and its files live inside the container.
+    # user, and its files live inside the container. And a quota (PLAN.md §M38 Slice 7), set above,
+    # since an account without one answers sabre's `-3`, which is no quota at all. Nextcloud reads
+    # "1 GB" as 1 073 741 824 bytes (measured: "100 MB" read back as 104 857 600).
     NEXTCLOUD_ENDPOINTS=$(cat <<EOF
     {
       "name": "Nextcloud $version, HTTP, Basic",
@@ -360,7 +364,8 @@ start_nextcloud() {
       "root": "/remote.php/dav/files/probe",
       "user": "probe", "password": "dirnex-probe-Nc-pw", "scheme": "basic",
       "remotePath": "/", "mayTryWrongPassword": true,
-      "composesNames": true, "lockGuardsFolder": false, "keepsUploadDates": true
+      "composesNames": true, "lockGuardsFolder": false, "keepsUploadDates": true,
+      "quotaBytes": 1073741824
     }
 EOF
 )

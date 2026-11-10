@@ -106,6 +106,16 @@ public protocol WebDAVTransport: Sendable {
     func propfindBatch(_ backendPaths: [String], isCancelled: () -> Bool) throws
         -> [WebDAVBatchAnswer]
 
+    /// One `Depth: 0` PROPFIND of a folder for its quota alone
+    /// (``WebDAVProcessArguments/quotaPropfind(session:backendPath:)``, PLAN.md §M38 Slice 7).
+    ///
+    /// **No default**, unlike ``downloadSegments(_:of:to:progress:isCancelled:)``. S3's rule for an
+    /// additive verb is a default that gets the same result more slowly, and the only default this
+    /// verb could have, the plain stat, names no quota, so it gets no result at all and says
+    /// nothing. That is how the app's own transport was first written without it: every server read
+    /// as one that reports none, and only the live suite noticed (2026-11-10).
+    func propfindQuota(_ backendPath: String) throws -> WebDAVHTTPResponse
+
     /// Download one file to a local path, resuming from the local file's length when `resume`.
     ///
     /// `progress` reports **deltas** as the destination grows, and `isCancelled` is polled while

@@ -117,6 +117,7 @@ final class SidebarViewController: NSViewController {
         observeServerConnectionChanges()
         observeVaultChanges()
         observeSidebarRowActivity()
+        observeServerQuota()
         observeTagChanges()
         observeCloudStorageChanges()
         observeCloudSectionOrderChanges()

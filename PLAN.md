@@ -495,6 +495,36 @@ folder not sent again. With the resend switched off, the three tests that failed
 that endpoint alone. **Not seen:** an Ubuntu Apache, and any other server that redirects. The NAS was not
 asked, since it never redirects (M32), so what it is sent has not changed.
 
+**2026-11-10: Slice 7 landed** (core, then the app). A saved WebDAV server's sidebar tooltip shows, under its
+address, the space its server says is left: RFC 4331's `quota-available-bytes`, read by
+`WebDAVBackend.quota()` from one `Depth: 0` request of the root that names that property alone. Measured
+first: Nextcloud 34 answers it on every folder as the account's space, `-3` for an account without a quota and
+`0` for a full one, and holds its answer for five minutes. Both Apaches here answer 404, as the NAS did in M32,
+and Finder's own WebDAV client never asks. Two calls were Oleg's. The tooltip says "available" with no total,
+since what Nextcloud reports as used is the folder's and not the account's. And it is asked after a listing on
+the connection, at most every five minutes (`ServerQuotaBook`), never before one, so a wrong password costs no
+second failed login, and with the refresh floor at 0 nothing is asked unasked. A request that got no answer keeps
+the last one; an answer without a number clears it. One string in 14 languages. `scripts/live_test_servers.sh`
+gives the Nextcloud account a 1 GB quota, and the live suite asks every endpoint. 14 core tests and 11 app tests
+are new, one of them live, the fixtures are real runs of the core's own builder against Nextcloud and both Apaches, and 12 negative
+controls were each caught.
+
+The live suite's first run found the app's `curl` transport had no quota request of its own, so the protocol's
+default sent the plain stat and every server read as one without a quota. A logging proxy in front of Nextcloud
+showed the listing's body on every request. The requirement has no default now, so the compiler names a
+transport that lacks it (NOTES.md ▸ Design lessons, the opt-in seams).
+
+Run live in a copy built under its own bundle id, with the saved rows' password from a temporary env-gated probe
+(now gone) so nothing read the Keychain, and the proxy logging what the app sent. Opening the Nextcloud row
+sent the connect, the listing and then the quota request, and the tooltip read "1,07 GB available" under the
+address. The Apache row's read the address alone, after three requests in its log. Two background polls and a
+reopen within five minutes asked nothing more. With the quota then cut to 500 MB and the container restarted
+to drop its cache, the first listing past the five minutes asked again, and the tooltip changed in place to
+"524,3 MB available".
+
+**Not seen:** a real hosted Nextcloud or ownCloud, any other server that reports a quota (IIS, Yandex, rclone),
+and the tooltip in the other 13 languages, whose strings the coverage suite reads from the build.
+
 #### M39 — Quick View (L)
 
 - **RTF** (M16, M18), with a source and a page view. It is `NSAttributedString`'s job and shares
