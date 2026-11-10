@@ -173,6 +173,16 @@ public enum SFTPBatchCommand {
     /// directory to land in on connect.
     public static let printWorkingDirectory = "pwd"
 
+    /// The batch line that asks the space left on the filesystem holding the login directory:
+    /// `df`, allowed to fail (``SFTPDiskFree``).
+    ///
+    /// **No path**, because `sftp` asks its working directory, which at the start of a session is the
+    /// login directory, and that is where a saved SFTP row opens (``printWorkingDirectory``). A
+    /// chrooted account's is inside its chroot, and so is the answer (measured 2026-11-11). Allowed
+    /// to fail so that a server without the extension answers exit 0 on the key route as it does on
+    /// the password route, leaving its one sentence for the reader to find.
+    public static let diskFree = allowedToFail("df")
+
     static func quote(_ path: String) -> String {
         let escaped = path
             .replacingOccurrences(of: "\\", with: "\\\\")

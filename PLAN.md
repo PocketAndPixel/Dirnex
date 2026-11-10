@@ -525,6 +525,38 @@ to drop its cache, the first listing past the five minutes asked again, and the 
 **Not seen:** a real hosted Nextcloud or ownCloud, any other server that reports a quota (IIS, Yandex, rclone),
 and the tooltip in the other 13 languages, whose strings the coverage suite reads from the build.
 
+**2026-11-11: an SFTP server's space on its row** (outside the slice list, Oleg's go-ahead after the probe;
+core, then the app). A saved SFTP server's tooltip now shows, under its address, the space left "of" a total,
+as a volume's does: OpenSSH's `statvfs` extension, `sftp`'s `df`, asked with no path, so of the login
+directory where the row opens. Probed first on four servers (NOTES.md ▸ sftp / ssh ▸ Space left): this
+Mac's `sftp` draws the table whatever the server, in KiB, and `Avail` is what an account may write (ext4's 5 %
+reserve stays out). A chrooted account reads its chroot, `internal-sftp` keeps the extension, and a withheld
+one is a single stderr sentence. Oleg chose the total, since this is a filesystem's own `statvfs` where
+WebDAV's "used" was a folder's. It is the filesystem's space and not the account's, so a per-user quota
+does not show.
+
+`SFTPDiskFree` reads the transcript with both streams folded: the table is an answer, the sentence throws
+`ServerSpaceUnsupported`, and anything else is a session that never got there, which keeps the last answer.
+`ServerSpace` holds either protocol's answer and WebDAV's five-minute rule, and `ServerQuotaBook` now keys
+on either server and stops asking one that cannot say until relaunch. The tooltip reuses the volume row's
+"%@ available of %@", so there are no new strings. `SFTPTransport.diskFree()` has no default, after Slice 7's
+lesson. 13 core tests are new and one moved, over nine captured transcripts; 6 app tests are new, one of them
+live against `statvfs` on this Mac; and 10 negative controls were each caught.
+
+Run live in a copy built under its own bundle id, with three saved key rows, so nothing read the Keychain,
+and a temporary env-gated probe, now gone, logging each row's tooltip. On a macOS server logging its
+requests, opening the row sent `pwd`, the listing, then one `statvfs "/Users/oleg"` in its own session, and
+the tooltip read "545,24 GB available of 2 TB", as `df -k` does here. Polls and a navigation within five
+minutes asked nothing. The chrooted row read "67,1 MB available of 67,1 MB", the 64 MiB `tmpfs`. With
+10 MiB written into it, the first poll past five minutes changed it in place to "56,6 MB available of
+67,1 MB". The withheld row kept its address. Its refused `df` was one session with no request in it, and
+the eight polls past five minutes each listed and asked nothing more. The two-line tooltip was also seen
+drawn on screen, under a resting pointer.
+
+**Not seen:** the NAS, whose DSM user quotas are the case where the volume's space overstates an account's
+(asking it reads the password from the Keychain); a server that is not OpenSSH; and a password account, whose
+transcript was captured from an interactive session with a key, the route the password one takes.
+
 #### M39 — Quick View (L)
 
 - **RTF** (M16, M18), with a source and a page view. It is `NSAttributedString`'s job and shares

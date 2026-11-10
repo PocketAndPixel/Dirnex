@@ -2,7 +2,8 @@ import DirnexCore
 import Foundation
 
 /// The batched-listing verb: every folder a tree refresh re-lists, in one `sftp` session rather
-/// than one session each.
+/// than one session each. And the space-left question, the other verb whose answer is read from a
+/// transcript.
 ///
 /// In its own file for the reason the segmented transfers are: the transport sits near SwiftLint's
 /// `type_body_length`, and the seam to split on is the concept.
@@ -21,5 +22,12 @@ extension SFTPProcessTransport {
             transcript: SFTPBatchListing.script(for: remotePaths), isCancelled: isCancelled
         )
         return SFTPBatchListing.answers(in: transcript, for: remotePaths)
+    }
+
+    /// The space-left question, run as the batched listing is and for its reason: what tells a
+    /// server without the extension from a failed session is one sentence on standard error, and the
+    /// table is on standard output, so the core reads both in one transcript (``SFTPDiskFree``).
+    func diskFree() throws -> String {
+        try run(transcript: SFTPBatchCommand.diskFree, isCancelled: { false })
     }
 }

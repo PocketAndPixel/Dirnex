@@ -200,16 +200,4 @@ struct WebDAVQuotaTests {
         let backend = WebDAVBackend(location: Self.account, transport: transport)
         #expect(throws: WebDAVResponseError.transport(.operationTimedOut)) { try backend.quota() }
     }
-
-    // MARK: - When to ask again
-
-    @Test("a listing asks again five minutes after the last ask, and at once if the clock went back")
-    func schedule() {
-        let asked = Date(timeIntervalSince1970: 1_800_000_000)
-        #expect(WebDAVQuota.isDue(lastAsked: nil, now: asked))
-        #expect(!WebDAVQuota.isDue(lastAsked: asked, now: asked))
-        #expect(!WebDAVQuota.isDue(lastAsked: asked, now: asked.addingTimeInterval(299)))
-        #expect(WebDAVQuota.isDue(lastAsked: asked, now: asked.addingTimeInterval(300)))
-        #expect(WebDAVQuota.isDue(lastAsked: asked, now: asked.addingTimeInterval(-1)))
-    }
 }

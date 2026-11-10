@@ -16,6 +16,7 @@ struct ServerQuotaTests {
         username: "probe",
         rootPath: "/remote.php/dav/files/probe"
     )
+    private static let server = ServerQuotaBook.Server.webDAV(location)
 
     /// A clock a test moves by hand.
     private final class Clock {
@@ -26,9 +27,9 @@ struct ServerQuotaTests {
     private final class Question: @unchecked Sendable {
         private let lock = NSLock()
         private var count = 0
-        private var reply: Result<WebDAVQuota?, any Error>
+        private var reply: Result<ServerSpace?, any Error>
 
-        init(answering answer: WebDAVQuota?) {
+        init(answering answer: ServerSpace?) {
             reply = .success(answer)
         }
 
@@ -38,13 +39,13 @@ struct ServerQuotaTests {
             return count
         }
 
-        func answer(with result: Result<WebDAVQuota?, any Error>) {
+        func answer(with result: Result<ServerSpace?, any Error>) {
             lock.lock()
             reply = result
             lock.unlock()
         }
 
-        func ask() throws -> WebDAVQuota? {
+        func ask() throws -> ServerSpace? {
             lock.lock()
             count += 1
             let reply = reply
@@ -67,9 +68,9 @@ struct ServerQuotaTests {
     private func listing(
         _ book: ServerQuotaBook,
         _ question: Question,
-        at location: WebDAVLocation = Self.location
+        at server: ServerQuotaBook.Server = Self.server
     ) async -> Bool {
-        guard let task = book.listingArrived(at: location, asking: { try question.ask() }) else {
+        guard let task = book.listingArrived(at: server, asking: { try question.ask() }) else {
             return false
         }
         await task.value
@@ -82,19 +83,19 @@ struct ServerQuotaTests {
     func firstListingAsks() async {
         let clock = Clock()
         let book = book(clock)
-        let question = Question(answering: WebDAVQuota(availableBytes: 98_857_600))
-        #expect(book.quota(for: Self.location) == nil)
+        let question = Question(answering: ServerSpace(availableBytes: 98_857_600))
+        #expect(book.space(for: Self.server) == nil)
 
         #expect(await listing(book, question))
         #expect(question.asked == 1)
-        #expect(book.quota(for: Self.location) == WebDAVQuota(availableBytes: 98_857_600))
+        #expect(book.space(for: Self.server) == ServerSpace(availableBytes: 98_857_600))
     }
 
     @Test("a listing within five minutes asks nothing, and the first one after asks again")
     func fiveMinutesApart() async {
         let clock = Clock()
         let book = book(clock)
-        let question = Question(answering: WebDAVQuota(availableBytes: 1000))
+        let question = Question(answering: ServerSpace(availableBytes: 1000))
         await listing(book, question)
 
         clock.now += 299
@@ -102,21 +103,21 @@ struct ServerQuotaTests {
         #expect(question.asked == 1)
 
         clock.now += 1
-        question.answer(with: .success(WebDAVQuota(availableBytes: 400)))
+        question.answer(with: .success(ServerSpace(availableBytes: 400)))
         #expect(await listing(book, question))
         #expect(question.asked == 2)
-        #expect(book.quota(for: Self.location) == WebDAVQuota(availableBytes: 400))
+        #expect(book.space(for: Self.server) == ServerSpace(availableBytes: 400))
     }
 
     @Test("a listing while the question is out asks nothing more")
     func oneQuestionAtATime() async {
         let clock = Clock()
         let book = book(clock)
-        let question = Question(answering: WebDAVQuota(availableBytes: 1))
-        let first = book.listingArrived(at: Self.location) { try question.ask() }
+        let question = Question(answering: ServerSpace(availableBytes: 1))
+        let first = book.listingArrived(at: Self.server) { try question.ask() }
         clock.now += 600
         // Before the first answer has been settled on this actor, so it is still out.
-        #expect(book.listingArrived(at: Self.location) { try question.ask() } == nil)
+        #expect(book.listingArrived(at: Self.server) { try question.ask() } == nil)
         await first?.value
         #expect(question.asked == 1)
     }
@@ -126,11 +127,11 @@ struct ServerQuotaTests {
         let clock = Clock()
         let book = book(clock)
         let other = WebDAVLocation(host: "cloud.example", username: "someone-else")
-        let question = Question(answering: WebDAVQuota(availableBytes: 5))
+        let question = Question(answering: ServerSpace(availableBytes: 5))
         await listing(book, question)
-        #expect(await listing(book, question, at: other))
+        #expect(await listing(book, question, at: .webDAV(other)))
         #expect(question.asked == 2)
-        #expect(book.quota(for: other) == WebDAVQuota(availableBytes: 5))
+        #expect(book.space(for: .webDAV(other)) == ServerSpace(availableBytes: 5))
     }
 
     // MARK: - What it keeps
@@ -139,20 +140,20 @@ struct ServerQuotaTests {
     func noAnswerKeepsTheLast() async {
         let clock = Clock()
         let book = book(clock)
-        let question = Question(answering: WebDAVQuota(availableBytes: 77))
+        let question = Question(answering: ServerSpace(availableBytes: 77))
         await listing(book, question)
 
         clock.now += 300
         question.answer(with: .failure(WebDAVResponseError.transport(.couldNotConnect)))
         #expect(await listing(book, question))
-        #expect(book.quota(for: Self.location) == WebDAVQuota(availableBytes: 77))
+        #expect(book.space(for: Self.server) == ServerSpace(availableBytes: 77))
     }
 
     @Test("an answer with no quota clears one, and a change tells the sidebar")
     func noQuotaClears() async {
         let clock = Clock()
         let book = book(clock)
-        let question = Question(answering: WebDAVQuota(availableBytes: 77))
+        let question = Question(answering: ServerSpace(availableBytes: 77))
         let posted = Posts()
         // This book's posts only: every other test's book posts the same name, in parallel.
         let observer = NotificationCenter.default.addObserver(
@@ -172,7 +173,7 @@ struct ServerQuotaTests {
         clock.now += 300
         question.answer(with: .success(nil))
         await listing(book, question)
-        #expect(book.quota(for: Self.location) == nil)
+        #expect(book.space(for: Self.server) == nil)
         #expect(posted.count == 2)
     }
 
@@ -188,7 +189,7 @@ struct ServerQuotaTests {
         )
         #expect(SidebarViewController.serverTooltip(for: server, quotas: book) == server.address)
 
-        await listing(book, Question(answering: WebDAVQuota(availableBytes: 98_857_600)))
+        await listing(book, Question(answering: ServerSpace(availableBytes: 98_857_600)))
         let lines = SidebarViewController.serverTooltip(for: server, quotas: book)
             .components(separatedBy: "\n")
         #expect(lines == [server.address, "\(FileFormatting.byteString(98_857_600)) available"])
@@ -198,7 +199,7 @@ struct ServerQuotaTests {
     func tooltipOtherRows() async {
         let clock = Clock()
         let book = book(clock)
-        await listing(book, Question(answering: WebDAVQuota(availableBytes: 1)))
+        await listing(book, Question(answering: ServerSpace(availableBytes: 1)))
 
         let elsewhere = ServerConnection(
             name: "Elsewhere",
@@ -240,8 +241,10 @@ struct ServerQuotaTests {
         )
 
         pane.noteRemoteListingArrived(at: VFSPath(backend: location.backendID, path: "/docs"))
-        try await settleUntil { ServerQuotaBook.shared.quota(for: location) != nil }
-        #expect(ServerQuotaBook.shared.quota(for: location) == WebDAVQuota(availableBytes: 4096))
+        try await settleUntil { ServerQuotaBook.shared.space(for: .webDAV(location)) != nil }
+        #expect(
+            ServerQuotaBook.shared.space(for: .webDAV(location)) == ServerSpace(availableBytes: 4096)
+        )
         pane.noteRemoteListingArrived(at: VFSPath(backend: location.backendID, path: "/docs"))
         #expect(server.paths == ["/"])
     }
@@ -257,7 +260,7 @@ struct ServerQuotaTests {
         )
         pane.noteRemoteListingArrived(at: VFSPath(backend: location.backendID, path: "/"))
         pane.noteRemoteListingArrived(at: .local(NSTemporaryDirectory()))
-        #expect(ServerQuotaBook.shared.quota(for: location) == nil)
+        #expect(ServerQuotaBook.shared.space(for: .webDAV(location)) == nil)
     }
 }
 

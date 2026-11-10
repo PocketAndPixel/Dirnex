@@ -1,0 +1,3 @@
+sftp> -df
+        Size         Used        Avail       (root)    %Capacity
+  1948455240   1417895304    530559936    530559936          72%
