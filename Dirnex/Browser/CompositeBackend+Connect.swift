@@ -195,6 +195,20 @@ extension CompositeBackend {
         )
     }
 
+    /// The live S3 account connection for `backendID` and the secret it signs with, for a search
+    /// across its buckets (PLAN.md §M38 Slice 5), or `nil` when no account is connected there.
+    ///
+    /// The secret comes from the live connection, as `terminalSession(at:)`'s password does, so a
+    /// search raises no Keychain prompt.
+    func s3AccountSearchSource(
+        for backendID: VFSBackendID
+    ) -> (account: S3AccountBackend, secret: String)? {
+        guard let account = s3AccountBackend(for: backendID),
+              let transport = account.accountTransport as? S3AccountCurlTransport
+        else { return nil }
+        return (account, transport.secretAccessKey)
+    }
+
     /// Whether a path on `backendID` can be listed right now without connecting first.
     ///
     /// Asked of the **endpoint memory** rather than of the four connection dictionaries, which is

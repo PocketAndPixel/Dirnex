@@ -41,3 +41,76 @@ public extension S3Backend {
         return VFSSubtreeListing(entries: listing.entries)
     }
 }
+
+/// A **bounded** flat listing, for a search across an account's buckets (PLAN.md §M38 Slice 5).
+///
+/// The unbounded one above suits a search inside one bucket, which the user pointed at and which a
+/// runaway guard of a million keys covers. An account is a different question: every bucket the
+/// key can see, so a share of each is what a search can honestly promise, and the dialog states it
+/// before anything is asked (``S3AccountSearch/objectsPerBucket``).
+extension S3Backend {
+    /// The first `objectLimit` objects beneath `path`, in the order the server lists keys, as the
+    /// rows a walk of them would have produced.
+    ///
+    /// Here, unlike the unbounded listing, ``VFSSubtreeListing/isComplete`` `== false` is an honest
+    /// answer: the slice is "the first N keys", which is what the user was told would be searched,
+    /// rather than wherever a failure happened to stop. It is `false` when the bound was reached
+    /// with objects left over, and when `isCancelled` answered `true` part-way; the caller tells the
+    /// two apart by asking `isCancelled` itself.
+    ///
+    /// A stop **returns** what it has rather than throwing, where the unbounded listing throws
+    /// `CancellationError`. That listing is one request's worth of answer to one search; this is one
+    /// bucket of many, and the pages already paid for hold real matches the user is about to see
+    /// beside every other bucket's.
+    ///
+    /// The last page is cut to the bound, so "the first 10,000 objects" is exactly that on a server
+    /// whose pages are not 1000 long. A directory marker counts as an object, because to S3 it is
+    /// one.
+    ///
+    /// - Parameter firstPage: the page the caller already fetched at `path`'s prefix, used in place
+    ///   of asking for it again.
+    func boundedSubtreeListing(
+        at path: VFSPath,
+        objectLimit: Int,
+        firstPage: S3ListingPage? = nil,
+        isCancelled: () -> Bool = { false }
+    ) throws -> VFSSubtreeListing {
+        try requireOwnBackend(path)
+        var listing = S3SubtreeListing(root: path)
+        var listed = 0
+        var cut = false
+        let run = try enumeratePages(
+            prefix: S3Key.listingPrefix(for: path),
+            delimiter: nil,
+            at: path,
+            firstPage: firstPage,
+            isCancelled: isCancelled,
+            wantsMore: { listed < objectLimit && !isCancelled() },
+            body: { page in
+                let room = max(objectLimit - listed, 0)
+                if page.objects.count > room {
+                    cut = true
+                    listing.add(page.keepingFirst(room))
+                    listed = objectLimit
+                } else {
+                    listing.add(page)
+                    listed += page.objects.count
+                }
+            }
+        )
+        return VFSSubtreeListing(entries: listing.entries, isComplete: run == .exhausted && !cut)
+    }
+}
+
+private extension S3ListingPage {
+    /// This page with only its first `count` objects.
+    func keepingFirst(_ count: Int) -> S3ListingPage {
+        S3ListingPage(
+            objects: Array(objects.prefix(count)),
+            commonPrefixes: commonPrefixes,
+            nextContinuationToken: nextContinuationToken,
+            isTruncated: isTruncated,
+            isURLEncoded: isURLEncoded
+        )
+    }
+}

@@ -36,6 +36,10 @@ final class SearchController: NSViewController {
     /// What the whole connection is called, when the second scope option means "everything on this
     /// server" rather than "everywhere Spotlight indexed" — `nil` on the local route.
     private let connectionRootTitle: String?
+    /// What the search will cost, said under the fields before it starts — the bound an S3 account
+    /// search runs under (PLAN.md §M38 Slice 5). Its presence also hides the scope row: an account
+    /// has one place to search, so "This Folder" and "All of" would be two names for it.
+    private let costNote: String?
     /// Handed the assembled query and the chosen scope when the user commits. The panel runs the
     /// search.
     var onSearch: ((FileQuery, _ scope: Scope) -> Void)?
@@ -63,10 +67,16 @@ final class SearchController: NSViewController {
     private let scopePopup = NSPopUpButton()
     private let findButton = NSButton()
 
-    init(currentFolderName: String, fields: SearchFields, connectionRootTitle: String?) {
+    init(
+        currentFolderName: String,
+        fields: SearchFields,
+        connectionRootTitle: String?,
+        costNote: String? = nil
+    ) {
         self.currentFolderName = currentFolderName
         self.fields = fields
         self.connectionRootTitle = connectionRootTitle
+        self.costNote = costNote
         super.init(nibName: nil, bundle: nil)
         title = DialogTitle.ofCommand("go.search")
     }
@@ -80,7 +90,8 @@ final class SearchController: NSViewController {
 
     override func loadView() {
         let container = NSView()
-        DialogLayout.fill(container, with: [makeControlsGrid(), makeFooter()], spacing: 16)
+        let rows = [makeControlsGrid(), costNote.map(makeCostNote), makeFooter()].compactMap(\.self)
+        DialogLayout.fill(container, with: rows, spacing: 16)
         NSLayoutConstraint.activate([
             container.widthAnchor.constraint(equalToConstant: 552)
         ])
@@ -146,8 +157,11 @@ final class SearchController: NSViewController {
 
         let grid = NSGridView(views: rows.map { [$0.caption, $0.control] })
         for (index, row) in rows.enumerated() {
-            guard let field = row.field, !fields.contains(field) else { continue }
-            grid.row(at: index).isHidden = true
+            guard let field = row.field else {
+                grid.row(at: index).isHidden = costNote != nil
+                continue
+            }
+            grid.row(at: index).isHidden = !fields.contains(field)
         }
         grid.rowSpacing = 8
         grid.columnSpacing = 10
@@ -218,6 +232,16 @@ final class SearchController: NSViewController {
             %@ is its name, such as a bucket, a server or an archive file.
             """
         )
+    }
+
+    /// The cost sentence, wrapped to the footer's width. Secondary text, since it is about the
+    /// search rather than a question in it.
+    private func makeCostNote(_ text: String) -> NSView {
+        let note = NSTextField(wrappingLabelWithString: text)
+        note.textColor = .secondaryLabelColor
+        note.preferredMaxLayoutWidth = 512
+        note.widthAnchor.constraint(equalToConstant: 512).isActive = true
+        return note
     }
 
     private func makeFooter() -> NSView {

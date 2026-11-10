@@ -1262,6 +1262,12 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
     disk, so a test that put the file back straight after was answered by *that* read, and passed
     with the tab-switch hook it was written for deleted. `holdOutTheDeletePasses()` after the gesture
     lets it finish first. Without reverting each hook in turn, both tests would have looked fine.
+- **A wait for "a sheet is up" after a search can catch the progress sheet instead of the answer.**
+  `SearchProgressSheet` appears 400 ms into any walk or account search, and fifteen requests to a server
+  on this Mac took longer than that (measured 2026-11-10, M38 Slice 5's live run). The wait for
+  `window.attachedSheet` returned on "Searching…", no results tab existed yet, and the next step acted
+  on the pane's previous rows. Wait first for what only the finished search leaves (a tab on the
+  `.search` backend), then for a sheet whose text is not the progress title.
 
 ### Fixtures and shared state
 

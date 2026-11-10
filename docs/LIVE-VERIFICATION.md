@@ -73,6 +73,13 @@ so a trap goes here only if it can bite any live run; one tied to an area goes u
   `Dirnex.pref.hasSeenFirstRunTour` and `Dirnex.pref.hasSeenFullDiskAccessOnboarding` true, or the
   first-run flow covers the window. Afterwards `lsregister -u` the app, `defaults delete` the domain and
   remove the build. Stop it by a PID read back with `ps`: `pkill -x Dirnex` takes the other copy too.
+  - **It does not leave Application Support alone.** Found 2026-11-10: `~/Library/Application
+    Support/Dirnex` is the same folder for every bundle id, and every launch prunes its `ArchiveUndo`
+    store against *its own* journal (`ArchiveUndoStorage.purgeUnreferenced`). A copy's journal is
+    empty, so its launch deletes every snapshot the real build's undo stack names. That day the store
+    was already empty (its folder unchanged since the day before), so nothing was lost. Before
+    launching a copy, list the store, and copy its files aside if there are any. A copy stopped with
+    `kill` also leaves its `gm-<id>.sock` there; `lsof` says which socket nobody holds.
   - **Its first launch asks macOS about every cloud provider, on Oleg's screen.** Seen 2026-11-10: the
     copy showed no window, its main thread sat in `open` under `CloudStorageMounts.entryDirectory`, and
     he got "“Dirnex.app” wants to access files managed by “Box”", one per provider, which screenshots
