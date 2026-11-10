@@ -34,9 +34,14 @@ extension PanelViewController {
         guard let volume = PinnedShare.unmountedVolume(
             of: entry.path,
             mounted: MountTable.current(),
-            isSymlink: { (try? FileManager.default.destinationOfSymbolicLink(atPath: $0)) != nil }
+            isSymlink: isSymlink
         ) else { return [] }
         return PinnedShare.candidates(for: entry, volume: volume, saved: saved)
+    }
+
+    /// Whether `path` is a symbolic link, as `/Volumes/Macintosh HD` is.
+    nonisolated static func isSymlink(_ path: String) -> Bool {
+        (try? FileManager.default.destinationOfSymbolicLink(atPath: path)) != nil
     }
 
     /// Mount one of `shares` and open `entry` on it, with the pin's sidebar row spinning meanwhile.
@@ -90,7 +95,7 @@ extension PanelViewController {
 
     /// The password for a share, from its own Keychain item or its server's, which is where one
     /// reached from the server's list is filed. `nil` for a guest share, which has none.
-    private static func storedPassword(forShare share: SMBLocation) -> String? {
+    static func storedPassword(forShare share: SMBLocation) -> String? {
         guard share.username != nil else { return nil }
         return SecretKeychain.password(for: share) ?? SecretKeychain.password(for: share.server)
     }

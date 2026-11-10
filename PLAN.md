@@ -390,6 +390,23 @@ and under its own name.
 **Not seen:** a second pick after a quit, which goes through the record and is covered by tests; the row's
 spinner; and a double-click, which the row's activity guards.
 
+**2026-11-10: a tab inside a share comes back too** (asked for the same day; core, then the app). A tab is
+written down with its share as a pin is, and `TabRestorePolicy` answers `.shareMount` for a folder under
+`/Volumes` with a share endpoint. That tab comes back while its volume is not mounted, waiting on the share
+(`AwaitedShare`), and its first navigation mounts it before listing, by the rules a restored server tab
+reconnects by. The launch activation mounts at any refresh floor but 0, a gesture mounts at any floor, and an
+account with no saved password stands down on the status line. Oleg chose that over mounting only on a switch,
+which would have left the tab in front empty at launch. Both panes can restore into one share, so `SMBMounter`
+hands a second caller the first one's mount instead of asking NetFS again. No new strings. 4 core tests and 12
+app tests are new, and 9 negative controls were each caught.
+
+Run live on the NAS: the TV pin opened `media/TV` in the left pane, the tab was written down with the share
+before and at quit, and the share was unmounted. On relaunch the tab, still the active one, mounted `media` in
+3 s and listed it with nothing clicked, landing on the row it was left on.
+
+**Not seen:** a background tab mounting on a switch, a floor of 0, an account with no saved password, and both
+panes in one share live; each is covered by tests.
+
 #### M39 — Quick View (L)
 
 - **RTF** (M16, M18), with a source and a page view. It is `NSAttributedString`'s job and shares

@@ -195,6 +195,27 @@ struct PinnedShareTests {
         #expect(decoded.entries[0].path == Self.tv)
     }
 
+    // MARK: - A tab waiting on its share
+
+    @Test("a share is awaited only by a folder under /Volumes")
+    func awaitedNeedsAVolume() {
+        let share = Self.server.share(named: "media")
+        #expect(AwaitedShare(share: share, at: Self.tv)?.volume == "media")
+        #expect(AwaitedShare(share: share, at: .local("/Users/oleg/TV")) == nil)
+    }
+
+    /// A tab that walked off the share before it was mounted must not mount it for the next place.
+    @Test("an awaited share holds its own volume's folders and nothing else")
+    func awaitedHoldsItsVolume() throws {
+        let awaited = try #require(
+            AwaitedShare(share: Self.server.share(named: "media"), at: Self.tv)
+        )
+        #expect(awaited.holds(.local("/Volumes/media")))
+        #expect(awaited.holds(.local("/Volumes/media/TV/Season 1")))
+        #expect(!awaited.holds(.local("/Volumes/media-1/TV")))
+        #expect(!awaited.holds(.local("/Users/oleg/Dev")))
+    }
+
     // MARK: - A dragged row
 
     private func row(_ path: VFSPath) -> FileEntry {

@@ -42,7 +42,7 @@ extension PanelViewController {
                 markedPaths: tab.panel.selection.isEmpty
                     ? nil
                     : tab.panel.selection.map { restoreAnchor(for: $0, in: tab) }.sorted(),
-                endpoint: reconnectEndpoint(for: tab),
+                endpoint: reconnectEndpoint(for: tab) ?? shareEndpoint(for: tab),
                 history: persistedHistory(for: tab)
             )
         }
@@ -68,7 +68,7 @@ extension PanelViewController {
             expandedPaths: spot.flatMap { $0.expanded.isEmpty ? nil : $0.expanded },
             cursorPath: spot?.cursor,
             cursorOnParent: spot?.cursorOnParent ?? false,
-            endpoint: reconnectEndpoint(for: tab, at: folder),
+            endpoint: reconnectEndpoint(for: tab, at: folder) ?? shareEndpoint(for: tab, at: folder),
             history: persistedHistory(for: tab, at: folder)
         )
     }
@@ -286,6 +286,10 @@ extension PanelViewController {
             // Recorded, never opened: the first navigation into this tab registers it, and only if
             // somebody is asking (`RemoteRefreshPolicy.contactsServersUnasked`).
             if case let .connection(endpoint) = requirement { tab.pendingConnection = endpoint }
+            // The same for a folder on a share: the navigation that wants it mounts the share.
+            if case let .shareMount(share) = requirement {
+                tab.awaitedShare = AwaitedShare(share: share, at: path)
+            }
             // Where it had been, and how to reconnect to each server on the way. Nothing is checked
             // on disk: a folder deleted since quit is skipped when ⌘[ reaches it.
             tab.history = NavigationHistory(restoring: persisted.history, at: path)
@@ -334,6 +338,15 @@ extension PanelViewController {
             return exists && !isDirectory.boolValue
         case .connection:
             return true
+        // A share that is not mounted is no sign the folder has gone, so only a mounted one is
+        // asked whether it still holds it.
+        case .shareMount:
+            let exists = FileManager.default.fileExists(atPath: path.path, isDirectory: &isDirectory)
+            return exists && isDirectory.boolValue || PinnedShare.unmountedVolume(
+                of: path,
+                mounted: MountTable.current(),
+                isSymlink: isSymlink
+            ) != nil
         // Nothing on disk to check and nothing to connect; whether access is still granted is the
         // listing's question (PLAN.md §M28).
         case .photosLibrary:
