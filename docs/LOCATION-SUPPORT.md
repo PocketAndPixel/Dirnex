@@ -1042,9 +1042,11 @@ is not ours: a **browsed archive cannot receive** an archive, because `ArchiveBa
 account again from any of the four surfaces that can pick one: the ⌘F popup, a sidebar row, that
 row's Open item, and Go ▸ Places. The credential rules are the restore's, because it is the restore's
 code: an account needing a password it no longer has comes back disconnected rather than prompting.
-What stays partial is the *gesture* — a remote folder is pinned from the menu, never by dragging it
-into the sidebar (PLAN.md §M8's deliberate omission, planned as §M38) — and a pin made before the field existed, which
-carries no way back and fails as it always did, naming the account.
+A folder on a server can be pinned from the menu or, since PLAN.md §M38 Slice 4, by dragging its row
+into the sidebar, and the two make the same pin. What stays partial is a pin made before the field
+existed, which carries no way back and fails as it always did, naming the account; and a bucket row in
+an account pane or a share row in a server pane, which cannot be dragged in, because each is reached by
+connecting to it and its path does not list.
 
 <sup>tt</sup> Read-only since M24 Slice 7: a row that is not on this Mac opens
 `RemoteAttributesController`, which states **what the listing actually reported** and nothing else.

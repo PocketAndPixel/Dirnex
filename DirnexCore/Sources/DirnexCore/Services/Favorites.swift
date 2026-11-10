@@ -46,6 +46,31 @@ public struct FavoriteEntry: Sendable, Hashable, Identifiable, Codable {
     /// Where to reconnect, or `nil` for a local pin — and for one whose stored endpoint this build
     /// cannot read, which is a pin that opens the way it did before this field existed.
     public var serverEndpoint: ServerEndpoint? { endpoint?.endpoint }
+
+    /// The pin a row dragged in from a pane makes, or `nil` when the row cannot be one (PLAN.md §M38).
+    ///
+    /// `endpoint` is what the pane's connection was made with. **A row on a server with no endpoint
+    /// that is its own account makes no pin**, through the policy a restored tab and a picked pin
+    /// both answer to: the row would draw in the sidebar and never open again after a relaunch.
+    ///
+    /// Only a real directory, as a drag from Finder has always been: a symlink stays out because
+    /// nothing in a server's listing says what it points at, and a local one has never pinned. An
+    /// archive stays out as the menu's pin does (docs/LOCATION-SUPPORT.md). A bucket in an account
+    /// pane and a share in a server pane stay out because those rows are places reached by
+    /// connecting to them, and their paths answer `notFound` when listed, which a pin would do.
+    public init?(draggedRow row: FileEntry, endpoint: ServerEndpoint?) {
+        guard row.kind == .directory else { return nil }
+        let backend = row.path.backend
+        guard !backend.isS3Account, !backend.isSMBServer else { return nil }
+        switch TabRestorePolicy.requirement(for: row.path, endpoint: endpoint) {
+        case let .connection(endpoint):
+            self.init(path: row.path, endpoint: endpoint)
+        case .directoryOnDisk, .photosLibrary:
+            self.init(path: row.path)
+        case .archiveOnDisk, nil:
+            return nil
+        }
+    }
 }
 
 /// An ordered, de-duplicated list of pinned directories — the model behind the ⌘F
