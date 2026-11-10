@@ -326,6 +326,35 @@ that lands was not watched. Both are Slice 10's. **A known rough edge:** root ty
 listing prints a name is told the owner was not stored as asked, because a read-back compares what it
 has, and the panel then shows what landed.
 
+**2026-11-10: Slice 3 landed** (core, then the app). Open in Terminal on an SFTP folder is now an `ssh`
+session in the user's own terminal, in the pane's folder. `SFTPProcessArguments.terminal` keeps the other
+channels' host key policy and timeout, adds `-t`, and lets a key ask its question. `SSHTerminalStage`
+writes a `.command` that deletes itself, in a private folder of its own. For a password it adds a helper
+that reads a `OneShotSecretPipe`, so the secret is in the kernel's pipe and nowhere else, and is gone after
+one read or after two minutes. Two minutes because iTerm asks "OK to run?" first. The password comes from
+the live connection, so opening a terminal raises no Keychain prompt. `accountIdentity` is asked before any
+window opens, and an account that answers nothing is refused by name, in 14 languages. When `ssh` itself
+fails (status 255) the script waits for a Return, since iTerm closes a session the moment it ends.
+
+Run live in a copy built under its own bundle id, launched through LaunchServices, on throwaway `sshd`s. On
+a key account, Terminal ran `ssh` with no secret in its arguments, the server's log showed a session on a
+real tty, `lsof` put its `bash -l` in a folder named `it's a $dir`, and the staging folder was gone. On a
+`ForceCommand internal-sftp` account the pane listed the folder, no `ssh` started, and the alert named the
+account, in English and Russian. A live suite runs the real script under `script(1)` against a real `sshd`,
+with a secret through the pipe and a wrong one. 28 core tests and 12 app tests are new, four of them live,
+and 22 negative controls were each caught.
+
+On the NAS, two password accounts signed in from that copy, and Open in Terminal refused each by name. A
+temporary probe, now gone, read why: past the sign-in, the server answered the check with `Permission denied,
+please try again.` and status 1. So it is the NAS's rule about those accounts, and the refusal is right.
+
+**Not seen:** a password session reaching a shell on a real server. The throwaway `sshd` takes keys only,
+and neither NAS account may run a command. The pipe ran through a key's passphrase, which reaches `ssh`
+the same way, and the password flags are the ones browsing already uses. iTerm and WezTerm, which are not installed here: their launches come from iTerm2's source and
+WezTerm's documentation. All three are Slice 10's. **A known rough edge:** a server that could not be asked
+at all gets the same refusal as an account with no shell, since `accountIdentity` answers `nil` for both, and
+the sentence is worded to be true of each.
+
 #### M39 — Quick View (L)
 
 - **RTF** (M16, M18), with a source and a page view. It is `NSAttributedString`'s job and shares

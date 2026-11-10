@@ -6247,6 +6247,37 @@ works, which makes this whole family probeable on any Mac).
     as the real account, so what is refused is really refused. The `sftp` subsystem goes through the
     same wrapper and needs nothing more. It cannot show a change only root may make land.
 
+#### A session in the user's own terminal (M38's Open in Terminal)
+
+- **A terminal is handed a file, so nothing of Dirnex's reaches that `ssh` except what the file says.**
+  Every other `ssh` here is a child whose environment and stdin Dirnex sets. This one is the terminal's
+  child, so a password cannot ride either. `SSH_ASKPASS` names a helper that `cat`s a named pipe, and
+  Dirnex writes to the pipe. Measured 2026-11-10 against a real `sshd`: after a sign-in the script and the
+  pipe were gone, and a zero-size name was all the pipe had ever been on disk.
+- **A FIFO's wait can only be bounded with `O_NONBLOCK`.** A plain `open` for writing blocks until a reader
+  arrives, with no way to give up. `O_WRONLY | O_NONBLOCK` answers `ENXIO` until then, so it can be polled
+  against a deadline. A reader blocked in its own `open` counts as a reader. Remove the pipe whatever
+  happens, since a `cat` of a pipe nobody will write to waits forever.
+- **`F_SETNOSIGPIPE` on the descriptor, or a reader leaving between the open and the write ends the whole
+  app.** The negative control did exactly that to the test process, and it showed as a run with no failing
+  test named at all.
+- **iTerm asks "OK to run?" before it runs a file it is handed**, silenceable by the user (its
+  `application:openFile:`, read 2026-11-10; not installed here). So the secret waits two minutes rather than
+  a couple of seconds. It also ends the session when the script ends, which is why a status of 255, `ssh`'s
+  own failure, waits for a Return: otherwise the reason is on screen for a frame. Any other status came from
+  the session.
+- **A key's wrong passphrase is asked three times, and the second ask finds the stage gone.** The output
+  reads `ssh_askpass: exec(…/askpass): No such file or directory`, then `Permission denied`. That is the
+  stage's one-shot rule working, not a bug. A password account sends `NumberOfPasswordPrompts=1`, so it
+  never gets a second ask.
+- **A Synology NAS refuses the check past the sign-in, and two refusals in a row do not mean a bug.** Seen
+  2026-11-10 on two password accounts: the exec channel answered `Permission denied, please try again.` with
+  status 1, where a wrong password is status 255 and `user@host: Permission denied (publickey,password).` The
+  status is what separates a server's rule from a failed sign-in.
+- **`;` and not `&&` after the `cd`**, so a folder deleted since the listing still gives a shell, under the
+  server's own error. `-l` because a command channel starts no login shell by itself. `$SHELL` is the
+  server's, since the whole remote command is single-quoted on this side.
+
 ### curl (FTP and FTPS)
 
 macOS ships **no `ftp`, `tnftp` or `lftp`** — probed, only `/usr/bin/curl` (8.7.1). Every

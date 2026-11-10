@@ -13714,6 +13714,95 @@
         }
       }
     },
+    "A terminal session takes a command on the server, and this account didn’t run one. An account limited to file transfer can’t run any.": {
+      "comment": "Open in Terminal refusal body: the SFTP account has no shell.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eine Terminalsitzung braucht einen Befehl auf dem Server, und dieses Konto hat keinen ausgeführt. Ein Konto, das auf Dateiübertragung beschränkt ist, kann keine Befehle ausführen."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A terminal session takes a command on the server, and this account didn’t run one. An account limited to file transfer can’t run any."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Una sesión de terminal necesita un comando en el servidor y esta cuenta no ejecutó ninguno. Una cuenta limitada a la transferencia de archivos no puede ejecutar comandos."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Une session de terminal nécessite une commande sur le serveur et ce compte n’en a exécuté aucune. Un compte limité au transfert de fichiers ne peut exécuter aucune commande."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Una sessione di terminale richiede un comando sul server e questo account non ne ha eseguito alcuno. Un account limitato al trasferimento di file non può eseguire comandi."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ターミナルセッションにはサーバー上でのコマンド実行が必要ですが、このアカウントでは実行されませんでした。ファイル転送のみに制限されたアカウントではコマンドを実行できません。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "터미널 세션을 열려면 서버에서 명령을 실행해야 하는데 이 계정은 명령을 실행하지 못했습니다. 파일 전송으로 제한된 계정은 명령을 실행할 수 없습니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Voor een terminalsessie is een commando op de server nodig en dit account heeft er geen uitgevoerd. Een account dat beperkt is tot bestandsoverdracht kan geen commando’s uitvoeren."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sesja terminala wymaga polecenia na serwerze, a to konto żadnego nie wykonało. Konto ograniczone do przesyłania plików nie może wykonywać poleceń."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Uma sessão de terminal exige um comando no servidor e esta conta não executou nenhum. Uma conta limitada à transferência de arquivos não pode executar comandos."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Для сеанса терминала нужна команда на сервере, а эта учётная запись её не выполнила. Учётная запись, ограниченная передачей файлов, команд выполнять не может."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Для сеансу термінала потрібна команда на сервері, а цей обліковий запис її не виконав. Обліковий запис, обмежений передаванням файлів, не може виконувати команди."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "终端会话需要在服务器上运行命令，而此账户未能运行。仅限文件传输的账户无法运行命令。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "終端機工作階段需要在伺服器上執行指令，而此帳號未能執行。僅限檔案傳輸的帳號無法執行指令。"
+          }
+        }
+      }
+    },
     "A workspace named “%@” already exists. Replace it with the current layout?": {
       "comment": "Replace-workspace confirmation body; %@ is the workspace name.",
       "localizations": {
@@ -22165,6 +22254,95 @@
           "stringUnit": {
             "state": "translated",
             "value": "無法打開 %@"
+          }
+        }
+      }
+    },
+    "Can’t open a terminal on %@": {
+      "comment": "Open in Terminal refusal title; %@ is the SFTP account, as user@host.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Auf %@ kann kein Terminal geöffnet werden"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Can’t open a terminal on %@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se puede abrir un terminal en %@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Impossible d’ouvrir un terminal sur %@"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Non puoi aprire un terminale su %@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ でターミナルを開けません"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@에서 터미널을 열 수 없음"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kan geen terminal openen op %@"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nie można otworzyć terminala na %@"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Não é possível abrir um terminal em %@"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не удалось открыть терминал на %@"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не вдалося відкрити термінал на %@"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法在 %@ 上打开终端"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "無法在 %@ 上打開終端機"
           }
         }
       }
@@ -83418,6 +83596,95 @@
           "stringUnit": {
             "state": "translated",
             "value": "正在準備…"
+          }
+        }
+      }
+    },
+    "Press Return to close.": {
+      "comment": "Printed in the user's terminal after ssh could not connect or sign in.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zum Schließen die Return-Taste drücken."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Press Return to close."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pulsa Retorno para cerrar."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Appuyez sur Retour pour fermer."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Premi Invio per chiudere."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Returnキーを押すと閉じます。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "닫으려면 Return 키를 누르세요."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Druk op Return om te sluiten."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Naciśnij Return, aby zamknąć."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pressione Return para fechar."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Нажмите Return, чтобы закрыть."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Натисніть Return, щоб закрити."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "按 Return 键关闭。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "按 Return 鍵關閉。"
           }
         }
       }

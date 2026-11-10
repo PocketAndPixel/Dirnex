@@ -180,6 +180,21 @@ extension CompositeBackend {
         return endpoints[backendID.rawValue]
     }
 
+    /// The `ssh` session for `path`'s folder, with the password that signs in to it (`nil` for a
+    /// key), or `nil` when no SFTP connection is serving that path.
+    ///
+    /// The password comes from the live connection, not the Keychain, so opening a terminal never
+    /// raises a Keychain prompt. It dials through the transport's resolver, so call it off the main
+    /// thread.
+    func terminalSession(at path: VFSPath) -> (session: SSHTerminalSession, secret: String?)? {
+        guard let transport = sftpBackend(for: path.backend)?.writeTransport as? SFTPProcessTransport
+        else { return nil }
+        return (
+            transport.terminalSession(in: path.path),
+            transport.isPasswordAuthentication ? transport.password ?? "" : nil
+        )
+    }
+
     /// Whether a path on `backendID` can be listed right now without connecting first.
     ///
     /// Asked of the **endpoint memory** rather than of the four connection dictionaries, which is

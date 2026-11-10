@@ -88,9 +88,9 @@ extension PanelViewController: NSMenuItemValidation {
             // stealing it to open the history popup.
             return !(view.window?.firstResponder is NSText)
         case #selector(openInTerminal(_:)):
-            // Needs a real directory on disk (never an archive, an SFTP server, or a results tab)
-            // and a terminal to open it in — Terminal.app ships with macOS, so in practice this
-            // only turns on the first half.
+            // Needs a real directory on disk or a connected SFTP folder (never an archive or a
+            // results tab) and a terminal to open it in — Terminal.app ships with macOS, so in
+            // practice this only turns on the first half.
             return canOpenInTerminal
         default:
             return nil

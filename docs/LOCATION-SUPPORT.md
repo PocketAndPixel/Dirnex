@@ -973,7 +973,7 @@ shortcut (<sup>cc</sup>). Planned as PLAN.md §M38.
 | Cloud sync badges | yes | yes | n/a | n/a | n/a | n/a | n/a | n/a | no<sup>ooo</sup> | yes | yes |
 | Download Now / Remove Download | n/a | yes, limited<sup>eee</sup> | n/a | n/a | n/a | n/a | n/a | n/a | no<sup>ooo</sup> | yes<sup>eee</sup> | yes<sup>eee</sup> |
 | Create / verify checksum files | yes | yes | verify only<sup>ff</sup> | yes, limited<sup>ff</sup> | yes, limited<sup>ff</sup> | yes, limited<sup>ff</sup> | yes, limited<sup>ff</sup> | n/a | n/a<sup>ppp</sup> | no<sup>xx</sup> | no<sup>xx</sup> |
-| Open in Terminal | yes | yes | n/a | **no**<sup>gg</sup> | n/a | n/a | n/a | n/a | n/a | no | no |
+| Open in Terminal | yes | yes | n/a | yes<sup>gg</sup> | n/a | n/a | n/a | n/a | n/a | no | no |
 | Run a user script | yes | yes | yes<sup>aaa</sup> | yes<sup>aaa</sup> | yes<sup>aaa</sup> | yes<sup>aaa</sup> | yes<sup>aaa</sup> | no<sup>aaa</sup> | yes, limited<sup>mmm</sup> | yes, limited<sup>aaa</sup> | yes, limited<sup>aaa</sup> |
 | Pack `⌥F5` (create an archive) | yes | yes | yes<sup>hh</sup> | yes<sup>hh</sup> | yes<sup>hh</sup> | yes<sup>hh</sup> | yes<sup>hh</sup> | n/a | yes<sup>hh</sup> | yes<sup>hh</sup> | yes |
 | Encrypted archives / hidden member names | yes | yes | yes | yes<sup>hh</sup> | yes<sup>hh</sup> | yes<sup>hh</sup> | yes<sup>hh</sup> | n/a | yes<sup>hh</sup> | yes<sup>hh</sup> | yes |
@@ -1015,8 +1015,11 @@ the walk *discovers* by descending into a marked folder is still subject to the 
 so an evicted placeholder found that way is reported as "not downloaded" rather than silently pulled
 down. A row whose transfer failed is reported the same way, never as a mismatch.
 
-<sup>gg</sup> A local shell cannot `cd` to a server. An `ssh` session to the SFTP account's own
-host is a different feature and is not built yet: it is planned as PLAN.md §M38.
+<sup>gg</sup> A local shell cannot `cd` to a server, so on SFTP this is an `ssh` session to the
+account's own host, in the pane's folder, in the user's own terminal (PLAN.md §M38 Slice 3). A password
+reaches `ssh` through a one-shot named pipe, and is never in `argv` or on disk. An account that cannot
+run a command, which is what one limited to file transfer is, is refused by name before any window
+opens.
 
 <sup>hh</sup> Neither end has to be on this Mac (PLAN.md §M24 Slice 6). The **sources** are brought
 down first — the marked-set fetch note <sup>rr</sup> describes — and each one then names its own
