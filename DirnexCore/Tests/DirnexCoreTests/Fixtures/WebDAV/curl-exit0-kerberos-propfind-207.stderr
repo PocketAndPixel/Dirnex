@@ -1,0 +1,9 @@
+dav-status=207
+dav-size=722
+dav-up=201
+dav-headers={"date":["Tue, 10 Nov 2026 19:42:24 GMT"],
+"server":["Apache/2.4.68 (Debian)"],
+"www-authenticate":["Negotiate oYG3MIG0oAMKAQChCwYJKoZIhvcSAQICooGfBIGcYIGZBgkqhkiG9xIBAgICAG+BiTCBhqADAgEFoQMCAQ+iejB4oAMCARKicQRv9Y52+p3JX2cDF6wX/L37qxkz6w/bUgIouATjKpzb+xIhwuywMRX/Mz8EJGHKQSO/jieSiPBaYlUoiTJvwWbxO6ljKqRayNRIG4N2DQDA0RhBJJs95/RFebcH5Nmt9HLNSyQbCPXK7k3pE7P6DxnY"],
+"content-length":["722"],
+"content-type":["text/xml; charset=\"utf-8\""]
+}

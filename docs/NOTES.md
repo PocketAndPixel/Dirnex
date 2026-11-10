@@ -7703,6 +7703,50 @@ whoever drives `curl` over HTTP next. Most of them apply to the S3 backend as mu
     folder, since a PUT creates what it names (`WebDAVServiceError`).
   - **`creationdate` is `1970-01-01T00:00:00+00:00` on every row** a client uploaded. Read as a date,
     Get Info would show each file as made in 1970, so the epoch reads as no date.
+- **`curl --ntlm` signs the connection in, once, and a batch's later sections ride it.** Measured
+  2026-11-10 with `curl` 8.7.1 against `Tooling/fake-ntlm-proxy.py`, which verifies the NTLMv2 proof as
+  a domain controller does (PLAN.md §M38): each `curl` sends its Type 1 straight away, with no bare
+  request first, so a request costs two lines in the server's log. Every later section of a `next`
+  batch went out on the same connection with **no** `Authorization` header, and when the server closed
+  the connection after three requests, `curl` signed the next one in by itself. `--fail` (and a first
+  section's `fail`) is not tripped by the Type 2 challenge, only by the answer to the proof, so a wrong
+  password is one failed login per connection and the batch guard still holds. `-Z` sections are
+  separate connections, each with its own handshake.
+  - **The body goes once, as Digest's does.** The Type 1 request carries `Content-Length: 0` whatever
+    the method, and the body follows the proof. A 5 MB PUT with a wrong password sent none of it: the
+    proof's request asked `Expect: 100-continue`, and the refusal came first.
+  - **`DOMAIN\user` sends the domain, and `user@domain` sends a user principal name with none.** `curl`
+    splits at the first backslash. In a `-K -` config the backslash is doubled inside the quotes, which
+    `FTPConfigFile.quote` does; a shell `printf '%s'` that doubles it again sends `\user`.
+  - **The stand-in reads the whole body before asking Apache**, so a 412 there arrives after a large
+    body, where Apache alone refuses before it. Nothing in the live suite counts uploaded bytes on a
+    refusal, so it measures nothing it is not built for.
+- **`curl --negotiate -u :` sends its token on the first request, and on every one.** Measured the same
+  day against MIT Kerberos and Debian's Apache with `mod_auth_gssapi` in `Tooling/negotiate-standin`:
+  one line per request, each carrying a fresh ~1.4 KB token, in a batch too, and no 401 at all, so
+  Negotiate costs one round trip where NTLM costs two. `GssapiConnectionBound On` changed nothing on the
+  wire: `curl` still sent a token per request. A 5 MB PUT logged once, body and all.
+  - **`-u :` is the switch, and the password is never read.** The ticket comes from the credential
+    cache (`KRB5CCNAME`, and `KRB5_CONFIG` for the realm). A ticket for another principal of the realm
+    signed in as that principal, so the account Negotiate signs in as is whoever holds the Mac's
+    ticket, which is why Dirnex uses it only for an account with no name.
+  - **With no ticket, macOS's SPNEGO offers an NTLM token instead.** The request carried `Negotiate
+    YEgGBisGAQUFAqA+…`, an NTLM Type 1 inside SPNEGO, which a Kerberos-only server answered with the
+    reject `Negotiate oQcwBaADCgEC`; `curl` logged `gss_init_sec_context() failed` and exited 0 with the
+    401. One anonymous request, no failed login.
+  - **The host has to be the name the server's key was made for.** With a valid ticket, `localhost`
+    signed in and `127.0.0.1` was refused, since the service principal is `HTTP/localhost`. A server
+    reached by its IP address, or by the `.local` name `HostNameFallback` adds, needs a key under that
+    name, which no administrator makes.
+- **A stock Debian or Ubuntu Apache answers 301 to a folder named without its slash, for any method.**
+  Seen 2026-11-10 when the Kerberos stand-in joined the live suite: `mod_dir`'s `DirectorySlash` is on
+  by default there, so a DELETE, MOVE or PUT of `/folder` was redirected to `/folder/`, and three tests
+  failed: two as an I/O error, and one where a PUT onto a folder was not read as a taken name. Finder's
+  user agent is spared, since Debian marks `WebDAVFS/1.0` "redirect-carefully" (a DELETE with that
+  agent answered 204). macOS's Apache in `scripts/live_test_servers.sh` loads no `mod_dir`, and M32
+  moved and deleted folders on the NAS without a redirect, which is why it was never seen. Dirnex
+  names a folder without the slash in those three verbs (`WebDAVProcessArguments+Write`), so on such a
+  server deleting or moving a folder fails; the stand-in turns `DirectorySlash` off until that is fixed.
 
 ### The Trash
 

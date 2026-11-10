@@ -36,6 +36,15 @@
 # that download is somebody's decision, and without it the Apache endpoints run as before. A fresh
 # container per `up`, so its brute-force counter, which slows every request after a few wrong
 # passwords, starts at zero; installing takes about half a minute.
+#
+# **The two sign-in stand-ins join the WebDAV suite too** (PLAN.md §M38): an NTLM proxy that checks
+# the real NTLMv2 proof in front of this Apache (`Tooling/fake-ntlm-proxy.py`, needing nothing
+# installed), and, when Docker is running and the `dirnex-negotiate` image is here, a Kerberos realm
+# with Apache's `mod_auth_gssapi` (`Tooling/negotiate-standin`). Its image is never built here, for
+# Nextcloud's reason: `docker build -t dirnex-negotiate Tooling/negotiate-standin`. Its ticket goes into
+# a credential cache of its own under the state folder, with a `krb5.conf` of its own beside it, and
+# the suite points `KRB5CCNAME` and `KRB5_CONFIG` at them for its own process only: the Mac's default
+# Kerberos cache and `/etc` are never touched.
 
 set -eu
 
@@ -55,6 +64,12 @@ WEBDAVS_PORT="${DIRNEX_WEBDAVS_PORT:-8443}"
 NEXTCLOUD_PORT="${DIRNEX_NEXTCLOUD_PORT:-8089}"
 NEXTCLOUD_IMAGE=nextcloud:stable-apache
 NEXTCLOUD_CONTAINER=dirnex-nextcloud
+NTLM_PORT="${DIRNEX_NTLM_PORT:-8090}"
+NEGOTIATE_PORT="${DIRNEX_NEGOTIATE_PORT:-8091}"
+KDC_PORT="${DIRNEX_KDC_PORT:-8888}"
+NEGOTIATE_IMAGE=dirnex-negotiate
+NEGOTIATE_CONTAINER=dirnex-negotiate
+REPO=$(cd "$(dirname "$0")/.." && pwd)
 SFTP_CONFIG=/tmp/dirnex_sftp_live_test.json
 FTP_CONFIG=/tmp/dirnex_ftp_live_test.json
 WEBDAV_CONFIG=/tmp/dirnex_webdav_live_test.json
@@ -352,10 +367,104 @@ EOF
     echo "nextcloud 127.0.0.1:$NEXTCLOUD_PORT ($version, container $NEXTCLOUD_CONTAINER)"
 }
 
+# NTLM in front of this Apache, offering Negotiate beside it as IIS does by default, so the suite
+# meets the challenge a Windows server sends and a named account must still choose NTLM from it.
+start_ntlm() {
+    NTLM_ENDPOINTS=""
+    if [ -z "${APACHE_ENDPOINTS:-}" ]; then
+        echo "ntlm SKIPPED: the throwaway Apache is not up, and the proxy has nothing to sign in to"
+        return 0
+    fi
+    dav="$STATE/dav"
+    mkdir -p "$dav/data/ntlm"
+    # Detached for the FTP server's reason: it would otherwise hold this script's output open.
+    OFFER="Negotiate,NTLM" python3 -I "$REPO/Tooling/fake-ntlm-proxy.py" "$NTLM_PORT" \
+        "http://127.0.0.1:$WEBDAV_PORT" "$dav/logs/ntlm-access.log" >"$dav/logs/ntlm.out" 2>&1 &
+    for _ in $(seq 1 20); do
+        lsof -nP -iTCP:"$NTLM_PORT" -sTCP:LISTEN >/dev/null 2>&1 && break
+        sleep 0.25
+    done
+    # `DIRNEX\probe` once the JSON is read: a domain account as Windows spells it, which `curl`
+    # splits at the backslash and sends as the domain. Four here, two after the heredoc, one in JSON.
+    NTLM_ENDPOINTS=$(cat <<EOF
+    {
+      "name": "NTLM stand-in, HTTP, offering Negotiate and NTLM",
+      "host": "127.0.0.1", "port": $NTLM_PORT, "tls": false, "root": "/ntlm",
+      "user": "DIRNEX\\\\probe", "password": "probe-pw", "scheme": "ntlm", "offersNegotiate": true,
+      "remotePath": "/", "mayTryWrongPassword": true, "accessLog": "$dav/logs/ntlm-access.log",
+      "servedFrom": "$dav/data/ntlm"
+    }
+EOF
+)
+    echo "ntlm  127.0.0.1:$NTLM_PORT (NTLMv2, domain DIRNEX) -> Apache $dav/data/ntlm"
+}
+
+# A Kerberos realm and Apache's mod_auth_gssapi in one container, and a ticket for its `probe` in a
+# cache of our own. The suite signs in with that ticket as the app signs in with the Mac's.
+start_negotiate() {
+    NEGOTIATE_ENDPOINTS=""
+    if ! docker info >/dev/null 2>&1; then
+        echo "negotiate SKIPPED: Docker is not running"
+        return 0
+    fi
+    if ! docker image inspect "$NEGOTIATE_IMAGE" >/dev/null 2>&1; then
+        echo "negotiate SKIPPED: no $NEGOTIATE_IMAGE image here (docker build -t $NEGOTIATE_IMAGE Tooling/negotiate-standin)"
+        return 0
+    fi
+    kerberos="$STATE/negotiate"
+    rm -rf "$kerberos"
+    mkdir -p "$kerberos/logs"
+    docker rm -f "$NEGOTIATE_CONTAINER" >/dev/null 2>&1 || true
+    docker run -d --name "$NEGOTIATE_CONTAINER" -p "127.0.0.1:$KDC_PORT:88/tcp" \
+        -p "127.0.0.1:$NEGOTIATE_PORT:80" -v "$kerberos/logs:/var/log/dirnex" \
+        "$NEGOTIATE_IMAGE" >/dev/null
+    # `localhost` is the name the server's key was made for (HTTP/localhost), so it is the host the
+    # suite dials: an IP address there is refused with a good ticket in the cache (PLAN.md §M38).
+    cat > "$kerberos/krb5.conf" <<EOF
+[libdefaults]
+    default_realm = DIRNEX.TEST
+    dns_lookup_kdc = false
+    dns_lookup_realm = false
+    dns_canonicalize_hostname = false
+    rdns = false
+[realms]
+    DIRNEX.TEST = {
+        kdc = tcp/127.0.0.1:$KDC_PORT
+    }
+[domain_realm]
+    localhost = DIRNEX.TEST
+EOF
+    ticket=""
+    for _ in $(seq 1 40); do
+        if echo probe-pw | KRB5_CONFIG="$kerberos/krb5.conf" KRB5CCNAME="FILE:$kerberos/ccache" \
+            kinit --password-file=STDIN probe@DIRNEX.TEST >/dev/null 2>&1; then
+            ticket=yes
+            break
+        fi
+        sleep 0.5
+    done
+    if [ -z "$ticket" ]; then
+        echo "negotiate SKIPPED: no ticket from the container's KDC (docker logs $NEGOTIATE_CONTAINER)" >&2
+        return 0
+    fi
+    NEGOTIATE_ENDPOINTS=$(cat <<EOF
+    {
+      "name": "Kerberos stand-in, HTTP, Negotiate with the Mac's ticket",
+      "host": "localhost", "port": $NEGOTIATE_PORT, "tls": false, "root": "/negotiate",
+      "user": "", "scheme": "negotiate", "remotePath": "/",
+      "accessLog": "$kerberos/logs/dav.log",
+      "krb5Config": "$kerberos/krb5.conf", "credentialCache": "FILE:$kerberos/ccache"
+    }
+EOF
+)
+    echo "negotiate localhost:$NEGOTIATE_PORT (realm DIRNEX.TEST, KDC 127.0.0.1:$KDC_PORT, ticket in $kerberos/ccache)"
+}
+
 # One file for every WebDAV endpoint that came up, so the suite runs each test once per server.
 write_webdav_config() {
     endpoints=""
-    for entry in "${APACHE_ENDPOINTS:-}" "${NEXTCLOUD_ENDPOINTS:-}"; do
+    for entry in "${APACHE_ENDPOINTS:-}" "${NEXTCLOUD_ENDPOINTS:-}" "${NTLM_ENDPOINTS:-}" \
+        "${NEGOTIATE_ENDPOINTS:-}"; do
         [ -z "$entry" ] && continue
         if [ -z "$endpoints" ]; then
             endpoints="$entry"
@@ -377,6 +486,8 @@ up)
     start_ftp
     start_webdav
     start_nextcloud
+    start_ntlm
+    start_negotiate
     write_webdav_config
     sleep 1
     echo
@@ -390,7 +501,7 @@ down)
     # By port rather than by pid file: a pid file is the one record that goes missing exactly when
     # it is needed (a moved state directory, a reboot, a crash), and a server left listening then
     # collides with the next `up` as `Address already in use` — which reads as a broken script.
-    for port in "$SFTP_PORT" "$FTP_PORT" "$WEBDAV_PORT" "$WEBDAVS_PORT"; do
+    for port in "$SFTP_PORT" "$FTP_PORT" "$WEBDAV_PORT" "$WEBDAVS_PORT" "$NTLM_PORT"; do
         pids=$(lsof -nP -iTCP:"$port" -sTCP:LISTEN -t 2>/dev/null || true)
         [ -n "$pids" ] && echo "$pids" | xargs kill 2>/dev/null || true
     done
@@ -398,6 +509,11 @@ down)
     if docker info >/dev/null 2>&1 && docker rm -f "$NEXTCLOUD_CONTAINER" >/dev/null 2>&1; then
         echo "removed the $NEXTCLOUD_CONTAINER container (the image stays)"
     fi
+    if docker info >/dev/null 2>&1 && docker rm -f "$NEGOTIATE_CONTAINER" >/dev/null 2>&1; then
+        echo "removed the $NEGOTIATE_CONTAINER container (the image stays)"
+    fi
+    # The ticket is a credential for a realm that no longer exists, and it lives only here.
+    rm -rf "$STATE/negotiate"
     rm -f "$SFTP_CONFIG" "$FTP_CONFIG" "$WEBDAV_CONFIG" "$STATE/sshd.pid" "$STATE/ftpd.pid"
     if [ -f "$S3_CONFIG" ]; then rm -f "$S3_CONFIG"; echo "removed $S3_CONFIG (it held a live credential)"; fi
     # Leave no pin behind for a port the next throwaway will reuse with a different host key.
@@ -413,6 +529,10 @@ status)
         && echo "webdav listening on $WEBDAV_PORT and $WEBDAVS_PORT" || echo "webdav not running"
     docker ps --filter "name=^$NEXTCLOUD_CONTAINER\$" --format '{{.Names}}' 2>/dev/null \
         | command grep -q . && echo "nextcloud running on $NEXTCLOUD_PORT" || echo "nextcloud not running"
+    lsof -nP -iTCP:"$NTLM_PORT" -sTCP:LISTEN >/dev/null 2>&1 \
+        && echo "ntlm  listening on $NTLM_PORT" || echo "ntlm  not running"
+    docker ps --filter "name=^$NEGOTIATE_CONTAINER\$" --format '{{.Names}}' 2>/dev/null \
+        | command grep -q . && echo "negotiate running on $NEGOTIATE_PORT" || echo "negotiate not running"
     [ -f "$SFTP_CONFIG" ] && echo "config $SFTP_CONFIG present" || echo "config $SFTP_CONFIG ABSENT — SFTP suites will skip silently"
     [ -f "$FTP_CONFIG" ] && echo "config $FTP_CONFIG present" || echo "config $FTP_CONFIG ABSENT — FTP suites will skip silently"
     [ -f "$WEBDAV_CONFIG" ] && echo "config $WEBDAV_CONFIG present" || echo "config $WEBDAV_CONFIG ABSENT — the WebDAV suite will skip silently"

@@ -177,6 +177,35 @@ struct ConnectServerWebDAVFieldsTests {
         #expect(read.pin == Self.pin)
     }
 
+    /// PLAN.md §M38: Negotiate is the scheme of an account with no name, so it survives an edit only
+    /// while the name stays blank, and a password scheme only while there is one.
+    @Test("a ticket account keeps Negotiate while its user is blank, and drops it when one is typed")
+    func negotiateFollowsTheBlankUser() throws {
+        let ticket = WebDAVLocation(host: "files.corp.example", username: "")
+        let fields = fields()
+        fields.apply(location: ticket, authentication: .negotiate, trustedPublicKey: nil)
+        fields.path.stringValue = "/team"
+        #expect(try #require(endpoint(of: fields.readForm(saveName: "Corp"))).scheme == .negotiate)
+
+        fields.user.stringValue = #"CORP\me"#
+        fields.password.stringValue = "pw"
+        #expect(try #require(endpoint(of: fields.readForm(saveName: "Corp"))).scheme == nil)
+    }
+
+    @Test("an NTLM account keeps NTLM through an edit, and loses it with its name")
+    func ntlmFollowsTheName() throws {
+        let account = WebDAVLocation(host: "iis", port: 443, username: #"CORP\me"#)
+        let fields = fields()
+        fields.apply(location: account, authentication: .ntlm, trustedPublicKey: nil)
+        fields.password.stringValue = "pw"
+        let read = try #require(endpoint(of: fields.readForm(saveName: "IIS")))
+        #expect(read.scheme == .ntlm)
+        #expect(read.location.username == #"CORP\me"#)
+
+        fields.user.stringValue = ""
+        #expect(try #require(endpoint(of: fields.readForm(saveName: "IIS"))).scheme == nil)
+    }
+
     /// The whole sheet, from a saved record to what Connect would write back: every field of the
     /// endpoint survives, including the two with no row.
     @Test("a saved WebDAV server round-trips through the whole form")

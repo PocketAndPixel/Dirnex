@@ -120832,7 +120832,7 @@
       }
     },
     "This server only accepts sign-in methods Dirnex doesn’t support: %@.": {
-      "comment": "WebDAV connect failure detail. %@ lists the HTTP authentication schemes the server offered, such as “NTLM and Negotiate”; Dirnex speaks only Basic and Digest.",
+      "comment": "WebDAV connect failure detail. %@ lists the HTTP authentication schemes the server offered, such as “Bearer”; Dirnex speaks Basic, Digest, NTLM and Negotiate.",
       "localizations": {
         "de": {
           "stringUnit": {
@@ -121005,6 +121005,184 @@
           "stringUnit": {
             "state": "translated",
             "value": "此伺服器要求使用加密連線。請選擇 FTPS（顯式或隱含），而不是一般 FTP。"
+          }
+        }
+      }
+    },
+    "This server signs in only with Kerberos, using this Mac’s ticket. Leave the user name and password empty to connect with it.": {
+      "comment": "WebDAV connect failure detail: the server accepts only Negotiate (Kerberos), which signs in with the Kerberos ticket this Mac already holds rather than a typed account, and the user typed a user name. “Kerberos” is a name and is not translated.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dieser Server meldet nur über Kerberos an, mit dem Ticket dieses Mac. Lassen Sie Benutzername und Passwort leer, um sich damit zu verbinden."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This server signs in only with Kerberos, using this Mac’s ticket. Leave the user name and password empty to connect with it."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Este servidor solo inicia sesión con Kerberos, usando el tique de este Mac. Deja vacíos el nombre de usuario y la contraseña para conectarte con él."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ce serveur n’accepte que la connexion Kerberos, avec le ticket de ce Mac. Laissez le nom d’utilisateur et le mot de passe vides pour vous connecter avec celui-ci."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Questo server accetta solo l’accesso con Kerberos, tramite il ticket di questo Mac. Lascia vuoti nome utente e password per connetterti con esso."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "このサーバはKerberosでのみサインインを受け付け、このMacのチケットを使用します。チケットで接続するには、ユーザ名とパスワードを空のままにしてください。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 서버는 이 Mac의 티켓을 사용하는 Kerberos 로그인만 허용합니다. 티켓으로 연결하려면 사용자 이름과 암호를 비워 두십시오."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Deze server meldt alleen aan met Kerberos, met het ticket van deze Mac. Laat de gebruikersnaam en het wachtwoord leeg om daarmee verbinding te maken."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ten serwer loguje tylko przez Kerberos, biletem tego Maca. Pozostaw nazwę użytkownika i hasło puste, aby połączyć się za jego pomocą."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Этот сервер принимает вход только через Kerberos, по билету этого Mac. Оставьте имя пользователя и пароль пустыми, чтобы подключиться с ним."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Цей сервер приймає вхід лише через Kerberos, за квитком цього Mac. Залиште ім’я користувача й пароль порожніми, щоб підключитися з ним."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Este servidor só aceita login com Kerberos, usando o tíquete deste Mac. Deixe o nome de usuário e a senha em branco para se conectar com ele."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "此服务器只接受 Kerberos 登录，使用这台 Mac 的票据。若要用票据连接，请将用户名和密码留空。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "此伺服器只接受 Kerberos 登入，使用這台 Mac 的票券。若要以票券連線，請將使用者名稱和密碼留空。"
+          }
+        }
+      }
+    },
+    "This server signs in with Kerberos and didn’t accept this Mac’s ticket. Get a ticket in Ticket Viewer, and connect by the server’s name rather than its address.": {
+      "comment": "WebDAV connect failure detail: the account has no user name, so Dirnex signed in with the Mac's own Kerberos ticket, and the server refused it — there is no ticket, or the server was reached by an IP address its Kerberos key was not made for. “Ticket Viewer” is the macOS app in /System/Library/CoreServices/Applications; use its name as macOS shows it in your language.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dieser Server meldet über Kerberos an und hat das Ticket dieses Mac nicht angenommen. Holen Sie sich im Ticket-Viewer ein Ticket und verbinden Sie sich über den Namen des Servers statt über seine Adresse."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This server signs in with Kerberos and didn’t accept this Mac’s ticket. Get a ticket in Ticket Viewer, and connect by the server’s name rather than its address."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Este servidor inicia sesión con Kerberos y no aceptó el tique de este Mac. Obtén un tique en Visor de Tiques y conéctate por el nombre del servidor en lugar de su dirección."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ce serveur utilise Kerberos et n’a pas accepté le ticket de ce Mac. Obtenez un ticket dans Visualiseur de ticket, puis connectez-vous par le nom du serveur plutôt que par son adresse."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Questo server usa Kerberos e non ha accettato il ticket di questo Mac. Ottieni un ticket in Visore Ticket e connettiti tramite il nome del server anziché il suo indirizzo."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "このサーバはKerberosでサインインしますが、このMacのチケットを受け付けませんでした。チケットビューアでチケットを取得し、アドレスではなくサーバ名で接続してください。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 서버는 Kerberos로 로그인하며 이 Mac의 티켓을 허용하지 않았습니다. 티켓 뷰어에서 티켓을 받고, 주소 대신 서버 이름으로 연결하십시오."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Deze server meldt aan met Kerberos en heeft het ticket van deze Mac niet geaccepteerd. Haal een ticket op in Ticketviewer en maak verbinding via de naam van de server in plaats van zijn adres."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ten serwer loguje przez Kerberos i nie przyjął biletu tego Maca. Uzyskaj bilet w aplikacji Podgląd biletów i połącz się przez nazwę serwera zamiast jego adresu."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Этот сервер использует вход через Kerberos и не принял билет этого Mac. Получите билет в приложении «Просмотр билетов» и подключайтесь по имени сервера, а не по его адресу."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Цей сервер використовує вхід через Kerberos і не прийняв квиток цього Mac. Отримайте квиток у програмі «Переглядач квитків» і підключайтеся за іменем сервера, а не за його адресою."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Este servidor faz login com Kerberos e não aceitou o tíquete deste Mac. Obtenha um tíquete no Visualizador de Tíquetes e conecte-se pelo nome do servidor em vez do endereço."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "此服务器使用 Kerberos 登录，但未接受这台 Mac 的票据。请在“票据显示程序”中获取票据，并使用服务器的名称而不是地址进行连接。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "此伺服器使用 Kerberos 登入，但未接受這台 Mac 的票券。請在「票券檢視程式」中取得票券，並以伺服器名稱而非位址連線。"
           }
         }
       }

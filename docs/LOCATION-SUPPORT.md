@@ -98,6 +98,14 @@ the server script starts when its image is on the Mac (PLAN.md §M32, 2026-10-24
 unchanged. Where it behaves differently, the cell says so: it stores names composed, it deletes a
 folder around a file another client has locked, it keeps the date an upload asks for
 (<sup>q</sup>), and its tag cannot see a second save inside one second (<sup>mm</sup>).
+**Signing in by NTLM and Negotiate** (PLAN.md §M38 Slice 6, 2026-11-10) runs the same suite against two
+stand-ins, and no real IIS or Active Directory: an NTLM proxy that verifies the NTLMv2 proof in front
+of the Apache above, offering Negotiate beside NTLM as IIS does, and a Kerberos realm with Debian's
+Apache and `mod_auth_gssapi` in a container. A named account signs in by Basic, Digest or NTLM; an
+account with no name signs in with the Mac's own Kerberos ticket. **A gap that is ours:** a stock Debian
+or Ubuntu Apache loads `mod_dir`, which answers 301 to a DELETE, MOVE or PUT naming a folder without its
+trailing slash, and Dirnex sends folders that way, so on such a server deleting or moving a folder
+fails. The Kerberos stand-in turns `DirectorySlash` off until that is fixed.
 
 ---
 
