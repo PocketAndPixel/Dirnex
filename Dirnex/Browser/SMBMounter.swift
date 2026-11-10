@@ -88,6 +88,15 @@ final class SMBMounter {
         return isNetworkMount(path) ? share : nil
     }
 
+    /// The share `path` is on, as a pin records it (`PinnedShare`), when this app mounted or reached
+    /// that share in this session and it is still mounted. By whole path components, so
+    /// `/Volumes/media-1/x` is not on the share at `/Volumes/media`.
+    func shareEndpoint(containing path: VFSPath) -> ServerEndpoint? {
+        guard path.backend == .local else { return nil }
+        let holding = mountedShares.keys.filter { path.path == $0 || path.path.hasPrefix($0 + "/") }
+        return holding.max { $0.count < $1.count }.flatMap(share(mountedAt:)).map(ServerEndpoint.smb)
+    }
+
     /// Where each of `server`'s shares is mounted, among the mounts this app reached in this session
     /// and still there — what a tab on the server's list spells its places inside a share through
     /// (`SMBShareMounts`, PLAN.md §M35).

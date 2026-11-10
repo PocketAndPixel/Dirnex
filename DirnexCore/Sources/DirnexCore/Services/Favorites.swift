@@ -65,7 +65,11 @@ public struct FavoriteEntry: Sendable, Hashable, Identifiable, Codable {
         switch TabRestorePolicy.requirement(for: row.path, endpoint: endpoint) {
         case let .connection(endpoint):
             self.init(path: row.path, endpoint: endpoint)
-        case .directoryOnDisk, .photosLibrary:
+        case .directoryOnDisk:
+            // A folder on a mounted share is a local path that remembers which share it is on
+            // (`PinnedShare`). No other endpoint means anything beside a local path.
+            self.init(path: row.path, endpoint: endpoint?.smbShare.map(ServerEndpoint.smb))
+        case .photosLibrary:
             self.init(path: row.path)
         case .archiveOnDisk, nil:
             return nil
@@ -110,6 +114,12 @@ public struct Favorites: Sendable, Equatable, Codable {
         guard let index = entries.firstIndex(where: { $0.path == path }) else { return false }
         entries.remove(at: index)
         return true
+    }
+
+    /// Put `entry` in place of the pin at its path, keeping that pin's position.
+    mutating func replace(_ entry: FavoriteEntry) {
+        guard let index = entries.firstIndex(where: { $0.path == entry.path }) else { return }
+        entries[index] = entry
     }
 
     /// Rename the entry at `path`, if present — the organizer's inline edit.

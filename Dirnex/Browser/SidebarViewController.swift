@@ -238,10 +238,12 @@ final class SidebarViewController: NSViewController {
     }
 
     @objc private func serverActivityChanged() {
-        let serverRows = rows.indices.filter { rows[$0].server != nil || rows[$0].vault != nil }
-        guard !serverRows.isEmpty else { return }
+        let busyCapable = rows.indices.filter {
+            rows[$0].server != nil || rows[$0].vault != nil || rows[$0].favorite != nil
+        }
+        guard !busyCapable.isEmpty else { return }
         tableView.reloadData(
-            forRowIndexes: IndexSet(serverRows),
+            forRowIndexes: IndexSet(busyCapable),
             columnIndexes: IndexSet(integer: 0)
         )
     }
