@@ -407,6 +407,34 @@ before and at quit, and the share was unmounted. On relaunch the tab, still the 
 **Not seen:** a background tab mounting on a switch, a floor of 0, an account with no saved password, and both
 panes in one share live; each is covered by tests.
 
+**2026-11-10: Slice 5 landed** (core, then the app). ⌥F7 on an S3 account pane searches every bucket the key can
+see, each up to its first 10,000 objects in the order S3 lists keys. Oleg chose a bound per bucket over one
+allowance for the account, which a large bucket early in the alphabet could spend for every bucket after it.
+Find Files states the bound under its fields before the search starts, and offers no scope choice, since an
+account has one place. `S3AccountSearch` takes one bucket at a time and uses its first page as the probe. A
+bucket in another region, or one label too deep for the endpoint's certificate, is re-aimed by
+`S3LocationCorrection`: the two rules the connect kept to itself, now in the core and asked by both.
+`S3Backend.boundedSubtreeListing` cuts the last page, so the number is exact, and at Stop it returns the pages
+already read. A bucket cut short or refused is named in an alert afterwards, refusals grouped by reason, and
+the search goes on past it. The buckets a hit lives in are connected and their secret filed, as entering them
+would, so a hit opens, copies and previews; the secret comes from the live account connection, so a search
+raises no Keychain prompt. Save Search is off for such a tab (`SearchRoute.isSavable`, Oleg's call), since a
+sidebar re-run has no dialog to say the bound; editing the search in its tab reopens the dialog and works.
+Five strings in 14 languages. 33 core tests and 10 app tests are new, and 15 negative controls were each
+caught.
+
+Run live against a throwaway S3 endpoint that verifies every signature (a wrong secret refused in the same
+run), through a real pane and `curl`, from a temporary test in the app target, since deleted. Over four
+buckets, a search for "report" returned four hits from three of them. `big` was read for exactly ten pages,
+so its first key matched and its 12,001st did not, and the alert named it. `locked` was asked once and named
+as lacking `s3:ListBucket`. `west` answered 301 and was asked again signed for `us-west-2`, where its hit then
+lived. Every hit stat'd through the router, and Save Search was off.
+
+**Not seen:** the dialog, the progress sheet and the alert on screen (computer use on the copy was declined, so
+their text was read from the views); real AWS, with its listed `<BucketRegion>` and a real 301; Stop during a
+live search; an account of many large buckets. All are Slice 10's. **A known rough edge:** the progress
+sheet's title names the account by its host ("Searching “127.0.0.1”…"), as a walk names a server.
+
 #### M39 — Quick View (L)
 
 - **RTF** (M16, M18), with a source and a page view. It is `NSAttributedString`'s job and shares

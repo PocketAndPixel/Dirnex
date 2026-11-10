@@ -52,9 +52,16 @@ enum SubtreeSearchRunner {
 /// forever. A latest-value box cannot latch, because the reader always sees the newest value there
 /// is, and the run's own completion is what replaces the display at the end.
 final class SearchControl: @unchecked Sendable {
+    /// What a search publishes: folders listed on a walk, buckets on an account search
+    /// (PLAN.md §M38 Slice 5). One box for both, so the sheet and Stop need nothing new.
+    enum Report: Equatable {
+        case walk(SubtreeSearch.Progress)
+        case buckets(S3AccountSearch.Progress)
+    }
+
     private let lock = NSLock()
     private var stopped = false
-    private var latest = SubtreeSearch.Progress(directoriesListed: 0, hits: 0)
+    private var latest = Report.walk(SubtreeSearch.Progress(directoriesListed: 0, hits: 0))
 
     init() {}
 
@@ -65,8 +72,8 @@ final class SearchControl: @unchecked Sendable {
         return stopped
     }
 
-    /// The most recent progress the walk published.
-    var progress: SubtreeSearch.Progress {
+    /// The most recent progress the search published.
+    var progress: Report {
         lock.lock()
         defer { lock.unlock() }
         return latest
@@ -81,8 +88,16 @@ final class SearchControl: @unchecked Sendable {
     }
 
     func report(_ progress: SubtreeSearch.Progress) {
+        publish(.walk(progress))
+    }
+
+    func report(_ progress: S3AccountSearch.Progress) {
+        publish(.buckets(progress))
+    }
+
+    private func publish(_ report: Report) {
         lock.lock()
-        latest = progress
+        latest = report
         lock.unlock()
     }
 }

@@ -46,15 +46,16 @@ extension PanelViewController {
     /// Always a *real* folder. Building it from a results tab's own `search:` path would hide
     /// Content and Tags, which is the trap `SearchPlace` exists for.
     func makeSearchController(searching folder: VFSPath) -> SearchController {
-        SearchController(
+        let route = SearchRoute.forBackend(folder.backend)
+        return SearchController(
             currentFolderName: folder.displayName,
             fields: SearchFields.answerable(by: folder.backend),
             // The second scope option is "everywhere Spotlight indexed" locally and "everything on
             // this server" on a walk, which is the connection's own root — there being no index to
             // search and nowhere else to look.
-            connectionRootTitle: SearchRoute.forBackend(folder.backend) == .walk
-                ? folder.backendRootTitle
-                : nil
+            connectionRootTitle: route == .walk ? folder.backendRootTitle : nil,
+            // An account search says what it will cost before it starts (PLAN.md §M38 Slice 5).
+            costNote: route == .buckets ? Self.accountSearchBound : nil
         )
     }
 
@@ -66,13 +67,16 @@ extension PanelViewController {
     /// Two different fallbacks hide behind that `nil`, which is why the question is asked through
     /// `SearchRoute` rather than by testing the backend here. A **virtual results listing** — search
     /// hits, the merged Trash, iCloud Drive — has no directory of its own, but its rows are ordinary
-    /// local files, so Home is a sensible place to point at. An **S3 account** pane has no such
-    /// fallback: its rows are buckets, and quietly searching this Mac's home folder because the pane
-    /// showed a list of buckets would answer a question nobody asked.
+    /// local files, so Home is a sensible place to point at. An **SMB server's** list of shares has
+    /// no such fallback: its rows are shares, and quietly searching this Mac's home folder because
+    /// the pane showed a list of them would answer a question nobody asked. An **S3 account** is
+    /// searched itself, bucket by bucket (PLAN.md §M38 Slice 5), so its scope is its own root.
     private func searchScopeDirectory() -> VFSPath? {
         switch SearchRoute.forBackend(panel.path.backend) {
         case .spotlight, .walk:
             return panel.path
+        case .buckets:
+            return VFSPath(backend: panel.path.backend, path: "/")
         case .unavailable:
             return panel.path.backend.isRemoteConnection ? nil : .local(NSHomeDirectory())
         }
@@ -98,6 +102,9 @@ extension PanelViewController {
             // Non-`nil` on a walk: only Spotlight has an everywhere.
             guard let root = place.scope else { return }
             performWalkSearch(query, under: root, landing: landing)
+        case .buckets:
+            guard let root = place.scope else { return }
+            performAccountSearch(query, in: root, landing: landing)
         case .unavailable:
             break // unreachable: `searchScopeDirectory` and `SearchPlace` both resolve a real folder
         }
@@ -135,6 +142,11 @@ extension PanelViewController {
             // Non-`nil` by construction — only a scope can route here, since a walk needs a root.
             guard let scope = savedSearch.scope else { return }
             performWalkSearch(savedSearch.query, under: scope, landing: landing)
+        case .buckets:
+            // Not saved by anything the app does (`SearchRoute.isSavable`). A hand-made one gets the
+            // dialog first, since that is where the bound is said.
+            guard let scope = savedSearch.scope else { return }
+            confirmAccountSearch(savedSearch.query, in: scope, landing: landing)
         case .unavailable:
             guard let scope = savedSearch.scope else { return }
             presentUnsearchableScope(at: scope)
@@ -215,8 +227,12 @@ extension PanelViewController {
     // MARK: - Saving the current search
 
     /// Whether the active results tab carries a re-runnable query — gates "Save Search…".
+    ///
+    /// Not for an account search, whose bound only the dialog states (`SearchRoute.isSavable`).
     var canSaveCurrentSearch: Bool {
-        isSearchResults && tabs[activeTabIndex].searchQuery != nil
+        let tab = tabs[activeTabIndex]
+        guard isSearchResults, tab.searchQuery != nil else { return false }
+        return tab.searchScope.map { SearchRoute.forBackend($0.backend).isSavable } ?? true
     }
 
     /// "Save Search…" — name the query behind the current results tab and store it as a saved

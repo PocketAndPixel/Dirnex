@@ -901,20 +901,30 @@ values, with the JSON tree's rules.
 
 | Functionality | Local | Cloud mount | Archive | SFTP | FTP | WebDAV | S3 | S3 acct | Photos | Results | Trash |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| Search at all | yes | yes | yes | yes | yes | yes | yes | **no**<sup>z</sup> | yes | yes, limited<sup>aa</sup> | yes, limited<sup>aa</sup> |
-| by **name** | yes | yes | yes | yes | yes | yes | yes | n/a | yes | yes | yes |
-| by **kind / size / modified** | yes | yes | yes | yes | yes | yes | yes | n/a | yes | yes | yes |
-| by **file contents** | yes | yes | **n/a**<sup>bb</sup> | **n/a**<sup>bb</sup> | **n/a**<sup>bb</sup> | **n/a**<sup>bb</sup> | **n/a**<sup>bb</sup> | n/a | **n/a**<sup>bb</sup> | yes | yes |
+| Search at all | yes | yes | yes | yes | yes | yes | yes | yes, bounded<sup>z</sup> | yes | yes, limited<sup>aa</sup> | yes, limited<sup>aa</sup> |
+| by **name** | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes |
+| by **kind / size / modified** | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes |
+| by **file contents** | yes | yes | **n/a**<sup>bb</sup> | **n/a**<sup>bb</sup> | **n/a**<sup>bb</sup> | **n/a**<sup>bb</sup> | **n/a**<sup>bb</sup> | **n/a**<sup>bb</sup> | **n/a**<sup>bb</sup> | yes | yes |
 | by **Finder tag** | yes | yes | n/a | n/a | n/a | n/a | n/a | n/a | n/a | yes | yes |
-| Runs off an index (instant) | yes | yes | no<sup>cc</sup> | no<sup>cc</sup> | no<sup>cc</sup> | no<sup>cc</sup> | no<sup>cc</sup> | n/a | no<sup>cc</sup> | yes | yes |
-| Server-side walk (one request, not one per folder) | n/a | n/a | n/a | yes, limited<sup>dd</sup> | n/a<sup>ss</sup> | **no**<sup>aai</sup> | yes | n/a | no<sup>nnn</sup> | — | — |
-| Live progress + Stop | yes | yes | yes | yes | yes | yes | yes | n/a | yes | yes | yes |
-| Save the search to the sidebar, re-run later | yes | yes | yes | yes | yes | yes | yes | n/a | yes | yes | yes |
-| Edit the search's conditions and run it again in the same tab<sup>aab</sup> | yes | yes | yes | yes | yes | yes | yes | n/a | yes | yes | yes |
+| Runs off an index (instant) | yes | yes | no<sup>cc</sup> | no<sup>cc</sup> | no<sup>cc</sup> | no<sup>cc</sup> | no<sup>cc</sup> | no<sup>z</sup> | no<sup>cc</sup> | yes | yes |
+| Server-side walk (one request, not one per folder) | n/a | n/a | n/a | yes, limited<sup>dd</sup> | n/a<sup>ss</sup> | **no**<sup>aai</sup> | yes | yes, per bucket<sup>z</sup> | no<sup>nnn</sup> | — | — |
+| Live progress + Stop | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes |
+| Save the search to the sidebar, re-run later | yes | yes | yes | yes | yes | yes | yes | **no**<sup>z</sup> | yes | yes | yes |
+| Edit the search's conditions and run it again in the same tab<sup>aab</sup> | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes |
 
-<sup>z</sup> Deliberate: the rows are buckets, and "search every bucket" is a different and far
-more expensive question than the one ⌥F7 asks (PLAN.md §M22). Planned as PLAN.md §M38, with a
-bound the user sees before it starts.
+<sup>z</sup> Every bucket the key can see, each searched up to its first **10,000 objects** in the order
+S3 lists keys, which Find Files states before the search starts (PLAN.md §M38 Slice 5). M22 refused
+this because "search every bucket" is a far more expensive question than the one ⌥F7 asks; the bound
+per bucket is the answer, rather than one allowance for the account, which a large bucket early in the
+alphabet could spend for every bucket after it. One request per 1000 objects, the first page doubling
+as the probe; a bucket in another region or one label too deep for the endpoint's certificate is
+re-aimed as entering it would be (`S3LocationCorrection`). A bucket the bound cut short, or one that
+refused, is named afterwards and the rest of the search goes on. The buckets a hit lives in are
+connected, so a hit opens, copies and previews. Not saved to the sidebar, since a re-run from there
+starts with no dialog to state the bound; editing the search in its tab reopens the dialog and works.
+Run live 2026-11-10 against a throwaway endpoint that checks every signature, through a real pane and
+`curl`: the bound, a refusal and a 301 behaved as described. Not yet on real AWS, and the dialog and
+alert were read from the views rather than seen on screen.
 
 <sup>aa</sup> A virtual listing has no directory, so the scope falls back to **Home** — the hits
 are real files, but the pane you were looking at is not the scope. The exception is a tab of
