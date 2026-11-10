@@ -73,6 +73,12 @@ so a trap goes here only if it can bite any live run; one tied to an area goes u
   `Dirnex.pref.hasSeenFirstRunTour` and `Dirnex.pref.hasSeenFullDiskAccessOnboarding` true, or the
   first-run flow covers the window. Afterwards `lsregister -u` the app, `defaults delete` the domain and
   remove the build. Stop it by a PID read back with `ps`: `pkill -x Dirnex` takes the other copy too.
+  - **Its first launch asks macOS about every cloud provider, on Oleg's screen.** Seen 2026-11-10: the
+    copy showed no window, its main thread sat in `open` under `CloudStorageMounts.entryDirectory`, and
+    he got "“Dirnex.app” wants to access files managed by “Box”", one per provider, which screenshots
+    leave out. A new bundle id has none of the grants the real one holds. For a run that needs no cloud
+    row, add a temporary env-gated `return []` at the top of `SidebarViewController.cloudPlaces()` and
+    launch with `open --env`, then take it out. For a run that does need them, tell him first.
 - **A measurement at scale needs a Release build, and an ad-hoc signed one needs the hardened runtime
   off.** A Debug `DirnexCore` is `-Onone`, far too slow to say anything about a 256 MiB comparison.
   Seen 2026-11-08: `xcodebuild -configuration Release CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual

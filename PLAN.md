@@ -355,6 +355,24 @@ WezTerm's documentation. All three are Slice 10's. **A known rough edge:** a ser
 at all gets the same refusal as an account with no shell, since `accountIdentity` answers `nil` for both, and
 the sentence is worded to be true of each.
 
+**2026-11-10: Slice 4 landed** (one initializer in the core, then the app). A folder on a server can be
+dragged into the sidebar. The sidebar now reads `app.dirnex.locations` ahead of file URLs, so a selection
+keeps its server rows and its order. `FavoriteEntry(draggedRow:endpoint:)` says what can be a pin, through
+`TabRestorePolicy`, and the endpoint comes from `reconnectEndpoint(for:at:)`, so a dragged pin is the one the
+menu makes. A server row with no endpoint, a symlink, a folder in an archive, a bucket in an account pane and
+a share in a server pane draw no insertion line, since each would be a row that cannot open. A bucket's and a
+share's paths answer `notFound` when listed, because those rows are reached by connecting. No new strings.
+
+Run live with real drags on a throwaway `sshd`, in a copy built under its own bundle id. A server folder drew
+the insertion line and landed where it showed, with its endpoint in the store. A server file and a local
+symlink drew none, a marked folder and file pinned the folder alone, and a local folder pinned as before. After
+a relaunch with both panes local the server had seen no new login, and opening the pin logged in and listed
+the folder. 11 core tests and 9 app tests are new, and 13 negative controls were each caught.
+
+**Not seen:** FTP, WebDAV and S3 live, which go through the same reader as SFTP; a password account, whose
+reconnect is the restore's; a folder in Photos; and a folder dragged from Finder, which was read from a real
+board in a test rather than dragged. All are Slice 10's.
+
 #### M39 — Quick View (L)
 
 - **RTF** (M16, M18), with a source and a page view. It is `NSAttributedString`'s job and shares
