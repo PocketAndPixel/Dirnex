@@ -348,20 +348,28 @@ extension PanelViewController {
             }
             navigate(to: .local(mountPoint.path), inNewTab: request.inNewTab)
             return .succeeded
-        } catch var refusal as SMBMountError {
-            guard token == loadToken else { return .succeeded }
-            // A share that is not there and one this account may not use are one status; the
-            // server's list tells them apart (PLAN.md §M35).
-            if refusal.status == ENOENT || refusal.status == ENODEV {
-                refusal.absence = await smbShareAbsence(of: location, password: password)
-                guard token == loadToken else { return .succeeded }
-            }
-            return .failed(refusal.errorDescription ?? Self.genericConnectError)
         } catch {
             guard token == loadToken else { return .succeeded }
-            let detail = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+            let detail = await shareMountFailure(error, mounting: location, password: password)
+            guard token == loadToken else { return .succeeded }
             return .failed(detail)
         }
+    }
+
+    /// The sentence for a mount that failed. A share that is not there and one this account may not
+    /// use are one status; the server's list tells them apart (PLAN.md §M35).
+    func shareMountFailure(
+        _ error: Error,
+        mounting location: SMBLocation,
+        password: String?
+    ) async -> String {
+        guard var refusal = error as? SMBMountError else {
+            return (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+        }
+        if refusal.status == ENOENT || refusal.status == ENODEV {
+            refusal.absence = await smbShareAbsence(of: location, password: password)
+        }
+        return refusal.errorDescription ?? Self.genericConnectError
     }
 
     // MARK: - Shared

@@ -236,7 +236,13 @@ extension SidebarViewController {
         case let .fileURLs(urls):
             return urls
                 .filter { (try? $0.resourceValues(forKeys: [.isDirectoryKey]))?.isDirectory == true }
-                .map { FavoriteEntry(path: .local($0.path)) }
+                .map { url in
+                    let path = VFSPath.local(url.path)
+                    return FavoriteEntry(
+                        path: path,
+                        endpoint: SMBMounter.shared.shareEndpoint(containing: path)
+                    )
+                }
         case nil:
             return []
         }

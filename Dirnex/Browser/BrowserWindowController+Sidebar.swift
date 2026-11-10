@@ -71,6 +71,7 @@ extension BrowserWindowController: SidebarViewControllerDelegate {
     ) -> ServerEndpoint? {
         let pane = activePanel ?? leftPanel
         return pane.reconnectEndpoint(for: pane.tabs[pane.activeTabIndex], at: path)
+            ?? SMBMounter.shared.shareEndpoint(containing: path)
     }
 
     /// A saved search re-runs its query in the active pane, its hits replacing what the active tab

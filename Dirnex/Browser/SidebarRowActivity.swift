@@ -9,7 +9,8 @@ import Foundation
 ///
 /// Keyed by whatever identifies the row in its own store: a server's *name* (its identity in
 /// `ServerConnectionStore`, like `SavedSearch`), a vault's *resolved image path* (its identity in
-/// `SavedVaults`). One key lines up with exactly one row. Main-actor only: every caller — the
+/// `SavedVaults`), a pin's *path* (its identity in `Favorites`, spinning while its share mounts). One
+/// key lines up with exactly one row. Main-actor only: every caller — the
 /// connect/unlock `Task` and the sidebar — already runs on the main actor.
 ///
 /// It was `ServerConnectionActivity` until vaults needed the identical set; nothing about it was

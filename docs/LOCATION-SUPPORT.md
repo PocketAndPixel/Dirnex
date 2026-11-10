@@ -1048,6 +1048,14 @@ existed, which carries no way back and fails as it always did, naming the accoun
 an account pane or a share row in a server pane, which cannot be dragged in, because each is reached by
 connecting to it and its path does not list.
 
+A pin inside an **SMB share** is a local path, so it has no connection to read back, and it records the
+share instead (`PinnedShare`). Picking one while its volume is not mounted mounts the share with the password
+the app holds and goes in, under whatever mount point the share gets. A pin made before that record existed
+tries the saved SMB servers in sidebar order and keeps the one that mounted. It stays partial in three ways:
+a share Finder mounted is recorded only once Dirnex has connected to it, an account with no saved password is
+passed over rather than prompted for, and a restored tab inside a share is still dropped at launch, since a
+launch may not contact a server unasked.
+
 <sup>tt</sup> Read-only since M24 Slice 7: a row that is not on this Mac opens
 `RemoteAttributesController`, which states **what the listing actually reported** and nothing else.
 *Editing* arrived at M25 Slice 5a and is narrower than reading (below), because the two fail

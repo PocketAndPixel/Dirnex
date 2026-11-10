@@ -373,6 +373,23 @@ the folder. 11 core tests and 9 app tests are new, and 13 negative controls were
 reconnect is the restore's; a folder in Photos; and a folder dragged from Finder, which was read from a real
 board in a test rather than dragged. All are Slice 10's.
 
+**2026-11-10: a pin on an unmounted share mounts it** (reported the same day, outside the slice list; core,
+then the app). Dirnex unmounts what it mounted on quit, so a pin inside a share raised "moved or deleted" on
+the next launch and offered to remove a folder that was fine. A pin made on a share now records it, in the
+`endpoint` field server pins already use. Picking one whose volume is not mounted mounts it and goes in, with
+the row spinning. An older pin has no record, so it tries the saved SMB servers in sidebar order, and every one
+is tried because a server lists a share even to an account it refuses. The one that mounts is written back onto
+the pin. `/Volumes/Macintosh HD` is a link with no mount entry of its own, so `PinnedShare` asks about links, and
+a folder missing from a volume that *is* mounted still gets the old alert. No new strings. 18 core tests and
+15 app tests are new, and 13 negative controls were each caught.
+
+Run live on the NAS with the pin that was reported, which predates the record. The first saved account mounted
+`media` at `/Volumes/media`, the pane landed on `TV`, and the pin came back with the share on it, in its place
+and under its own name.
+
+**Not seen:** a second pick after a quit, which goes through the record and is covered by tests; the row's
+spinner; and a double-click, which the row's activity guards.
+
 #### M39 — Quick View (L)
 
 - **RTF** (M16, M18), with a source and a page view. It is `NSAttributedString`'s job and shares
