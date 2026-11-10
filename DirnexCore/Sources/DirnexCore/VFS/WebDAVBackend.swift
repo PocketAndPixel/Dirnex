@@ -74,7 +74,8 @@ public struct WebDAVBackend: ConnectionScopedBackend {
     /// Stat one path with a single `Depth: 0` PROPFIND, naming it **without** a trailing slash,
     /// since a stat does not know whether it is asking about a file or a folder. Apache answers a
     /// folder named that way with the folder (the `noslash` fixture), and `<resourcetype>` says
-    /// which it is.
+    /// which it is. A Debian Apache redirects it to the folder's spelling instead, and is asked
+    /// again that way (``WebDAVFolderRedirect``), so a folder there costs two requests.
     ///
     /// The root is answered without asking, as FTP and S3 answer theirs: it is a folder by
     /// construction, the connect probe has already checked it is one, and a root that has stopped
@@ -82,8 +83,8 @@ public struct WebDAVBackend: ConnectionScopedBackend {
     public func stat(at path: VFSPath) throws -> FileEntry {
         try requireOwnBackend(path)
         guard !path.isRoot else { return rootEntry(at: path) }
-        let response = try mapping(path) {
-            try transport.propfind(path.path, depth: .zero, isCollection: false)
+        let response = try namingFolderIfAsked(path) { isCollection in
+            try transport.propfind(path.path, depth: .zero, isCollection: isCollection)
         }
         return try listing(of: path, from: response).folder.entry(at: path)
     }

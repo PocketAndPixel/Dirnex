@@ -7744,9 +7744,25 @@ whoever drives `curl` over HTTP next. Most of them apply to the S3 backend as mu
   failed: two as an I/O error, and one where a PUT onto a folder was not read as a taken name. Finder's
   user agent is spared, since Debian marks `WebDAVFS/1.0` "redirect-carefully" (a DELETE with that
   agent answered 204). macOS's Apache in `scripts/live_test_servers.sh` loads no `mod_dir`, and M32
-  moved and deleted folders on the NAS without a redirect, which is why it was never seen. Dirnex
-  names a folder without the slash in those three verbs (`WebDAVProcessArguments+Write`), so on such a
-  server deleting or moving a folder fails; the stand-in turns `DirectorySlash` off until that is fixed.
+  moved and deleted folders on the NAS without a redirect, which is why it was never seen.
+  - **PROPFIND is redirected too, so a `stat` of any folder failed there**, not only the three writes:
+    `Depth: 0` of `/folder` answered 301 with `Location: …/folder/`. The live suite missed it because
+    every listing names its folder with the slash already. Probed on Apache 2.4.68 with a script that
+    sends each verb both ways, the same day.
+  - **A `Destination` naming an existing folder bare is redirected with no `Location` at all.** A MOVE
+    or COPY of a file onto `/folder` answered 301 and nothing else: `mod_dav` looks the destination up
+    as a request of its own, and that lookup's redirect is what comes back. Named `/folder/`, the same
+    request answered 412, as macOS's Apache answers it bare. A folder moved onto a folder took three
+    answers: the source's redirect, the destination's, then the 412.
+  - **The slash cannot be added on a guess**, since a file named with one answered 400 to DELETE, MOVE
+    and PROPFIND alike. So every request still starts bare, and `WebDAVFolderRedirect` sends it once
+    more naming the end the redirect was about: a `Location` equal to the URL plus `/` is the source,
+    and none at all is the destination. Each end is named with its slash at most once. A PUT is never
+    sent again: a redirect there says a folder holds the name, which is "already exists". A folder on
+    such a server costs one request more per DELETE, MOVE or `stat`; a file, and every other server,
+    costs what it did.
+  - **A slash on a new destination is harmless.** MOVE of a file to `new.txt/` answered 201, and the
+    file landed as `new.txt`.
 
 ### The Trash
 

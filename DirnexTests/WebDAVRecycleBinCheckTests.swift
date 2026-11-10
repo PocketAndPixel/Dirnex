@@ -88,11 +88,15 @@ private final class BinServer: WebDAVTransport, @unchecked Sendable {
         WebDAVHTTPResponse(status: 403)
     }
 
-    func move(_: String, to _: String) throws -> WebDAVHTTPResponse { WebDAVHTTPResponse(status: 403) }
+    func move(_: String, to _: String, collections _: WebDAVCollectionEnds) throws
+        -> WebDAVHTTPResponse { WebDAVHTTPResponse(status: 403) }
 
-    func copy(_: String, to _: String) throws -> WebDAVHTTPResponse { WebDAVHTTPResponse(status: 403) }
+    func copy(_: String, to _: String, collections _: WebDAVCollectionEnds) throws
+        -> WebDAVHTTPResponse { WebDAVHTTPResponse(status: 403) }
 
-    func delete(_: String) throws -> WebDAVHTTPResponse { WebDAVHTTPResponse(status: 403) }
+    func delete(_: String, isCollection _: Bool) throws -> WebDAVHTTPResponse {
+        WebDAVHTTPResponse(status: 403)
+    }
 }
 
 /// The question F8 and ⇧F8 ask a WebDAV share before they word themselves: is there a `#recycle`

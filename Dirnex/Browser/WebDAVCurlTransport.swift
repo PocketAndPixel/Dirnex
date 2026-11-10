@@ -170,34 +170,48 @@ struct WebDAVCurlTransport: WebDAVTransport {
         )
     }
 
-    func move(_ backendPath: String, to destinationPath: String) throws -> WebDAVHTTPResponse {
+    func move(
+        _ backendPath: String,
+        to destinationPath: String,
+        collections: WebDAVCollectionEnds
+    ) throws -> WebDAVHTTPResponse {
         let session = session(maxTime: serverOperationTimeout)
         return try perform(
             WebDAVProcessArguments.move(
                 session: session,
                 backendPath: backendPath,
-                to: destinationPath
+                to: destinationPath,
+                collections: collections
             ),
             session: session
         )
     }
 
-    func copy(_ backendPath: String, to destinationPath: String) throws -> WebDAVHTTPResponse {
+    func copy(
+        _ backendPath: String,
+        to destinationPath: String,
+        collections: WebDAVCollectionEnds
+    ) throws -> WebDAVHTTPResponse {
         let session = session(maxTime: serverOperationTimeout)
         return try perform(
             WebDAVProcessArguments.copy(
                 session: session,
                 backendPath: backendPath,
-                to: destinationPath
+                to: destinationPath,
+                collections: collections
             ),
             session: session
         )
     }
 
-    func delete(_ backendPath: String) throws -> WebDAVHTTPResponse {
+    func delete(_ backendPath: String, isCollection: Bool) throws -> WebDAVHTTPResponse {
         let session = session(maxTime: serverOperationTimeout)
         return try perform(
-            WebDAVProcessArguments.delete(session: session, backendPath: backendPath),
+            WebDAVProcessArguments.delete(
+                session: session,
+                backendPath: backendPath,
+                isCollection: isCollection
+            ),
             session: session
         )
     }

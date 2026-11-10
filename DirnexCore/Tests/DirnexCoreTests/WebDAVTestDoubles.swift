@@ -53,9 +53,10 @@ final class FakeWebDAVTransport: WebDAVTransport, @unchecked Sendable {
         case mkcol(String)
         case upload(localPath: String, path: String, condition: S3WriteCondition)
         case putEmpty(String, condition: S3WriteCondition)
-        case move(String, to: String)
-        case copy(String, to: String)
-        case delete(String)
+        /// `collections` is which ends were named with their slash; none is the first request's.
+        case move(String, to: String, collections: WebDAVCollectionEnds = [])
+        case copy(String, to: String, collections: WebDAVCollectionEnds = [])
+        case delete(String, isCollection: Bool = false)
     }
 
     var respond: (Propfind) throws -> WebDAVHTTPResponse
@@ -222,16 +223,24 @@ final class FakeWebDAVTransport: WebDAVTransport, @unchecked Sendable {
         try record(.putEmpty(backendPath, condition: condition))
     }
 
-    func move(_ backendPath: String, to destinationPath: String) throws -> WebDAVHTTPResponse {
-        try record(.move(backendPath, to: destinationPath))
+    func move(
+        _ backendPath: String,
+        to destinationPath: String,
+        collections: WebDAVCollectionEnds
+    ) throws -> WebDAVHTTPResponse {
+        try record(.move(backendPath, to: destinationPath, collections: collections))
     }
 
-    func copy(_ backendPath: String, to destinationPath: String) throws -> WebDAVHTTPResponse {
-        try record(.copy(backendPath, to: destinationPath))
+    func copy(
+        _ backendPath: String,
+        to destinationPath: String,
+        collections: WebDAVCollectionEnds
+    ) throws -> WebDAVHTTPResponse {
+        try record(.copy(backendPath, to: destinationPath, collections: collections))
     }
 
-    func delete(_ backendPath: String) throws -> WebDAVHTTPResponse {
-        try record(.delete(backendPath))
+    func delete(_ backendPath: String, isCollection: Bool) throws -> WebDAVHTTPResponse {
+        try record(.delete(backendPath, isCollection: isCollection))
     }
 
     private func record(_ write: Write) throws -> WebDAVHTTPResponse {

@@ -221,18 +221,24 @@ struct WebDAVLiveIntegrationTests {
         #expect(run.rootRows == [endpoint.stored(Self.awkwardFolder)])
         #expect(run.folderRows == [file])
         if endpoint.servedFrom != nil { #expect(run.onDisk == [file]) }
-        #expect(run.renameRequests == [.move], "a rename is one MOVE")
+        #expect(run.renameRequests == [.move()], "a rename of a file is one MOVE")
         #expect(run.afterRename == [endpoint.stored(Self.renamedFile)])
-        #expect(run.copyRequests.contains(.copy))
+        #expect(run.copyRequests.contains(.copy()))
         #expect(
             !run.copyRequests.contains { $0.movesBytes },
             "a copy in the account is the server's"
         )
-        #expect(run.folderMoveRequests == [.move], "a folder moves in one MOVE")
+        #expect(
+            run.folderMoveRequests == endpoint.folderRequests(.move(), .move(.source)),
+            "a folder moves in one MOVE, after a redirect to its slash where there is one"
+        )
         #expect(run.movedFolderRows == [endpoint.stored(Self.renamedFile)])
         #expect(run.renamedBytes == payload)
         #expect(run.copyBytes == payload)
-        #expect(run.deleteRequests == [.delete], "a tree is deleted in one DELETE")
+        #expect(
+            run.deleteRequests == endpoint.folderRequests(.delete(), .delete(asCollection: true)),
+            "a tree is deleted in one DELETE, after a redirect to its slash where there is one"
+        )
         #expect(run.afterDelete == run.root.map(VFSError.notFound))
     }
 
@@ -268,6 +274,7 @@ struct WebDAVLiveIntegrationTests {
                 createRequests: createRequests,
                 bytes: try WebDAVLive.download(file, on: backend),
                 ontoFolder: try WebDAVLive.caught { try backend.createFile(at: folder) },
+                folderStat: try backend.stat(at: folder).kind,
                 folderAgain: try WebDAVLive.caught { try backend.createDirectory(at: folder) },
                 orphan: try WebDAVLive.caught { try backend.createDirectory(at: orphan) },
                 moveOnto: try WebDAVLive.caught { try backend.moveItem(at: other, to: file) },
@@ -281,6 +288,10 @@ struct WebDAVLiveIntegrationTests {
         #expect(outcome.createRequests == [.putEmpty(.ifAbsent)], "no stat guards the create")
         #expect(outcome.bytes == original)
         #expect(outcome.ontoFolder == .alreadyExists(folder))
+        #expect(
+            outcome.folderStat == .directory,
+            "a folder named without its slash is still a folder"
+        )
         #expect(outcome.folderAgain == .alreadyExists(folder))
         #expect(outcome.orphan == .notFound(try #require(orphan.parent)))
         #expect(outcome.moveOnto == .alreadyExists(file), "MOVE carries Overwrite: F")
@@ -401,5 +412,16 @@ extension WebDAVLiveIntegrationTests {
         var deleteRequests: [CountingWebDAVTransport.Request] = []
         var afterDelete: VFSError?
         var root: VFSPath?
+    }
+}
+
+extension WebDAVLiveEndpoint {
+    /// The requests one folder's DELETE or MOVE costs here: `bare`, and `slashed` after it on a
+    /// server that redirects the bare name (``redirectsBareFolders``).
+    func folderRequests(
+        _ bare: CountingWebDAVTransport.Request,
+        _ slashed: CountingWebDAVTransport.Request
+    ) -> [CountingWebDAVTransport.Request] {
+        redirectsBareFolders ? [bare, slashed] : [bare]
     }
 }

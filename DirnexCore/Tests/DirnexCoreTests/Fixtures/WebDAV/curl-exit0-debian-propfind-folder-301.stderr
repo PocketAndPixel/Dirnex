@@ -1,0 +1,9 @@
+dav-status=301
+dav-size=363
+dav-up=201
+dav-headers={"date":["Tue, 10 Nov 2026 20:28:45 GMT"],
+"server":["Apache/2.4.68 (Debian)"],
+"location":["http://localhost:8092/plain/fx/photos/"],
+"content-length":["363"],
+"content-type":["text/html; charset=iso-8859-1"]
+}

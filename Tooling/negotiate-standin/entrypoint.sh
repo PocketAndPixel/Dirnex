@@ -72,14 +72,11 @@ LogFormat "%h %{remote}p %u \"%r\" %>s" dav
     DavLockDB /var/lock/apache2/dav/DavLock
     KeepAlive On
     MaxKeepAliveRequests 100
-    # DirectorySlash Off, as macOS's Apache in scripts/live_test_servers.sh has it by not loading
-    # mod_dir at all. Debian's stock Apache loads it, and it answers 301 to a DELETE, MOVE or PUT
-    # that names a folder without its trailing slash, which Dirnex sends (seen 2026-11-10: three
-    # live tests failed on exactly that, and Finder's user agent alone is spared, as
-    # "redirect-carefully"). That is a gap in the write half, not in Negotiate, so it is kept out of
-    # this stand-in until it is fixed (PLAN.md §M38 Slice 6).
+    # Debian's stock mod_dir stays on, with DirectorySlash at its default: any method naming a
+    # folder without its trailing slash is answered 301, which Dirnex reads and sends again with
+    # the slash (WebDAVFolderRedirect). So this is also the suite's one server that redirects, as
+    # macOS's Apache in scripts/live_test_servers.sh loads no mod_dir (PLAN.md §M38).
     <Directory /var/www/dav>
-        DirectorySlash Off
         Dav On
         DavDepthInfinity Off
         Options None
