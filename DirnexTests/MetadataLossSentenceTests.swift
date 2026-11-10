@@ -121,6 +121,7 @@ struct MetadataLossSentenceTests {
 /// inherited default, since a healthy connection's tally and a missing forward's are both zero.
 private final class LosingTransport: SFTPTransport, @unchecked Sendable {
     func listDirectory(_ remotePath: String) throws -> String { "" }
+    func diskFree() throws -> String { throw ServerSpaceUnsupported() }
     func makeDirectory(_ remotePath: String) throws {}
     func createEmptyFile(_ remotePath: String) throws {}
     func rename(_ source: String, to destination: String) throws {}

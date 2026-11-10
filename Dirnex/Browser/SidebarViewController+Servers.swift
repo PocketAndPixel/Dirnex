@@ -26,26 +26,33 @@ extension SidebarViewController {
     }
 
     /// The server's address, and under it the space it last said it has left, when it has said
-    /// (PLAN.md §M38 Slice 7). Only a WebDAV server is asked, and only one that reports RFC 4331's
-    /// quota answers, which of those measured is Nextcloud and not Apache (``WebDAVQuota``).
+    /// (PLAN.md §M38 Slice 7). Only WebDAV and SFTP servers are asked (``ServerQuotaBook``).
     ///
-    /// "Available" with no total, where a volume's tooltip says "of": the reason is
-    /// ``WebDAVProcessArguments/quotaPropfindBody``'s, and the choice was Oleg's (2026-11-10).
+    /// A WebDAV server's line is "available" with no total, the reason being
+    /// ``WebDAVProcessArguments/quotaPropfindBody``'s; of those measured only Nextcloud reports one
+    /// (``WebDAVQuota``). An SFTP server's says "of" its filesystem's total, as a volume's does, since
+    /// it is the same `statvfs` (``SFTPDiskFree``). Both choices were Oleg's, 2026-11-10 and 11-11.
     static func serverTooltip(
         for connection: ServerConnection,
         quotas: ServerQuotaBook = .shared
     ) -> String {
-        guard case let .webdav(location, _, _) = connection.endpoint,
-              let quota = quotas.quota(for: location)
+        guard let server = ServerQuotaBook.Server(connection.endpoint),
+              let space = quotas.space(for: server)
         else { return connection.address }
-        let space = String(
-            localized: "\(FileFormatting.byteString(quota.availableBytes)) available",
-            comment: """
-            Second line of a saved server's sidebar tooltip, under its address: the space the \
-            server says is left to the account. %@ is a size such as “98.9 MB”.
-            """
+        guard let total = space.totalBytes else {
+            let available = String(
+                localized: "\(FileFormatting.byteString(space.availableBytes)) available",
+                comment: """
+                Second line of a saved server's sidebar tooltip, under its address: the space the \
+                server says is left to the account. %@ is a size such as “98.9 MB”.
+                """
+            )
+            return connection.address + "\n" + available
+        }
+        return connection.address + "\n" + capacityLine(
+            available: space.availableBytes,
+            total: total
         )
-        return connection.address + "\n" + space
     }
 
     /// Redraw the server rows' tooltips when a server's answer about its space changes, the way a

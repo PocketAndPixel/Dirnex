@@ -14,7 +14,8 @@ import Foundation
 ///   has no precedent to follow here.
 ///
 /// Only the space left is kept, and the sentence is "available" with no total, unlike a volume's
-/// "of": ``WebDAVProcessArguments/quotaPropfindBody`` gives the reason.
+/// "of": ``WebDAVProcessArguments/quotaPropfindBody`` gives the reason. The sidebar holds it as a
+/// ``ServerSpace``, beside an SFTP server's, and asks on ``ServerSpace/isDue(lastAsked:now:)``.
 public struct WebDAVQuota: Sendable, Equatable {
     /// Bytes the server will still store. Zero for an account at or past its quota: with 6 MB stored
     /// and the quota cut to 5 MB, Nextcloud answered `0`, not a negative, and a PUT then answered
@@ -38,21 +39,6 @@ public struct WebDAVQuota: Sendable, Equatable {
               let available = listing.folder.quotaAvailableBytes
         else { return nil }
         availableBytes = available
-    }
-
-    /// How long an answer stands before a listing on the same connection asks again: five minutes,
-    /// because that is how long Nextcloud keeps its own. Measured 2026-11-10: with the quota changed
-    /// and two files uploaded, the answer stayed exactly as it was for five minutes and then showed
-    /// both, so asking sooner there costs a request and learns nothing.
-    public static let refreshInterval: TimeInterval = 300
-
-    /// Whether a listing that arrived at `now` should ask again, the last ask having gone out at
-    /// `lastAsked`. A clock that has gone backwards is due, so a corrected clock cannot hold an old
-    /// answer for as long as it moved.
-    public static func isDue(lastAsked: Date?, now: Date) -> Bool {
-        guard let lastAsked else { return true }
-        let elapsed = now.timeIntervalSince(lastAsked)
-        return elapsed < 0 || elapsed >= refreshInterval
     }
 }
 

@@ -6284,6 +6284,61 @@ works, which makes this whole family probeable on any Mac).
   server's own error. `-l` because a command channel starts no login shell by itself. `$SHELL` is the
   server's, since the whole remote command is single-quoted on this side.
 
+#### Space left: `df` and the `statvfs@openssh.com` extension
+
+Probed 2026-11-11 for a saved SFTP row's tooltip, the SFTP twin of M38 Slice 7's WebDAV quota. Four
+servers: the throwaway macOS `sshd` (OpenSSH 10.3, APFS), the same with the extension withheld, the same
+behind `ForceCommand internal-sftp`, and an Alpine container (OpenSSH 10.3p1) with a 64 MiB `tmpfs` on
+`/data` and a second account chrooted to it.
+
+- **The table is drawn by this Mac's `sftp`, so its format never varies with the server.** The server
+  sends the raw `statvfs` fields and the client prints them. Plain `df` prints a header line and one line
+  of four integers and a percentage, in **KiB** (`f_frsize × count / 1024`):
+  `Size` is `f_blocks`, `Used` is `f_blocks − f_bfree`, `Avail` is `f_bavail`, `(root)` is `f_bfree`.
+  The 64 MiB `tmpfs` read `65536 0 65536 65536 0%`, and a 10 MiB `put` then read `Used 10240`,
+  `Avail 55296`, with no delay: the answer is live, unlike Nextcloud's five-minute cache.
+  The fields are separated by at least one space at any width (`%12llu %12llu …`), so split on
+  whitespace. The password route's interactive transcript has the same lines, with `Connected to …` on
+  stderr.
+- **`Avail` is the number to show, and it is the filesystem's, not the account's.** On the container's
+  ext4-backed overlay, `Avail` was 13436008 and `(root)` 16577332: the 5 % reserve only root may write.
+  `Avail` matched GNU `df`'s Available to the KiB. On APFS the two are equal, and `Size` and `Avail`
+  matched the Mac's own `df -k`. A **chrooted** account's `df /` reads its chroot's filesystem (the
+  `tmpfs`, 65536). A per-user quota is not in `statvfs` on Linux, so a NAS account with one would see
+  the volume's space. That last part is from the API, not measured: linuxkit's kernel has no `tmpfs`
+  quota support (`mount -o usrquota` answers `Invalid argument`).
+- **`%Capacity` is not `df`'s `Use%`.** `sftp` computes `(blocks − bfree) / blocks`, which counts the
+  reserve as used: 72 % where GNU `df` said 77 %. A pseudo-filesystem answers all zeros and `ERR` in that
+  column (`df /proc`), so a zero `Size` means "nothing to say", not a full disk. Ignore the column.
+- **`df -h` is lossy and slightly broken.** `fmt_scaled` gives binary multiples with SI-looking suffixes
+  (`507GB` for 531619604 KiB), and an empty `Used` printed as `0BB`. Parse plain `df`.
+- **`df -i` says nothing useful.** On a macOS server the inode counts come through Darwin's 32-bit
+  `fsfilcnt_t` and wrap: the Data volume read 1025930412 inodes where the Mac's own `df -i` gives
+  5320893272, 2³² less. APFS allocates inodes dynamically anyway.
+- **A withheld extension is one stderr line, and a failed path is none.** `Server does not support
+  statvfs@openssh.com extension` ends in `\r\n`. Under `-b` it ends the batch with exit 1; with the `-`
+  prefix, or on the password route, the exit is 0. `df /nonexistent` printed **nothing at all**, on
+  either stream, and aborted a `-b` batch with exit 1. So the absence of the table is the only signal,
+  and a reader keys on the table, never on the exit status.
+- **`sftp-server -P` takes the short names from `sftp-server -Q requests`.** `-P statvfs,fstatvfs`
+  withdraws the extension: the server stops advertising it and the client refuses as above. `-P
+  statvfs@openssh.com` withdraws **nothing**, and `df` answers as usual. A probe spelled the second way
+  "shows" that withholding the extension changes nothing.
+- **`ForceCommand internal-sftp` keeps it.** It is the same `sftp-server` code, in-process, so an
+  account confined to the subsystem, with no exec channel for the search shortcut, still answers `df`.
+- **`df` with no path asks the login directory** (`pwd` read `/Users/oleg` and `/root`, and `/probe` for
+  the chrooted account). That is where a saved SFTP row opens, since its endpoint has no root of its
+  own, so the app asks with no path (`SFTPBatchCommand.diskFree`). A folder on another volume, a NAS
+  share say, would answer differently, which is why the tooltip belongs to the row and not the pane.
+- **Read the transcript with both streams folded** (`run(transcript:)`), as the batched listing does: the
+  table is on stdout and the refusal sentence on stderr, and only together do they tell "cannot say" from
+  "no answer" (a refused login, a closed port), which the sidebar treats differently.
+- **To see each `df` arrive, give the server `internal-sftp -l INFO`.** Its requests go to syslog, not
+  to `sshd -E`'s file, and on macOS `log show --predicate 'process == "sshd-session"'` lists
+  `opendir "…"` and `statvfs "…"` with their times. A refused `df` sends nothing, so a server without the
+  extension shows the attempt only as a session with no request in it. A chrooted account logs nothing
+  at all: its chroot has no `/dev/log`.
+
 ### curl (FTP and FTPS)
 
 macOS ships **no `ftp`, `tnftp` or `lftp`** — probed, only `/usr/bin/curl` (8.7.1). Every

@@ -71,6 +71,7 @@ struct SFTPProcessTransportWiringTests {
 /// what has to be absent here.
 private struct MinimalTransport: SFTPTransport {
     func listDirectory(_: String) throws -> String { "" }
+    func diskFree() throws -> String { throw ServerSpaceUnsupported() }
     func createSymbolicLink(_: String, target _: String) throws {}
     func makeDirectory(_: String) throws {}
     func createEmptyFile(_: String) throws {}

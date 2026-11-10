@@ -39,6 +39,21 @@ extension CompositeBackend {
         return backend
     }
 
+    /// Install an already-built SFTP backend under its own descriptor — ``connectSFTP(location:authentication:password:)``
+    /// without the `sftp` transport, so the routing can be asserted over a fake (``register(s3:)``
+    /// gives the reason). Nothing in the app calls it.
+    @discardableResult
+    func register(sftp backend: SFTPBackend, authentication: SFTPAuthentication) -> SFTPBackend {
+        lock.lock()
+        defer { lock.unlock() }
+        sftpConnections[backend.location.descriptor] = backend
+        endpoints[backend.location.descriptor] = .sftp(
+            location: backend.location,
+            authentication: authentication
+        )
+        return backend
+    }
+
     /// Establish (or replace) an FTP connection for `location`, returning its backend so the caller
     /// can test it before navigating a pane onto it. `password` is the plaintext the transport feeds
     /// to `curl` on stdin (held only in memory for the connection's lifetime, mirrored into the

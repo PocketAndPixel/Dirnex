@@ -1,0 +1,3 @@
+sftp> -df /proc
+        Size         Used        Avail       (root)    %Capacity
+           0            0            0            0         ERR

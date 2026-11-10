@@ -1070,7 +1070,7 @@
       }
     },
     "%@ available of %@": {
-      "comment": "Volume capacity tooltip; %1$@ is free space, %2$@ is total capacity.",
+      "comment": "Free space of a disk: a volume's sidebar tooltip, and the line under a saved SFTP server's address. %1$@ is free space, %2$@ is total capacity.",
       "localizations": {
         "de": {
           "stringUnit": {
