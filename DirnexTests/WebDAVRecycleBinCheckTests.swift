@@ -62,6 +62,8 @@ private final class BinServer: WebDAVTransport, @unchecked Sendable {
         paths.map { _ in .notSent }
     }
 
+    func propfindQuota(_: String) throws -> WebDAVHTTPResponse { WebDAVHTTPResponse(status: 403) }
+
     func download(
         _: String,
         to _: String,

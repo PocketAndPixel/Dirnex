@@ -997,6 +997,7 @@ shortcut (<sup>cc</sup>). Planned as PLAN.md §M38.
 | Encrypted archives / hidden member names | yes | yes | yes | yes<sup>hh</sup> | yes<sup>hh</sup> | yes<sup>hh</sup> | yes<sup>hh</sup> | n/a | yes<sup>hh</sup> | yes<sup>hh</sup> | yes |
 | Create / unlock an encrypted vault | yes | yes | n/a | n/a<sup>uu</sup> | n/a<sup>uu</sup> | n/a<sup>uu</sup> | n/a<sup>uu</sup> | n/a | n/a<sup>uu</sup> | no | n/a |
 | Saved connection in the sidebar | n/a | n/a | n/a | yes | yes | yes | yes | yes | yes | n/a | n/a |
+| Space left, on the sidebar row | yes | no<sup>aan</sup> | n/a | no<sup>aan</sup> | n/a<sup>aan</sup> | yes, limited<sup>aan</sup> | n/a | n/a | n/a | n/a | n/a |
 | Pin to Favorites / Places menu | yes | yes | no | yes, partially<sup>ii</sup> | yes, partially<sup>ii</sup> | yes, partially<sup>ii</sup> | yes, partially<sup>ii</sup> | yes, partially | yes | no | n/a |
 
 <sup>ee</sup> Gated per **row**, not per pane. A trashed file is an ordinary local file, so it
@@ -1160,6 +1161,16 @@ files it covers, which here would be an import (<sup>jjj</sup>), and verifying r
 sits among the files, where the library holds only photographs and videos. So Create greys out on
 `.write` and Verify never finds a manifest under the cursor. Copy the originals out with `F5` and
 checksum the copies.
+
+<sup>aan</sup> A volume's tooltip says how much of it is free. A saved WebDAV server's says, under its
+address, the space the server reports left to the account: RFC 4331's `quota-available-bytes`, asked
+after a listing there and at most every five minutes (PLAN.md §M38 Slice 7). Of the servers measured
+only Nextcloud reports it. Apache's `mod_dav`, the NAS's included, answers it 404, and so does an
+account without a quota on Nextcloud in effect (`-3`); the tooltip is then the address alone. There is
+no total, since what a server reports as used is the folder's and not the account's. FTP has no
+standard verb for it. SFTP has one, OpenSSH's `statvfs` extension (`df` in `sftp`), which nothing
+asks yet and nothing has scheduled. A cloud folder sits on the startup disk, whose own row shows its
+space, and a provider's account quota is not read.
 
 ## 6. Transfer behaviour
 

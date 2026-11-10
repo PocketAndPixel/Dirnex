@@ -40,6 +40,8 @@ private struct OneFolderTransport: WebDAVTransport {
         ) }
     }
 
+    func propfindQuota(_: String) throws -> WebDAVHTTPResponse { WebDAVHTTPResponse(status: 404) }
+
     func download(
         _: String,
         to _: String,

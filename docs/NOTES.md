@@ -7703,6 +7703,30 @@ whoever drives `curl` over HTTP next. Most of them apply to the S3 backend as mu
     folder, since a PUT creates what it names (`WebDAVServiceError`).
   - **`creationdate` is `1970-01-01T00:00:00+00:00` on every row** a client uploaded. Read as a date,
     Get Info would show each file as made in 1970, so the epoch reads as no date.
+  - **The quota (RFC 4331) is answered on every folder as the account's, and held for five
+    minutes.** Measured 2026-11-10 on 34.0.5 (PLAN.md §M38 Slice 7): `quota-available-bytes` in a
+    subfolder equals the account root's, while `quota-used-bytes` is the folder's own size (3 000 000
+    in `sub` beside 6 000 000 at the root), so used plus available is the quota only at the account
+    root. An account with no quota answers **`-3`**, sabre's "unlimited", and one at or past its quota
+    `0`, never a negative (6 MB stored under 5 MB); a PUT there answers 507. A file answers both as
+    empty elements in a 200 `propstat`. The answer is cached in APCu for five minutes: a changed quota
+    and two uploads read exactly as before until then, at the root and in `sub` alike. `docker
+    restart` clears it, which is how the fixtures were captured. "100 MB" in `occ user:setting … quota`
+    is 104 857 600 bytes.
+  - **A new account's very first request answers 500**, `Call to a member function getMetadata() on
+    null`, a quota request as much as any other, and the next one is fine. The live script's lone
+    first request (`scripts/live_test_servers.sh`) is what absorbs it.
+- **Apache's `mod_dav` has no quota at all.** Asked for `quota-available-bytes`, macOS's 2.4.67 and the
+  Kerberos stand-in's Debian 2.4.68 both answered it 404 inside their 207, as the NAS did in M32, and
+  neither `mod_dav.so` nor `mod_dav_fs.so` contains the property's name (2026-11-10).
+- **Finder's own WebDAV client never asks for a quota.** A Nextcloud folder mounted with `mount_webdav`
+  (WebDAVFS/3.0.0 on this macOS) sent sixteen PROPFINDs naming the same five properties and none of
+  them a quota, and `df` read the volume as 0 bytes of 0, though the server answers a number when
+  asked. So there is no precedent on the Mac for showing one. Two ways in that worked, both 2026-11-10:
+  `mount_webdav -i -S <url> <folder>` under `script -q /dev/null` with the user name and password fed
+  to its stdin a second apart mounts without a dialog or the Keychain (`umount` the folder after), and
+  a forty-line Python proxy in front of the server logs every request body, which Apache's and
+  Nextcloud's access logs never show.
 - **`curl --ntlm` signs the connection in, once, and a batch's later sections ride it.** Measured
   2026-11-10 with `curl` 8.7.1 against `Tooling/fake-ntlm-proxy.py`, which verifies the NTLMv2 proof as
   a domain controller does (PLAN.md §M38): each `curl` sends its Type 1 straight away, with no bare
@@ -10987,6 +11011,17 @@ overturned the obvious implementation.
     it rather than degraded into. Two tests, and both halves are needed — the shipped transport says
     `true`, and a minimal conformer says `false`, or the first is reading a constant nobody
     consults.
+  - **The fourth time, the default was "no feature at all", and the app's own transport took it.**
+    M38 Slice 7 gave `WebDAVTransport` a quota request, `propfindQuota`, with S3's default: forward to
+    the plain stat. That request names no quota, so its answer carries none, and the backend reads that
+    as a server that reports none. Never wrong, as the rule asks, and also never right: the app's own
+    `WebDAVCurlTransport` was written without the verb, every core and app test passed over fakes that
+    had it, and the first live run answered `nil` on Nextcloud. A logging proxy in front of the server
+    showed every root PROPFIND carrying the listing's body. A default earns its place when it gets the
+    **same result** more slowly, as a one-stream download does; when the only default available gets
+    no result, there should be none, so the compiler names every conformer that lacks the verb. The
+    requirement now has none. What caught it was a live claim set on the endpoint in advance
+    (`quotaBytes`), the same lesson as the tally's: the test needs an answer the default cannot give.
 - **To browse a second VFS backend without touching every `self.backend` site**, wrap them in a
   `CompositeBackend` that dispatches on `path.backend`. A per-tab backend field is a much larger
   refactor.

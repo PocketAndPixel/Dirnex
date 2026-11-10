@@ -337,6 +337,10 @@ private struct UnsplittingTransport: WebDAVTransport {
         try base.propfindBatch(backendPaths, isCancelled: isCancelled)
     }
 
+    func propfindQuota(_ backendPath: String) throws -> WebDAVHTTPResponse {
+        try base.propfindQuota(backendPath)
+    }
+
     func download(
         _ backendPath: String,
         to localPath: String,

@@ -1,0 +1,19 @@
+dav-status=207
+dav-size=383
+dav-up=121
+dav-headers={"date":["Tue, 10 Nov 2026 20:55:21 GMT"],
+"server":["Apache/2.4.69 (Debian)"],
+"x-content-type-options":["nosniff"],
+"x-frame-options":["SAMEORIGIN"],
+"x-permitted-cross-domain-policies":["none"],
+"x-robots-tag":["noindex, nofollow"],
+"referrer-policy":["no-referrer"],
+"x-powered-by":["PHP/8.5.12"],
+"content-security-policy":["default-src 'none';"],
+"x-user-id":["probe"],
+"vary":["Brief,Prefer"],
+"dav":["1, 3, extended-mkcol, access-control, calendarserver-principal-property-search, nc-paginate, nextcloud-checksum-update, nc-calendar-search, nc-enable-birthday-calendar, 2"],
+"x-request-id":["vCqwEZe2Wkg73NRLYlke"],
+"content-length":["383"],
+"content-type":["application/xml; charset=utf-8"]
+}

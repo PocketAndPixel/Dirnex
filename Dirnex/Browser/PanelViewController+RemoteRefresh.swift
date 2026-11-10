@@ -234,7 +234,11 @@ extension PanelViewController {
     /// record at all, and coming back waited a whole floor before asking.
     ///
     /// Keeps the cost of the last poll of the same folder, which only the poll can measure.
+    ///
+    /// Every route a server's listing takes passes here, the poll's own included, so it is also
+    /// where a WebDAV server may be asked for the space it has left (``ServerQuotaBook``).
     func noteRemoteListingArrived(at path: VFSPath) {
+        askServerQuota(after: path)
         guard RemoteRefreshPolicy.polls(path.backend) else { return }
         let duration = remoteRefreshLastPoll.flatMap { $0.path == path ? $0.duration : nil }
         remoteRefreshLastPoll = RemoteRefreshMeasurement(

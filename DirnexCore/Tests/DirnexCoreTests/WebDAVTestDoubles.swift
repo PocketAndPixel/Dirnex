@@ -116,6 +116,19 @@ final class FakeWebDAVTransport: WebDAVTransport, @unchecked Sendable {
         return try respond(request)
     }
 
+    /// Each quota request, as the path it named.
+    private(set) var quotaRequests: [String] = []
+    /// What a quota request answers. A 207 with no quota in it unless a test says otherwise, which
+    /// is what a server without RFC 4331 sends.
+    var quotaAnswer: (String) throws -> WebDAVHTTPResponse = { _ in
+        try WebDAVFixtures.run("curl-exit0-apache-quota-404", body: "apache-quota-404")
+    }
+
+    func propfindQuota(_ backendPath: String) throws -> WebDAVHTTPResponse {
+        quotaRequests.append(backendPath)
+        return try quotaAnswer(backendPath)
+    }
+
     /// A batched run as `curl` was measured to run one (``WebDAVProcessArguments/listings(session:requests:credentials:)``):
     /// each section answered by ``respond`` as a `Depth: 1` PROPFIND of a collection, the run
     /// stopping after a first section answered 400 or above (`fail`), or after any section whose

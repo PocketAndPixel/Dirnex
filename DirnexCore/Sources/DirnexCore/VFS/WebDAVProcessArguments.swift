@@ -161,6 +161,19 @@ public enum WebDAVProcessArguments {
         "</D:prop></D:propfind>"
     ].joined()
 
+    /// The one property a quota request names: RFC 4331's `quota-available-bytes`, the space left.
+    /// Its partner `quota-used-bytes` is left out because nothing could show it honestly. On
+    /// Nextcloud it is the size of the folder asked about rather than of the account (measured
+    /// 2026-11-10: 3 000 000 for a subfolder holding one 3 MB file, beside 6 000 000 at the account
+    /// root), so used and available add up to the account's quota only at its root, and a root a
+    /// user saved deeper would read as a much smaller account (PLAN.md §M38 Slice 7).
+    static let quotaPropfindBody = [
+        #"<?xml version="1.0" encoding="utf-8"?>"#,
+        #"<D:propfind xmlns:D="DAV:"><D:prop>"#,
+        "<D:quota-available-bytes/>",
+        "</D:prop></D:propfind>"
+    ].joined()
+
     /// Flags every invocation carries.
     ///
     /// - **`-q` comes first**, because `curl` otherwise reads `~/.curlrc` before anything here.
@@ -215,10 +228,38 @@ public enum WebDAVProcessArguments {
         depth: WebDAVDepth,
         isCollection: Bool
     ) -> [String] {
+        propfind(
+            session: session,
+            backendPath: backendPath,
+            depth: depth,
+            isCollection: isCollection,
+            body: propfindBody
+        )
+    }
+
+    /// One `Depth: 0` PROPFIND of a folder for its quota alone (``quotaPropfindBody``), named as a
+    /// collection since only a folder has one.
+    public static func quotaPropfind(session: WebDAVSession, backendPath: String) -> [String] {
+        propfind(
+            session: session,
+            backendPath: backendPath,
+            depth: .zero,
+            isCollection: true,
+            body: quotaPropfindBody
+        )
+    }
+
+    private static func propfind(
+        session: WebDAVSession,
+        backendPath: String,
+        depth: WebDAVDepth,
+        isCollection: Bool,
+        body: String
+    ) -> [String] {
         common(session: session)
             + ["-X", "PROPFIND", "-H", "Depth: \(depth.rawValue)"]
             + ["-H", #"Content-Type: application/xml; charset="utf-8""#]
-            + ["--data-binary", propfindBody]
+            + ["--data-binary", body]
             + [url(session, backendPath, isCollection: isCollection)]
     }
 
