@@ -451,7 +451,7 @@ EOF
     {
       "name": "Kerberos stand-in, HTTP, Negotiate with the Mac's ticket",
       "host": "localhost", "port": $NEGOTIATE_PORT, "tls": false, "root": "/negotiate",
-      "user": "", "scheme": "negotiate", "remotePath": "/",
+      "user": "", "scheme": "negotiate", "remotePath": "/", "redirectsBareFolders": true,
       "accessLog": "$kerberos/logs/dav.log",
       "krb5Config": "$kerberos/krb5.conf", "credentialCache": "FILE:$kerberos/ccache"
     }

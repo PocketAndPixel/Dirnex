@@ -469,12 +469,31 @@ the stand-in refuses. All are Slice 10's. **Known rough edges:** a restored Nego
 only "The server refused that. This account may not have permission for it." on its status line, since a
 reconnect does not go through the probe's sentences. A stock Debian or Ubuntu Apache's `mod_dir` answers
 301 to a DELETE, MOVE or PUT naming a folder without its slash, which is how Dirnex names one, so deleting
-or moving a folder fails there: an M32 gap found here, and the Kerberos stand-in turns `DirectorySlash`
-off until it is fixed. And **a build that predates this slice cannot read a saved-server list holding NTLM
-or Negotiate**. Measured with a scheme this build does not know: the whole list is refused, so that build
-shows no saved servers, and a server saved there writes over all of them. Tabs, pins and history lose
-only the one endpoint (`StoredServerEndpoint`). The release in `/Applications` shares the defaults domain
-with a Debug build.
+or moving a folder fails there: an M32 gap found here, **since fixed** (the next note). And **a build that
+predates this slice cannot read a saved-server list holding NTLM or Negotiate**. Measured with a scheme this
+build does not know: the whole list is refused, so that build shows no saved servers, and a server saved
+there writes over all of them. Tabs, pins and history lose only the one endpoint (`StoredServerEndpoint`).
+The release in `/Applications` shares the defaults domain with a Debug build.
+
+**2026-11-10: a folder on a stock Debian Apache** (found in Slice 6's live run; core, then the app). A Debian
+or Ubuntu Apache redirects any request naming a folder without its slash (`mod_dir`'s `DirectorySlash`),
+PROPFIND included, so a stat of any folder failed there, not only deleting and moving one. A file named with
+the slash answers 400, so nothing adds it on a guess. Every request still starts bare, and
+`WebDAVFolderRedirect` sends it once more with the slash where the redirect asks. A `Location` of the same
+URL plus `/` names the source, and a redirect with no `Location` names a MOVE's or COPY's destination,
+which is how `mod_dav`'s lookup of an existing folder answers. Each end is asked again at most once. A PUT
+is never sent again, since that redirect says a folder holds the name. The transport's DELETE, MOVE and
+COPY now say which ends are named as folders. A server that never redirects is sent byte for byte what it
+was before, and on one that does, a folder costs one request more per delete, move or stat. No new
+strings. 13 core tests are new, on 16 runs of the core's own builders through `curl` against Apache
+2.4.68, and seven negative controls were each caught.
+
+The Kerberos stand-in keeps Debian's default now, so the live suite has one server that redirects, and a
+stat of a folder joined the suite. All 13 live tests passed on all seven endpoints. The stand-in's own log
+shows each folder's DELETE and MOVE answered 301 and then done by the slashed request, and the PUT onto a
+folder not sent again. With the resend switched off, the three tests that failed before failed again, on
+that endpoint alone. **Not seen:** an Ubuntu Apache, and any other server that redirects. The NAS was not
+asked, since it never redirects (M32), so what it is sent has not changed.
 
 #### M39 — Quick View (L)
 

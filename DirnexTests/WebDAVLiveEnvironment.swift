@@ -106,6 +106,7 @@ enum WebDAVLiveEnvironment {
         let lockGuardsFolder: Bool?
         let keepsUploadDates: Bool?
         let offersNegotiate: Bool?
+        let redirectsBareFolders: Bool?
         let krb5Config: String?
         let credentialCache: String?
     }
@@ -157,6 +158,10 @@ struct WebDAVLiveEndpoint: Sendable, CustomTestStringConvertible {
     /// account with no name is then signed in with the Mac's ticket rather than told it needs a
     /// name, so its refusal is the ticket's (PLAN.md §M38).
     let offersNegotiate: Bool
+    /// Whether the server redirects a folder named without its trailing slash, so a folder's DELETE
+    /// or MOVE is sent twice: bare, then with the slash. A stock Debian Apache does (`mod_dir`'s
+    /// `DirectorySlash`); macOS's Apache, the NAS and Nextcloud take the bare name (PLAN.md §M38).
+    let redirectsBareFolders: Bool
 
     var testDescription: String { name }
 
@@ -194,6 +199,7 @@ struct WebDAVLiveEndpoint: Sendable, CustomTestStringConvertible {
         lockGuardsFolder = file.lockGuardsFolder ?? true
         keepsUploadDates = file.keepsUploadDates ?? false
         offersNegotiate = file.offersNegotiate ?? false
+        redirectsBareFolders = file.redirectsBareFolders ?? false
     }
 
     /// `name`'s bytes as this server stores them.
@@ -260,9 +266,10 @@ final class CountingWebDAVTransport: WebDAVTransport, @unchecked Sendable {
         /// A PUT of a local file, and whether it asked the server for a date.
         case put(S3WriteCondition, askedForDate: Bool = false)
         case putEmpty(S3WriteCondition)
-        case move
-        case copy
-        case delete
+        /// Which ends were named with their slash, which only a redirect asks for.
+        case move(WebDAVCollectionEnds = [])
+        case copy(WebDAVCollectionEnds = [])
+        case delete(asCollection: Bool = false)
     }
 
     private let base: any WebDAVTransport
@@ -368,19 +375,27 @@ final class CountingWebDAVTransport: WebDAVTransport, @unchecked Sendable {
         return try base.putEmpty(backendPath, condition: condition)
     }
 
-    func move(_ backendPath: String, to destinationPath: String) throws -> WebDAVHTTPResponse {
-        record(.move)
-        return try base.move(backendPath, to: destinationPath)
+    func move(
+        _ backendPath: String,
+        to destinationPath: String,
+        collections: WebDAVCollectionEnds
+    ) throws -> WebDAVHTTPResponse {
+        record(.move(collections))
+        return try base.move(backendPath, to: destinationPath, collections: collections)
     }
 
-    func copy(_ backendPath: String, to destinationPath: String) throws -> WebDAVHTTPResponse {
-        record(.copy)
-        return try base.copy(backendPath, to: destinationPath)
+    func copy(
+        _ backendPath: String,
+        to destinationPath: String,
+        collections: WebDAVCollectionEnds
+    ) throws -> WebDAVHTTPResponse {
+        record(.copy(collections))
+        return try base.copy(backendPath, to: destinationPath, collections: collections)
     }
 
-    func delete(_ backendPath: String) throws -> WebDAVHTTPResponse {
-        record(.delete)
-        return try base.delete(backendPath)
+    func delete(_ backendPath: String, isCollection: Bool) throws -> WebDAVHTTPResponse {
+        record(.delete(asCollection: isCollection))
+        return try base.delete(backendPath, isCollection: isCollection)
     }
 }
 

@@ -161,7 +161,9 @@ extension WebDAVLiveIntegrationTests {
         #expect(run.delete == .unsupported(.lockedOnServer(name: "held.txt")))
         #expect(run.rowsAfterDelete == ["held.txt"], "a refused delete deletes nothing")
         #expect(run.unlockStatus == 204)
-        #expect(run.deleteRequests == [.delete])
+        #expect(
+            run.deleteRequests == endpoint.folderRequests(.delete(), .delete(asCollection: true))
+        )
     }
 
     struct LockRun: Sendable {

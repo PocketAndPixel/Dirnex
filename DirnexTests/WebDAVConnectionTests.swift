@@ -68,11 +68,15 @@ private struct OneFolderTransport: WebDAVTransport {
         WebDAVHTTPResponse(status: 403)
     }
 
-    func move(_: String, to _: String) throws -> WebDAVHTTPResponse { WebDAVHTTPResponse(status: 403) }
+    func move(_: String, to _: String, collections _: WebDAVCollectionEnds) throws
+        -> WebDAVHTTPResponse { WebDAVHTTPResponse(status: 403) }
 
-    func copy(_: String, to _: String) throws -> WebDAVHTTPResponse { WebDAVHTTPResponse(status: 403) }
+    func copy(_: String, to _: String, collections _: WebDAVCollectionEnds) throws
+        -> WebDAVHTTPResponse { WebDAVHTTPResponse(status: 403) }
 
-    func delete(_: String) throws -> WebDAVHTTPResponse { WebDAVHTTPResponse(status: 403) }
+    func delete(_: String, isCollection _: Bool) throws -> WebDAVHTTPResponse {
+        WebDAVHTTPResponse(status: 403)
+    }
 }
 
 /// A WebDAV account in the pane's routing backend (PLAN.md §M32 Slice 3): what it can do, where
