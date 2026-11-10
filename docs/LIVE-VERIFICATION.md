@@ -278,7 +278,16 @@ so a trap goes here only if it can bite any live run; one tied to an area goes u
     app reconnects at launch since session restore learned to (NOTES.md ▸ Design lessons). Back the domain up
     with `defaults export` first, and `ssh-keyscan` the throwaway host key into `known_hosts` or the
     connect raises a trust dialog that wedges a headless run; put both back afterwards.
-    - **`ssh-keyscan … >> ~/.ssh/known_hosts` also appends comment lines, and `down` leaves them.**
+    - **A throwaway port can carry a stale pin, and the failure can look like the feature under test.**
+    Seen 2026-11-10: an `sftp`-only `sshd` on 2223, a port an earlier run had left pinned to another key.
+    Every connection closed before authentication, the pane listed nothing, `accountIdentity` answered
+    `nil`, and Open in Terminal raised the very refusal being checked. The tells were the pane's empty list
+    and a server log with `Connection closed … [preauth]` and no `Accepted`. Run `ssh-keygen -F
+    '[127.0.0.1]:<port>'` before choosing a port, and copy `known_hosts` aside first.
+  - **Where a remote shell really is can be read from the server's side.** The log's `Starting session:
+    command on ttysNNN` names its terminal, `ps -t ttysNNN` finds the shell, and `lsof -a -p <pid> -d cwd`
+    says where it is. That needs no grant on Terminal, which computer use only offers at the "click" tier.
+  - **`ssh-keyscan … >> ~/.ssh/known_hosts` also appends comment lines, and `down` leaves them.**
       Seen 2026-10-27: it printed `# 127.0.0.1:2222 SSH-2.0-OpenSSH_10.3` on stdout five times
       beside the key, `ssh-keygen -R` removed the key and kept the five, and two more from an earlier
       run were already there. Copy the file aside first and put the copy back, or append only

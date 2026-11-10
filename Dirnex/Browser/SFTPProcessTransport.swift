@@ -76,6 +76,18 @@ struct SFTPProcessTransport: SFTPTransport {
         )
     }
 
+    /// The session Open in Terminal runs on this connection, built from the same dial and the same
+    /// authentication as ``execArguments(command:)`` so it cannot contact a different host.
+    func terminalSession(in directory: String) -> SSHTerminalSession {
+        SSHTerminalSession(
+            location: location,
+            dial: dialer.dialed,
+            authentication: authentication,
+            directory: directory,
+            connectTimeout: connectTimeout
+        )
+    }
+
     func listDirectory(_ remotePath: String) throws -> String {
         try run(batch: SFTPBatchCommand.list(remotePath))
     }

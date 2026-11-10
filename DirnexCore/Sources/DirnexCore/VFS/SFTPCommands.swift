@@ -259,7 +259,32 @@ public enum SFTPProcessArguments {
         ) + [command]
     }
 
-    /// Which of the two tools is being armed. The port flag and the batch file are not independent
+    /// The `ssh` arguments for a session a person types into: Open in Terminal on an SFTP account
+    /// (PLAN.md §M38 Slice 3), with `command` as the operand that lands them in the pane's folder.
+    ///
+    /// The host key policy, the timeout and the offered methods are the other two channels', for
+    /// the same reason those two share them. Two things differ:
+    ///
+    /// - `-t`, because `ssh` gives a command no terminal unless it is asked for one.
+    /// - **No `BatchMode` for a key.** A person is there to answer whatever a key asks, and
+    ///   `BatchMode` would turn that question into a refusal.
+    public static func terminal(
+        location: SFTPLocation,
+        dial: DialedHost,
+        authentication: SFTPAuthentication,
+        connectTimeout: Int,
+        command: String
+    ) -> [String] {
+        ["-t"] + arguments(
+            location: location,
+            dial: dial,
+            authentication: authentication,
+            connectTimeout: connectTimeout,
+            channel: .terminal
+        ) + [command]
+    }
+
+    /// Which tool is being armed, and for whom. The port flag and the batch file are not independent
     /// — `sftp` spells the port `-P` and reads `-b -`, `ssh` spells it `-p` and takes the command as
     /// an operand — so they are one decision rather than two booleans a call site could mix.
     enum Channel {
@@ -267,11 +292,15 @@ public enum SFTPProcessArguments {
         case sftp
         /// `ssh <command>`: the exec channel behind the search shortcut.
         case exec
+        /// `ssh -t <command>`: a session with a person at it.
+        case terminal
 
         /// Getting this backwards is a *usage* error, which exits 1 having printed help
         /// (docs/NOTES.md ▸ sftp / ssh).
         var portFlag: String { self == .sftp ? "-P" : "-p" }
         var readsBatchFile: Bool { self == .sftp }
+        /// Whether anything can answer a question `ssh` asks on the way in.
+        var hasSomeoneToAsk: Bool { self == .terminal }
     }
 
     private static func arguments(
@@ -299,8 +328,8 @@ public enum SFTPProcessArguments {
         let target = "\(location.username)@\(dial.host)"
         switch authentication {
         case let .key(identityFile):
-            return ["-i", identityFile, "-o", "BatchMode=yes"] + common
-                + (channel.readsBatchFile ? ["-b", "-"] : []) + [target]
+            return ["-i", identityFile] + (channel.hasSomeoneToAsk ? [] : ["-o", "BatchMode=yes"])
+                + common + (channel.readsBatchFile ? ["-b", "-"] : []) + [target]
         case .password:
             // No `-b`: it would disable the prompt. Interactive over piped stdin; `SSH_ASKPASS`
             // answers the prompt (wired by the transport's environment).
