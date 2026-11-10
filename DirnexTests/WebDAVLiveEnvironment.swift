@@ -28,6 +28,14 @@ import Testing
 ///
 /// Each field past the location is a **claim about that endpoint**, written down rather than
 /// inferred, since a live test's constants are the ones that expire (docs/NOTES.md ▸ Live suites).
+///
+/// PLAN.md §M38 added the two sign-in stand-ins: the NTLM proxy (`Tooling/fake-ntlm-proxy.py`,
+/// `"scheme": "ntlm"`, offering Negotiate beside it as IIS does, which `offersNegotiate` states) and
+/// the Kerberos container (`Tooling/negotiate-standin`, `"scheme": "negotiate"` with no user). The
+/// container's endpoint names a `krb5Config` and a `credentialCache`, and the suite points
+/// `KRB5_CONFIG` and `KRB5CCNAME` at them for the whole test process, since the app's `curl` inherits
+/// its environment and finds the Mac's ticket through exactly those two. That stands in for the
+/// Mac's own Kerberos state: the user's default cache and `/etc` are never touched.
 /// `keychain` stands in for `password` so a real account's password never has to be written into
 /// `/tmp`: it is read from the login Keychain once per run, which raises the Keychain's own prompt
 /// for whoever runs it (CLAUDE.md ▸ How to work here).
@@ -52,8 +60,18 @@ enum WebDAVLiveEnvironment {
             secrets[key] = read
             return read
         }
+        useKerberosStandIn(file.endpoints)
         return file.endpoints.compactMap { WebDAVLiveEndpoint($0, secret: secret) }
     }()
+
+    /// Point Kerberos at the stand-in's realm and ticket for this process, when an endpoint names
+    /// them. Set once, before any request of this suite, and never unset: every `curl` the suite
+    /// spawns inherits it, and nothing else in the test process reads Kerberos.
+    private static func useKerberosStandIn(_ endpoints: [Endpoint]) {
+        guard let kerberos = endpoints.first(where: { $0.krb5Config != nil }) else { return }
+        if let config = kerberos.krb5Config { setenv("KRB5_CONFIG", config, 1) }
+        if let cache = kerberos.credentialCache { setenv("KRB5CCNAME", cache, 1) }
+    }
 
     static var isEnabled: Bool { !endpoints.isEmpty }
 
@@ -87,6 +105,9 @@ enum WebDAVLiveEnvironment {
         let composesNames: Bool?
         let lockGuardsFolder: Bool?
         let keepsUploadDates: Bool?
+        let offersNegotiate: Bool?
+        let krb5Config: String?
+        let credentialCache: String?
     }
 }
 
@@ -132,6 +153,10 @@ struct WebDAVLiveEndpoint: Sendable, CustomTestStringConvertible {
     /// Whether a PUT asking for a date with `X-OC-Mtime` gets it, which the server says in its
     /// answer. Nextcloud does; Apache ignores the header (``WebDAVModificationTime``).
     let keepsUploadDates: Bool
+    /// Whether the server's challenge offers Negotiate beside a password scheme, as IIS's does. An
+    /// account with no name is then signed in with the Mac's ticket rather than told it needs a
+    /// name, so its refusal is the ticket's (PLAN.md §M38).
+    let offersNegotiate: Bool
 
     var testDescription: String { name }
 
@@ -168,6 +193,7 @@ struct WebDAVLiveEndpoint: Sendable, CustomTestStringConvertible {
         composesNames = file.composesNames ?? false
         lockGuardsFolder = file.lockGuardsFolder ?? true
         keepsUploadDates = file.keepsUploadDates ?? false
+        offersNegotiate = file.offersNegotiate ?? false
     }
 
     /// `name`'s bytes as this server stores them.

@@ -435,6 +435,47 @@ their text was read from the views); real AWS, with its listed `<BucketRegion>` 
 live search; an account of many large buckets. All are Slice 10's. **A known rough edge:** the progress
 sheet's title names the account by its host ("Searching “127.0.0.1”…"), as a walk names a server.
 
+**2026-11-10: Slice 6 landed** (core, then the app). A WebDAV server asking for NTLM or Negotiate can be
+signed in to. `WebDAVAuthScheme` gained `.ntlm` and `.negotiate`. A named account answers with Basic, NTLM
+or Digest, in that order over HTTPS and as Digest, NTLM, Basic over plain HTTP, so an IIS offering
+Negotiate, NTLM and Basic over HTTP now gets NTLM where it used to get Basic. An account with no user name
+signs in by Negotiate with the Mac's own Kerberos ticket (`curl --negotiate -u :`), Oleg's call, so nothing
+typed is sent. A named account on a Kerberos-only server is told to leave the name empty, and a refused
+ticket is told to get one in Ticket Viewer and to connect by the server's name. Both are in 14 languages,
+with Ticket Viewer under the name macOS gives it in each. The Connect sheet drops a settled scheme that no
+longer fits the account (`WebDAVAuthScheme.fits`). NTLM needed nothing past its spelling: `curl` signs a
+connection in once, a batch's later sections ride it, a body goes once, and `--fail` trips only on the
+proof's answer (NOTES.md ▸ curl). 21 core tests and 4 app tests are new, the core's fixtures are real `curl`
+runs of its own builders against the stand-ins, and five negative controls were each caught.
+
+Built and verified on two stand-ins, with no real IIS or Active Directory, as decided:
+`Tooling/fake-ntlm-proxy.py` checks the real NTLMv2 proof in front of the throwaway Apache and offers
+Negotiate beside NTLM as IIS does, and `Tooling/negotiate-standin` is an MIT KDC with Debian's Apache and
+`mod_auth_gssapi` in a container. `scripts/live_test_servers.sh` brings both up and down, the Kerberos one
+only when Docker is running and its image is built. Its ticket lives in a cache of its own, so the Mac's
+Kerberos state is never touched. The WebDAV live suite ran over all seven endpoints, and with the
+stand-in's credential cache pointed at nothing, 11 issues appeared, all on the Kerberos endpoint.
+
+Run live in a copy built under its own bundle id. With the stand-in's ticket in its environment, a restored
+tab signed in to the share as `probe@DIRNEX.TEST` with no password, which the server's log confirms, and
+without it the same tab sent one anonymous request. Both refusals were seen on screen, in English and
+Russian: the ticket's as an alert from a saved row with no name, the named account's in the Connect sheet
+and as an alert. A temporary env-gated line, now gone, filled the sheet's password, which the background
+tools will not type.
+
+**Not seen:** a real IIS, a Windows domain, and a ticket from Active Directory or the Kerberos SSO extension;
+NTLM over HTTPS; and a server taking the NTLM token macOS's SPNEGO offers when there is no ticket, which
+the stand-in refuses. All are Slice 10's. **Known rough edges:** a restored Negotiate tab with no ticket says
+only "The server refused that. This account may not have permission for it." on its status line, since a
+reconnect does not go through the probe's sentences. A stock Debian or Ubuntu Apache's `mod_dir` answers
+301 to a DELETE, MOVE or PUT naming a folder without its slash, which is how Dirnex names one, so deleting
+or moving a folder fails there: an M32 gap found here, and the Kerberos stand-in turns `DirectorySlash`
+off until it is fixed. And **a build that predates this slice cannot read a saved-server list holding NTLM
+or Negotiate**. Measured with a scheme this build does not know: the whole list is refused, so that build
+shows no saved servers, and a server saved there writes over all of them. Tabs, pins and history lose
+only the one endpoint (`StoredServerEndpoint`). The release in `/Applications` shares the defaults domain
+with a Debug build.
+
 #### M39 — Quick View (L)
 
 - **RTF** (M16, M18), with a source and a page view. It is `NSAttributedString`'s job and shares

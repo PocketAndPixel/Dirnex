@@ -74,12 +74,19 @@ struct WebDAVOutsideClient {
         }
         var configuration: String?
         if !location.username.isEmpty {
-            arguments.append(endpoint.expectedScheme == .digest ? "--digest" : "--basic")
+            switch endpoint.expectedScheme {
+            case .digest: arguments.append("--digest")
+            case .ntlm: arguments.append("--ntlm")
+            default: arguments.append("--basic")
+            }
             arguments += ["-K", "-"]
             configuration = WebDAVConfigFile.credentials(
                 username: location.username,
                 password: endpoint.password
             )
+        } else if endpoint.expectedScheme == .negotiate {
+            // The Mac's ticket, from the credential cache the environment names (WebDAVLiveEnvironment).
+            arguments += ["--negotiate", "-u", ":"]
         }
         if let method { arguments += ["-X", method] }
         arguments += extra

@@ -129,14 +129,20 @@ public extension WebDAVProcessArguments {
     }
 
     /// How one section reaches the server, in config spelling: the address family, the scheme and
-    /// the credential when the session sends one, and the pin over HTTPS. Every section of a run
-    /// repeats them, since `curl` reads one option set per transfer.
+    /// the credential when the session sends one (or Negotiate's empty account when it signs in
+    /// with the Mac's ticket), and the pin over HTTPS. Every section of a run repeats them, since
+    /// `curl` reads one option set per transfer.
+    ///
+    /// Repeating them costs nothing on a connection NTLM has already signed in: a later section
+    /// sends no header at all (``WebDAVAuthScheme/ntlm``).
     internal static func connectionLines(session: WebDAVSession, credentials: String?) -> [String] {
         var lines: [String] = []
         if session.dial.restrictsToIPv4 { lines.append("ipv4\n") }
         if session.sendsCredentials, let credentials, let scheme = session.authentication {
-            lines.append(scheme == .digest ? "digest\n" : "basic\n")
+            lines.append(scheme.curlOption + "\n")
             lines.append(credentials.hasSuffix("\n") ? credentials : credentials + "\n")
+        } else if session.signsInWithTicket {
+            lines += ["negotiate\n", "user = \":\"\n"]
         }
         if session.location.usesTLS, case let .pinned(publicKey) = session.trust {
             lines.append("insecure\n")

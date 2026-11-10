@@ -54,7 +54,29 @@ struct WebDAVChallengeTests {
         #expect(WebDAVChallenge.preferred(among: both, overTLS: false) == .digest)
         #expect(WebDAVChallenge.preferred(among: ["basic"], overTLS: false) == .basic)
         #expect(WebDAVChallenge.preferred(among: ["digest"], overTLS: true) == .digest)
-        #expect(WebDAVChallenge.preferred(among: ["negotiate", "ntlm"], overTLS: true) == nil)
+    }
+
+    /// PLAN.md §M38: NTLM's handshake is paid once per connection, so it ranks above Digest's 401
+    /// per request over HTTPS, and above Basic's password in the clear over plain HTTP.
+    @Test("NTLM: after Basic over HTTPS, before Basic over plain HTTP, never before Digest there")
+    func ntlmPreference() {
+        let iis = ["negotiate", "ntlm", "basic"]
+        #expect(WebDAVChallenge.preferred(among: iis, overTLS: true) == .basic)
+        #expect(WebDAVChallenge.preferred(among: iis, overTLS: false) == .ntlm)
+        #expect(WebDAVChallenge.preferred(among: ["digest", "ntlm"], overTLS: true) == .ntlm)
+        #expect(WebDAVChallenge.preferred(among: ["digest", "ntlm"], overTLS: false) == .digest)
+        #expect(WebDAVChallenge.preferred(among: ["negotiate", "ntlm"], overTLS: true) == .ntlm)
+        #expect(WebDAVChallenge.preferred(among: ["ntlm"], overTLS: false) == .ntlm)
+    }
+
+    /// Negotiate signs in as whoever holds the Mac's ticket, so it is never what a named account
+    /// answers with, however the server ranks it.
+    @Test("Negotiate is never a named account's scheme, and is read as an offer of the ticket")
+    func negotiateIsTheTicket() {
+        #expect(WebDAVChallenge.preferred(among: ["negotiate"], overTLS: true) == nil)
+        #expect(WebDAVChallenge.preferred(among: ["negotiate"], overTLS: false) == nil)
+        #expect(WebDAVChallenge.offersTicket(["negotiate", "ntlm"]))
+        #expect(!WebDAVChallenge.offersTicket(["ntlm", "basic", "digest"]))
     }
 }
 
@@ -106,12 +128,18 @@ struct WebDAVConnectProbeTests {
         #expect(server.asked == [nil, .digest])
     }
 
-    @Test("Basic found behind Negotiate and NTLM is still Basic")
+    /// The fixture is macOS's Apache configured as IIS commonly is. Over HTTPS Basic is the one
+    /// round trip; over plain HTTP NTLM keeps the password off the wire, which is a change from M32,
+    /// when Basic was the only scheme in that list Dirnex spoke.
+    @Test("behind Negotiate and NTLM, Basic over HTTPS and NTLM over plain HTTP")
     func basicAmongOthers() throws {
-        let server = FakeWebDAVServer()
-        server.answers[nil] = { _ in try WebDAVFixtures.run("curl-exit0-apache-multi-401") }
-        server.answers[.basic] = { _ in try WebDAVFixtures.multistatus("nas-root-depth0-props") }
-        #expect(try connect(Self.plainHTTP, server).authentication == .basic)
+        for (location, expected) in [(Self.nas, WebDAVAuthScheme.basic), (Self.plainHTTP, .ntlm)] {
+            let server = FakeWebDAVServer()
+            server.answers[nil] = { _ in try WebDAVFixtures.run("curl-exit0-apache-multi-401") }
+            server.answers[expected] = { _ in try WebDAVFixtures.multistatus("nas-root-depth0-props") }
+            #expect(try connect(location, server).authentication == expected)
+            #expect(server.asked == [nil, expected])
+        }
     }
 
     @Test("a server offering both gets Digest over plain HTTP and Basic over HTTPS")
@@ -128,8 +156,8 @@ struct WebDAVConnectProbeTests {
     @Test("schemes Dirnex does not speak are named, and nothing is sent in them")
     func unsupportedSchemes() {
         let server = FakeWebDAVServer()
-        server.answers[nil] = { _ in Self.challenge("Negotiate, NTLM") }
-        #expect(throws: WebDAVConnectError.unsupportedAuthentication(schemes: ["negotiate", "ntlm"])) {
+        server.answers[nil] = { _ in Self.challenge(#"Bearer realm="api", Mutual realm="x""#) }
+        #expect(throws: WebDAVConnectError.unsupportedAuthentication(schemes: ["bearer", "mutual"])) {
             try connect(Self.nas, server)
         }
         #expect(server.asked == [nil])

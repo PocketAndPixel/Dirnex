@@ -390,6 +390,15 @@ so a trap goes here only if it can bite any live run; one tied to an area goes u
   headers are keyboard stops, so count them or zoom on the sidebar after each key. And a vault row
   passed on the way opens if ⌘Return lands on it, which reads its passphrase from the Keychain. A
   plain Return proves nothing about ⌘, so run a case whose result only ⌘ can produce first.
+- **A saved server row opens from the background with Focus Sidebar and Return, and one with no password
+  on file files whatever password its sheet connects with.** Seen 2026-11-10: `app_click` on a Servers
+  row only selected it. View ▸ Focus Sidebar put the selection on the section's first row, `down` moved
+  it, and `return` opened it. A named row whose password was not in the Keychain opened the Connect sheet
+  as Edit…, whose Connect saves the record and the password before connecting
+  (`PanelViewController+EditServer`), so a refused connect left a throwaway Keychain item and the next
+  pick of the row skipped the sheet. Give such a row a user name of its own, check for the item with
+  `security find-generic-password -s <service> -a <account>` (attributes only, no prompt), and delete it
+  with `security delete-generic-password` afterwards, which asked nothing.
 - **Background computer-use cannot move a window.** Seen 2026-10-22 checking that the compare window
   remembers where it was dragged: an `app_drag` on the title bar reported success, and
   `CGWindowListCopyWindowInfo` read back the same frame. Dirnex's dictionary has no window `bounds`,

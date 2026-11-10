@@ -66,6 +66,11 @@ struct WebDAVLiveIntegrationTests {
     /// The refusals a connect must name, each tried only where it is safe and its answer is a fact
     /// about the endpoint. No user and a wrong pin cost no login anywhere: the first request goes
     /// without credentials whatever happens, and a pin is weighed before any HTTP is sent.
+    ///
+    /// No user on a server that also offers Negotiate is signed in with the Mac's ticket, which the
+    /// suite's realm has none for at that address, so it is refused as the ticket. A ticket endpoint
+    /// is asked the other way round: a named account there is told the server takes only the ticket,
+    /// and sends nothing (PLAN.md §M38).
     @Test(
         "refuses no user, a wrong password, a wrong pin and no pin",
         arguments: WebDAVLiveEnvironment.endpoints
@@ -93,7 +98,21 @@ struct WebDAVLiveIntegrationTests {
             }
             let location = endpoint.location
             var refusals: [String: WebDAVConnectError?] = [:]
-            if endpoint.expectedScheme != nil {
+            if endpoint.expectedScheme == .negotiate {
+                let named = WebDAVLocation(
+                    host: location.host,
+                    port: location.port,
+                    username: "probe",
+                    usesTLS: location.usesTLS,
+                    rootPath: location.rootPath
+                )
+                refusals["a name"] = refusal(
+                    named,
+                    password: "unused",
+                    pin: endpoint.trustedPublicKey
+                )
+            }
+            if endpoint.expectedScheme?.usesPassword == true {
                 let anonymous = WebDAVLocation(
                     host: location.host,
                     port: location.port,
@@ -116,8 +135,14 @@ struct WebDAVLiveIntegrationTests {
             }
             return refusals
         }
-        if endpoint.expectedScheme != nil {
-            #expect(refusals["no user"] == .some(.credentialsRequired))
+        if endpoint.expectedScheme == .negotiate {
+            #expect(refusals["a name"] == .some(.kerberosOnly))
+        }
+        if endpoint.expectedScheme?.usesPassword == true {
+            let noUser: WebDAVConnectError = endpoint.offersNegotiate
+                ? .kerberosTicketRefused
+                : .credentialsRequired
+            #expect(refusals["no user"] == .some(noUser))
             if endpoint.mayTryWrongPassword {
                 #expect(refusals["wrong password"] == .some(.credentialsRefused))
             }

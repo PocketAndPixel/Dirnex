@@ -1,0 +1,9 @@
+dav-status=401
+dav-size=498
+dav-up=201
+dav-headers={"date":["Tue, 10 Nov 2026 19:42:24 GMT"],
+"server":["Apache/2.4.68 (Debian)"],
+"www-authenticate":["Negotiate oQcwBaADCgEC"],
+"content-length":["498"],
+"content-type":["text/html; charset=iso-8859-1"]
+}
