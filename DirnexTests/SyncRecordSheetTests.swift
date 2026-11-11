@@ -12,7 +12,9 @@ import Testing
 struct SyncRecordBoxTests {
     private static let vault = "/Volumes/Vault"
 
-    @Test("two folders on this Mac can have a record, and a server side, a vault or no store cannot")
+    @Test(
+        "two folders on this Mac, or one beside a server, can have a record; a vault or no store cannot"
+    )
     func whichPairs() throws {
         let store = SyncRecordStore(parent: FileManager.default.temporaryDirectory)
         let sftp = VFSPath(
@@ -28,7 +30,7 @@ struct SyncRecordBoxTests {
             ) != nil
         )
         #expect(
-            SyncRecordAccess(left: .local("/a"), right: sftp, store: store, vaultMountPoints: []) == nil
+            SyncRecordAccess(left: .local("/a"), right: sftp, store: store, vaultMountPoints: []) != nil
         )
         #expect(
             SyncRecordAccess(

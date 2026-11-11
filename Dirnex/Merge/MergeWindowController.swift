@@ -26,6 +26,10 @@ struct MergeInput: Sendable {
     /// A second local file that takes the same result, as it was when the versions were read: the
     /// other side of a Synchronize row (PLAN.md §M37 Slice 8). `nil` where a save writes one file.
     var secondTarget: ComparedFileSave.Target?
+    /// Whether the second file's old bytes go into the undo store. Not for a server side's copy,
+    /// which is carried up to the server once it is written, as the compare window's carried copy
+    /// keeps none (PLAN.md §M38 Slice 9).
+    var secondTargetKeepsUndo = true
 }
 
 /// What the merge window's save needs besides the file: the undo store, and whose journal records

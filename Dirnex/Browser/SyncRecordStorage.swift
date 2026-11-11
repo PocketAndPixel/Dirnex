@@ -34,12 +34,14 @@ struct SyncRecordAccess: Sendable {
     let pair: SyncRecordPair
 
     /// The record of these two folders, or `nil` when they cannot have one, which leaves the window
-    /// with no box to tick (``SyncRecordPair``).
+    /// with no box to tick (``SyncRecordPair``). One side may be on a server since PLAN.md §M38
+    /// Slice 9: such a record keeps what each sync copied, and reads the server's side by its stamp.
     init?(left: VFSPath, right: VFSPath, store: SyncRecordStore?, vaultMountPoints: [String]) {
         guard let store, let pair = SyncRecordPair(
             left: left,
             right: right,
-            vaultMountPoints: vaultMountPoints
+            vaultMountPoints: vaultMountPoints,
+            allowingServerSide: true
         ) else { return nil }
         self.store = store
         self.pair = pair
@@ -62,4 +64,15 @@ struct SyncMergeRequest: Sendable {
     /// The version both sides last held.
     let base: URL
     let records: SyncRecordAccess
+
+    /// The side on a server, or `nil` when both are on this disk (PLAN.md §M38 Slice 9).
+    var server: FileEntry? {
+        records.pair.serverFolder == nil ? nil : [left, right].first { $0.path.backend != .local }
+    }
+
+    /// The file on this disk that Save writes first: the left one of a local pair, else the side that
+    /// is not on the server.
+    var local: FileEntry {
+        server.map { $0.path == left.path ? right : left } ?? left
+    }
 }

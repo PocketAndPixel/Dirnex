@@ -57,7 +57,12 @@ extension MergeWindowController {
         guard let saved = await write(document, to: target) else { return false }
         target = saved
         if let second = secondTarget {
-            guard let saved = await write(document, to: second, takingDateOf: target.path) else { return false }
+            guard let saved = await write(
+                document,
+                to: second,
+                takingDateOf: target.path,
+                keepingUndo: input.secondTargetKeepsUndo
+            ) else { return false }
             secondTarget = saved
         }
         savedChoices = choices
@@ -73,9 +78,10 @@ extension MergeWindowController {
     private func write(
         _ document: ComparedDocument,
         to target: ComparedFileSave.Target,
-        takingDateOf dateSource: String? = nil
+        takingDateOf dateSource: String? = nil,
+        keepingUndo: Bool = true
     ) async -> ComparedFileSave.Target? {
-        let request = saving.undo()
+        let request = keepingUndo ? saving.undo() : .none
         let undo = request.store.map { ComparedFileSave.UndoCopy(store: $0, live: request.live) }
         var overwriting = false
         while true {

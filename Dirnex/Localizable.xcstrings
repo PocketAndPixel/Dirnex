@@ -15584,6 +15584,95 @@
         }
       }
     },
+    "After each sync, Dirnex keeps a copy of each text file the sync copied to or from the server, so a file later changed on both sides can be merged. A file the sync didn’t copy isn’t kept, since that would mean downloading it. Turning this off and synchronizing removes the copies.": {
+      "comment": "Tooltip of the Synchronize window's box that keeps synced versions of text files, when one of the two folders is on a server.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nach jeder Synchronisierung bewahrt Dirnex eine Kopie jeder Textdatei auf, die die Synchronisierung auf den Server oder vom Server kopiert hat, sodass eine später auf beiden Seiten geänderte Datei zusammengeführt werden kann. Eine Datei, die nicht kopiert wurde, wird nicht aufbewahrt, da sie dafür heruntergeladen werden müsste. Wenn Sie dies ausschalten und synchronisieren, werden die Kopien entfernt."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "After each sync, Dirnex keeps a copy of each text file the sync copied to or from the server, so a file later changed on both sides can be merged. A file the sync didn’t copy isn’t kept, since that would mean downloading it. Turning this off and synchronizing removes the copies."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Después de cada sincronización, Dirnex conserva una copia de cada archivo de texto que la sincronización copió al servidor o desde él, para que un archivo modificado más tarde en ambos lados se pueda fusionar. Un archivo que la sincronización no copió no se conserva, porque habría que descargarlo. Si desactivas esto y sincronizas, se eliminan las copias."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Après chaque synchronisation, Dirnex conserve une copie de chaque fichier texte que la synchronisation a copié vers le serveur ou depuis celui-ci, afin qu’un fichier modifié ensuite des deux côtés puisse être fusionné. Un fichier que la synchronisation n’a pas copié n’est pas conservé, car il faudrait le télécharger. Désactiver cette option puis synchroniser supprime les copies."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dopo ogni sincronizzazione, Dirnex conserva una copia di ogni file di testo che la sincronizzazione ha copiato sul server o dal server, così un file modificato in seguito su entrambi i lati può essere unito. Un file che la sincronizzazione non ha copiato non viene conservato, perché bisognerebbe scaricarlo. Disattivando questa opzione e sincronizzando, le copie vengono rimosse."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "同期のたびに、同期でサーバーへ、またはサーバーからコピーしたテキストファイルのコピーを Dirnex が保持するので、後で両側で変更されたファイルをマージできます。同期でコピーしなかったファイルは、ダウンロードが必要になるため保持されません。これをオフにして同期すると、コピーは削除されます。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "동기화할 때마다 Dirnex는 동기화로 서버에 또는 서버에서 복사한 텍스트 파일의 사본을 보관하므로, 나중에 양쪽에서 변경된 파일을 병합할 수 있습니다. 동기화로 복사하지 않은 파일은 다운로드해야 하므로 보관하지 않습니다. 이 옵션을 끄고 동기화하면 사본이 제거됩니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Na elke synchronisatie bewaart Dirnex een kopie van elk tekstbestand dat de synchronisatie naar of van de server heeft gekopieerd, zodat een bestand dat later aan beide kanten is gewijzigd kan worden samengevoegd. Een bestand dat niet is gekopieerd, wordt niet bewaard, omdat het daarvoor gedownload zou moeten worden. Als je dit uitschakelt en synchroniseert, worden de kopieën verwijderd."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Po każdej synchronizacji Dirnex zachowuje kopię każdego pliku tekstowego, który synchronizacja skopiowała na serwer lub z serwera, aby można było scalić plik zmieniony później po obu stronach. Plik, którego synchronizacja nie skopiowała, nie jest zachowywany, bo wymagałoby to jego pobrania. Wyłączenie tej opcji i synchronizacja usuwa te kopie."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Após cada sincronização, o Dirnex mantém uma cópia de cada arquivo de texto que a sincronização copiou para o servidor ou do servidor, para que um arquivo alterado depois nos dois lados possa ser mesclado. Um arquivo que a sincronização não copiou não é mantido, pois seria preciso baixá-lo. Desativar esta opção e sincronizar remove as cópias."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "После каждой синхронизации Dirnex хранит копию каждого текстового файла, который синхронизация скопировала на сервер или с сервера, чтобы файл, позже изменённый с обеих сторон, можно было объединить. Файл, который синхронизация не копировала, не хранится, ведь для этого его пришлось бы скачать. Если отключить это и синхронизировать, копии будут удалены."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Після кожної синхронізації Dirnex зберігає копію кожного текстового файлу, який синхронізація скопіювала на сервер або з сервера, щоб файл, пізніше змінений з обох боків, можна було об’єднати. Файл, який синхронізація не копіювала, не зберігається, адже для цього його довелося б завантажити. Якщо вимкнути це й синхронізувати, копії буде вилучено."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "每次同步后，Dirnex 会保留同步复制到服务器或从服务器复制的每个文本文件的副本，以便之后合并两侧都有更改的文件。同步未复制的文件不会保留，因为那需要下载它。关闭此选项并同步后，这些副本将被移除。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "每次同步後，Dirnex 會保留同步複製到伺服器或從伺服器複製的每個文字檔案副本，以便之後合併兩側都有更改的檔案。同步未複製的檔案不會保留，因為那需要下載它。關閉此選項並同步後，這些副本將被移除。"
+          }
+        }
+      }
+    },
     "After each sync, Dirnex keeps a copy of the text files both folders hold, so a file later changed on both sides can be merged. Turning this off and synchronizing removes the copies.": {
       "comment": "Tooltip of the Synchronize window's box that keeps synced versions of text files.",
       "localizations": {

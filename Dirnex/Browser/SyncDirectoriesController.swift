@@ -14,11 +14,9 @@ import DirnexCore
 /// renders the diff. The scan runs off the main thread (content mode reads bytes).
 @MainActor
 final class SyncDirectoriesController: NSViewController {
-    /// One committed choice handed back to the panel: an entry and the action to perform on it.
-    struct Decision {
-        let entry: SyncEntry
-        let action: SyncAction
-    }
+    /// One committed choice handed back to the panel: an entry and the action to perform on it. The
+    /// core's type, since keeping a record with a server side reads which rows were copied.
+    typealias Decision = SyncDecision
 
     let leftDir: VFSPath
     let rightDir: VFSPath
