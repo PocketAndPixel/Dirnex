@@ -403,7 +403,7 @@ extension PanelViewController {
         }
         let copies = submitSyncCopies(copyGroups)
         let deletes = plan.isEmpty ? nil : runSyncDeletes(plan)
-        finishSyncRecord(record, after: copies, deletes)
+        finishSyncRecord(record, decisions: decisions, after: copies, deletes)
     }
 
     /// The directory a copy of the item at `relativePath` lands in, under `root`. The relative

@@ -669,7 +669,7 @@ the agent and adds a last-opened date, and it names a Live Photo's movie `.mov` 
 | Merge a file changed under an `F4` edit, on the server or in its archive (Merge… in the save's question)<sup>www</sup> | n/a | n/a | yes, limited<sup>zzz</sup> | yes, limited<sup>www</sup> | yes, limited<sup>www</sup> | yes | yes | n/a | no<sup>jjj</sup> | yes | n/a |
 | Resolve a git conflict (Resolve Conflict… on a file badged U, or as `git mergetool`'s tool)<sup>xxx</sup> | yes | yes | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a |
 | Synchronize Directories | yes | yes | **no**<sup>x</sup> | yes, limited<sup>x</sup> | yes, limited<sup>x</sup> | yes, limited<sup>x</sup> | yes, limited<sup>x</sup> | n/a | yes, limited<sup>x</sup> | n/a<sup>x</sup> | n/a<sup>x</sup> |
-| Keep synced versions of text files, and merge a file changed on both sides (Merge… on a Synchronize row)<sup>aam</sup> | yes | yes, limited<sup>aam</sup> | n/a | **no**<sup>aam</sup> | **no**<sup>aam</sup> | **no**<sup>aam</sup> | **no**<sup>aam</sup> | n/a | **no**<sup>aam</sup> | n/a | n/a |
+| Keep synced versions of text files, and merge a file changed on both sides (Merge… on a Synchronize row)<sup>aam</sup> | yes | yes, limited<sup>aam</sup> | n/a | yes, limited<sup>aam</sup> | yes, limited<sup>aam</sup> | yes, limited<sup>aam</sup> | yes, limited<sup>aam</sup> | n/a | **no**<sup>aam</sup> | n/a | n/a |
 | Browse *into* an archive file | yes | yes | yes | read-only<sup>y</sup> | read-only<sup>y</sup> | read-only<sup>y</sup> | read-only<sup>y</sup> | n/a | n/a | yes | yes |
 
 <sup>r</sup> The member is extracted to a temp file first; only the **cursor's** member is ever
@@ -800,10 +800,15 @@ byte comparison finds the two equal, under 5 GiB across every pair with the olde
 a folder Spotlight and Time Machine skip. A later scan marks a file whose bytes moved on differently
 on each side. Both Directions leaves such a row unticked, a mirror keeps its copy, and Merge… on the
 row opens the merge window over the kept version. Save writes the result into both files, and it
-becomes the kept version. **A side on a server has no record yet.** A local pair's versions are proved
-against both sides' bytes, which on a server would download every text file on every sync. Since M38
-Slice 8 the core can keep such a record from the files a sync copied, with the server row's size, date and
-tag beside each, and say what changed by those stamps; the window takes it up in Slice 9. Nothing inside
+becomes the kept version. **A pair with one side on a server keeps only what its sync copied** (PLAN.md
+§M38 Slices 8 and 9), since a local pair's proof against both sides' bytes would download every text
+file on every sync. Beside each version goes the server row's size, date and tag, and the server's side
+counts as changed when that stamp moves, so nothing is downloaded to say so. Merge… brings the server's
+file down when pressed, and Save writes the local file and carries the result up as an edited server
+file's save is carried, with its check and its question. A same-size SFTP or FTP write inside the
+listing's resolution goes unseen, and a `touch` reads as a change. A pair of two servers has no record,
+nor does the Photos library, which takes no upload. Seen live over SFTP; FTP, WebDAV and S3 take the same
+route. Nothing inside
 a vault is kept, and an evicted cloud placeholder is neither kept nor read to say what changed.
 
 <sup>x</sup> A side stopped having to be on this disk at PLAN.md §M25 Slice 5c, and what it gains is

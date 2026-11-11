@@ -628,6 +628,45 @@ merge that resolves clean. A same-size SFTP write inside the listing's minute st
 deleted from both sides keeps its version until a sync that copies something walks the pair. **Unwatched:** the
 check that the local file did not move while it was cloned, since no test can write between those two reads.
 
+**2026-11-11: Slice 9 landed** (the app). The Synchronize window offers the box on a pair with one folder on SFTP,
+FTP, WebDAV or S3. Its tooltip says such a record keeps only what each sync copied, the one new string, in 14
+languages. `SyncDirectoriesController.Decision` is now the core's `SyncDecision`, and `finishSyncRecord` hands the
+sync's rows to `keep(after:)`, so a server pair keeps what was copied and a local pair is walked as before. A row
+changed on both sides is marked and offers Merge… by the existing rules, its server half read from the row's
+stamp. Merge… on such a row brings the server's file down through `materialize`, with its weighing and its Stop,
+then reads the three versions with the local file as the one Save writes first, whichever pane it is in. Save
+writes the local file with its undo and the fetched copy with none (`MergeInput.secondTargetKeepsUndo`). It then
+carries the copy up through `BrowserWindowController.writeBack`, the compare window's route, with its check
+against the download, its question when somebody wrote the server's file since, and its precondition where there
+is a tag. Once the upload lands, the server's file is stat'd again and the merge is kept beside that stamp
+(`PanelViewController+SyncServerMerge`). An upload that does not land leaves the version the sync copied.
+
+9 app tests are new over a stand-in server, two of them run with the server in either pane, one changed, and a live suite runs the whole round trip against the
+throwaway `sshd`. The comparison, the copies, the keep, a change on each side, the download, the merge, the
+guarded write and the keep again all go through the real transport. On that server the walks went over the exec
+channel's `find` and the copies and `stat`s over `sftp`, on a clock 14 hours ahead. A stamp kept from either
+route read as unchanged on the next walk. The suite's first run also saw the accepted gap for itself: `five` made
+`FIVE` and uploaded in the same minute read as unchanged. Full runs: 5 371 core tests, and 2 513 app tests with the
+servers up, 2 486 of them executed. **Negative controls:** 12 faults, one at a time, each failed by name, among them
+Synchronize handing the record no rows, which only the new end-to-end test through `onApply` could see.
+
+Run live in the copy built under its own bundle id (`build/live-copy`, rebuilt there since the folder had gone),
+against the throwaway `sshd`, with a restored SFTP key tab, so nothing read the Keychain. Two temporary
+env-gated probes, both now gone and the copy rebuilt without them, pressed Merge… on the changed row and kept the
+cloud rows out of the sidebar. The box showed on the server pair. Ticked, Synchronize uploaded `notes.txt` and kept
+one version, with the server's row (31 bytes, a minute-aligned date) beside it. With the first line edited here
+and the last on the server, the next Synchronize opened the merge window: Yours the local file, Theirs named
+`oleg@127.0.0.1:` and the server path, both edits merged with no conflict. Save wrote the local file and the copy,
+uploaded the result, replaced the version with the merge beside the server's new 32-byte row, and the window then
+read "The folders are already in sync". The defaults domain was compared unchanged, and `known_hosts` was put back.
+
+**Not seen:** FTP, WebDAV and S3 live, which take the same route; the row's own right-click menu and the box's
+tooltip on screen, which the background tools cannot open or hover; a write on the server between Merge… and Save,
+whose question is `writeBack`'s own and pinned in its tests; and a pair with the server on the left in the app,
+covered by tests in both orders. All are Slice 10's. **A known rough edge:** the merge's stamp comes from a `stat`,
+while a later look reads the walk. The two agreed on OpenSSH here, and a server whose two routes disagreed would
+read the merged file as changed on the server, which merges clean.
+
 #### M39 — Quick View (L)
 
 - **RTF** (M16, M18), with a source and a page view. It is `NSAttributedString`'s job and shares

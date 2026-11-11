@@ -35,12 +35,23 @@ extension SyncDirectoriesController {
             kept, so a file later changed on both sides can be merged.
             """
         )
-        keepBox.toolTip = String(
+        keepBox.toolTip = records?.pair.serverFolder == nil ? String(
             localized: """
             After each sync, Dirnex keeps a copy of the text files both folders hold, so a file later \
             changed on both sides can be merged. Turning this off and synchronizing removes the copies.
             """,
             comment: "Tooltip of the Synchronize window's box that keeps synced versions of text files."
+        ) : String(
+            localized: """
+            After each sync, Dirnex keeps a copy of each text file the sync copied to or from the \
+            server, so a file later changed on both sides can be merged. A file the sync didn’t copy \
+            isn’t kept, since that would mean downloading it. Turning this off and synchronizing \
+            removes the copies.
+            """,
+            comment: """
+            Tooltip of the Synchronize window's box that keeps synced versions of text files, when one \
+            of the two folders is on a server.
+            """
         )
         keepBox.target = self
         keepBox.action = #selector(keepBoxChanged(_:))
