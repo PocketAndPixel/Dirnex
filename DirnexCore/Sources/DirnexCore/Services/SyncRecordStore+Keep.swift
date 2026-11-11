@@ -41,6 +41,10 @@ public extension SyncRecordStore {
     /// Throws what the walk throws, in which case nothing has changed, and what writing the record
     /// throws, which removes this pass's files and leaves the old record standing. A stop keeps what
     /// was finished.
+    ///
+    /// Does nothing for a pair with a server side, whose versions come from what its sync copied
+    /// (``keep(after:for:using:vaultMountPoints:date:isCancelled:)``), so a walk never reads a
+    /// server file.
     func keep(
         for pair: SyncRecordPair,
         using backend: some VFSBackend,
@@ -48,7 +52,7 @@ public extension SyncRecordStore {
         date: Date = Date(),
         isCancelled: () -> Bool = { false }
     ) throws -> SyncKeepReport {
-        guard let before = record(for: pair) else { return SyncKeepReport() }
+        guard pair.serverFolder == nil, let before = record(for: pair) else { return SyncKeepReport() }
         let rows = try DirectorySync.survey(
             left: .local(pair.first),
             right: .local(pair.second),
@@ -87,7 +91,7 @@ public extension SyncRecordStore {
         vaultMountPoints: [String] = [],
         date: Date = Date()
     ) throws -> SyncKeepReport {
-        guard let before = record(for: pair) else { return SyncKeepReport() }
+        guard pair.serverFolder == nil, let before = record(for: pair) else { return SyncKeepReport() }
         var report = SyncKeepReport()
         guard let size = EditedFileRevision.current(ofFileAt: left.path)?.byteSize,
               Self.isKeepable(
@@ -101,8 +105,8 @@ public extension SyncRecordStore {
         }
         let candidate = Candidate(
             relativePath: relativePath,
-            left: left,
-            right: right,
+            file: left,
+            proof: .otherSide(right),
             byteSize: size
         )
         try run(
@@ -124,7 +128,7 @@ extension SyncRecordStore {
 
     /// Keep what fits of `candidates` and write the record. `rows` is a whole walk of the pair, whose
     /// absences say what has gone from both sides, or `nil` when only these files were looked at.
-    fileprivate func run(
+    func run(
         _ candidates: [Candidate],
         from before: SyncRecord,
         rows: [SyncEntry]?,
@@ -157,9 +161,21 @@ extension SyncRecordStore {
     /// A file both sides hold, worth trying to keep.
     struct Candidate {
         let relativePath: String
-        let left: URL
-        let right: URL
+        /// The file on this disk whose clone becomes the version: a local pair's left side, or a
+        /// server pair's local one.
+        let file: URL
+        let proof: Proof
         let byteSize: Int64
+    }
+
+    /// What says the clone holds the other side's bytes too.
+    enum Proof {
+        /// The other side is on this disk, and the clone is compared with it.
+        case otherSide(URL)
+        /// The other side is on a server that a sync or a merge has just sent these bytes to or
+        /// taken them from. The clone is kept when the local file is still as it was checked, with
+        /// the server's stamp beside it, and no server byte is read.
+        case server(RemoteFileRevision, local: EditedFileRevision)
     }
 
     /// The rows worth keeping, by what can be told without reading them whole.
@@ -184,8 +200,8 @@ extension SyncRecordStore {
             }
             return Candidate(
                 relativePath: row.relativePath,
-                left: URL(fileURLWithPath: left.path.path),
-                right: URL(fileURLWithPath: right.path.path),
+                file: URL(fileURLWithPath: left.path.path),
+                proof: .otherSide(URL(fileURLWithPath: right.path.path)),
                 byteSize: left.byteSize
             )
         }
@@ -205,6 +221,19 @@ extension SyncRecordStore {
         else { return false }
         return (try? ComparedText.precheck(
             contentsOf: URL(fileURLWithPath: left.path),
+            byteLimit: ByteComparator.prescanByteLimit
+        )) != nil
+    }
+
+    /// Whether the local side of a pair with a server side could be a kept version: the rule above,
+    /// for the one side whose bytes are here.
+    static func isKeepable(local: VFSPath, vaultMountPoints: [String]) -> Bool {
+        guard !VaultPrivacy.isInside(local, mountPoints: vaultMountPoints),
+              let subject = try? ByteComparator.subject(local),
+              subject.isRegularFile, !subject.isDataless
+        else { return false }
+        return (try? ComparedText.precheck(
+            contentsOf: URL(fileURLWithPath: local.path),
             byteLimit: ByteComparator.prescanByteLimit
         )) != nil
     }
@@ -269,19 +298,31 @@ extension SyncRecordStore {
             }
             do {
                 let old = record.versions[candidate.relativePath]
-                // A version already kept that still holds both sides' bytes saves a copy on every
-                // sync where the store is on another volume from the files.
-                if let old, let kept = record.keptFile(for: candidate.relativePath),
-                   try same(kept, candidate.left), try same(kept, candidate.right) {
-                    versions[candidate.relativePath] = .init(
-                        file: old.file,
-                        byteSize: old.byteSize,
-                        keptAt: date
-                    )
-                    report.kept += 1
-                    return
+                let version: SyncRecord.Version?
+                switch candidate.proof {
+                case let .otherSide(other):
+                    // A version already kept that still holds both sides' bytes saves a copy on
+                    // every sync where the store is on another volume from the files.
+                    if let old, let kept = record.keptFile(for: candidate.relativePath),
+                       try same(kept, candidate.file), try same(kept, other) {
+                        versions[candidate.relativePath] = .init(
+                            file: old.file,
+                            byteSize: old.byteSize,
+                            keptAt: date
+                        )
+                        report.kept += 1
+                        return
+                    }
+                    version = try clone(candidate, server: nil) { try same($0, other) }
+                case let .server(stamp, local):
+                    // Nothing on the server is read, so the clone is believed when it is a clone of
+                    // the bytes that were checked against the server's row: the local file unmoved
+                    // since. Unwatched by any test, since nothing can write between the two reads.
+                    version = try clone(candidate, server: stamp) { _ in
+                        EditedFileRevision.current(ofFileAt: candidate.file.path) == local
+                    }
                 }
-                guard let version = try clone(candidate, comparingWith: same) else {
+                guard let version else {
                     report.notEqual += 1
                     return
                 }
@@ -293,15 +334,16 @@ extension SyncRecordStore {
             }
         }
 
-        /// Clone the left side and compare the clone with the right, answering `nil` when they
-        /// differ. A failure removes the clone before it is thrown.
+        /// Clone the candidate's file and ask `isProved` about the clone, answering `nil` when it says
+        /// no. A failure removes the clone before it is thrown.
         private mutating func clone(
             _ candidate: Candidate,
-            comparingWith same: (URL, URL) throws -> Bool
+            server: RemoteFileRevision?,
+            isProved: (URL) throws -> Bool
         ) throws -> SyncRecord.Version? {
             let name = UUID()
             let file = record.directory.appendingPathComponent(name.uuidString)
-            guard ArchiveUndoStore.duplicate(from: candidate.left.path, to: file.path) else {
+            guard ArchiveUndoStore.duplicate(from: candidate.file.path, to: file.path) else {
                 throw CocoaError(.fileWriteUnknown)
             }
             // A clone keeps a locked file's flag, and then neither eviction nor Forget can remove
@@ -309,14 +351,19 @@ extension SyncRecordStore {
             lchflags(file.path, 0)
             chmod(file.path, 0o600)
             do {
-                guard try same(file, candidate.right),
+                guard try isProved(file),
                       let landed = EditedFileRevision.current(ofFileAt: file.path)
                 else {
                     try? FileManager.default.removeItem(at: file)
                     return nil
                 }
                 written.append(file)
-                return .init(file: name, byteSize: landed.byteSize, keptAt: date)
+                return .init(
+                    file: name,
+                    byteSize: landed.byteSize,
+                    keptAt: date,
+                    serverRevision: server
+                )
             } catch {
                 try? FileManager.default.removeItem(at: file)
                 throw error

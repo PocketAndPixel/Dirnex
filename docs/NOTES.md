@@ -10575,6 +10575,17 @@ overturned the obvious implementation.
     JSON blob, so one element that refuses to decode takes **every tab beside it** — the day a new
     protocol ships, a build that has it and a build that has not would empty each other's sessions.
     `StoredServerEndpoint` decodes to `nil` rather than throwing.
+  - **Where an older build's housekeeping removes what it cannot name, a new kind of record has to
+    read as one of its own.** M38 Slice 8 gave the sync's record a server side. Its folder is named
+    for a hash of the pair's two strings, and every launch purges a folder whose record decodes to
+    another name (`SyncRecordStore.purge`). A `server` field of its own would decode in an M37 build,
+    which ignores unknown keys, to a pair whose hash names some other folder, so the release in
+    `/Applications` would have removed every server record at each launch. Spelling the server into
+    `second` (its account's id and its path, joined by a NUL no path holds) keeps the hash the same
+    function of the same strings, so that build finds the folder named for its record and leaves it.
+    A test decodes the record through M37's own shapes and hashes it by M37's formula. What the older
+    build loses is only a field it rewrites: its budget pass drops a version's server stamp, and that
+    version then reads as none.
   - **Refuse what cannot come back on the way *down*, where the fact is still known.** A tab inside a
     **nested** archive is mounted from a temp extraction of a member of the enclosing one, and the
     registry that knows where it came from is session-scoped — so at restore time the only evidence
