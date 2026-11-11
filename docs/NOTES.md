@@ -2775,6 +2775,20 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
     switch, and a draw override is the kind of thing that can cost a table responsive scrolling.
   - In a test, the view exists only in a window that is **on screen** (`orderFront`) and only after
     the table's **second** layout pass: the first one makes the rows.
+- **The row view pushes `backgroundStyle` onto a cell *after* `viewFor` returns, so a look set there
+  on top of the cell's own styling does not last.** F2's field was styled in `viewFor`, after
+  `applyStyle`. The push then ran `applyStyle` again from `backgroundStyle`'s `didSet`, and it
+  repainted the open field in the cursor's ink. In the light appearance that drew the name white on
+  the field's white (reported 2026-11-11). It had also put back a hidden file's dim and a marked
+  one's bold inside the box. Dark mode hid it, since the field's background is dark there. So the
+  override lives inside `applyStyle`, keyed on the cell's own state (`FileCellView.isEditingName`).
+  - **An emphasized cell does not whiten `.labelColor` in the field editor**, though it does in a
+    plain label (above). Probed on a cell in a window: with `.emphasized` and `.labelColor`, the
+    editor took `.labelColor` and the darkest ink was 0.15. With the cursor's ink, the editor took
+    `alternateSelectedControlTextColor` and nothing in the box was darker than white. So resetting
+    the cell's style to `.normal` is not needed.
+  - A recycled cell that held the field then needs its row look put back when the field closes,
+    because the render path styles the cell before it closes the field.
 
 #### Reloading and the row model
 
