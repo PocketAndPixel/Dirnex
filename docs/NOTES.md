@@ -468,6 +468,19 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
 
 ### Waits, run loops and timing
 
+- **A wait over several async stages adds their scheduling delays together.** Measured
+  2026-11-11 in `CompareReadingTests.lateNulGoesToBytes`: alone, the test took 0.38 s and the
+  read took 9 ms. In a full run, its reading-window callback arrived at 27.09 s, the read ran
+  from 31.832 to 31.842 s, its failure landed at 33.78 s, and the byte view arrived at 37.49 s.
+  The polling loop's largest gap was 16.17 s. This follows an earlier full-run timeout at 60 s
+  and a pass at 54 s. The test now requires the reading window first, then waits for the byte
+  view, each with the existing 60 s bound. It also cancels any remaining comparison on exit.
+  With temporary 2 s bounds and a 1.5 s delay in each stage, the old wait failed and the split
+  waits passed. Disabling the byte-view callback still failed the fixed test on its final wait
+  and expected reason. All delays, shorter bounds and product changes were then removed.
+  Two final full app runs passed, with the local live servers off and then on; this test took
+  38.76 s and 41.37 s. All 71 saved preference keys stayed unchanged by content.
+
 - **Closing a socket in the parent is not yet EOF at its peer during a concurrent `posix_spawn`.**
   Measured 2026-11-10 while fixing `GitMergeSocketEdgeTests.answerToNobody`: two full app runs
   reproduced a successful send after `connection.close()`, despite `FD_CLOEXEC`. A standalone

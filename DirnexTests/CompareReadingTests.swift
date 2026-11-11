@@ -244,7 +244,10 @@ struct CompareReadingTests: CompareComparingTesting {
         }
         #expect(failure.reason == .tooLarge(byteSize: size, limit: 1000))
     }
+}
 
+/// The full route from opening a large pair to finding it is binary.
+extension CompareReadingTests {
     @Test("a large pair whose NUL is late still ends in the byte view")
     func lateNulGoesToBytes() async throws {
         let root = try folder()
@@ -255,6 +258,7 @@ struct CompareReadingTests: CompareComparingTesting {
         let held = HeldComparison()
         var reason: BinaryCompareReason?
         var opened: CompareWindowController?
+        defer { opened?.abandonComparing() }
         CompareOpener.openWindow(
             left,
             detail: "left",
@@ -279,9 +283,14 @@ struct CompareReadingTests: CompareComparingTesting {
             },
             failed: { Issue.record("no alert was expected: \($0)") }
         )
+        // Opening the reading window and falling back to bytes each need several main-actor
+        // turns. Give each stage its own bound: a full run can delay those turns by seconds.
+        // Require the reading window before waiting for the byte view.
+        try #require(await until { opened != nil || reason != nil })
+        let window = try #require(opened)
         #expect(await until { reason != nil })
         #expect(reason == .notText(name: "a"))
-        #expect(opened?.isComparing == false)
+        #expect(!window.isComparing)
         #expect(held.runs == 0)
     }
 }
