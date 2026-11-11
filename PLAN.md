@@ -231,7 +231,10 @@ the list below. The column itself stays as each milestone's record.
 
 - **The thumbnail grid, brief view and the `PaneSurface` extraction** — M15's cut, and one unit
   rather than three items, argued in HISTORY.md §M15. Any future grid inherits two constraints from
-  it: skip `FileEntry.isDataless` rows, and move sort off the column header first.
+  it: skip `FileEntry.isDataless` rows, and move sort off the column header first. The list's own
+  rows have drawn a picture of an image, a movie or a PDF since 2026-11-11 (View ▸ Show Icon
+  Previews, HISTORY.md after §M38), and a grid would take its thumbnails from the same `RowIcon`
+  rule and `RowIconLoader`.
 
 ## 5. Cross-cutting: testing strategy
 

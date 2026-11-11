@@ -116,7 +116,7 @@ enum MainMenuBuilder {
             .command("view.toggleSidebar"), .command("view.focusSidebar"),
             .command("view.toggleHidden"), .command("view.treeView"),
             .command("view.toggleTags"), .command("view.toggleSyncStatus"),
-            .command("view.functionBar"),
+            .command("view.toggleIconPreviews"), .command("view.functionBar"),
             .command("view.sizeVisualization"), .subcommand("view.gitAwareSizes"), .separator,
             .command("view.quickLook"), .command("view.quickView"),
             .subcommand("view.quickViewFullWindow"), .subcommand("view.quickViewFullScreen"),

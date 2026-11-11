@@ -301,6 +301,7 @@ final class PanelViewController: NSViewController {
         observeGitStatusChanges()
         observeFinderTagChanges()
         observeCloudSyncStatusChanges()
+        observeRowIcons()
         observeDirectorySizeChanges()
         observeSizeVizDisplayModePreference()
         observeRemoteRefreshConditions()

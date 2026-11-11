@@ -20996,6 +20996,41 @@ alert's panel left as it was. A plain window's alert still goes on the modal win
 screen leaves its alert there too. 2 523 app tests pass, the live suites skipped since nothing here reaches a
 server, and the defaults domain was compared unchanged.
 
+**2026-11-11: a folder's own icon, and a picture of an image, a movie or a PDF** (Oleg's report that every file
+icon looked the same, and his go-ahead for both halves; core and app). Probed first, and the obvious ask was the
+wrong one. Drawing each file's default application was the idea; `NSWorkspace.icon(forFile:)` matched
+`icon(for: UTType)` pixel for pixel on 47 of 47 files in Downloads, so macOS 26 itself draws no per-file
+difference, and an application's icon on every file it opens would make a PDF, a PNG and a HEIC all Preview.
+What Finder's list view shows instead is a Quick Look picture of the content. The real bug was elsewhere: every
+folder drew the generic folder, so all 92 packages measured (`/Applications` among them) and Home's special
+folders looked alike.
+
+`RowIcon` (core) decides from the listing alone: a folder's own icon and a picture of its content only for an
+item on this Mac's storage with its bytes here, never over a remote backend, inside an archive, on a share
+(`MNT_LOCAL` clear) or for a dataless cloud item; pictures only for images, movies and PDFs, since at 16 pt a page
+of text or a note on a blank page says less than the type icon; and the type icon everywhere else, a package
+keeping its type so an application on a server is drawn as one. `RowIconLoader` (app) loads both off the main
+thread and keys them by path, date, size, row size and appearance. A folder's icon is fetched *and drawn* into a
+bitmap there, because the first draw is the cost: Home's 26 folders took 40 ms to fetch and 199 ms more to draw
+in a fresh process. Off the main thread it came out byte for byte the main thread's (15 of 15), while Quick
+Look's `.icon` took 308 ms against 56 and drew three applications differently. The appearance is in the key
+because an application's icon has a dark variant on macOS 26 and a folder's has not. A pane draws the
+placeholder, then swaps the image into its visible rows when the loader says so, with no reload. View ▸ Show
+Icon Previews, on by default as Finder's is, turns the pictures off; folders keep their own icons either way.
+`AppPreferences.swift` reached SwiftLint's ceiling with it, so its change notifications moved to
+`AppPreferences+Notifications.swift`.
+
+Seen live in the `app.dirnex.Dirnex.live` copy: Home's special folders and the Drive folders, `/Applications`
+with every application's icon and the two custom folder icons, Downloads with pages for the PDFs and pictures
+for the SVG and the HEIC while text, audio, zip and dmg kept their type icons, the toggle off and on again
+without a navigation, and a light launch drawing the light variants. 12 core tests and 5 app tests are new, and
+3 negative controls each failed theirs by name: an unreadable mount table read as local, the dataless check
+dropped, and text previewed. The thumbnail test's first fixture was transparent (docs/NOTES.md ▸ Fixtures), which
+the test now checks before it blames the loader. 5 383 core and 2 528 app tests pass, the live suites skipped.
+In the first full run `CompareReadingTests`' "a large pair whose NUL is late" ran past its 60 s wait; it passed
+alone in 0.35 s and in the second full run at 54 s, so it sits close to its bound in a loaded run. The defaults
+domain was compared unchanged.
+
 ### After M19 — the follow-on log (2026-08-07 → 2026-09-21)
 
 Ninety-one dated passes that landed outside a milestone of their own, between M18's close on

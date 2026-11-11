@@ -129,6 +129,7 @@ slash, so a folder there costs one request more per delete, move or stat (PLAN.m
 | Folder size on `Space` / `⌥⇧⏎` | yes | yes | yes | yes, limited<sup>e</sup> | yes, limited<sup>e</sup> | yes, limited<sup>e</sup> | yes, limited<sup>e</sup> | n/a | yes<sup>hhh</sup> | yes | yes |
 | Size visualization bars (`⌃B`) | yes | yes | yes | yes<sup>nn</sup> | yes<sup>nn</sup> | yes<sup>nn</sup> | yes<sup>nn</sup> | yes<sup>nn</sup> | yes<sup>hhh</sup> | n/a<sup>nn</sup> | n/a<sup>nn</sup> |
 | Git status column, `.gitignore`-aware sizes | yes | yes | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a |
+| A folder's own icon, and a picture of an image, a movie or a PDF as its icon (View ▸ Show Icon Previews)<sup>aao</sup> | yes, partially<sup>aao</sup> | yes, limited<sup>aao</sup> | no<sup>aao</sup> | no<sup>aao</sup> | no<sup>aao</sup> | no<sup>aao</sup> | no<sup>aao</sup> | n/a | no<sup>aao</sup> | yes | yes |
 | Appears in Recents | yes | yes | n/a<sup>oo</sup> | n/a<sup>oo</sup> | n/a<sup>oo</sup> | n/a<sup>oo</sup> | n/a<sup>oo</sup> | n/a<sup>oo</sup> | n/a<sup>oo</sup> | n/a | n/a |
 | Reopens at launch / in a saved workspace | yes | yes | yes | yes, limited<sup>ww</sup> | yes, limited<sup>ww</sup> | yes, limited<sup>ww</sup> | yes, limited<sup>ww</sup> | yes, limited<sup>ww</sup> | yes | n/a<sup>aal</sup> | n/a<sup>aal</sup> |
 | Back / forward history survives a relaunch<sup>aag</sup> | yes | yes | yes, limited<sup>aag</sup> | yes, limited<sup>aag</sup> | yes, limited<sup>aag</sup> | yes, limited<sup>aag</sup> | yes, limited<sup>aag</sup> | yes, limited<sup>aag</sup> | yes | n/a | n/a |
@@ -293,6 +294,20 @@ the row and open folders it was left at, where `⌘[` would have taken it. A sav
 same folder. A tab that opened on them, with `⌘`, has no folder under it and is left out as before.
 Exercised live on a local volume over Recents (2026-10-31); workspaces and the server columns are
 pinned by tests and not exercised live.
+
+<sup>aao</sup> Since 2026-11-11 a folder is drawn with its own icon, so an application, a bundle, Home's
+special folders and a folder with a custom icon look as they do in Finder. With View ▸ Show Icon Previews,
+on by default, an image, a movie or a PDF is drawn as a Quick Look picture of its content, as Finder's list
+view draws it. Text and audio keep their type icons, which say more at row size. Both need the item's own
+bytes, so both are drawn only for an item on this Mac's storage with its bytes here (`RowIcon`). Every
+other row keeps its type icon, as every row did before. **Local** is partial because an SMB or NFS share
+is left out by choice: a read there is a network round trip, and a server that has gone away would hold
+it. **Cloud mount** is limited because an item that is not downloaded would be downloaded by the read.
+On a server and inside an archive each picture would be a transfer, so none is drawn, by choice; a
+package there keeps its type, so an application on a server is drawn as one rather than as a folder.
+**Photos** could draw PhotoKit's own thumbnails and does not yet. Exercised live on local folders, Home
+and `/Applications`, in the dark and the light appearance (2026-11-11); the other columns are pinned by
+tests (`RowIconTests`) and not exercised live.
 
 ## 2. File operations
 

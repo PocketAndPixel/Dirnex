@@ -1471,6 +1471,13 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
     on the merits (shared mutable state) as the entry below says — and read a control's *whole*
     failure list, not just whether the test you aimed at went red.
 
+- **`NSBitmapImageRep.setColor(_:atX:y:)` with an sRGB `NSColor` on a device-RGB bitmap writes
+  nothing, and the fixture comes out transparent.** Seen 2026-11-11 making a red PNG for
+  `RowIconLoaderTests`: each call logged "Unrecognized colorspace number -1", the file read back as
+  `0 0 0 0` everywhere, and Quick Look faithfully returned a transparent thumbnail, so the test failed on
+  the loader. Fill a `CGContext` in sRGB instead, and check a drawn fixture's pixels before the code under
+  test sees it, so a bad fixture fails as itself.
+
 ### Live suites
 
 #### Fixtures and preconditions on a real server
@@ -2799,6 +2806,20 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
     the cell's style to `.normal` is not needed.
   - A recycled cell that held the field then needs its row look put back when the field closes,
     because the render path styles the cell before it closes the field.
+
+- **On macOS 26 a file's own icon is its type's, while a folder's often is not.** Measured 2026-11-11 on
+  this Mac: `NSWorkspace.icon(forFile:)` matched `icon(for: UTType)` pixel for pixel on 47 of 47 files in
+  Downloads, its default application making no difference, and differed from the generic folder on all 92
+  packages and on Home's special folders. An application's icon also has a dark variant: Xcode and Preview
+  drew differently under `darkAqua` and `aqua` (`performAsCurrentDrawingAppearance`), folders did not.
+  - **The cost is the first draw, not the call**: Home's 26 folders took 40 ms in `icon(forFile:)` and
+    199 ms more to draw in a fresh process, 77 ms of it Music. Calling it and drawing it into a
+    `CGContext` on a background thread gave the main thread's bytes exactly (15 of 15, with the
+    appearance set), which is what `RowIconLoader` does. Quick Look's `.icon` representation is no
+    substitute: 308 ms against 56 for the same items, and three applications drawn differently.
+  - **Quick Look's picture of text says less than the type icon at row size**: at 16 pt a `.js`, `.json`,
+    `.txt` or `.md` is a white square with grey lines, and audio is a note on a blank page. Images, movies
+    and PDFs are the ones worth a thumbnail (`RowIcon.isPreviewed`).
 
 #### Reloading and the row model
 
