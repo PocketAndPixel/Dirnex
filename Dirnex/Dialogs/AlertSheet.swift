@@ -23,8 +23,17 @@ extension NSAlert {
     /// alert hung on the browser window while one of those is up is an alert the user cannot click.
     /// The `attachedSheet` question then covers every sheet-shaped dialog. Returns `nil` only when
     /// there is no window at all.
+    ///
+    /// **A window that works while another is modal hosts its own questions.** The compare and merge
+    /// windows take clicks over the app-modal Synchronize window (`CompareWindow.worksWhenModal`), so
+    /// the reason above does not apply to them, and hanging their question on the modal window
+    /// ordered that window over them. Seen live 2026-11-11: a merge's upload question came up on the
+    /// Synchronize window, which then hid the merge window it was about (PLAN.md §M38 Slice 10).
     static func sheetHost(over window: NSWindow?) -> NSWindow? {
-        NSApp.modalWindow ?? window?.attachedSheet ?? window
+        if let window, window.worksWhenModal, window.isVisible {
+            return window.attachedSheet ?? window
+        }
+        return NSApp.modalWindow ?? window?.attachedSheet ?? window
     }
 
     /// Present as a sheet where the user can see it — and **not at all** when there is no window.
@@ -50,7 +59,7 @@ extension NSAlert {
         completionHandler: ((NSApplication.ModalResponse) -> Void)? = nil
     ) {
         guard let host = NSAlert.sheetHost(over: window) else { return }
-        beginSheetModal(for: host, completionHandler: completionHandler)
+        beginSheet(on: host, completionHandler: completionHandler)
     }
 
     /// The `await` spelling of ``beginSheetIfVisible(over:completionHandler:)`` — and the reason it
@@ -72,7 +81,7 @@ extension NSAlert {
     ) async -> NSApplication.ModalResponse {
         guard let host = NSAlert.sheetHost(over: window) else { return whenUnasked }
         return await withCheckedContinuation { continuation in
-            beginSheetModal(for: host) { continuation.resume(returning: $0) }
+            beginSheet(on: host) { continuation.resume(returning: $0) }
         }
     }
 
@@ -92,9 +101,25 @@ extension NSAlert {
             return runModal()
         }
         return await withCheckedContinuation { continuation in
-            beginSheetModal(for: host) { continuation.resume(returning: $0) }
+            beginSheet(on: host) { continuation.resume(returning: $0) }
             onPresented?()
         }
+    }
+
+    /// `beginSheetModal(for:)`, with the alert's own window taking clicks wherever its host does.
+    ///
+    /// A sheet is a window of its own, and an app-modal session passes events only to the modal
+    /// window and to windows that work while it is up. So an alert hung on a compare or merge window
+    /// over the Synchronize window drew, and dropped every click, until it shared its host's
+    /// `worksWhenModal`. Seen live 2026-11-11 (PLAN.md §M38 Slice 10).
+    func beginSheet(
+        on host: NSWindow,
+        completionHandler: ((NSApplication.ModalResponse) -> Void)? = nil
+    ) {
+        if host.worksWhenModal, let panel = window as? NSPanel {
+            panel.worksWhenModal = true
+        }
+        beginSheetModal(for: host, completionHandler: completionHandler)
     }
 
     /// Give the keyboard focus to the first button, where an alert that puts its safe choice first

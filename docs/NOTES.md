@@ -1890,6 +1890,12 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
     window got the click either. A synthetic click on a window that is not key only makes it key, and
     the view never sees it unless it answers `acceptsFirstMouse`. Run the no-session control first;
     the comparison means something only once that one passes.
+  - **A sheet on such a window needs it too, since a sheet is a window of its own.** Seen 2026-11-11 with
+    real clicks: an `NSAlert` begun as a sheet on the merge window while the Synchronize window was modal
+    drew, and dropped every click, so the question could not be answered and the app was stopped by its
+    PID. An alert's window is an `NSPanel` whose `worksWhenModal` is `false` and settable, and
+    `NSAlert.beginSheet(on:)` sets it from the host. Only a real click shows this: the sheet looks
+    perfectly normal.
 
 ### Alerts, sheets and dialogs
 
@@ -2076,7 +2082,11 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
     attached, centered on its host (probed). Hence `NSAlert.sheetHost(over:)` —
     `NSApp.modalWindow ?? window?.attachedSheet ?? window`, the same ordering
     `PanelViewController+Compare` had already derived for its own case, `modalWindow` first because
-    some dialogs are app-modal *windows* rather than sheets. Verify the nested case specifically: the
+    some dialogs are app-modal *windows* rather than sheets.
+    - **Except for a window that works while another is modal**, which hosts its own alerts since
+      2026-11-11. Hung on the modal window, a merge window's question brought the Synchronize window
+      over the merge window it was about, and it stayed there. Such an alert needs the host's
+      `worksWhenModal` on its own panel too (▸ Windows, the `worksWhenModal` entry). Verify the nested case specifically: the
     plain one passes whether or not the host lookup is right, so it proves nothing about the bug.
   - Converting a synchronous prompt costs an `async` cascade, and it stops at the `@objc` action —
     each of the six here had exactly one caller, whose body moves into a `Task { @MainActor in … }`.

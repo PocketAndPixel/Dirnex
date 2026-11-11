@@ -20964,9 +20964,8 @@ terminal the copy launched would inherit.
   "OK to run?" when it was already running (docs/NOTES.md ▸ sftp / ssh). Killing the local `ssh` makes it exit
   255, so the script waits for Return, as for a failed sign-in. The box's tooltip and the row's "Changed on both
   sides since the last sync" were read on screen.
-- **Rough edges, not fixed:** after `writeBack`'s question the Synchronize window comes forward over the merge
-  window, and a click on its title bar brings it back. The row menu reads "Copy to sync-ftp" twice when both
-  folders share a name, as the column headers do. The account search's alert names buckets in S3's byte order
+- **Rough edges, not fixed:** the row menu reads "Copy to sync-ftp" twice when both folders share a name, as the
+  column headers do. The account search's alert names buckets in S3's byte order
   (`big, big10, big11, … big2`), where the pane sorts them naturally. A results tab of hits from many buckets shows
   leaf names only, as every results tab does.
 - **Tests:** 5 371 core and 2 517 app tests, 2 490 of them executed with the live servers up; the S3 live suites
@@ -20975,6 +20974,27 @@ terminal the copy launched would inherit.
   its sync records were removed, the containers and both images too, iTerm and WezTerm were uninstalled with
   their preferences, and `known_hosts` was put back byte for byte.
 - **Not run live:** as listed at the top of this section.
+
+**2026-11-11: a compare or merge window's questions stay on it** (found in Slice 10's run, Oleg's go-ahead; the
+app). After `writeBack`'s question, the Synchronize window came forward over the merge window it was about. The
+question had never been on the merge window: `NSAlert.sheetHost(over:)` hosts on `NSApp.modalWindow` first, so
+an app-modal *window* gets the alert rather than its parent, and the Synchronize window is one. That rule is
+right for a window that cannot take a click while another is modal, and the compare and merge windows can
+(`CompareWindow.worksWhenModal`). So a visible window that works while another is modal now hosts its own
+alerts, and every question the compare and merge windows ask goes through that lookup.
+
+The first build of it was half a fix, and only a real click showed it. The question came up on the merge window
+and the Synchronize window stayed behind, and Keep Editing did nothing: an app-modal session passes events only to
+the modal window and to windows that work while it is up, and a sheet is a window of its own, whose `NSPanel`
+answers `false`. The copy was stopped by its PID with the question still up. `NSAlert.beginSheet(on:)` now gives
+the alert's panel its host's `worksWhenModal`, and the three helpers every such alert goes through use it. Seen
+live on the fixed build, with real clicks: the question on the merge window, Keep Editing taking the click, the
+merge window still in front with Save enabled, Save again, Upload, PUT 204, and Synchronize behind it all along,
+reading "The folders are already in sync" once the merge window closed. 6 app tests are new, and 4 negative
+controls each failed them by name: the old lookup, no visibility check, any window hosting its own, and the
+alert's panel left as it was. A plain window's alert still goes on the modal window, and a compare window not on
+screen leaves its alert there too. 2 523 app tests pass, the live suites skipped since nothing here reaches a
+server, and the defaults domain was compared unchanged.
 
 ### After M19 — the follow-on log (2026-08-07 → 2026-09-21)
 
