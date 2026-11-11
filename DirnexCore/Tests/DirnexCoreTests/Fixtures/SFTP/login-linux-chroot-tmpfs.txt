@@ -1,0 +1,8 @@
+sftp> -df
+        Size         Used        Avail       (root)    %Capacity
+       65536            0        65536        65536           0%
+sftp> -ls -la
+drwxr-xr-x    ? 1000     0              40 Nov 11 02:22 .
+drwxr-xr-x    ? 0        0              60 Nov 11 02:22 ..
+sftp> pwd
+Remote working directory: /probe

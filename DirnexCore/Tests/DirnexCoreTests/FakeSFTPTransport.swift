@@ -375,5 +375,5 @@ final class FakeSFTPTransport: SFTPTransport, @unchecked Sendable {
 /// No `df` answer: a server that cannot say, for every test that does not ask (`SFTPDiskFreeTests`
 /// has its own double for the ones that do).
 extension FakeSFTPTransport {
-    func diskFree() throws -> String { throw ServerSpaceUnsupported() }
+    func diskFree(_: String) throws -> String { throw ServerSpaceUnsupported() }
 }

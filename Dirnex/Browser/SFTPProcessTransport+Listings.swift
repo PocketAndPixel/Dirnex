@@ -24,10 +24,11 @@ extension SFTPProcessTransport {
         return SFTPBatchListing.answers(in: transcript, for: remotePaths)
     }
 
-    /// The space-left question, run as the batched listing is and for its reason: what tells a
-    /// server without the extension from a failed session is one sentence on standard error, and the
-    /// table is on standard output, so the core reads both in one transcript (``SFTPDiskFree``).
-    func diskFree() throws -> String {
-        try run(transcript: SFTPBatchCommand.diskFree, isCancelled: { false })
+    /// One of the space-left sessions, run as the batched listing is and for its reason: what tells
+    /// a server without the extension from a failed session is one sentence on standard error, while
+    /// the tables and the listing are on standard output, so the core reads them in one transcript,
+    /// framed by the echoes (``SFTPDiskFree``).
+    func diskFree(_ batch: String) throws -> String {
+        try run(transcript: batch, isCancelled: { false })
     }
 }

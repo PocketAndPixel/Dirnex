@@ -179,8 +179,9 @@ struct ServerQuotaSFTPTests {
     }
 }
 
-/// An SFTP server whose only answer is a `df` transcript, the chrooted `tmpfs` one captured on
-/// 2026-11-11, counting the asks. Nothing here lists or writes.
+/// An SFTP server whose only answer is the first `df` session's transcript, the chrooted `tmpfs` one
+/// captured on 2026-11-11 (an empty login directory, so no second session), counting the asks. Nothing
+/// here lists or writes.
 private final class DiskFreeSFTPTransport: SFTPTransport, @unchecked Sendable {
     private let lock = NSLock()
     private var count = 0
@@ -191,13 +192,19 @@ private final class DiskFreeSFTPTransport: SFTPTransport, @unchecked Sendable {
         return count
     }
 
-    func diskFree() throws -> String {
+    func diskFree(_ batch: String) throws -> String {
         lock.lock()
         count += 1
         lock.unlock()
+        guard batch == SFTPDiskFree.loginBatch else { throw ServerSpaceUnsupported() }
         return "sftp> -df\n"
             + "        Size         Used        Avail       (root)    %Capacity\n"
             + "       65536            0        65536        65536           0%\n"
+            + "sftp> -ls -la\n"
+            + "drwxr-xr-x    ? 1000     0              40 Nov 11 02:22 .\n"
+            + "drwxr-xr-x    ? 0        0              60 Nov 11 02:22 ..\n"
+            + "sftp> pwd\n"
+            + "Remote working directory: /probe\n"
     }
 
     func listDirectory(_: String) throws -> String { "" }

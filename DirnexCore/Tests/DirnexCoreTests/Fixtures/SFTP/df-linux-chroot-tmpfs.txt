@@ -1,3 +1,0 @@
-sftp> -df
-        Size         Used        Avail       (root)    %Capacity
-       65536            0        65536        65536           0%
