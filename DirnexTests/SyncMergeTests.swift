@@ -22,7 +22,7 @@ struct SyncMergeTests {
         _ input: MergeInput,
         store: ArchiveUndoStore? = nil,
         journal: CompareSaveRig.JournalBox = CompareSaveRig.JournalBox(),
-        carry: (@MainActor (NSWindow?) async -> Void)? = nil
+        carry: (@MainActor (NSWindow?) async -> Bool)? = nil
     ) -> MergeWindowController {
         let controller = MergeWindowController(
             input: input,

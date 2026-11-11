@@ -233,7 +233,7 @@ struct SyncServerMergeTests {
         try await settleUntil(within: .seconds(60)) { sheet.rows.isEmpty }
     }
 
-    @Test("an upload that did not land keeps the version the sync copied")
+    @Test("an upload that did not land keeps the version the sync copied, and Save tries it again")
     func notLanded() async throws {
         let rig = try SyncServerRecordRig()
         defer { rig.cleanup() }
@@ -245,22 +245,39 @@ struct SyncServerMergeTests {
             temporaryURL: copy,
             name: "a.txt"
         )
-        let carry = rig.pane().syncMergeSaving(request, carrying: edit, in: sheet) { _, _ in false }.carry
-        let controller = window(input, rig: rig, journal: CompareSaveRig.JournalBox(), carry: carry)
+        var lands = false
+        let carry = rig.pane().syncMergeSaving(request, carrying: edit, in: sheet) { edit, _ in
+            guard lands, let data = try? Data(contentsOf: edit.temporaryURL) else { return false }
+            rig.server.put(rig.serverPath("a.txt"), data: data)
+            return true
+        }.carry
+        let journal = CompareSaveRig.JournalBox()
+        let controller = window(input, rig: rig, journal: journal, carry: carry)
 
-        #expect(await controller.saveResult())
+        #expect(await controller.saveResult() == false)
 
-        #expect(rig.readLocal("a.txt") == "ONE\ntwo\nTHREE!\n")
+        let merged = "ONE\ntwo\nTHREE!\n"
+        #expect(rig.readLocal("a.txt") == merged)
         #expect(rig.server.text(rig.serverPath("a.txt")) == "one\ntwo\nTHREE!\n")
         #expect(rig.keptText("a.txt") == "one\ntwo\nthree\n")
-    }
+        #expect(controller.canSave, "the window keeps Save for another try")
 
+        lands = true
+        #expect(await controller.saveResult())
+        #expect(rig.server.text(rig.serverPath("a.txt")) == merged)
+        #expect(journal.records.count == 1, "the local file was written once")
+        #expect(rig.keptText("a.txt") == merged)
+        #expect(!controller.canSave)
+    }
+}
+
+extension SyncServerMergeTests {
     /// A merge window on `input` whose saves keep undo in the rig's own store and journal.
-    private func window(
+    fileprivate func window(
         _ input: MergeInput,
         rig: SyncServerRecordRig,
         journal: CompareSaveRig.JournalBox,
-        carry: (@MainActor (NSWindow?) async -> Void)?
+        carry: (@MainActor (NSWindow?) async -> Bool)?
     ) -> MergeWindowController {
         let store = ArchiveUndoStore(
             root: rig.root.appendingPathComponent("undo", isDirectory: true)

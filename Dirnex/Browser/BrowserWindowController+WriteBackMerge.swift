@@ -213,7 +213,7 @@ extension BrowserWindowController {
             undo: { .none },
             journal: { _ in },
             carry: { [weak self] window in
-                guard let self else { return }
+                guard let self else { return true }
                 // Once, at the first save: the copy holds a merge with the server's version from
                 // then on, whatever happens to the upload.
                 if let base = pending.take() {
@@ -221,6 +221,8 @@ extension BrowserWindowController {
                     remoteFileCache.rebase(copy: edit.temporaryURL, onto: revision)
                 }
                 _ = await writeBack(edit, askingOver: window)
+                // The copy is the editor's watched one, whose next save is carried as F4's is.
+                return true
             },
             closed: { [weak self] in
                 guard let base = pending.take() else { return }

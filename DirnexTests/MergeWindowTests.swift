@@ -29,7 +29,7 @@ struct MergeRig {
         theirs: Data = Data(MergeRig.theirs.utf8),
         target: Data? = nil,
         store: ArchiveUndoStore? = nil,
-        carry: (@MainActor (NSWindow?) async -> Void)? = nil,
+        carry: (@MainActor (NSWindow?) async -> Bool)? = nil,
         closed: @escaping @MainActor () -> Void = {}
     ) throws {
         directory = FileManager.default.temporaryDirectory

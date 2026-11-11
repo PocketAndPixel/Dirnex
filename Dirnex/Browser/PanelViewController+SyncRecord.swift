@@ -186,6 +186,7 @@ extension PanelViewController {
                     )
                 }
                 sheet?.compareAgain(rowShowing: request.left.path)
+                return true
             }
         )
     }

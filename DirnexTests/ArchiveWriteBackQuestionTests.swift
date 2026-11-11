@@ -220,8 +220,8 @@ struct ArchiveWriteBackQuestionTests {
         let saving = BrowserWindowController.archiveMergeSaving(
             edit.pending.edit, theirs: theirs, cache: edit.cache
         ) { carriedEdit, _ in carried.append(carriedEdit.temporaryURL) }
-        await saving.carry?(nil)
-        await saving.carry?(nil)
+        _ = await saving.carry?(nil)
+        _ = await saving.carry?(nil)
         #expect(carried == [edit.copy, edit.copy])
         #expect(edit.base == theirs)
         #expect(!FileManager.default.fileExists(atPath: first.base.path))

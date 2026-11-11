@@ -11,10 +11,11 @@ import DirnexCore
 /// A save is refused while any conflict has no choice, so no conflict marker is ever written. A
 /// server file's result then goes on up (`MergeSaving.carry`, Slice 4).
 extension MergeWindowController {
-    /// Whether the result as it stands is not in the file: never saved, or chosen differently since.
+    /// Whether the result as it stands is not where Save takes it: never saved, chosen differently
+    /// since, or in the files with its carry still to land.
     var hasUnsavedResult: Bool {
         guard let merge else { return false }
-        return savedChoices != merge.choices
+        return savedChoices != merge.choices || isCarryPending
     }
 
     /// Whether closing would lose choices made here: some are made and not saved. A merge whose
@@ -42,11 +43,16 @@ extension MergeWindowController {
     }
 
     /// Write the result into the target and the second target if there is one, asking first when a
-    /// file changed since it was read. `true` when every file was written.
+    /// file changed since it was read, then carry it on. `true` when every file was written and the
+    /// carry, if any, took the result.
     ///
     /// A second file refused leaves the first written and the result still unsaved, so the window
     /// goes on showing it and the next save writes the second file again. The second takes the
     /// first's date, so a comparison by size and date reads the two as equal, as it reads a copy.
+    ///
+    /// A carry that did not take the result, an upload declined or failed, leaves Save enabled. The
+    /// next save carries it again without writing the files, which already hold it, so they gain no
+    /// second undo entry for the same bytes (PLAN.md §M38 Slice 10).
     @discardableResult
     func saveResult() async -> Bool {
         guard let merge, merge.isResolved, !isSaving else { return false }
@@ -54,20 +60,23 @@ extension MergeWindowController {
         defer { isSaving = false }
         let document = merge.result
         let choices = merge.choices
-        guard let saved = await write(document, to: target) else { return false }
-        target = saved
-        if let second = secondTarget {
-            guard let saved = await write(
-                document,
-                to: second,
-                takingDateOf: target.path,
-                keepingUndo: input.secondTargetKeepsUndo
-            ) else { return false }
-            secondTarget = saved
+        if savedChoices != choices {
+            guard let saved = await write(document, to: target) else { return false }
+            target = saved
+            if let second = secondTarget {
+                guard let saved = await write(
+                    document,
+                    to: second,
+                    takingDateOf: target.path,
+                    keepingUndo: input.secondTargetKeepsUndo
+                ) else { return false }
+                secondTarget = saved
+            }
+            savedChoices = choices
         }
-        savedChoices = choices
-        await saving.carry?(window)
-        return true
+        guard let carry = saving.carry else { return true }
+        isCarryPending = !(await carry(window))
+        return !isCarryPending
     }
 
     /// Write the result into one file, journal the save, and answer the file as it now stands, or
