@@ -65,14 +65,22 @@ so a trap goes here only if it can bite any live run; one tied to an area goes u
     `run operation "file.trash"` over the `.sdef` verbs runs the whole shipped path per item. Read
     the preference before assuming a delete is unreachable; ⇧F8 and every *permanent* delete do
     confirm, and are not drivable this way.
-- **A copy built under its own bundle id leaves a running Debug build and the shared defaults alone.**
-  Done 2026-11-10 with Oleg's Debug build up: `xcodebuild build -derivedDataPath build/<name>
-  PRODUCT_BUNDLE_IDENTIFIER=app.dirnex.Dirnex.<name> CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual
+- **A copy built under a bundle id of its own leaves a running Debug build and the shared defaults
+  alone, and there is one such copy: `app.dirnex.Dirnex.live`, built in `build/live-copy`.** Done
+  2026-11-10 with Oleg's Debug build up: `xcodebuild build -derivedDataPath build/live-copy
+  PRODUCT_BUNDLE_IDENTIFIER=app.dirnex.Dirnex.live CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual
   DEVELOPMENT_TEAM= ENABLE_HARDENED_RUNTIME=NO`. Nobody has to quit, nothing lands in
   `app.dirnex.Dirnex`, and computer use and AppleEvents reach it by its own id. Seed
   `Dirnex.pref.hasSeenFirstRunTour` and `Dirnex.pref.hasSeenFullDiskAccessOnboarding` true, or the
-  first-run flow covers the window. Afterwards `lsregister -u` the app, `defaults delete` the domain and
-  remove the build. Stop it by a PID read back with `ps`: `pkill -x Dirnex` takes the other copy too.
+  first-run flow covers the window. Afterwards `defaults delete app.dirnex.Dirnex.live`, so the next run
+  starts empty, and **keep `build/live-copy`**. Stop it by a PID read back with `ps`: `pkill -x Dirnex`
+  takes the other copy too.
+  - **Never a new id or a new folder per check.** Oleg's rule, 2026-11-11. Eight checks had each picked a
+    name (`.m38check`, `.m38s3`, `.m38s6`, `.pindrag`, `.quota`, `.s3search`, `.sftpspace`,
+    `.nasshares`), and macOS keeps a record of every one, among them Local Network rows that macOS 26
+    cannot remove (below). A Debug launcher's UUID follows its build folder and stays the same across
+    rebuilds, so one id in one kept folder is one app to macOS. Two checks that need a copy at once run
+    one after the other. A check on the LAN does not use the copy at all: it runs in `build/debug-dd`.
   - **It does not leave Application Support alone.** Found 2026-11-10: `~/Library/Application
     Support/Dirnex` is the same folder for every bundle id, and every launch prunes its `ArchiveUndo`
     store against *its own* journal (`ArchiveUndoStorage.purgeUnreferenced`). A copy's journal is
@@ -626,10 +634,15 @@ so a trap goes here only if it can bite any live run; one tied to an area goes u
     System Settings: copies under `app.dirnex.Dirnex.sftpspace` and `.nasshares`, each in a folder of
     its own, got `ssh: connect to host nas.local port 22: No route to host`, while the shell reached the
     NAS. `build/debug-dd`'s launcher UUID (`DBA76CEE…`) is the one the cache files under
-    `app.dirnex.Dirnex`, and it reached the NAS first time. So for a LAN run, ask Oleg, quit his Debug
+    `app.dirnex.Dirnex`, and it reached the NAS first time. The fixed copy in `build/live-copy` is no
+    exception, having a folder of its own. So for a LAN run, ask Oleg, quit his Debug
     build, export the domain, rebuild `build/debug-dd` with any env-gated probe, use his saved rows
     (they hold the NAS accounts), then rebuild without the probe, `defaults import` the export and
     relaunch it. That run moved `Dirnex.frecency`, `Dirnex.tabs.left` and `SULastCheckTime`.
+  - **Every copy that tries the LAN leaves a row in Local Network that macOS 26 cannot remove.** The
+    pane has toggles and no remove button, and switching a row off keeps it. By 2026-11-11 the list
+    held seven "Dirnex.app" rows from copies long deleted. Apple's forums put remove buttons in macOS
+    27.2. One more reason to make a LAN run in `build/debug-dd`, which has its row already.
   - **A probe in a sidebar cell's factory logs only the rows on screen.** The cell is built when its row
     is drawn, and a redraw reloads only the visible ones, so a saved row below the fold logged nothing
     until the sidebar was scrolled to it.
