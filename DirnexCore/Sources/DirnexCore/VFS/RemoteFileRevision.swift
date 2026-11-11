@@ -20,7 +20,10 @@ import Foundation
 ///
 /// No `VFSBackend` change stands behind this: every field comes from a `stat` every remote backend
 /// already answers.
-public struct RemoteFileRevision: Sendable, Equatable {
+///
+/// Codable since M38 Slice 8: a sync's record keeps one beside each version on a pair with a server
+/// side, for a later listing to be compared with.
+public struct RemoteFileRevision: Sendable, Equatable, Codable {
     public let byteSize: Int64
 
     /// The server's modification time, or `nil` when the backend had none to give.

@@ -590,6 +590,44 @@ volume. The three defaults keys the run moved were put back.
 **Not seen:** a DSM account whose shares sit on two volumes; a server that is not OpenSSH; and any way to
 show a quota over SFTP, which the protocol does not carry.
 
+**2026-11-11: Slice 8 landed** (core only; the app is untouched). A sync's record can have one side on a
+server. `SyncRecordPair` takes a local folder and a folder on SFTP, FTP, S3 or WebDAV when its caller passes
+`allowingServerSide`, which the app does from Slice 9, and still refuses two servers, anything that takes no
+upload and a local side in a vault. The server side is spelled into `second`, its account's id and its path
+joined by a NUL, rather than given a field. An M37 build then decodes the record and finds its folder named
+for it, where a field of its own would have had that build's launch purge remove every server record
+(docs/NOTES.md ▸ Persisted state). A version gains `serverRevision`, the server row's size, date and tag, so
+`RemoteFileRevision` is now `Codable`.
+
+`keep(after:for:using:)` takes the sync's `SyncDecision`s and keeps only what they copied: single files, and
+the text files in a folder copied whole. A copy counts as landed when its source still reads as the comparison
+listed it, its destination has moved from what it held, and the two sides are one size. Nothing on the server
+is read. The stamps come from `DirectorySync.survey`, the walk the comparison itself takes, so a stamp is kept
+by the route it is later read by, since SFTP's exec channel and its listing print dates their own ways. A sync
+that copied nothing walks nothing. A local pair handed its decisions is walked as before, and the walk never
+keeps a server pair. `keep(relativePath:local:server:for:)` is the core half of Merge…'s save in Slice 9.
+`SyncRecord.change(of:left:right:)` over two entries reads the local side by bytes and the server's by its
+stamp, and `changes(of:)` uses it for a server pair's rows. Both sides moved is `changedOnBoth` over the copied
+version, so Both Directions makes it a conflict.
+
+40 tests in 3 suites, over a stand-in server whose stamps a test sets and which counts its listings and its byte
+reads. They cover the pair's rules; keeping an upload, a download and a whole folder; a failed copy of one size
+in each direction; a write since the comparison on each side; replacing, forgetting, the budget, the route, and
+Merge…'s save. On the change side they cover each side in either pane, a `touch`, a weak tag, and the same minute
+with and without a tag. The milestone's sentence runs through `TextMerge`, with the server's file downloaded once
+and only then. 30 random histories against a model checked 254 answers, of all five kinds. 5 371 core tests pass;
+the app builds, and its suite was not run, since no app file changed. **Negative controls:** 22 faults, one at a
+time. 19 failed their tests by name at once. Leaving a server pair to the walk ended the run instead, with
+Foundation's `NSException` on the NUL in its path. Two passed, the size check in Merge…'s save and the clone's own
+size check, because each covered the other. The clone's check followed from the ones before it and is gone, and
+the save's then failed by name.
+
+**Known rough edges:** a stamp moves without the bytes for a `touch`, a restore, and an SFTP file passing six months
+old, when its listing drops the time of day. Each reads as a server change, which can only turn a copy into a
+merge that resolves clean. A same-size SFTP write inside the listing's minute stays unseen, as decided. A file
+deleted from both sides keeps its version until a sync that copies something walks the pair. **Unwatched:** the
+check that the local file did not move while it was cloned, since no test can write between those two reads.
+
 #### M39 — Quick View (L)
 
 - **RTF** (M16, M18), with a source and a page view. It is `NSAttributedString`'s job and shares

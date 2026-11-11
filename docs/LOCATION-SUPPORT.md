@@ -800,8 +800,10 @@ byte comparison finds the two equal, under 5 GiB across every pair with the olde
 a folder Spotlight and Time Machine skip. A later scan marks a file whose bytes moved on differently
 on each side. Both Directions leaves such a row unticked, a mirror keeps its copy, and Merge… on the
 row opens the merge window over the kept version. Save writes the result into both files, and it
-becomes the kept version. **A side on a server has no record**, since each version is proved against
-both sides' bytes, which would download every text file on every sync (PLAN.md §M38). Nothing inside
+becomes the kept version. **A side on a server has no record yet.** A local pair's versions are proved
+against both sides' bytes, which on a server would download every text file on every sync. Since M38
+Slice 8 the core can keep such a record from the files a sync copied, with the server row's size, date and
+tag beside each, and say what changed by those stamps; the window takes it up in Slice 9. Nothing inside
 a vault is kept, and an evicted cloud placeholder is neither kept nor read to say what changed.
 
 <sup>x</sup> A side stopped having to be on this disk at PLAN.md §M25 Slice 5c, and what it gains is
