@@ -325,6 +325,11 @@ extension PanelViewController: NSMenuItemValidation {
             // a cloud item, and unchecking the box would blame the user's setting for it.
             menuItem.state = AppPreferences.shared.showSyncStatus ? .on : .off
             return true
+        case #selector(toggleShowIconPreviews(_:)):
+            // "Show Icon Previews" checkmark tracks the app-wide state, though a server's rows draw
+            // none either way: the setting is the user's, and what a row can show is `RowIcon`'s.
+            menuItem.state = AppPreferences.shared.showIconPreviews ? .on : .off
+            return true
         case #selector(toggleFunctionBar(_:)):
             // "Show Function Key Bar" checkmark tracks the app-wide state.
             menuItem.state = AppPreferences.shared.showFunctionBar ? .on : .off

@@ -119,28 +119,38 @@ enum FileFormatting {
     }
 }
 
-/// Small icons for the name column, cached by extension so scrolling a huge
-/// directory never re-hits the workspace icon service per row.
+/// The icons a row can draw without reading the item: the generic folder and each type's, one shared
+/// image per type so scrolling a huge directory never re-hits the workspace icon service per row. A
+/// row's own icon and a picture of its content come from `RowIconLoader`, with these standing in
+/// until they arrive.
 @MainActor
 enum FileIconProvider {
     private static var cache: [String: NSImage] = [:]
     private static let folderIcon = NSWorkspace.shared.icon(for: .folder)
-    private static let genericIcon = NSWorkspace.shared.icon(for: .data)
 
     /// Icon for the synthetic `..` parent row. A plain folder icon — the `..` label
     /// carries the meaning, matching how Finder and Total Commander render it.
     static let parentIcon = folderIcon
 
+    /// The icon `entry`'s name and kind give it, with nothing read: a server's row, or a panel about
+    /// one. A package keeps its type, so an application on a server is drawn as one.
     static func icon(for entry: FileEntry) -> NSImage {
-        if entry.isDirectoryLike { return folderIcon }
+        placeholder(for: RowIcon.of(entry, mounts: [], showsPreviews: false))
+    }
 
-        let ext = entry.fileExtension.lowercased()
-        guard !ext.isEmpty else { return genericIcon }
-        if let cached = cache[ext] { return cached }
+    /// What a row draws for `icon` without reading the item, and until a read has landed.
+    static func placeholder(for icon: RowIcon) -> NSImage {
+        switch icon {
+        case .folder: folderIcon
+        case let .item(packageType): packageType.map(typeIcon) ?? folderIcon
+        case let .type(type), let .thumbnail(fallback: type): typeIcon(type)
+        }
+    }
 
-        let type = UTType(filenameExtension: ext) ?? .data
+    private static func typeIcon(_ type: UTType) -> NSImage {
+        if let cached = cache[type.identifier] { return cached }
         let icon = NSWorkspace.shared.icon(for: type)
-        cache[ext] = icon
+        cache[type.identifier] = icon
         return icon
     }
 }
