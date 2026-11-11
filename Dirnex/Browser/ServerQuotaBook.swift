@@ -70,8 +70,8 @@ final class ServerQuotaBook {
         listingArrived(at: .webDAV(backend.location)) { try backend.quota().map(ServerSpace.init) }
     }
 
-    /// A listing on `backend`'s connection arrived: ask the filesystem under its login directory,
-    /// if the last answer is old enough.
+    /// A listing on `backend`'s connection arrived: ask the space where its files go
+    /// (``SFTPBackend/space()``), if the last answer is old enough.
     func listingArrived(on backend: SFTPBackend) {
         listingArrived(at: .sftp(backend.location)) { try backend.space() }
     }

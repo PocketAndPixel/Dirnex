@@ -1,3 +1,0 @@
-Connected to 127.0.0.1.
-sftp> -df
-Server does not support statvfs@openssh.com extension

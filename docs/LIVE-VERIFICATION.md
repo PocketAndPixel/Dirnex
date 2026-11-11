@@ -621,3 +621,15 @@ so a trap goes here only if it can bite any live run; one tied to an area goes u
     using `app.dirnex.Dirnex` replaced that id's UUID list, and the list was empty once the app had
     been deleted. The stable and Debug builds both connected with it empty, so an empty list is not
     evidence of a block.
+  - **A copy built under its own bundle id cannot reach the NAS either, so a LAN check runs in
+    `build/debug-dd`.** Seen 2026-11-11, twice, with Local Network switched on for every Dirnex entry in
+    System Settings: copies under `app.dirnex.Dirnex.sftpspace` and `.nasshares`, each in a folder of
+    its own, got `ssh: connect to host nas.local port 22: No route to host`, while the shell reached the
+    NAS. `build/debug-dd`'s launcher UUID (`DBA76CEE…`) is the one the cache files under
+    `app.dirnex.Dirnex`, and it reached the NAS first time. So for a LAN run, ask Oleg, quit his Debug
+    build, export the domain, rebuild `build/debug-dd` with any env-gated probe, use his saved rows
+    (they hold the NAS accounts), then rebuild without the probe, `defaults import` the export and
+    relaunch it. That run moved `Dirnex.frecency`, `Dirnex.tabs.left` and `SULastCheckTime`.
+  - **A probe in a sidebar cell's factory logs only the rows on screen.** The cell is built when its row
+    is drawn, and a redraw reloads only the visible ones, so a saved row below the fold logged nothing
+    until the sidebar was scrolled to it.

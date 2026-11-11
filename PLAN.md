@@ -557,6 +557,39 @@ drawn on screen, under a resting pointer.
 (asking it reads the password from the Keychain); a server that is not OpenSSH; and a password account, whose
 transcript was captured from an interactive session with a key, the route the password one takes.
 
+**2026-11-11, on the NAS** (the same day; SwiftLint is now 0.65.1 here too, CI's pin). Probed from the shell
+over the password route as `dirnex-test`, with one Keychain read. DSM answers `df`, after three lines of
+OpenSSH 10's post-quantum warning, but its login directory is `/`, a chroot holding only the shares, on an
+8 GB filesystem of its own (7.66 GiB, with an ext4 reserve). Every share is on the 15 TB volume. So the row
+would read "6,66 GB available of 8,22 GB". And with Oleg's 1 GB user quota on `homes`, `df "/home"` still
+answered the whole volume, so even the right filesystem overstates a quota'd account. The transcript is a
+fixture, and LOCATION-SUPPORT now says "yes, limited". The copy built for the live run never reached the NAS
+("No route to host", the Local Network refusal this Mac gives a new bundle id), so the row itself was not
+seen on the NAS. Which filesystem the row should ask is Oleg's call, still open.
+
+**2026-11-11: the row asks the shares** (Oleg's call; core, then a line in the app). The first session now
+lists the login directory beside its `df`, framed by a trailing `pwd`. When the directory holds nothing but
+folders, a second session asks each of them, at most eight. A folder on the login directory's own
+filesystem keeps that answer. Otherwise the folders' shared filesystem is the answer, and none when they
+are spread over several volumes. A second session that reaches no folder is no answer, so a dropped
+connection cannot put the 8 GB root back. `SFTPTransport.diskFree(_:)` now runs whichever batch it is
+handed. The fixtures were all recaptured through the two batches, among them both NAS sessions and two
+DSM-shaped chroots of bind mounts in a container. The first macOS captures listed Oleg's own home folder,
+since the throwaway `sshd` logs in as him; they were deleted unread by any test, and the server was pinned
+to a scratch folder (NOTES.md ▸ sftp / ssh ▸ Space left). 26 core tests cover it, and 7 negative controls
+were each caught. Both suites are green with the live servers up.
+
+Run live. In a copy under its own bundle id, the chroot whose folders share a 48 MiB volume read "50,3 MB
+available of 50,3 MB" after four logins, the one spread over two volumes kept its address, and the pinned
+macOS folder, which holds a file, cost one `df` session and read "543,65 GB available of 2 TB". That copy
+could not reach the NAS, and neither can any copy built in a folder of its own (LIVE-VERIFICATION.md), so
+the NAS ran in `build/debug-dd` with Oleg's saved rows, his Debug build quit first and relaunched after,
+with a temporary tooltip probe, now gone. "SFTP DT" read "11,11 TB available of 15,35 TB", the data
+volume. The three defaults keys the run moved were put back.
+
+**Not seen:** a DSM account whose shares sit on two volumes; a server that is not OpenSSH; and any way to
+show a quota over SFTP, which the protocol does not carry.
+
 #### M39 — Quick View (L)
 
 - **RTF** (M16, M18), with a source and a page view. It is `NSAttributedString`'s job and shares

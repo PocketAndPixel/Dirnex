@@ -185,7 +185,7 @@ struct SFTPBatchedListingTests {
 /// express, and **every attempt** is recorded, refused ones included, so a test can count the
 /// sessions a failing server was asked for.
 private final class ScriptedSFTPTransport: SFTPTransport, @unchecked Sendable {
-    func diskFree() throws -> String { throw ServerSpaceUnsupported() }
+    func diskFree(_: String) throws -> String { throw ServerSpaceUnsupported() }
 
     /// Each folder's `ls -la` rows, `.` and `..` included, as `sftp` prints them.
     var listings: [String: String] = [:]

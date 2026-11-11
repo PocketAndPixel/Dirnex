@@ -1,0 +1,8 @@
+sftp> -df "home"
+        Size         Used        Avail       (root)    %Capacity
+       49152            0        49152        49152           0%
+sftp> -df "media"
+        Size         Used        Avail       (root)    %Capacity
+       32768            0        32768        32768           0%
+sftp> pwd
+Remote working directory: /

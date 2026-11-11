@@ -1,4 +1,0 @@
-Connected to 127.0.0.1.
-sftp> -df
-        Size         Used        Avail       (root)    %Capacity
-  1948455240   1417895560    530559680    530559680          72%

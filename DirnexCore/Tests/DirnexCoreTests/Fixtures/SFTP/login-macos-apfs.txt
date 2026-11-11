@@ -1,0 +1,10 @@
+sftp> -df
+        Size         Used        Avail       (root)    %Capacity
+  1948455240   1416937588    531517652    531517652          72%
+sftp> -ls -la
+drwxr-xr-x    ? oleg     wheel         128 Nov 11 00:00 .
+drwxrwxrwt    ? root     wheel        4096 Nov 11 02:23 ..
+drwxr-xr-x    ? oleg     wheel          64 Nov 11 00:00 Documents
+-rw-r--r--    ? oleg     wheel           7 Nov 11 00:00 notes.txt
+sftp> pwd
+Remote working directory: /private/tmp/dirnex-space-fixture

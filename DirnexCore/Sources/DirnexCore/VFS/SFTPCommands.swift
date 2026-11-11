@@ -180,8 +180,16 @@ public enum SFTPBatchCommand {
     /// login directory, and that is where a saved SFTP row opens (``printWorkingDirectory``). A
     /// chrooted account's is inside its chroot, and so is the answer (measured 2026-11-11). Allowed
     /// to fail so that a server without the extension answers exit 0 on the key route as it does on
-    /// the password route, leaving its one sentence for the reader to find.
+    /// the password route, leaving its one sentence for the reader to find, and so the lines after
+    /// it still run.
     public static let diskFree = allowedToFail("df")
+
+    /// The batch line that asks the space left on the filesystem holding `remotePath`: `df "…"`,
+    /// allowed to fail. A path that is gone prints nothing at all (measured), which is an answer of
+    /// none for that path and leaves the rest of the batch running.
+    public static func diskFree(of remotePath: String) -> String {
+        allowedToFail("df \(quote(remotePath))")
+    }
 
     static func quote(_ path: String) -> String {
         let escaped = path

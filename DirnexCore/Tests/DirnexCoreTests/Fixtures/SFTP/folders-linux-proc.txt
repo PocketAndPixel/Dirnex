@@ -1,3 +1,5 @@
-sftp> -df /proc
+sftp> -df "/proc"
         Size         Used        Avail       (root)    %Capacity
            0            0            0            0         ERR
+sftp> pwd
+Remote working directory: /root

@@ -6330,6 +6330,41 @@ behind `ForceCommand internal-sftp`, and an Alpine container (OpenSSH 10.3p1) wi
   the chrooted account). That is where a saved SFTP row opens, since its endpoint has no root of its
   own, so the app asks with no path (`SFTPBatchCommand.diskFree`). A folder on another volume, a NAS
   share say, would answer differently, which is why the tooltip belongs to the row and not the pane.
+- **On a Synology NAS the login directory is the wrong place to ask.** Measured 2026-11-11 on DSM's
+  SFTP as `dirnex-test`: `pwd` is `/`, a chroot whose listing is the shares (`home`, `media`, `share`),
+  and `df /` answered `8028096 1360328 6507560 6667768 16%`. That is an 8 GB ext4 filesystem with its
+  reserve, which looks like DSM's system partition. Each share answered the data volume instead,
+  `14989737984 4144995788 10844742196 10844742196 27%`, about 11 of 15 TB free. So asking the login
+  directory alone, the row would read "6,66 GB available of 8,22 GB" for a 15 TB NAS. A root that only
+  holds mount points is not a filesystem anyone writes to, and `df` cannot tell it from one that is.
+  - **So the first session also lists, and a login directory holding nothing but folders gets a
+    second** (`SFTPDiskFree`, Oleg's call). One folder on the login directory's own filesystem keeps
+    its answer; otherwise the folders' shared filesystem is the answer, and none when they are spread
+    over several volumes. `sftp` does not print the `f_fsid` the extension sends, so two answers are
+    one filesystem when their totals match and their space left is within 1 %. DSM lists its root
+    with no `.` and `..` and with real link counts, and the reader takes both.
+  - **A DSM-shaped root can be stood up in a throwaway container.** Alpine, `--privileged`, two
+    `tmpfs` volumes, and chroots whose only entries are `mount --bind`s of folders on them, behind
+    `ForceCommand internal-sftp -d /`. One with both folders on one volume and one spread over two
+    gave the two branches real transcripts, and the live rows read "50,3 MB available of 50,3 MB"
+    (the 48 MiB volume, not the 62.7 GB overlay the root sits on) and the address alone.
+  - **On the NAS itself** the saved "SFTP DT" row in Oleg's Debug build then read "11,11 TB available
+    of 15,35 TB", the data volume, from the listing of a tab restored onto the account. The 1 GB quota
+    on it still does not show.
+- **A capture of the login directory on the throwaway macOS `sshd` lists your own home.** It logs in as
+  you, so `ls -la` printed every dotfile, and two Google Drive folders named after email addresses,
+  into what was about to be a checked-in fixture. Pin the server's start folder to a scratch folder
+  of known content instead: `Subsystem sftp internal-sftp -d <folder>`.
+- **DSM's user quota is not in `statvfs` either, measured.** With Oleg's 1 GB user quota on `homes` for
+  `dirnex-test` (3.97 MB used, btrfs), `df "/home"` still answered the whole volume, 10844742188 KiB
+  available, the same as `/share`, which has no quota. So over SFTP an account under a quota is told it
+  has terabytes. Nothing in OpenSSH's protocol asks for a quota, and these accounts have no exec channel.
+- **OpenSSH 10 prints three lines of warning before `Connected to` on a server without a post-quantum key
+  exchange.** `** WARNING: connection is not using a post-quantum key exchange algorithm.`, then two
+  lines about "store now, decrypt later" and `https://openssh.com/pq.html`, each ending `\r\n`, on stderr,
+  on every session to the NAS. None of them matches `SFTPTransportError.detect`, and a reader that keys on
+  its own table or echo is unaffected; one that took the transcript's first line as the answer would not
+  be.
 - **Read the transcript with both streams folded** (`run(transcript:)`), as the batched listing does: the
   table is on stdout and the refusal sentence on stderr, and only together do they tell "cannot say" from
   "no answer" (a refused login, a closed port), which the sidebar treats differently.
@@ -6337,7 +6372,8 @@ behind `ForceCommand internal-sftp`, and an Alpine container (OpenSSH 10.3p1) wi
   to `sshd -E`'s file, and on macOS `log show --predicate 'process == "sshd-session"'` lists
   `opendir "…"` and `statvfs "…"` with their times. A refused `df` sends nothing, so a server without the
   extension shows the attempt only as a session with no request in it. A chrooted account logs nothing
-  at all: its chroot has no `/dev/log`.
+  at all: its chroot has no `/dev/log`. **Read them within a few minutes**: Info lines are kept in memory
+  only, and a query at 01:49 for lines since 01:42 started at 01:46.
 
 ### curl (FTP and FTPS)
 

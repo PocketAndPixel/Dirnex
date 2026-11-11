@@ -997,7 +997,7 @@ shortcut (<sup>cc</sup>). Planned as PLAN.md §M38.
 | Encrypted archives / hidden member names | yes | yes | yes | yes<sup>hh</sup> | yes<sup>hh</sup> | yes<sup>hh</sup> | yes<sup>hh</sup> | n/a | yes<sup>hh</sup> | yes<sup>hh</sup> | yes |
 | Create / unlock an encrypted vault | yes | yes | n/a | n/a<sup>uu</sup> | n/a<sup>uu</sup> | n/a<sup>uu</sup> | n/a<sup>uu</sup> | n/a | n/a<sup>uu</sup> | no | n/a |
 | Saved connection in the sidebar | n/a | n/a | n/a | yes | yes | yes | yes | yes | yes | n/a | n/a |
-| Space left, on the sidebar row | yes | no<sup>aan</sup> | n/a | yes<sup>aan</sup> | n/a<sup>aan</sup> | yes, limited<sup>aan</sup> | n/a | n/a | n/a | n/a | n/a |
+| Space left, on the sidebar row | yes | no<sup>aan</sup> | n/a | yes, limited<sup>aan</sup> | n/a<sup>aan</sup> | yes, limited<sup>aan</sup> | n/a | n/a | n/a | n/a | n/a |
 | Pin to Favorites / Places menu | yes | yes | no | yes, partially<sup>ii</sup> | yes, partially<sup>ii</sup> | yes, partially<sup>ii</sup> | yes, partially<sup>ii</sup> | yes, partially | yes | no | n/a |
 
 <sup>ee</sup> Gated per **row**, not per pane. A trashed file is an ordinary local file, so it
@@ -1171,7 +1171,10 @@ no total, since what a server reports as used is the folder's and not the accoun
 server's tooltip says the space left "of" a total, as a volume's does: OpenSSH's `statvfs` extension
 (`df` in `sftp`) for the filesystem holding the login directory, on the same schedule (2026-11-11). It
 is the filesystem's space, not the account's, so an account under a per-user quota is shown the
-volume's. A server without the extension (`sftp-server -P statvfs`, or one that is not OpenSSH) shows
+volume's: measured on the NAS, a 1 GB DSM quota on `homes` left `df` answering the 15 TB volume. A login
+directory that holds nothing but folders, as DSM's SFTP root `/` does (its own filesystem is 8 GB), is
+answered by the volume its folders are on, in a second session, and by nothing when they are on several
+volumes. A server without the extension (`sftp-server -P statvfs`, or one that is not OpenSSH) shows
 the address alone and is not asked again until relaunch. FTP has no standard verb for it. A cloud
 folder sits on the startup disk, whose own row shows its space, and a provider's account quota is not
 read.
