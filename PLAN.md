@@ -4,7 +4,7 @@ A dual-pane, keyboard-first file manager for macOS in the spirit of Total Comman
 built native (Swift), with macOS-only superpowers TC never had: Quick Look, Spotlight
 search, APFS clones, Finder tags, a command palette, and universal undo.
 
-Status: **M0–M37 shipped**, **M38–M40 planned** (14 languages; M29's licensing is on in betas, off in stable until the
+Status: **M0–M38 shipped**, **M39–M40 planned** (14 languages; M29's licensing is on in betas, off in stable until the
 store opens; M30's Report a Bug is in every release built while `DIRNEX_BUG_REPORT_URL` is set) ·
 Created: 2026-07-05 ·
 Log: [docs/HISTORY.md](docs/HISTORY.md) · What works where:
@@ -99,7 +99,7 @@ Dirnex/
 Sizes are relative (S ≈ days, M ≈ 1–2 weeks, L ≈ 3+ weeks of focused work).
 Each milestone ends in something runnable; no milestone depends on a later one.
 
-### Shipped: M0 → M37 (2026-07-05 → 2026-11-09)
+### Shipped: M0 → M38 (2026-07-05 → 2026-11-11)
 
 Every milestone is closed. The checklists and the full per-pass progress log — what was probed,
 decided, and rejected — live in **[docs/HISTORY.md](docs/HISTORY.md)**; source comments citing
@@ -115,7 +115,7 @@ decided, and rejected — live in **[docs/HISTORY.md](docs/HISTORY.md)**; source
 | M5 | Network and sync | 07-14 | — |
 | M6 | Mac-native power features | 07-19 | — |
 | M7 | Release readiness | 07-19 | — |
-| M8 | The sidebar as a first-class surface | 07-21 | Dragging a *remote* (SFTP) folder into the sidebar — stays menu-only; Recents ordered by modification date, not the true last-used stamp |
+| M8 | The sidebar as a first-class surface | 07-21 | Dragging a *remote* (SFTP) folder into the sidebar — stays menu-only, **since shipped** 2026-11-10 with M38 Slice 4, for SFTP, FTP, WebDAV and S3; Recents ordered by modification date, not the true last-used stamp |
 | M9 | iCloud Drive, for real | 07-21 | Per-item download percentage (macOS exposes none through the URL resource keys); Put Back inside the iCloud trash — the origin is an opaque provider reference with no path in it |
 | M10 | Google Drive and Docs | 07-22 | A real Drive API backend (OAuth + Drive v3, native Docs export/import) — dropped 2026-07-22; sync status in Drive's *mirror* mode, which macOS exposes to no one but Finder |
 | M11 | F4 Edit, and Quick View at full size | 07-22 (text preview 07-27) | A built-in text editor (F4 hands the file to the user's own); write-back for archive and SFTP files — **both since shipped**, archives 2026-08-09 and SFTP with M21 Slice 10; a slideshow timer or thumbnail filmstrip in the preview |
@@ -129,22 +129,23 @@ decided, and rejected — live in **[docs/HISTORY.md](docs/HISTORY.md)**; source
 | M19 | Encryption | 08-09 | **`zipcrypt` and AES-128** (the first is broken, the second buys nothing on hardware AES — both taken at open); **encryption for any container but zip**, since libarchive's 7-Zip writer refuses it and tar has no notion of it; **a passphrase for the paths that are not F5** — preview and *nested*-archive entry failed with `passphraseRequired` rather than prompting, and the encrypted route extracted the whole archive rather than the requested members, so a member filter plus a per-archive passphrase held for the session was its own slice (the passphrase half **landed 2026-08-09**, user-reported — see HISTORY.md ▸ After M19; the **member filter landed 2026-08-25**, closing the milestone: `ArchiveMemberFilter` skips what nobody asked for, and one member of a 600 MB archive costs 0.001 s against 1.53 s); **encrypting in place**, or any gesture that removes the plaintext afterwards, because that delete belongs to the user with the Trash's own rules in view; and **vault paths in anything the user saved on purpose** — a named workspace or a favorite pointing inside a vault is kept, since §6's rule is about what Dirnex remembers *without being asked* (the derived-data clause itself was closed 08-09 by fixing the frecency index and session restore, not by stating the leak — see HISTORY.md §M19 ▸ Follow-up) |
 | M20 | Every place reachable without the sidebar | 08-12 | Individual places as ⌘K palette results (the palette is a registry of *commands*, places are live data — a different mechanism, worth its own decision); reordering or editing places from the menu, which stays the sidebar's job; a Finder-style "Computer" or "Network" destination, which is not a place Dirnex has; and a **Help menu** — Slice 2 claimed Help ▸ Search made "Trash" findable and the app declares no Help menu at all, so adding one is its own decision and was not taken |
 | M21 | Amazon S3, and the mounts we already reach | 08-19 | **Atomicity of any kind** — a prefix rename or delete is N copies and N deletes, so stopping partway leaves items under both names, and no layer can make it otherwise; **a byte counter during a server-side copy**, which would cost a round trip per object (~25 min of pure latency on a 50 000-file prefix), so those jobs report items; **`copyMetadata` and `DirectorySync` by timestamp**, since S3 has no settable mtime, no permissions and no symlinks; **a File Provider mount** (Mountain Duck / `rclone mount` territory — a different product with a different lifecycle); **AES-style client-side encryption, versioning, lifecycle rules and storage-class changes**, none of which a file manager's ten verbs have a place for; and **the 200-committed multipart refusal seen from Amazon**, which AWS documents and answers `412` with the code in practice, so it stays pinned against our own SigV4-verifying endpoint |
-| M22 | Find Files on a connected server | 08-16 | **Content-grep and tags remotely** — no remote backend can answer either without reading every file, so `SearchFields` withholds them rather than skipping the clause (which would return *more* results under the same name); **an exact remote timestamp**, since FTP's `LIST` stamps are year- and zone-less on the server's clock — **since shipped** over FTP for servers that answer `MLSD` (2026-10-19); **searching an S3 *account* pane**, whose rows are buckets — "search every bucket" is a different and much more expensive question than the one ⌥F7 asks; and GNU `find -printf`, retired at the probe rather than handled, since choosing it would have shipped the common case unverified — POSIX `find … -exec ls -ldn {} +` instead, at the cost of the date column |
+| M22 | Find Files on a connected server | 08-16 | **Content-grep and tags remotely** — no remote backend can answer either without reading every file, so `SearchFields` withholds them rather than skipping the clause (which would return *more* results under the same name); **an exact remote timestamp**, since FTP's `LIST` stamps are year- and zone-less on the server's clock — **since shipped** over FTP for servers that answer `MLSD` (2026-10-19); **searching an S3 *account* pane**, whose rows are buckets — "search every bucket" is a different and much more expensive question than the one ⌥F7 asks — **since shipped** 2026-11-10 with M38 Slice 5, each bucket up to a bound stated before the search; and GNU `find -printf`, retired at the probe rather than handled, since choosing it would have shipped the common case unverified — POSIX `find … -exec ls -ldn {} +` instead, at the cost of the date column |
 | M23 | Copy, paste and drag, wherever the file is | 08-26 | Dragging a *folder* out of a server as a promise (a promise is one file; a recursive fetch behind a Finder drop has no progress surface and no way to stop it) and dragging an archive **member** out to another app, for the same reason one layer along — an encrypted archive would have to raise a passphrase sheet behind somebody else's drop, and `extractArchiveSources` reports failures with an alert rather than through a completion handler, so it would need Slice 4's always-answers contract first (taken by the user 2026-08-26, F5 copy-out being the route); `⌥⌘V` move-paste into an archive, which stays gated where it was; a *drop* into a browsed archive, where ⌘V adds by repacking and a drag does not; and the pasteboard as an automation surface — nothing here is scriptable that F5 was not. **Left for a human**, since a drag *session* cannot be synthesized: an actual drag between two panes and a Finder drag onto a connected server. A drag from a server into Finder **ran live 2026-10-24**, where a marked set dropped nothing until it was fixed (HISTORY.md §M32) |
-| M24 | Every local-only feature, on a file that is not local | 08-28 | **Content-grep and tag search on a server**, withheld at M22 for the reason that has not changed — no remote backend can answer either without reading every file; **ACLs and extended attributes remotely**, which SFTP and FTP do not carry at all; **Open in Terminal for an SFTP account**, which is an `ssh` session and a different feature; and a **folder that is not already here**, refused by every one of the seven hand-offs — a folder is an unknown number of objects in an unknown number of requests, and copying a tree out is F5's job |
-| M25 | What a remote write carries, and what a remote delete costs | 08-29 | **A Trash the protocols do not have** — taken at §7 on 08-29, and the one part of the milestone that closed by not being built; **owner and group in a remote Get Info**, because `chown`/`chgrp` take a numeric id while `sftp`'s own `ls -la` prints names, so a panel built on a listing has nothing to send; **comparing by timestamp on FTP and S3**, refused by construction and always will be — `LIST` is year-less and zone-less, and an S3 `LastModified` is when the object was *written*; and ACLs and xattrs again, which is a limit rather than a gap |
+| M24 | Every local-only feature, on a file that is not local | 08-28 | **Content-grep and tag search on a server**, withheld at M22 for the reason that has not changed — no remote backend can answer either without reading every file; **ACLs and extended attributes remotely**, which SFTP and FTP do not carry at all; **Open in Terminal for an SFTP account**, which is an `ssh` session and a different feature — **since shipped** 2026-11-10 with M38 Slice 3; and a **folder that is not already here**, refused by every one of the seven hand-offs — a folder is an unknown number of objects in an unknown number of requests, and copying a tree out is F5's job |
+| M25 | What a remote write carries, and what a remote delete costs | 08-29 | **A Trash the protocols do not have** — taken at §7 on 08-29, and the one part of the milestone that closed by not being built; **owner and group in a remote Get Info**, because `chown`/`chgrp` take a numeric id while `sftp`'s own `ls -la` prints names, so a panel built on a listing has nothing to send — **since shipped** 2026-11-10 with M38 Slices 1–2, by name over the exec channel; **comparing by timestamp on FTP and S3**, refused by construction and always will be — `LIST` is year-less and zone-less, and an S3 `LastModified` is when the object was *written*; and ACLs and xattrs again, which is a limit rather than a gap |
 | M26 | Move to Trash, wherever the file lives | 08-31 | **The remote backends**, which have no Trash at all and are already degraded to a confirmed permanent delete (§M5, and M25 §7's decision not to invent one); **chasing the refusal further into TCC and `fileproviderd`**, which is not observable from here past the three candidates already eliminated — the fix does not depend on knowing which policy denies; and **Put Back for an item *Finder* deleted out of a provider domain**, or for anything trashed before the store shipped, both of which keep the honest answer the restore flow already gives by name. A **third** origin source landed 2026-09-20 — a network share's own `#recycle`, where the bin mirrors the original path so there is no record to be missing (HISTORY.md ▸ the follow-on log) |
 | M27 | Legacy code-page archive names | 09-09 | **Inferring** the code page — no reader can, and a wrong guess is a plausible name for the wrong file, so it is a chooser over a preview and never a detector; **preserving an un-representable name byte-for-byte**, the rejected streaming rewrite, which keeps bytes nobody can read and still cannot extract that row *out* of the archive; and **persisting the declaration** across sessions, since it is a guess the user made about one archive and a wrong one silently outliving the session is worse than being asked again |
 | M28 | iCloud Photos, as folders of originals | 09-13 | **Import, delete and album edits**, each a write Photos mediates with its own confirmation; **smart albums** — one a person made is returned by no PhotoKit fetch, and the system ones are views over the library rather than places; **shared albums, the Shared Library and hidden photos**, left out as Photos' own Library view leaves them out; **a per-asset time zone**, which PhotoKit does not expose, so months are cut in the Mac's; **⌘L inside the library**, which has no real directory to start from; and **Photos' lowercase `.mov`** for a Live Photo's movie, since a row's name is part of its path. **Exercised later that evening**: the download of an original that is only in iCloud, on clips recorded for it — the bar sat at zero and Stop was ignored until the request carried a progress handler (HISTORY.md §M28); after that fix a 219 MB copy arrived byte-identical and Stop on a 276 MB one stored nothing |
 | M29 | A license, and the reminder it removes | 10-01 | **Revoking a refunded key inside the app** (the server marks it; an in-app list waits until refunds are actually abused); **trials that stop working, and activation limits**; **any copy protection beyond the signature**, since the source is open and the reminder is a request, not a lock; and **the Keychain** for the key, which is signed rather than secret. **Seen only in tests or a Debug build**: the Renew reminder on a release build, the prominent Renew… in Settings ▸ License, a pasted production key, and the 13:00 rule |
 | M30 | Report a Bug, and a Help menu to hold it | 10-07 | **Anything the user didn't type or tick** in a report: no logs, no screenshots, no file names or paths, one crash report at most; **the website** naming Help ▸ Report a Bug…, until a stable release has it (the private repo's C8). **Seen only in tests**: Email Instead's draft, since this Mac's Mail has no account |
 | M31 | A compare window of our own | 10-22 | **Editing, copying a block across and saving**, a later milestone's decision — **since shipped** as M33, for whole lines; **a three-way merge** — **since shipped** as M34; **a file over 64 MiB** in the window, refused by name and left to the external tools; **a binary comparison**. **Seen only through a probe**: a Mac with no external diff tool. **Not run live**: an external tool from the conflict dialog, FTP and S3 pairs, and Escape |
-| M32 | WebDAV | 10-24 | **Depth infinity**; **locks of our own**; **NTLM, Negotiate and OAuth**; **setting a time on Apache**, which has no way to take one (Nextcloud's `X-OC-Mtime` is used where it is answered); **Apache's offset PUT** as a segmented upload; **quota**; **CalDAV, CardDAV, versioning and WebDAV ACLs**; **a Trash**, which the protocol does not have, so a NAS's `#recycle` softens the delete sheet instead. **All run live 2026-10-24**, on the NAS and a throwaway Apache, which found and fixed three bugs: ⌥F5 with a server folder in the set, Put Back into a folder deleted since, and dragging a marked set out (HISTORY.md §M32) |
+| M32 | WebDAV | 10-24 | **Depth infinity**; **locks of our own**, which M38's probe found add nothing worth holding one; **NTLM, Negotiate and OAuth**, NTLM and Negotiate **since shipped** 2026-11-10 with M38 Slice 6; **setting a time on Apache**, which has no way to take one (Nextcloud's `X-OC-Mtime` is used where it is answered); **Apache's offset PUT** as a segmented upload; **quota**, **since shipped** 2026-11-10 with M38 Slice 7 where the server reports one; **CalDAV, CardDAV, versioning and WebDAV ACLs**; **a Trash**, which the protocol does not have, so a NAS's `#recycle` softens the delete sheet instead. **All run live 2026-10-24**, on the NAS and a throwaway Apache, which found and fixed three bugs: ⌥F5 with a server folder in the set, Put Back into a folder deleted since, and dragging a marked set out (HISTORY.md §M32) |
 | M33 | Copy a change across, and save | 10-26 | **Typing in a pane** and **find and replace**, M11's call; **copying every change at once**, which is F5; **a save that changes the encoding or the line endings**, since a save keeps both; **editing in the conflict dialog's window**, whose right-hand file waits on that dialog. **Not run live**: FTP and S3 sides, a Synchronize row compared again after a save, a side with nowhere to save, and an editor's unsaved edit met by a save |
 | M34 | A three-way merge | 10-27 | **Synchronize as an entry point**, until a sync keeps a record of the last one; **three files picked by hand**, whose base would be a guess; **an archive member** changed behind an edit; **being git's merge tool**, which needs a command-line entry point; **conflict markers** in any form; **a merge that ignores whitespace**; **a binary file**. **Not run live**: FTP in the app, a batch's question, a file past the content check's limit, the take keys and the light appearance. Over SFTP and FTP a write between the check and the upload goes unseen, since that upload carries no condition |
 | M35 | An SMB server's shares, as a pane | 11-05 | **Anything that writes to the list**: creating, renaming or deleting a share, or copying onto it; **a comment column**; **a way up from a share Finder mounted**, which keeps `..` → `/Volumes`. **Not run live**: the plain permission sentence, since no share is listed to `dirnex-test` and refused; ⌘Return into the other pane; a saved sidebar row; `..` from a share typed into the sheet while its server is not connected; and marks inside a share after a relaunch |
 | M36 | Drag and paste, where M23 stopped | 11-08 | **A folder for Teams, Chrome and the rest of Chromium**, which refuse a promise — **since shipped** the same day as a zip of the folder for every app but Finder, after Gmail answered "Attachment failed" for a folder, and **since 2026-11-09 as the folder itself, with the zip for an app the pointer enters with ⇧ held**, after VLC was handed a zip of a whole season (HISTORY.md, after §M36); **a folder inside an archive**, which probe P1 answers for too, leaving the extraction of a subtree behind the promise; **a folder dragged with files** losing its promise once the pointer has been over another app, the board's rewrite to file URLs being one way. **Not run live**: Edit ▸ Move Items Here being enabled, F5 from a server into an archive, an archive member into a Chromium app, and a server folder crossing another app on its way to Finder |
-| M37 | Compare and merge, past M31 and M34 | 11-09 | **Aligning a byte comparison across insertions**, which needs gaps in the rows and a size limit, and has no oracle; **whitespace in a merge's regions**, labelled and offered as a take instead, so no edit goes missing in silence; **a sync's record with a side on a server**, which M38 takes up; Go to Offset, copying bytes and Swap Sides in the byte view |
+| M37 | Compare and merge, past M31 and M34 | 11-09 | **Aligning a byte comparison across insertions**, which needs gaps in the rows and a size limit, and has no oracle; **whitespace in a merge's regions**, labelled and offered as a take instead, so no edit goes missing in silence; **a sync's record with a side on a server**, **since shipped** 2026-11-11 with M38 Slices 8–9, keeping only what each sync copied; Go to Offset, copying bytes and Swap Sides in the byte view |
+| M38 | Remote: what M8, M22, M24, M25 and M32 left | 11-11 | **WebDAV locks of our own**, since a lock around the save cannot see a write made before it, and one held from the download on would lock everyone else out while an editor is open; **OAuth for WebDAV**, which needs a sign-in flow and a token store; **a faster Find Files walk in Photos**, which saves about 1 ms a month while a name costs 2.0 ms an asset; **a quota over SFTP**, which the protocol does not carry. **Not run live**: real AWS, IIS, a Windows domain and a hosted Nextcloud; root over GNU coreutils; a password pin reconnecting through the Keychain itself; and the NAS for Open in Terminal, whose accounts may not run a command |
 
 ### Next
 
@@ -156,516 +157,9 @@ milestone opens with its probes, and its slices are written then (CLAUDE.md ▸ 
 item whose reason still holds after the probe goes back to the *undone* column with what the probe
 found.
 
-M36 (drag and paste, where M23 stopped) closed 2026-11-08 and M37 (compare and merge, past M31 and M34)
-2026-11-09, and both are archived in [docs/HISTORY.md](docs/HISTORY.md).
-
-#### M38 — Remote: what M8, M22, M24, M25 and M32 left (M–L)
-
-- **Owner and group in a remote Get Info** (M25). `chown` and `chgrp` take a numeric id, while
-  `sftp`'s `ls -la` prints names, so a panel built on a listing has nothing to send. A remote
-  `chgrp` also clears set-uid and set-gid without a word, so a change needs the ordering rule
-  `AttributeChangePlan` already encodes locally.
-- **Open in Terminal for an SFTP account** (M24). A local shell cannot `cd` to a server, so this is
-  an `ssh` session to the account's own host. A key account is the easy half; a password account
-  needs its secret kept out of `argv`.
-- **Searching an S3 account pane** (M22). Its rows are buckets, and "search every bucket" is a far
-  more expensive question than the one ⌥F7 asks, so it needs a bound the user sees before it starts.
-- **Dragging a remote folder into the sidebar** (M8). A remote folder cannot ride `.fileURL`, and M8
-  named a private `VFSPath` pasteboard type as the way. M23's `app.dirnex.locations` payload is that
-  type, and a pin on an account already carries where to reconnect (LOCATION-SUPPORT.md
-  <sup>ii</sup>).
-- **A faster Find Files walk in Photos** (LOCATION-SUPPORT.md <sup>nnn</sup>). One PhotoKit fetch
-  could answer every capture date in the library at once, but names cost about 1.1 ms an asset, so a
-  search walks month by month today.
-- **WebDAV locks of our own** (M32). Left because the entity tag already guards the write, so the
-  first question is what a lock would add that the tag does not.
-- **WebDAV sign-in by NTLM, Negotiate and OAuth** (M32), left with no reason recorded. The
-  transport is `curl`, which has flags for NTLM and Negotiate, so the first probe is whether this
-  Mac's `curl` was built with both. OAuth needs a sign-in flow and somewhere to keep the token first.
-- **WebDAV quota** (M32). Left because the NAS does not report it, so the first question is which
-  servers do. The Nextcloud container M32 used is the place to measure.
-- **A sync's record with a side on a server** (M37). Left because a kept version is proved against
-  both sides' bytes, which would download every text file on every sync, and no server listing has a
-  clock that can say what changed. The first question is whether the rows the sync itself copied are
-  proof enough, with Merge… downloading the server's file when it is asked for.
-
-Inherited from M25's risk row (§6): a capability is learned per connection when it is first needed,
-and what cannot be carried is reported rather than approximated. And from M32's: nothing branches on
-a namespace prefix or the `Server` header, and a capability is used only where the server's own
-answer shows it.
-
-**Opened 2026-11-09.** Probed on this Mac with OpenSSH 10.3 and `curl` 8.7.1, against the throwaway
-servers and the system Photos library:
-
-- **`sftp`'s `ls -ln` prints names on a current server.** Against OpenSSH's own `sftp-server` it gave
-  `oleg staff`, because the client resolves ids through the server's `users-groups-by-id` request. With
-  that one request withheld (`sftp-server -P users-groups-by-id`) the same command gave `501 20`. So
-  no listing supplies a number on any current server.
-- **The exec channel needs no number at all.** `chown -h -- :admin '<path>' 2>&1 && echo <token>`
-  changed the group by name, and printed a refusal in the server's words otherwise (`you are not a
-  member of group daemon`, `nosuch: illegal group name`). `--` goes before the owner operand: BSD's
-  `chgrp -h admin -- path` took `--` for a file and exited 1 after changing the link. `sftp`'s own
-  `chgrp` follows a symlink and changes the target; `-h` changed the link.
-- **Any group change clears set-uid and set-gid**, the same group included, and on a directory too.
-  `chgrp` then `chmod 6755` kept both bits. `chmod` then `chgrp` lost both.
-- **A non-root account can change a group to one of its own and no owner at all.** `chown` to another
-  uid was refused and to itself succeeded. One `id` answers uid, gid and every group with its name.
-  `getent` does not exist on macOS.
-- **Open in Terminal over `ssh`.** A `.command` file handed to Terminal with `open -a` ran with a real
-  tty, `ssh -t` got one on the server, `cd` into a folder named `it's a $dir` held, and the file
-  deleted itself first. A one-shot FIFO behind `SSH_ASKPASS_REQUIRE=force` carried a secret and left
-  nothing on disk, and a wrong secret ended cleanly with exit 255 under `NumberOfPasswordPrompts=1`.
-  Tested through a key's passphrase, since the throwaway `sshd` takes keys only. iTerm and WezTerm are
-  not installed here, so their launch is read from their documentation.
-- **Photos: the reason still holds, so this item goes back to the *undone* column.** With 33 assets over
-  12 months, one fetch per month cost 14 ms in all and one fetch for every date 3.9 ms. So the saving is
-  about 1 ms a month, while a name costs 2.0 ms an asset through the public call. A `filename` predicate
-  raises `NSInvalidArgumentException` ("Unsupported predicate"), so no fetch can filter by name. The
-  private `originalFilename` key answers in 0.0013 ms, but it names only the primary resource, so a
-  search for a Live Photo's `.MOV` would miss it in silence.
-- **WebDAV locks: nothing a lock adds is worth holding one, so this goes back to *undone*.** On Apache
-  `LOCK` gave a token, a `PUT` without it answered 423, and with it 204. A lock around the save cannot
-  see a colleague's write made before it, which is the only gap left: a write in the second the tag was
-  read, on a server whose tag cannot show it. Only a lock held from the download onward closes that, and
-  it would lock everyone else out of a file for as long as an editor has it open, and past a crash until
-  its timeout.
-- **`curl` here has NTLM, SPNEGO, GSS-API and Kerberos built in**, so both sign-ins are a transport
-  change. No server on this Mac speaks either. OAuth still needs a sign-in flow and somewhere to keep the
-  token, so it goes back to *undone*.
-- **Quota.** Apache answers 404 inside the 207 for both RFC 4331 properties, and an `allprop` volunteers
-  neither. No pane shows free space for any backend: the one reader is a volume's sidebar tooltip.
-- **`S3Backend.subtreeListing` has no cap**, because a bucket root search never needed one. A search
-  over an account needs a bound of its own.
-
-Decided before Slice 1 (2026-11-09, Oleg, on the probes above):
-
-- **Owner and group go over the exec channel, by name.** An account with no exec channel keeps today's
-  read-only rows and says why, since it has no way to learn which groups it may use. A non-root account
-  gets its own groups, on items it owns, and no owner control. Root gets both. A change that would clear
-  a set-id bit re-sends the mode after it, and its undo does too.
-- **Open in Terminal is an `ssh` session in the user's terminal**, `cd`'d to the pane's folder, for key
-  and password accounts alike. A password goes through a one-shot FIFO and never reaches `argv` or the
-  disk. An account with no exec channel is refused by name.
-- **A sync's record may have one side on a server.** A version is kept only for a file the sync itself
-  just copied, so nothing extra is downloaded, with the server row's size, date and tag beside it. A file
-  is changed on both sides when its local bytes moved and the server row's stamp moved, and Merge…
-  downloads the server's file only when pressed. A same-size SFTP edit inside the same minute stays
-  unseen, which is no worse than today.
-- **NTLM and Negotiate are built and verified on stand-ins**: a local server that checks the real NTLMv2
-  proof, and a Kerberos and Apache container. No real IIS is involved, and the record will say so.
-- **Quota is measured on Nextcloud** (the image is now on this Mac), and if a server reports one it
-  appears in the tooltip of the server's sidebar row, as a volume's does.
-- **Back to *undone*** with what the probes found: WebDAV locks, OAuth, and the faster Photos walk.
-
-##### Slices
-
-1. **Owner and group** (core, additive). `id`'s parse, the command and its token, the two new fields,
-   the set-id rule, the read-back and the undo.
-2. **Owner and group in Get Info** (app). The controls, the note for an account with no exec channel,
-   14 languages.
-3. **Open in Terminal for an SFTP account** (core, then app). The session's arguments and the one-shot
-   secret, each terminal's launch, and the refusal.
-4. **A remote folder into the sidebar** (app). `app.dirnex.locations` on the sidebar, with the endpoint
-   `reconnectEndpoint(for:)` already gives a pin.
-5. **Searching an S3 account** (core, then app). The bound, what Find Files says before it starts, and a
-   results tab across buckets.
-6. **NTLM and Negotiate** (core, then app). The schemes, the connect probe, the batch and upload
-   behaviour each one needs, and the stand-ins.
-7. **WebDAV quota** (core, then app). Nextcloud's answer first, then the row's tooltip.
-8. **A sync's record with a server side** (core). The stamp beside a version, keeping from what the sync
-   copied, and what changed since.
-9. **Merge from Synchronize over a server** (app). The checkbox for such a pair, the row, and Merge…
-   downloading the server's file and saving to both.
-10. **Live, and the record.** Every item on real servers, 14 languages, and M38 closed.
-
-**Done when:**
-- an SFTP item's group, and as root its owner, can be changed and undone from Get Info with its set-id
-  bits intact, and an account with no exec channel says why it cannot;
-- Open in Terminal lands in the pane's folder on a key account and on a password account, with no secret
-  in `argv` or on disk;
-- ⌥F7 on an S3 account pane says its bound before it starts and reports a bucket it stopped short in;
-- a remote folder dragged into the sidebar reconnects after a relaunch;
-- a WebDAV server asking for NTLM or Negotiate can be signed in to, on the stand-ins;
-- a server that reports a quota shows it, and one that does not shows nothing;
-- a file changed on both sides of a remembered sync with a server side merges over the version that sync
-  copied, and a pair with nothing copied offers no merge.
-
-##### Progress
-
-**2026-11-09: Slice 1 landed** (core only; the app is untouched). `RemoteAccountIdentity` reads `id`,
-`SSHOwnershipCommand` builds the one `chown` and reads its token, `RemoteAttributeField` gained `.owner`
-and `.group`, and `RemoteMetadataStep.setOwnership` runs over the exec channel ahead of any `chmod` in
-`SFTPBackend.applyMetadata`. A change on a set-id item sends its mode again, and so does its undo.
-`VFSBackend.accountIdentity(at:isCancelled:)` defaults to `nil`, and `CompositeBackend` forwards it in
-Slice 2. 48 new tests read real `id` output from macOS, GNU and busybox, and six negative controls each
-failed the test that watches them. The builders' exact strings also ran on a real `sshd`: a `6755` file
-went to `admin` with its mode intact, the undo brought back `staff` and `6755`, a stranger's group and an
-unknown one each came back in the server's words, and an `sftp`-only account answered no identity.
-
-**2026-11-10: Slice 2 landed** (the app, with two small additions to the core). Get Info asks
-`accountIdentity` off the main thread before an SFTP panel opens, and `CompositeBackend` forwards it. Root
-gets a field for each of owner and group, since nothing lists a server's users. Any other account gets a
-popup of its own groups on items it owns, led by the item's own group when the account is not in it. An
-SFTP account with no answer keeps text rows and a note saying why. FTP, WebDAV and S3 get no such note,
-since read-only is simply what those rows are. All of it is in 14 languages. In the core, a refused `chown`
-is now `RemoteMetadataRefusal.ownershipRefused`, so it blames the owner and group and not the mode, and
-`RemoteAttributeVerdict.serverWords` carries its sentence to the alert. Beside a `chown` the mode is judged
-by the read-back alone. That came from the live run: on an immutable file the `chown` and the `chmod` re-sent
-behind it were both refused, and the alert reported a loss on a mode nobody had touched.
-
-Run live on throwaway `sshd`s, in a copy built under its own bundle id. A popup pick took a `6755` file to
-`admin` with its mode intact, and Edit ▸ Undo brought back `staff` and `6755`, both read with `ls -ln`. A
-locked file and an unknown name each came back in the server's words, naming only the field refused. An
-`sftp`-only account showed the note, in English and Russian. 9 core tests and 26 app tests are new, four of
-them live, and four negative controls each failed the tests that watch them.
-
-**Not seen:** a click in the popup's own menu, since the background tools refuse to open one (an env-gated
-`performActionForItem` chose the item, and it is gone); and a real root login. The root layout ran against
-a server whose `id` claims root, so typed text reached a real `chown` and its refusal, but a typed change
-that lands was not watched. Both are Slice 10's. **A known rough edge:** root typing a number where the
-listing prints a name is told the owner was not stored as asked, because a read-back compares what it
-has, and the panel then shows what landed.
-
-**2026-11-10: Slice 3 landed** (core, then the app). Open in Terminal on an SFTP folder is now an `ssh`
-session in the user's own terminal, in the pane's folder. `SFTPProcessArguments.terminal` keeps the other
-channels' host key policy and timeout, adds `-t`, and lets a key ask its question. `SSHTerminalStage`
-writes a `.command` that deletes itself, in a private folder of its own. For a password it adds a helper
-that reads a `OneShotSecretPipe`, so the secret is in the kernel's pipe and nowhere else, and is gone after
-one read or after two minutes. Two minutes because iTerm asks "OK to run?" first. The password comes from
-the live connection, so opening a terminal raises no Keychain prompt. `accountIdentity` is asked before any
-window opens, and an account that answers nothing is refused by name, in 14 languages. When `ssh` itself
-fails (status 255) the script waits for a Return, since iTerm closes a session the moment it ends.
-
-Run live in a copy built under its own bundle id, launched through LaunchServices, on throwaway `sshd`s. On
-a key account, Terminal ran `ssh` with no secret in its arguments, the server's log showed a session on a
-real tty, `lsof` put its `bash -l` in a folder named `it's a $dir`, and the staging folder was gone. On a
-`ForceCommand internal-sftp` account the pane listed the folder, no `ssh` started, and the alert named the
-account, in English and Russian. A live suite runs the real script under `script(1)` against a real `sshd`,
-with a secret through the pipe and a wrong one. 28 core tests and 12 app tests are new, four of them live,
-and 22 negative controls were each caught.
-
-On the NAS, two password accounts signed in from that copy, and Open in Terminal refused each by name. A
-temporary probe, now gone, read why: past the sign-in, the server answered the check with `Permission denied,
-please try again.` and status 1. So it is the NAS's rule about those accounts, and the refusal is right.
-
-**Not seen:** a password session reaching a shell on a real server. The throwaway `sshd` takes keys only,
-and neither NAS account may run a command. The pipe ran through a key's passphrase, which reaches `ssh`
-the same way, and the password flags are the ones browsing already uses. iTerm and WezTerm, which are not installed here: their launches come from iTerm2's source and
-WezTerm's documentation. All three are Slice 10's. **A known rough edge:** a server that could not be asked
-at all gets the same refusal as an account with no shell, since `accountIdentity` answers `nil` for both, and
-the sentence is worded to be true of each.
-
-**2026-11-10: Slice 4 landed** (one initializer in the core, then the app). A folder on a server can be
-dragged into the sidebar. The sidebar now reads `app.dirnex.locations` ahead of file URLs, so a selection
-keeps its server rows and its order. `FavoriteEntry(draggedRow:endpoint:)` says what can be a pin, through
-`TabRestorePolicy`, and the endpoint comes from `reconnectEndpoint(for:at:)`, so a dragged pin is the one the
-menu makes. A server row with no endpoint, a symlink, a folder in an archive, a bucket in an account pane and
-a share in a server pane draw no insertion line, since each would be a row that cannot open. A bucket's and a
-share's paths answer `notFound` when listed, because those rows are reached by connecting. No new strings.
-
-Run live with real drags on a throwaway `sshd`, in a copy built under its own bundle id. A server folder drew
-the insertion line and landed where it showed, with its endpoint in the store. A server file and a local
-symlink drew none, a marked folder and file pinned the folder alone, and a local folder pinned as before. After
-a relaunch with both panes local the server had seen no new login, and opening the pin logged in and listed
-the folder. 11 core tests and 9 app tests are new, and 13 negative controls were each caught.
-
-**Not seen:** FTP, WebDAV and S3 live, which go through the same reader as SFTP; a password account, whose
-reconnect is the restore's; a folder in Photos; and a folder dragged from Finder, which was read from a real
-board in a test rather than dragged. All are Slice 10's.
-
-**2026-11-10: a pin on an unmounted share mounts it** (reported the same day, outside the slice list; core,
-then the app). Dirnex unmounts what it mounted on quit, so a pin inside a share raised "moved or deleted" on
-the next launch and offered to remove a folder that was fine. A pin made on a share now records it, in the
-`endpoint` field server pins already use. Picking one whose volume is not mounted mounts it and goes in, with
-the row spinning. An older pin has no record, so it tries the saved SMB servers in sidebar order, and every one
-is tried because a server lists a share even to an account it refuses. The one that mounts is written back onto
-the pin. `/Volumes/Macintosh HD` is a link with no mount entry of its own, so `PinnedShare` asks about links, and
-a folder missing from a volume that *is* mounted still gets the old alert. No new strings. 18 core tests and
-15 app tests are new, and 13 negative controls were each caught.
-
-Run live on the NAS with the pin that was reported, which predates the record. The first saved account mounted
-`media` at `/Volumes/media`, the pane landed on `TV`, and the pin came back with the share on it, in its place
-and under its own name.
-
-**Not seen:** a second pick after a quit, which goes through the record and is covered by tests; the row's
-spinner; and a double-click, which the row's activity guards.
-
-**2026-11-10: a tab inside a share comes back too** (asked for the same day; core, then the app). A tab is
-written down with its share as a pin is, and `TabRestorePolicy` answers `.shareMount` for a folder under
-`/Volumes` with a share endpoint. That tab comes back while its volume is not mounted, waiting on the share
-(`AwaitedShare`), and its first navigation mounts it before listing, by the rules a restored server tab
-reconnects by. The launch activation mounts at any refresh floor but 0, a gesture mounts at any floor, and an
-account with no saved password stands down on the status line. Oleg chose that over mounting only on a switch,
-which would have left the tab in front empty at launch. Both panes can restore into one share, so `SMBMounter`
-hands a second caller the first one's mount instead of asking NetFS again. No new strings. 4 core tests and 12
-app tests are new, and 9 negative controls were each caught.
-
-Run live on the NAS: the TV pin opened `media/TV` in the left pane, the tab was written down with the share
-before and at quit, and the share was unmounted. On relaunch the tab, still the active one, mounted `media` in
-3 s and listed it with nothing clicked, landing on the row it was left on.
-
-**Not seen:** a background tab mounting on a switch, a floor of 0, an account with no saved password, and both
-panes in one share live; each is covered by tests.
-
-**2026-11-10: Slice 5 landed** (core, then the app). ⌥F7 on an S3 account pane searches every bucket the key can
-see, each up to its first 10,000 objects in the order S3 lists keys. Oleg chose a bound per bucket over one
-allowance for the account, which a large bucket early in the alphabet could spend for every bucket after it.
-Find Files states the bound under its fields before the search starts, and offers no scope choice, since an
-account has one place. `S3AccountSearch` takes one bucket at a time and uses its first page as the probe. A
-bucket in another region, or one label too deep for the endpoint's certificate, is re-aimed by
-`S3LocationCorrection`: the two rules the connect kept to itself, now in the core and asked by both.
-`S3Backend.boundedSubtreeListing` cuts the last page, so the number is exact, and at Stop it returns the pages
-already read. A bucket cut short or refused is named in an alert afterwards, refusals grouped by reason, and
-the search goes on past it. The buckets a hit lives in are connected and their secret filed, as entering them
-would, so a hit opens, copies and previews; the secret comes from the live account connection, so a search
-raises no Keychain prompt. Save Search is off for such a tab (`SearchRoute.isSavable`, Oleg's call), since a
-sidebar re-run has no dialog to say the bound; editing the search in its tab reopens the dialog and works.
-Five strings in 14 languages. 33 core tests and 10 app tests are new, and 15 negative controls were each
-caught.
-
-Run live against a throwaway S3 endpoint that verifies every signature (a wrong secret refused in the same
-run), through a real pane and `curl`, from a temporary test in the app target, since deleted. Over four
-buckets, a search for "report" returned four hits from three of them. `big` was read for exactly ten pages,
-so its first key matched and its 12,001st did not, and the alert named it. `locked` was asked once and named
-as lacking `s3:ListBucket`. `west` answered 301 and was asked again signed for `us-west-2`, where its hit then
-lived. Every hit stat'd through the router, and Save Search was off.
-
-**Not seen:** the dialog, the progress sheet and the alert on screen (computer use on the copy was declined, so
-their text was read from the views); real AWS, with its listed `<BucketRegion>` and a real 301; Stop during a
-live search; an account of many large buckets. All are Slice 10's. **A known rough edge:** the progress
-sheet's title names the account by its host ("Searching “127.0.0.1”…"), as a walk names a server.
-
-**2026-11-10: Slice 6 landed** (core, then the app). A WebDAV server asking for NTLM or Negotiate can be
-signed in to. `WebDAVAuthScheme` gained `.ntlm` and `.negotiate`. A named account answers with Basic, NTLM
-or Digest, in that order over HTTPS and as Digest, NTLM, Basic over plain HTTP, so an IIS offering
-Negotiate, NTLM and Basic over HTTP now gets NTLM where it used to get Basic. An account with no user name
-signs in by Negotiate with the Mac's own Kerberos ticket (`curl --negotiate -u :`), Oleg's call, so nothing
-typed is sent. A named account on a Kerberos-only server is told to leave the name empty, and a refused
-ticket is told to get one in Ticket Viewer and to connect by the server's name. Both are in 14 languages,
-with Ticket Viewer under the name macOS gives it in each. The Connect sheet drops a settled scheme that no
-longer fits the account (`WebDAVAuthScheme.fits`). NTLM needed nothing past its spelling: `curl` signs a
-connection in once, a batch's later sections ride it, a body goes once, and `--fail` trips only on the
-proof's answer (NOTES.md ▸ curl). 21 core tests and 4 app tests are new, the core's fixtures are real `curl`
-runs of its own builders against the stand-ins, and five negative controls were each caught.
-
-Built and verified on two stand-ins, with no real IIS or Active Directory, as decided:
-`Tooling/fake-ntlm-proxy.py` checks the real NTLMv2 proof in front of the throwaway Apache and offers
-Negotiate beside NTLM as IIS does, and `Tooling/negotiate-standin` is an MIT KDC with Debian's Apache and
-`mod_auth_gssapi` in a container. `scripts/live_test_servers.sh` brings both up and down, the Kerberos one
-only when Docker is running and its image is built. Its ticket lives in a cache of its own, so the Mac's
-Kerberos state is never touched. The WebDAV live suite ran over all seven endpoints, and with the
-stand-in's credential cache pointed at nothing, 11 issues appeared, all on the Kerberos endpoint.
-
-Run live in a copy built under its own bundle id. With the stand-in's ticket in its environment, a restored
-tab signed in to the share as `probe@DIRNEX.TEST` with no password, which the server's log confirms, and
-without it the same tab sent one anonymous request. Both refusals were seen on screen, in English and
-Russian: the ticket's as an alert from a saved row with no name, the named account's in the Connect sheet
-and as an alert. A temporary env-gated line, now gone, filled the sheet's password, which the background
-tools will not type.
-
-**Not seen:** a real IIS, a Windows domain, and a ticket from Active Directory or the Kerberos SSO extension;
-NTLM over HTTPS; and a server taking the NTLM token macOS's SPNEGO offers when there is no ticket, which
-the stand-in refuses. All are Slice 10's. **Known rough edges:** a restored Negotiate tab with no ticket says
-only "The server refused that. This account may not have permission for it." on its status line, since a
-reconnect does not go through the probe's sentences. A stock Debian or Ubuntu Apache's `mod_dir` answers
-301 to a DELETE, MOVE or PUT naming a folder without its slash, which is how Dirnex names one, so deleting
-or moving a folder fails there: an M32 gap found here, **since fixed** (the next note). And **a build that
-predates this slice cannot read a saved-server list holding NTLM or Negotiate**. Measured with a scheme this
-build does not know: the whole list is refused, so that build shows no saved servers, and a server saved
-there writes over all of them. Tabs, pins and history lose only the one endpoint (`StoredServerEndpoint`).
-The release in `/Applications` shares the defaults domain with a Debug build.
-
-**2026-11-10: a folder on a stock Debian Apache** (found in Slice 6's live run; core, then the app). A Debian
-or Ubuntu Apache redirects any request naming a folder without its slash (`mod_dir`'s `DirectorySlash`),
-PROPFIND included, so a stat of any folder failed there, not only deleting and moving one. A file named with
-the slash answers 400, so nothing adds it on a guess. Every request still starts bare, and
-`WebDAVFolderRedirect` sends it once more with the slash where the redirect asks. A `Location` of the same
-URL plus `/` names the source, and a redirect with no `Location` names a MOVE's or COPY's destination,
-which is how `mod_dav`'s lookup of an existing folder answers. Each end is asked again at most once. A PUT
-is never sent again, since that redirect says a folder holds the name. The transport's DELETE, MOVE and
-COPY now say which ends are named as folders. A server that never redirects is sent byte for byte what it
-was before, and on one that does, a folder costs one request more per delete, move or stat. No new
-strings. 13 core tests are new, on 16 runs of the core's own builders through `curl` against Apache
-2.4.68, and seven negative controls were each caught.
-
-The Kerberos stand-in keeps Debian's default now, so the live suite has one server that redirects, and a
-stat of a folder joined the suite. All 13 live tests passed on all seven endpoints. The stand-in's own log
-shows each folder's DELETE and MOVE answered 301 and then done by the slashed request, and the PUT onto a
-folder not sent again. With the resend switched off, the three tests that failed before failed again, on
-that endpoint alone. **Not seen:** an Ubuntu Apache, and any other server that redirects. The NAS was not
-asked, since it never redirects (M32), so what it is sent has not changed.
-
-**2026-11-10: Slice 7 landed** (core, then the app). A saved WebDAV server's sidebar tooltip shows, under its
-address, the space its server says is left: RFC 4331's `quota-available-bytes`, read by
-`WebDAVBackend.quota()` from one `Depth: 0` request of the root that names that property alone. Measured
-first: Nextcloud 34 answers it on every folder as the account's space, `-3` for an account without a quota and
-`0` for a full one, and holds its answer for five minutes. Both Apaches here answer 404, as the NAS did in M32,
-and Finder's own WebDAV client never asks. Two calls were Oleg's. The tooltip says "available" with no total,
-since what Nextcloud reports as used is the folder's and not the account's. And it is asked after a listing on
-the connection, at most every five minutes (`ServerQuotaBook`), never before one, so a wrong password costs no
-second failed login, and with the refresh floor at 0 nothing is asked unasked. A request that got no answer keeps
-the last one; an answer without a number clears it. One string in 14 languages. `scripts/live_test_servers.sh`
-gives the Nextcloud account a 1 GB quota, and the live suite asks every endpoint. 14 core tests and 11 app tests
-are new, one of them live, the fixtures are real runs of the core's own builder against Nextcloud and both Apaches, and 12 negative
-controls were each caught.
-
-The live suite's first run found the app's `curl` transport had no quota request of its own, so the protocol's
-default sent the plain stat and every server read as one without a quota. A logging proxy in front of Nextcloud
-showed the listing's body on every request. The requirement has no default now, so the compiler names a
-transport that lacks it (NOTES.md ▸ Design lessons, the opt-in seams).
-
-Run live in a copy built under its own bundle id, with the saved rows' password from a temporary env-gated probe
-(now gone) so nothing read the Keychain, and the proxy logging what the app sent. Opening the Nextcloud row
-sent the connect, the listing and then the quota request, and the tooltip read "1,07 GB available" under the
-address. The Apache row's read the address alone, after three requests in its log. Two background polls and a
-reopen within five minutes asked nothing more. With the quota then cut to 500 MB and the container restarted
-to drop its cache, the first listing past the five minutes asked again, and the tooltip changed in place to
-"524,3 MB available".
-
-**Not seen:** a real hosted Nextcloud or ownCloud, any other server that reports a quota (IIS, Yandex, rclone),
-and the tooltip in the other 13 languages, whose strings the coverage suite reads from the build.
-
-**2026-11-11: an SFTP server's space on its row** (outside the slice list, Oleg's go-ahead after the probe;
-core, then the app). A saved SFTP server's tooltip now shows, under its address, the space left "of" a total,
-as a volume's does: OpenSSH's `statvfs` extension, `sftp`'s `df`, asked with no path, so of the login
-directory where the row opens. Probed first on four servers (NOTES.md ▸ sftp / ssh ▸ Space left): this
-Mac's `sftp` draws the table whatever the server, in KiB, and `Avail` is what an account may write (ext4's 5 %
-reserve stays out). A chrooted account reads its chroot, `internal-sftp` keeps the extension, and a withheld
-one is a single stderr sentence. Oleg chose the total, since this is a filesystem's own `statvfs` where
-WebDAV's "used" was a folder's. It is the filesystem's space and not the account's, so a per-user quota
-does not show.
-
-`SFTPDiskFree` reads the transcript with both streams folded: the table is an answer, the sentence throws
-`ServerSpaceUnsupported`, and anything else is a session that never got there, which keeps the last answer.
-`ServerSpace` holds either protocol's answer and WebDAV's five-minute rule, and `ServerQuotaBook` now keys
-on either server and stops asking one that cannot say until relaunch. The tooltip reuses the volume row's
-"%@ available of %@", so there are no new strings. `SFTPTransport.diskFree()` has no default, after Slice 7's
-lesson. 13 core tests are new and one moved, over nine captured transcripts; 6 app tests are new, one of them
-live against `statvfs` on this Mac; and 10 negative controls were each caught.
-
-Run live in a copy built under its own bundle id, with three saved key rows, so nothing read the Keychain,
-and a temporary env-gated probe, now gone, logging each row's tooltip. On a macOS server logging its
-requests, opening the row sent `pwd`, the listing, then one `statvfs "/Users/oleg"` in its own session, and
-the tooltip read "545,24 GB available of 2 TB", as `df -k` does here. Polls and a navigation within five
-minutes asked nothing. The chrooted row read "67,1 MB available of 67,1 MB", the 64 MiB `tmpfs`. With
-10 MiB written into it, the first poll past five minutes changed it in place to "56,6 MB available of
-67,1 MB". The withheld row kept its address. Its refused `df` was one session with no request in it, and
-the eight polls past five minutes each listed and asked nothing more. The two-line tooltip was also seen
-drawn on screen, under a resting pointer.
-
-**Not seen:** the NAS, whose DSM user quotas are the case where the volume's space overstates an account's
-(asking it reads the password from the Keychain); a server that is not OpenSSH; and a password account, whose
-transcript was captured from an interactive session with a key, the route the password one takes.
-
-**2026-11-11, on the NAS** (the same day; SwiftLint is now 0.65.1 here too, CI's pin). Probed from the shell
-over the password route as `dirnex-test`, with one Keychain read. DSM answers `df`, after three lines of
-OpenSSH 10's post-quantum warning, but its login directory is `/`, a chroot holding only the shares, on an
-8 GB filesystem of its own (7.66 GiB, with an ext4 reserve). Every share is on the 15 TB volume. So the row
-would read "6,66 GB available of 8,22 GB". And with Oleg's 1 GB user quota on `homes`, `df "/home"` still
-answered the whole volume, so even the right filesystem overstates a quota'd account. The transcript is a
-fixture, and LOCATION-SUPPORT now says "yes, limited". The copy built for the live run never reached the NAS
-("No route to host", the Local Network refusal this Mac gives a new bundle id), so the row itself was not
-seen on the NAS. Which filesystem the row should ask is Oleg's call, still open.
-
-**2026-11-11: the row asks the shares** (Oleg's call; core, then a line in the app). The first session now
-lists the login directory beside its `df`, framed by a trailing `pwd`. When the directory holds nothing but
-folders, a second session asks each of them, at most eight. A folder on the login directory's own
-filesystem keeps that answer. Otherwise the folders' shared filesystem is the answer, and none when they
-are spread over several volumes. A second session that reaches no folder is no answer, so a dropped
-connection cannot put the 8 GB root back. `SFTPTransport.diskFree(_:)` now runs whichever batch it is
-handed. The fixtures were all recaptured through the two batches, among them both NAS sessions and two
-DSM-shaped chroots of bind mounts in a container. The first macOS captures listed Oleg's own home folder,
-since the throwaway `sshd` logs in as him; they were deleted unread by any test, and the server was pinned
-to a scratch folder (NOTES.md ▸ sftp / ssh ▸ Space left). 26 core tests cover it, and 7 negative controls
-were each caught. Both suites are green with the live servers up.
-
-Run live. In a copy under its own bundle id, the chroot whose folders share a 48 MiB volume read "50,3 MB
-available of 50,3 MB" after four logins, the one spread over two volumes kept its address, and the pinned
-macOS folder, which holds a file, cost one `df` session and read "543,65 GB available of 2 TB". That copy
-could not reach the NAS, and neither can any copy built in a folder of its own (LIVE-VERIFICATION.md), so
-the NAS ran in `build/debug-dd` with Oleg's saved rows, his Debug build quit first and relaunched after,
-with a temporary tooltip probe, now gone. "SFTP DT" read "11,11 TB available of 15,35 TB", the data
-volume. The three defaults keys the run moved were put back.
-
-**Not seen:** a DSM account whose shares sit on two volumes; a server that is not OpenSSH; and any way to
-show a quota over SFTP, which the protocol does not carry.
-
-**2026-11-11: Slice 8 landed** (core only; the app is untouched). A sync's record can have one side on a
-server. `SyncRecordPair` takes a local folder and a folder on SFTP, FTP, S3 or WebDAV when its caller passes
-`allowingServerSide`, which the app does from Slice 9, and still refuses two servers, anything that takes no
-upload and a local side in a vault. The server side is spelled into `second`, its account's id and its path
-joined by a NUL, rather than given a field. An M37 build then decodes the record and finds its folder named
-for it, where a field of its own would have had that build's launch purge remove every server record
-(docs/NOTES.md ▸ Persisted state). A version gains `serverRevision`, the server row's size, date and tag, so
-`RemoteFileRevision` is now `Codable`.
-
-`keep(after:for:using:)` takes the sync's `SyncDecision`s and keeps only what they copied: single files, and
-the text files in a folder copied whole. A copy counts as landed when its source still reads as the comparison
-listed it, its destination has moved from what it held, and the two sides are one size. Nothing on the server
-is read. The stamps come from `DirectorySync.survey`, the walk the comparison itself takes, so a stamp is kept
-by the route it is later read by, since SFTP's exec channel and its listing print dates their own ways. A sync
-that copied nothing walks nothing. A local pair handed its decisions is walked as before, and the walk never
-keeps a server pair. `keep(relativePath:local:server:for:)` is the core half of Merge…'s save in Slice 9.
-`SyncRecord.change(of:left:right:)` over two entries reads the local side by bytes and the server's by its
-stamp, and `changes(of:)` uses it for a server pair's rows. Both sides moved is `changedOnBoth` over the copied
-version, so Both Directions makes it a conflict.
-
-40 tests in 3 suites, over a stand-in server whose stamps a test sets and which counts its listings and its byte
-reads. They cover the pair's rules; keeping an upload, a download and a whole folder; a failed copy of one size
-in each direction; a write since the comparison on each side; replacing, forgetting, the budget, the route, and
-Merge…'s save. On the change side they cover each side in either pane, a `touch`, a weak tag, and the same minute
-with and without a tag. The milestone's sentence runs through `TextMerge`, with the server's file downloaded once
-and only then. 30 random histories against a model checked 254 answers, of all five kinds. 5 371 core tests pass;
-the app builds, and its suite was not run, since no app file changed. **Negative controls:** 22 faults, one at a
-time. 19 failed their tests by name at once. Leaving a server pair to the walk ended the run instead, with
-Foundation's `NSException` on the NUL in its path. Two passed, the size check in Merge…'s save and the clone's own
-size check, because each covered the other. The clone's check followed from the ones before it and is gone, and
-the save's then failed by name.
-
-**Known rough edges:** a stamp moves without the bytes for a `touch`, a restore, and an SFTP file passing six months
-old, when its listing drops the time of day. Each reads as a server change, which can only turn a copy into a
-merge that resolves clean. A same-size SFTP write inside the listing's minute stays unseen, as decided. A file
-deleted from both sides keeps its version until a sync that copies something walks the pair. **Unwatched:** the
-check that the local file did not move while it was cloned, since no test can write between those two reads.
-
-**2026-11-11: Slice 9 landed** (the app). The Synchronize window offers the box on a pair with one folder on SFTP,
-FTP, WebDAV or S3. Its tooltip says such a record keeps only what each sync copied, the one new string, in 14
-languages. `SyncDirectoriesController.Decision` is now the core's `SyncDecision`, and `finishSyncRecord` hands the
-sync's rows to `keep(after:)`, so a server pair keeps what was copied and a local pair is walked as before. A row
-changed on both sides is marked and offers Merge… by the existing rules, its server half read from the row's
-stamp. Merge… on such a row brings the server's file down through `materialize`, with its weighing and its Stop,
-then reads the three versions with the local file as the one Save writes first, whichever pane it is in. Save
-writes the local file with its undo and the fetched copy with none (`MergeInput.secondTargetKeepsUndo`). It then
-carries the copy up through `BrowserWindowController.writeBack`, the compare window's route, with its check
-against the download, its question when somebody wrote the server's file since, and its precondition where there
-is a tag. Once the upload lands, the server's file is stat'd again and the merge is kept beside that stamp
-(`PanelViewController+SyncServerMerge`). An upload that does not land leaves the version the sync copied.
-
-9 app tests are new over a stand-in server, two of them run with the server in either pane, one changed, and a live suite runs the whole round trip against the
-throwaway `sshd`. The comparison, the copies, the keep, a change on each side, the download, the merge, the
-guarded write and the keep again all go through the real transport. On that server the walks went over the exec
-channel's `find` and the copies and `stat`s over `sftp`, on a clock 14 hours ahead. A stamp kept from either
-route read as unchanged on the next walk. The suite's first run also saw the accepted gap for itself: `five` made
-`FIVE` and uploaded in the same minute read as unchanged. Full runs: 5 371 core tests, and 2 513 app tests with the
-servers up, 2 486 of them executed. **Negative controls:** 12 faults, one at a time, each failed by name, among them
-Synchronize handing the record no rows, which only the new end-to-end test through `onApply` could see.
-
-Run live in the copy built under its own bundle id (`build/live-copy`, rebuilt there since the folder had gone),
-against the throwaway `sshd`, with a restored SFTP key tab, so nothing read the Keychain. Two temporary
-env-gated probes, both now gone and the copy rebuilt without them, pressed Merge… on the changed row and kept the
-cloud rows out of the sidebar. The box showed on the server pair. Ticked, Synchronize uploaded `notes.txt` and kept
-one version, with the server's row (31 bytes, a minute-aligned date) beside it. With the first line edited here
-and the last on the server, the next Synchronize opened the merge window: Yours the local file, Theirs named
-`oleg@127.0.0.1:` and the server path, both edits merged with no conflict. Save wrote the local file and the copy,
-uploaded the result, replaced the version with the merge beside the server's new 32-byte row, and the window then
-read "The folders are already in sync". The defaults domain was compared unchanged, and `known_hosts` was put back.
-
-**Not seen:** FTP, WebDAV and S3 live, which take the same route; the row's own right-click menu and the box's
-tooltip on screen, which the background tools cannot open or hover; a write on the server between Merge… and Save,
-whose question is `writeBack`'s own and pinned in its tests; and a pair with the server on the left in the app,
-covered by tests in both orders. All are Slice 10's. **A known rough edge:** the merge's stamp comes from a `stat`,
-while a later look reads the walk. The two agreed on OpenSSH here, and a server whose two routes disagreed would
-read the merged file as changed on the server, which merges clean.
+M36 (drag and paste, where M23 stopped) closed 2026-11-08, M37 (compare and merge, past M31 and M34)
+2026-11-09 and M38 (remote: what M8, M22, M24, M25 and M32 left) 2026-11-11, and all three are archived in
+[docs/HISTORY.md](docs/HISTORY.md).
 
 #### M39 — Quick View (L)
 
@@ -728,10 +222,10 @@ your key?" link in Settings ▸ License.
 
 ### Still open
 
-Everything through M37 is shipped, and the record of it — the milestone checklists, the dated
+Everything through M38 is shipped, and the record of it — the milestone checklists, the dated
 passes that landed outside a milestone of their own, and the reasoning behind every decision — is in
 **[docs/HISTORY.md](docs/HISTORY.md)**, which also tells how everything else on this list came off
-it (HISTORY.md ▸ the follow-on log). What is still open, rather than merely imaginable, is M38–M40
+it (HISTORY.md ▸ the follow-on log). What is still open, rather than merely imaginable, is M39–M40
 under *Next*, which take up the items in the table's *undone* column that were left by choice, plus
 the list below. The column itself stays as each milestone's record.
 

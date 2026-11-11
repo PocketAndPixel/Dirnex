@@ -75,9 +75,10 @@ public struct ExternalTerminal: Sendable, Hashable, Identifiable {
     /// A concrete launch that runs the executable script at `scriptPath` in a new session, or `nil`
     /// when the terminal isn't installed.
     ///
-    /// Terminal runs a `.command` file handed to it (probed 2026-11-09). iTerm runs one too, after
-    /// asking "OK to run?", which a person can silence (its `application:openFile:`, read
-    /// 2026-11-10). WezTerm takes the program after `--` (its `start` documentation).
+    /// Terminal runs a `.command` file handed to it (probed 2026-11-09). iTerm runs one too, asking
+    /// "OK to run?" first when it is already running, which a person can silence; a launch that
+    /// starts it runs the file at once (iTerm 3.7.7, 2026-11-11). WezTerm takes the program after
+    /// `--` and runs it in a window of its own (20240203, the same day).
     public func invocation(
         runningScript scriptPath: String,
         pathExists: (String) -> Bool

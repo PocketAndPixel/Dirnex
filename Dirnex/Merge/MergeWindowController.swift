@@ -40,9 +40,13 @@ struct MergeSaving {
     let journal: @MainActor (UndoRecord) -> Void
     /// Carries the result on once it is in the file, asking over the window given: the server
     /// entry's upload (PLAN.md §M34 Slice 4). `nil` where a save ends at the file, as a working-tree
-    /// file's does. The save counts as done before it runs, since the file it carries is the
-    /// editor's watched copy, whose next save is carried as F4's is.
-    var carry: (@MainActor (NSWindow?) async -> Void)?
+    /// file's does.
+    ///
+    /// Answers whether the result got where it was going. `false` leaves the save pending, so Save
+    /// stays enabled and the next one carries the result again (PLAN.md §M38 Slice 10). A carry
+    /// whose file is an editor's watched copy answers `true` whatever the upload did, since that
+    /// copy's next save is carried as F4's is; a Synchronize row's copy has no such watcher.
+    var carry: (@MainActor (NSWindow?) async -> Bool)?
     /// Called once the window has closed.
     var closed: @MainActor () -> Void = {}
 
@@ -83,6 +87,9 @@ final class MergeWindowController: NSWindowController, NSWindowDelegate {
     let modalLevel = ModalLevelKeeper()
     /// The choices the file holds, `nil` until the result has been saved.
     var savedChoices: [TextMerge.Choice?]?
+    /// Whether the files hold the result and its carry did not take it on, as when an upload was
+    /// declined or failed.
+    var isCarryPending = false
     /// Whether a save is running.
     var isSaving = false {
         didSet { refreshControls() }

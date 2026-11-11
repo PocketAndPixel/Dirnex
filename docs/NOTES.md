@@ -6281,11 +6281,16 @@ works, which makes this whole family probeable on any Mac).
 - **`F_SETNOSIGPIPE` on the descriptor, or a reader leaving between the open and the write ends the whole
   app.** The negative control did exactly that to the test process, and it showed as a run with no failing
   test named at all.
-- **iTerm asks "OK to run?" before it runs a file it is handed**, silenceable by the user (its
-  `application:openFile:`, read 2026-11-10; not installed here). So the secret waits two minutes rather than
-  a couple of seconds. It also ends the session when the script ends, which is why a status of 255, `ssh`'s
-  own failure, waits for a Return: otherwise the reason is on screen for a frame. Any other status came from
-  the session.
+- **iTerm asks "OK to run?" before it runs a file it is handed, but only when it is already running.**
+  Read from its `application:openFile:` on 2026-11-10, and measured 2026-11-11 with iTerm 3.7.7: an `open -a`
+  that started iTerm typed the `.command` into a login shell at once, and the next one, with iTerm up, raised
+  the question, with a box to suppress it for good. So the secret waits two minutes rather than a couple of
+  seconds. iTerm also ends the session when the script ends, which is why a status of 255, `ssh`'s own
+  failure, waits for a Return: otherwise the reason is on screen for a frame. Any other status came from the
+  session. A local `kill` of `ssh` is 255 too, so the script waits after one as well.
+  - **WezTerm 20240203 ran `wezterm start -- <script>` at once, every time**, a window of its own each, and
+    its `wezterm-gui` is the launching app's child, so it inherits that app's environment whole (▸
+    LIVE-VERIFICATION.md, the probe that hands a secret through a file).
 - **A key's wrong passphrase is asked three times, and the second ask finds the stage gone.** The output
   reads `ssh_askpass: exec(…/askpass): No such file or directory`, then `Permission denied`. That is the
   stage's one-shot rule working, not a bug. A password account sends `NumberOfPasswordPrompts=1`, so it
@@ -7596,6 +7601,18 @@ what made the milestone affordable and the rest inverted rules borrowed from the
   — so it belongs in a warning about *addressing* and never in a naming refusal.
 
 #### Endpoints that are not AWS
+
+- **MinIO publishes no free image any more, and SeaweedFS's S3 gateway stands in for a local endpoint that
+  checks signatures.** Seen 2026-11-11: `docker pull minio/minio` answered that the repository does not
+  exist, and `quay.io/minio/minio` asked for a login. `chrislusf/seaweedfs` run as `server -s3
+  -s3.config=<file>`, with one identity in the file, refused a wrong secret with `SignatureDoesNotMatch`,
+  listed V2 in pages of 1000, path-style, and took `curl --aws-sigv4` as it is. Two things to know:
+  - **Each bucket is a collection with volumes of its own**, and the default eight volume slots ran out at
+    the fourth bucket, as a 500 `InternalError` on a PUT, "No writable volumes". `-volume.max=300
+    -master.volumeSizeLimitMB=16 -master.volumePreallocate=false` held 26 buckets.
+  - **A bucket of 10,000 objects is seeded from inside in seconds**: write the files into the container, then
+    `weed filer.copy -collection=<bucket> <dir> http://localhost:8888/buckets/<bucket>/`, which lands the
+    folder as a prefix. One signed PUT each would take minutes. It has one region, so no 301 can be had.
 
 - **Three more things a real S3-compatible endpoint does that AWS does not**, all measured on the
   same account, and each of them retires a probe you would otherwise write against AWS and believe:
@@ -11143,6 +11160,15 @@ overturned the obvious implementation.
   refactor.
 
 ### Gestures, confirmations and preconditions
+
+- **A save may count as done before it carries the file on only where something else will carry it
+  later.** The merge window marked its result saved, then handed it to an upload, on M34's reasoning: the
+  file it carries is an editor's watched copy, whose next save is carried as F4's is. M38 Slice 9 reused the
+  window for a Synchronize row, whose server copy nothing watches, and the live run found the gap at once.
+  Somebody else wrote the server's file, the user answered the upload's question with Keep Editing, and the
+  window then disabled Save with the merge on this disk alone and no way to send it. The fix made the carry
+  answer whether it landed, so the window keeps Save until it has. The question to ask of a reused
+  "counts as done" is who carries the bytes when the user says not now.
 
 - **A confirmation raised by a *watcher* over a gesture the user already made is a confirmation of an
   intent already stated — and the test of whether it earns its modal is not "is this irreversible" but

@@ -292,7 +292,7 @@ struct ArchiveMemberCheckLiveTests {
         let saving = BrowserWindowController.archiveMergeSaving(
             edit.pending.edit, theirs: theirs, cache: edit.cache
         ) { _, _ in carried += 1 }
-        await saving.carry?(nil)
+        _ = await saving.carry?(nil)
         #expect(carried == 1)
         #expect(edit.base?.base == theirs.base)
         #expect(edit.verdict(fixture) == .unmoved)

@@ -135,6 +135,8 @@ extension BrowserWindowController {
                     )
                 }
                 await writeBack(edit, window)
+                // The copy is the editor's watched one, whose next save is carried as F4's is.
+                return true
             },
             closed: { [weak cache] in
                 guard let base = pending.take() else { return }

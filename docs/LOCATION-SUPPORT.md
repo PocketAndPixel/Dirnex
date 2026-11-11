@@ -19,7 +19,7 @@ closed simply reads differently — it is not explained here.
 |---|---|
 | **yes** | Fully done. Behaves as it does on the local disk. |
 | **yes, limited** | Fully done for what the technology allows. The remaining difference **cannot** be closed from our side — the protocol, the service or macOS does not expose it. |
-| **yes, partially** | Done, and the gap **could** be narrowed to look more local. What is left of the parity backlog is planned as M38–M40 at PLAN.md §4 ▸ *Next*, plus the short list at §4 ▸ *Still open*. |
+| **yes, partially** | Done, and the gap **could** be narrowed to look more local. What is left of the parity backlog is planned as M39–M40 at PLAN.md §4 ▸ *Next*, plus the short list at §4 ▸ *Still open*. |
 | **no** | Not implemented, and nothing structural prevents it — so it is backlog too, and its footnote names the milestone. A "no" with no route to a yes is written **n/a** instead. |
 | **n/a** | The concept does not exist there (a Trash inside the Trash, a checksum of a bucket list). |
 
@@ -807,8 +807,9 @@ counts as changed when that stamp moves, so nothing is downloaded to say so. Mer
 file down when pressed, and Save writes the local file and carries the result up as an edited server
 file's save is carried, with its check and its question. A same-size SFTP or FTP write inside the
 listing's resolution goes unseen, and a `touch` reads as a change. A pair of two servers has no record,
-nor does the Photos library, which takes no upload. Seen live over SFTP; FTP, WebDAV and S3 take the same
-route. Nothing inside
+nor does the Photos library, which takes no upload. Seen live over SFTP, FTP, WebDAV and S3, with the server in
+either pane (PLAN.md §M38 Slice 10). An upload declined or failed at Save leaves Save enabled, and the next one
+carries the result again. Nothing inside
 a vault is kept, and an evicted cloud placeholder is neither kept nor read to say what changed.
 
 <sup>x</sup> A side stopped having to be on this disk at PLAN.md §M25 Slice 5c, and what it gains is
@@ -938,8 +939,9 @@ refused, is named afterwards and the rest of the search goes on. The buckets a h
 connected, so a hit opens, copies and previews. Not saved to the sidebar, since a re-run from there
 starts with no dialog to state the bound; editing the search in its tab reopens the dialog and works.
 Run live 2026-11-10 against a throwaway endpoint that checks every signature, through a real pane and
-`curl`: the bound, a refusal and a 301 behaved as described. Not yet on real AWS, and the dialog and
-alert were read from the views rather than seen on screen.
+`curl`: the bound, a refusal and a 301 behaved as described. The dialog, the progress sheet, Stop and the
+alert were seen on screen on 2026-11-11 against SeaweedFS's S3 gateway (PLAN.md §M38 Slice 10). Not yet on
+real AWS.
 
 <sup>aa</sup> A virtual listing has no directory, so the scope falls back to **Home** — the hits
 are real files, but the pane you were looking at is not the scope. The exception is a tab of
@@ -984,7 +986,8 @@ level, in 0.27 s (PLAN.md §M32 Slice 5).
 
 <sup>nnn</sup> Not yet. One PhotoKit fetch could answer every capture date in the library at once,
 but names still cost ~1.1 ms an asset, so a search walks month by month like any backend without a
-shortcut (<sup>cc</sup>). Planned as PLAN.md §M38.
+shortcut (<sup>cc</sup>). Left undone at PLAN.md §M38, whose probe measured the saving at about 1 ms a
+month while a name cost 2.0 ms an asset through the public call, and found no fetch can filter by name.
 
 ## 5. Metadata and macOS integration
 
@@ -1045,7 +1048,7 @@ down. A row whose transfer failed is reported the same way, never as a mismatch.
 account's own host, in the pane's folder, in the user's own terminal (PLAN.md §M38 Slice 3). A password
 reaches `ssh` through a one-shot named pipe, and is never in `argv` or on disk. An account that cannot
 run a command, which is what one limited to file transfer is, is refused by name before any window
-opens.
+opens. Seen live in Terminal, iTerm and WezTerm, with a key and with a password (PLAN.md §M38 Slice 10).
 
 <sup>hh</sup> Neither end has to be on this Mac (PLAN.md §M24 Slice 6). The **sources** are brought
 down first — the marked-set fetch note <sup>rr</sup> describes — and each one then names its own
@@ -1069,7 +1072,7 @@ account again from any of the four surfaces that can pick one: the ⌘F popup, a
 row's Open item, and Go ▸ Places. The credential rules are the restore's, because it is the restore's
 code: an account needing a password it no longer has comes back disconnected rather than prompting.
 A folder on a server can be pinned from the menu or, since PLAN.md §M38 Slice 4, by dragging its row
-into the sidebar, and the two make the same pin. What stays partial is a pin made before the field
+into the sidebar, and the two make the same pin, seen live for SFTP, FTP, WebDAV and S3. What stays partial is a pin made before the field
 existed, which carries no way back and fails as it always did, naming the account; and a bucket row in
 an account pane or a share row in a server pane, which cannot be dragged in, because each is reached by
 connecting to it and its path does not list.
@@ -1116,7 +1119,8 @@ the exec channel, because `sftp`'s own `chown` and `chgrp` take a number and no 
 Root gets a field for each, since nothing lists a server's users. Any other account gets a popup of
 its own groups, on items it owns, and no owner, which is all a server lets it do. An account with no
 exec channel keeps the read-only rows and says why. A group change clears set-uid and set-gid as a
-side effect, so the mode is sent again after it, and its undo does the same. A saved change is
+side effect, so the mode is sent again after it, and its undo does the same, seen live with a real root
+login. A saved change is
 **read back**, and the panel redraws from what the item carries rather than from what was sent —
 `sftp`'s `chmod` reports success
 for a mode the server did not store, measured (docs/NOTES.md ▸ sftp / ssh). It has been **undoable
@@ -1307,7 +1311,7 @@ download ends within 1 ms of the cancel, without one it runs to the end (docs/NO
 The two milestones this list was written for have closed: **M24** (every local-only feature, on a
 file that is not local) on 2026-08-28 and **M25** (what a remote write carries, and what a remote
 delete costs) on 2026-08-29, both archived in [HISTORY.md](HISTORY.md). What is left of the **"no"**
-and **"yes, partially"** cells that are *ours* to close is planned as M38–M40 at
+and **"yes, partially"** cells that are *ours* to close is planned as M39–M40 at
 [PLAN.md](../PLAN.md) §4 ▸ *Next*, plus the short list at §4 ▸ *Still open* — the cells that were too small to be a slice of either. This file is the status;
 the plan is the work. Nothing that has already shipped is argued here — a closed gap is simply a
 changed cell, and why it changed is in [HISTORY.md](HISTORY.md).

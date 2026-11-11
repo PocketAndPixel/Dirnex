@@ -55,7 +55,8 @@ extension PanelViewController {
     /// The window's saves for a row with a server side: the local file into the undo store and this
     /// pane's journal, then `edit`, the server file's copy the result was also written into, carried
     /// up by `writeBack`. Once it has landed, the server's row is read again and the merge kept with
-    /// it, and the row is answered again either way.
+    /// it, and the row is answered again either way. An upload declined or failed answers `false`,
+    /// so the window's next Save tries it again.
     ///
     /// `writeBack` is the compare window's route to the server unless a test hands in its own.
     func syncMergeSaving(
@@ -71,7 +72,8 @@ extension PanelViewController {
             undo: compareSaving.undo,
             journal: compareSaving.journal,
             carry: { [weak sheet] window in
-                if await writeBack(edit, window), let server = request.server {
+                let landed = await writeBack(edit, window)
+                if landed, let server = request.server {
                     await BlockingWork.run(qos: .utility) {
                         guard let entry = try? backend.stat(at: server.path) else { return }
                         _ = try? request.records.store.keep(
@@ -84,6 +86,9 @@ extension PanelViewController {
                     }
                 }
                 sheet?.compareAgain(rowShowing: request.left.path)
+                // The copy has no watcher to carry it later, so an upload that did not land keeps
+                // the window's Save for another try.
+                return landed
             }
         )
     }

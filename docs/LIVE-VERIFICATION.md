@@ -412,6 +412,9 @@ so a trap goes here only if it can bite any live run; one tied to an area goes u
   pick of the row skipped the sheet. Give such a row a user name of its own, check for the item with
   `security find-generic-password -s <service> -a <account>` (attributes only, no prompt), and delete it
   with `security delete-generic-password` afterwards, which asked nothing.
+  - **A Favorites pin opens the same way.** Seen 2026-11-11: `app_click` on a pinned server folder only
+    selected it. Focus Sidebar put the selection in the section of the pane's own location, Volumes, so it
+    took `up` past the section header, which is a stop, and then `return`.
 - **Background computer-use cannot move a window.** Seen 2026-10-22 checking that the compare window
   remembers where it was dragged: an `app_drag` on the title bar reported success, and
   `CGWindowListCopyWindowInfo` read back the same frame. Dirnex's dictionary has no window `bounds`,
@@ -536,6 +539,12 @@ so a trap goes here only if it can bite any live run; one tied to an area goes u
   two exports. A second variable that turned the fix off gave the negative control from the same
   build. **`app_click` with `count: 2` on a sidebar row is a real double-click**: the row's action
   ran twice, 113–122 ms apart, which reproduced the reported bug first time.
+  - **Hand the probe its secrets in a file it reads once and deletes, not in the variable itself.** Done
+    2026-11-11 for four throwaway accounts: a JSON map keyed by `keychainAccount`, matched by prefix so an S3
+    bucket's account finds its account's key. The app passes its environment to every process it starts.
+    WezTerm is spawned with `Process` and inherits it whole, and a terminal `open` starts gets it too, so a
+    secret in the variable would have sat in the very terminal whose "no secret in `argv` or on disk" was
+    under test. The variable holds a path, and the file is gone after the first read.
 - **computer-use refuses a key aimed at a point inside a text view, saying it "belongs to a different
   process".** Seen 2026-10-08 on both of Report a Bug…'s text boxes: `app_key tab` at the box's center
   was refused twice, before and after a fix to the boxes' accessibility tree, while the app's own
