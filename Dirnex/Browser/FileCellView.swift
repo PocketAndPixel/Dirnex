@@ -398,6 +398,10 @@ final class FileCellView: NSTableCellView {
         // reach a white-on-pale-yellow row on their first try. Untouched, this *is*
         // `.alternateSelectedControlTextColor` — see `PanelPalette.cursorForeground`.
         textField.textColor = backgroundStyle == .emphasized ? palette.cursorForeground : resting
+        // An open rename field is a text box on the row, not text on the cursor's fill, and the row
+        // view pushes its style *after* the field opens, which runs this again. The cursor's ink
+        // drew the name white on the box's white in the light appearance (reported 2026-11-11).
+        if isEditingName { applyNameEditingLook() }
     }
 
     /// Only the name cell carries a disclosure triangle (and thus an icon); the size/date cells do
@@ -415,14 +419,14 @@ final class FileCellView: NSTableCellView {
 
     // MARK: - Inline rename
 
-    /// Turn the name label into an editable field for an in-place rename (F2). Runs after
-    /// `applyStyle`, so it overrides the mark's bold-red styling with a plain editable box
-    /// sized to the same text area beside the icon. `delegate` receives the edit lifecycle.
+    /// Whether the name is open for an in-place rename (F2).
+    var isEditingName: Bool { textField?.isEditable == true }
+
+    /// Turn the name label into an editable field for an in-place rename (F2). It drops the mark's
+    /// bold-red styling for a plain editable box sized to the same text area beside the icon, and
+    /// keeps it through every later `applyStyle`. `delegate` receives the edit lifecycle.
     func beginNameEditing(delegate: NSTextFieldDelegate) {
         guard let textField else { return }
-        // Editing a hidden file — show the field at full opacity so the text stays legible;
-        // the next render pass reapplies the dim once editing ends.
-        alphaValue = 1
         // Give the editor the whole cell: the name field stops short of the badges, so a tagged,
         // not-downloaded or modified file would otherwise be renamed through a box narrower than
         // every other row's. Clearing them (rather than hiding the views) is what actually returns
@@ -436,21 +440,36 @@ final class FileCellView: NSTableCellView {
         textField.bezelStyle = .squareBezel
         textField.drawsBackground = true
         textField.backgroundColor = .textBackgroundColor
-        textField.textColor = .labelColor
-        textField.font = .systemFont(ofSize: NSFont.systemFontSize)
         textField.focusRingType = .default
         textField.delegate = delegate
+        applyNameEditingLook()
+    }
+
+    /// An open rename field on any row: opaque, the regular weight, and a text box's text color.
+    /// The box is `.textBackgroundColor` whatever the row is, so the cursor's ink, white on the
+    /// default fill, is white on white in the light appearance. The field editor takes its color
+    /// from the field, and an emphasized cell does not turn `.labelColor` white in it (probed
+    /// 2026-11-11: the darkest ink 0.15 with `.labelColor`, 1.0 with the cursor's ink).
+    private func applyNameEditingLook() {
+        guard let textField else { return }
+        // A hidden file's name at full opacity, so the text stays legible.
+        alphaValue = 1
+        textField.font = .systemFont(ofSize: NSFont.systemFontSize)
+        textField.textColor = .labelColor
     }
 
     /// Revert a (possibly reused) cell back to a plain, non-editable label. Idempotent —
     /// only touches a field that had been made editable — so the normal render path can
     /// call it unconditionally.
     func endNameEditing() {
-        guard let textField, textField.isEditable else { return }
+        guard let textField, isEditingName else { return }
         textField.isEditable = false
         textField.isSelectable = false
         textField.isBordered = false
         textField.drawsBackground = false
         textField.delegate = nil
+        // The row's own dim, weight and ink, which `applyStyle` held off while the field was open.
+        // The render path styles the cell before it gets here.
+        applyStyle()
     }
 }

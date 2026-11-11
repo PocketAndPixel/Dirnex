@@ -207,6 +207,11 @@ so a trap goes here only if it can bite any live run; one tied to an area goes u
     `Cloud` after the type's own and `strings`/`nm` counted **0** for `iCloudContainer` in a build
     that contained it (2026-09-16). `nm <dylib> | xcrun swift-demangle | command grep <name>` finds
     it. Grep for a string literal the change added, or demangle, before concluding a build is stale.
+  - **A grep of the dylib on disk says nothing about the process that is running.** A rebuild
+    replaces the file, and the process keeps the one it mapped at launch. Seen 2026-11-11: a fix
+    "still failed" in a Debug build launched at 10:44 and rebuilt at 18:16. `lsof -p <pid>` named
+    inode 104513963 for `Dirnex.debug.dylib` and `ls -i` gave 105175733 for the file. When the two
+    differ, the process is running the old code.
 - **A check in the light appearance needs no change to the system.** Seen 2026-11-09: `open <app> --args
   -NSRequiresAquaSystemAppearance YES` drew the whole app light with the Mac still dark, and
   `-AppleLanguages '(de)'` beside it set the language for that launch.
@@ -495,6 +500,10 @@ so a trap goes here only if it can bite any live run; one tied to an area goes u
   "$(lsappinfo front)"` found that a window had opened behind another app (2026-11-09), which no
   background screenshot can show, since it captures a window wherever it is. Put the app you were in
   back afterwards with `open -b <its bundle id>`.
+  - **An app put in front takes whatever Oleg is typing.** Seen 2026-11-11: a copy brought forward
+    with `open -b` to make its cursor row emphasized had a rename field open, and "old" appeared in
+    it. Keep a copy in front only for the screenshot that needs it, put his app back at once, and
+    tell him first when the check will hold the front for longer.
 - **Find Files on this Mac runs off the Spotlight index, so a fixture in a temp folder finds nothing.**
   Seen 2026-11-05: a saved search scoped to the session scratchpad under `/private/tmp` opened an
   empty results tab, because `SpotlightSearchRunner` asks `mdfind` and `/private/tmp` is not
