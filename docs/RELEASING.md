@@ -77,67 +77,74 @@ Beta's first job, which picks the version, always runs on GitHub's Linux machine
 GitHub's Macs is the variable alone: delete it, then re-run the jobs that are waiting. A job waits up
 to 24 hours for a self-hosted runner, then fails.
 
+**The runner lives in a macOS VM**, made with [Tart](https://tart.run) by
+[`scripts/ci_vm.sh`](../scripts/ci_vm.sh). Until 2026-11-12 it ran as a second macOS user on the same
+Mac, and that is not enough isolation: every user logged in on a Mac shares one WindowServer. That day
+the app tests kept WindowServer busy for 25 minutes, so Oleg's own session barely moved. When the job's
+watchdog killed the test host, WindowServer spent 40 s tearing down its windows, macOS's watchdog
+killed WindowServer, and every session on the Mac was logged out. A VM has a WindowServer, a keychain
+and a defaults domain of its own, so nothing a job does reaches the Mac it runs on. The same suite's
+first run in the VM, that afternoon, took 177 s for 2,538 tests, and the Mac's own WindowServer
+averaged 6% CPU while it ran (sampled every 20 s, never above 35%).
+
+The script keeps two VMs in `~/.tart/vms`. **`dirnex-ci-base`** is the clean machine: Cirrus Labs'
+macOS 26 base image, this Mac's Xcode, and the registered runner. It never takes a job. **`dirnex-ci`**
+is a fresh clone of it, made at every start (an APFS clone, so it costs no time and no space), and
+restarted every night at 04:30 once no job is running. Nothing a job leaves behind outlives that.
+
 ### Setting it up, once per Mac
 
-1. **Add a macOS user only for the runner:** System Settings → Users & Groups → Add User, a
-   **Standard** user (for example "Dirnex CI"). The release puts a temporary keychain in its user's
-   search list, the app tests write the app's defaults domain (`app.dirnex.Dirnex`), and an approved
-   pull request runs its own code. In a user of its own, none of that reaches your keychain, your
-   settings or your files.
-2. **Log in as that user once** with Fast User Switching (System Settings → Control Center → Fast
-   User Switching puts its menu in the menu bar) and get through the setup assistant. Skip the Apple
-   Account.
-3. **In that user's Terminal, put Homebrew's tools on the PATH.** The runner keeps the PATH it was
-   registered with, and the release needs `gh` from Homebrew. Every step after this one runs in the
-   same Terminal window:
+1. **Install Tart.** Homebrew 7 asks to trust its `softnet` dependency first:
 
    ```sh
-   export PATH="/opt/homebrew/bin:$PATH"
+   brew trust --formula openai/tools/softnet
+   brew install openai/tools/tart
    ```
 
-4. **Register the runner:** on GitHub, Settings → Actions → Runners → **New self-hosted runner**,
-   macOS, ARM64. Run its *Download* commands in that user's home, one at a time, without the `$` in
-   front of each and without the `# …` lines: zsh takes neither, so pasting the block as it is runs
-   nothing (2026-10-29). Then configure the runner with the label and install it as a service, in
-   place of the page's `./run.sh`. The token is the one that page shows, and it expires within an
-   hour:
-
-   ```sh
-   ./config.sh --url https://github.com/PocketAndPixel/Dirnex --token <token> --labels dirnex-mac --unattended
-   ./svc.sh install
-   ./svc.sh start
-   ```
-
-   `svc.sh` installs a LaunchAgent, so the runner runs whenever that user is logged in.
-5. **Switch back to your own user without logging that one out.** It stays logged in in the
-   background.
-6. **Set the variable** `DIRNEX_RUNNER` to `mac`.
-7. **Settings → Actions → General → Approval for running fork pull request workflows from
+2. **Make the base VM:** `scripts/ci_vm.sh create`. It downloads the base image (25 GB), grows its
+   disk to 100 GB, since the image's 50 GB leaves 12 GB free (the image grows its APFS container to
+   fit at boot), and copies this Mac's Xcode into it,
+   with its license accepted and its first-launch setup run. The image already logs its `admin` user
+   in by itself, has `sudo` without a password, Homebrew and `gh`, and the agent `tart exec` talks to.
+3. **Register the runner:** on GitHub, Settings → Actions → Runners → **New self-hosted runner**,
+   and copy the token from its `./config.sh` line (it expires within an hour). Then run
+   `scripts/ci_vm.sh register` and paste the token at its prompt. It downloads the runner into the
+   base, checks its digest, and registers it as `dirnex-vm` with the label `dirnex-mac`.
+4. **Start it:** `scripts/ci_vm.sh install`. A LaunchAgent starts the VM now and at every login.
+5. **Set the variable** `DIRNEX_RUNNER` to `mac`.
+6. **Settings → Actions → General → Approval for running fork pull request workflows from
    contributors → Require approval for all external contributors.** The repo is public, so without
    this a pull request from a fork runs its code on the Mac as soon as it's opened. Read the diff of
    such a pull request before you approve its run.
 
 A second Mac set up the same way shares the work: GitHub gives each job to whichever runner is free.
+Give its runner another name (`RUNNER_NAME` in the script), since `register` replaces a runner of the
+same name.
 
 ### Living with it
 
-- **After every restart, log in as the runner's user again**, then switch back. FileVault is on, so
-  macOS can't log that user in by itself, and the app tests need a logged-in session: they launch
-  Dirnex.
+- **It starts when you log in**, with nothing more to do after a restart. `scripts/ci_vm.sh status`
+  says whether the runner is waiting or in a job, and `~/Library/Logs/Dirnex-CI-VM.log` has the
+  VM's starts and stops. `scripts/ci_vm.sh shell` opens a shell in the running VM.
+- **A change to the VM goes into the base**, never into the clone, which the next start replaces.
+  Run `scripts/ci_vm.sh uninstall` first, so the base and a clone never run one runner at once, then
+  `install` again afterwards.
 - **The Mac must be awake.** A job queued while the lid is closed starts when it opens. Closing the
   lid during a job fails it; *Re-run jobs* starts it again.
 - **Jobs run one at a time.** CI's three jobs follow each other, and a release started during a CI
   run waits for it to end.
-- **The runner builds with this Mac's Xcode**: 27.1 when it was set up, against Xcode 26 on GitHub's
-  `macos-26`. An Xcode update changes the release build too, so cut a beta after one, before the
-  next stable release.
-- **A run that stalls the first time** may be waiting for a macOS permission prompt in the runner's
-  session, where nobody sees it. Switch to that user and answer it.
-- **Unlike GitHub's Macs, this one keeps its state between jobs.** The release puts the user's
+- **The VM builds with the Xcode `create` copied from this Mac**: 27.2 when it was set up, against
+  Xcode 26 on GitHub's `macos-26`. After an Xcode update, run `create` again (with the VM
+  uninstalled), which replaces the VM's copy, then cut a beta before the next stable release.
+- **It takes 8 of this Mac's cores and 16 GB of memory** while it runs (`CPUS` and `MEMORY_MB` in the
+  script, applied by `create`).
+- **Between nightly restarts the clone keeps its state from job to job.** The release puts the
   keychain list back at the end, the app tests build in the job's own folder (`$RUNNER_TEMP`, emptied
   after each job), and *Crash reports* reads only the reports written during the run. Keep it that
   way when adding a step: anything written outside `$RUNNER_TEMP` and the checkout is still there
-  for the next job.
+  for the next job that day.
+- **The runner updates itself** in the clone when GitHub releases a new one, and the next clone
+  starts from the base's version again. Running `register` again brings the base up to date.
 
 ## Cutting a release
 
