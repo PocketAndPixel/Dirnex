@@ -53,6 +53,12 @@ extension PanelViewController {
             name: AppPreferences.showIconPreviewsDidChange,
             object: nil
         )
+        center.addObserver(
+            self,
+            selector: #selector(rowIconsNeedRefresh),
+            name: FileIconProvider.typeIconsDidChange,
+            object: nil
+        )
     }
 
     @objc private func rowIconsNeedRefresh(_ notification: Notification) {

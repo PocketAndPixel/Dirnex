@@ -677,6 +677,7 @@ the agent and adds a last-opened date, and it names a Live Photo's movie `.mov` 
 | Open in the default app (`⏎`) | yes | yes | yes, limited<sup>t, ddd</sup> | yes, limited<sup>u</sup> | yes, limited<sup>u</sup> | yes, limited<sup>u</sup> | yes, limited<sup>u</sup> | n/a | yes, limited<sup>mmm</sup> | yes | yes |
 | Edit `F4`, with save written back | yes | yes | yes, limited<sup>v, ddd</sup> | yes | yes | yes | yes | n/a | no<sup>jjj</sup> | yes | yes |
 | Open With… / Share sheet | yes | yes | yes, limited<sup>yy</sup> | yes, limited<sup>yy</sup> | yes, limited<sup>yy</sup> | yes, limited<sup>yy</sup> | yes, limited<sup>yy</sup> | n/a | yes, limited<sup>yy</sup> | yes | yes |
+| Always open a type with an app (Open With ▸ Always Open … With)<sup>aap</sup> | yes | yes | yes | yes | yes | yes | yes | n/a | yes | yes | yes |
 | Show in Finder | yes | yes | n/a | n/a | n/a | n/a | n/a | n/a | n/a | yes | yes |
 | Send to a **Service** | yes | yes | **no**<sup>zz</sup> | **no**<sup>zz</sup> | **no**<sup>zz</sup> | **no**<sup>zz</sup> | **no**<sup>zz</sup> | n/a | **no**<sup>zz</sup> | yes | yes |
 | Compare By Contents (`⌥F3`) | yes | yes | yes, limited<sup>w</sup> | yes, limited<sup>w</sup> | yes, limited<sup>w</sup> | yes, limited<sup>w</sup> | yes, limited<sup>w</sup> | n/a | yes, limited<sup>w</sup> | yes | yes |
@@ -885,6 +886,14 @@ from the row's **name** rather than from a file, so a row with no extension offe
 from; the list is otherwise identical, and it appears *before* the download, so escaping out of it
 costs nothing. Share cannot do that — `NSSharingServicePicker` derives its services from the items —
 so Share fetches first and then presents.
+
+<sup>aap</sup> Since 2026-11-12 the foot of Open With makes an application the default for every file
+of the rows' type, Finder's Get Info ▸ Change All…. macOS keeps a default per type, so it is offered only
+for rows of one type, and never for a folder, a volume, an application or a type with no extension
+(`DefaultApplicationScope`). The submenu is drawn from names, as Open With's list is, so it costs nothing to
+open. macOS asks the user in a dialog of its own each time, and once the change is made the rows are opened
+in the application through Open With's own path, so a row that is not on this disk is brought down first
+(<sup>yy</sup>). Keeping the old application in that dialog opens nothing.
 
 <sup>zz</sup> Services fills a pasteboard **synchronously**, inside the call AppKit makes as the menu
 opens, and there is nowhere in it to put a download — blocking the main thread on one is the failure

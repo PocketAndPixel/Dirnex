@@ -4356,6 +4356,59 @@ Measured 2026-11-08 for M37's byte view, whose table has a row for every 16 byte
     the app list depend on what some earlier preview happened to download. It also quietly retires
     an existing rule: a *local* file deleted between the listing and the right-click has no type and
     must go on offering nothing, where an extension guess would offer applications that then fail.
+- **Changing a type's default application puts a question of macOS's own on the user's screen, every
+  time.** Measured 2026-11-12 on macOS 26 from a shell probe: each of six
+  `NSWorkspace.setDefaultApplication(at:toOpen:)` calls raised `CoreServicesUIAgent`'s "Do you want
+  all documents with the extension “.m4v” to open with “VLC”, or to keep using “TV”?", for Apple's
+  apps and VLC alike and for an extension nothing declares. The completion arrives once it is
+  answered, and setting the default an application already has asks nothing (3 ms). That is why
+  Open With ▸ Always Open … With asks no question of its own (`PanelViewController+AlwaysOpenWith`).
+  - **The probe raised them on Oleg's screen, and its timings read as LaunchServices being slow.**
+    7.7 s and 9.8 s for a change were his reading and clicking, and a probe that flipped a default
+    and put it back cost him two dialogs. Five to ten of them arrived before anyone said so. The
+    window shows in `CGWindowListCopyWindowInfo` at layer 8, owned by `CoreServicesUIAgent`. Tell
+    him before a probe that changes a default.
+  - **The `async` spelling did not wait.** `try await setDefaultApplication(at:toOpen:)` compiled
+    with a warning that nothing in the `do` throws, returned at once, and the change landed when the
+    dialog was answered later. The callback overload inside `withCheckedContinuation` waits.
+  - **Keeping the old application is an error, and not a cancel by its outer code.** Keep “VLC”
+    answered `NSCocoaErrorDomain` 256, "The file couldn’t be opened.", with `NSOSStatusErrorDomain`
+    -128 (`userCanceledErr`) as its `NSUnderlyingErrorKey`, and the default unchanged. A check for
+    `NSUserCancelledError` alone missed it, and the first live run put that sentence up as an alert.
+    Look down the underlying chain (`PanelViewController.isDeclined`).
+  - **Computer use cannot answer the dialog.** `request_access` for `com.apple.coreservices.uiagent`
+    answers that no such application is installed, a full-screen screenshot leaves the window out, and
+    a click on it is refused as landing on an application not granted. Everything up to the dialog is
+    drivable (the right-click, the submenu, the choice); the answer is Oleg's click.
+  - **`NSWorkspace.icon(for:)` follows the default application, late, and registering it again
+    makes it follow at once.** `.m4v` drew CoreTypes' page with a video glyph and the word M4V while
+    TV was its default, since TV's claim names no icon, and VLC's cone once VLC was. After a change
+    the old icon stayed in every process for 13 s to 9½ minutes, each time catching up just after
+    some bundle was registered. `LSRegisterURL` on the new application (VLC) brought the cone to the
+    next fresh process and to the calling process at once. In the other direction it does nothing:
+    set to TV, `.m4v` kept VLC's cone for the 11 minutes TV stayed the default, with TV, VLC and
+    CoreTypes all registered again. `.mp4` set to QuickTime kept VLC's cone for the 35 s watched.
+    Dirnex shipped the re-registration for an evening and took it out (Oleg's call, 2026-11-12):
+    it fixed one direction only, and Finder's own change has the same lag.
+  - **An icon read once is kept by the process that read it.** Oleg relaunched Dirnex four minutes
+    after a change, before macOS had caught up, and the stale cone stayed for that whole session,
+    since `FileIconProvider` cached it per type. It now asks again after a change and whenever the
+    app comes to the front.
+  - **Finder and Quick Look's `.icon` do not follow the default application for `.m4v`.** They
+    agreed with each other in every check, and drew `.m4v` as the page with TV and with VLC alike,
+    at 00:27, 00:59 and 01:10, and for 15 minutes watched after VLC became the default, a brand-new
+    file included, so it is not a per-file cache. `.mp4` and `.mkv` drew VLC's cone there. So
+    "match Finder" was tried, and dropped the same evening (Oleg's call): `QLThumbnailGenerator`
+    with `.icon` on an empty sample file per type was pixel-identical to `NSWorkspace` on 36 of 38
+    types at the row's size, at 6 to 15 ms a request, but it would have kept a VLC `.m4v` drawn as
+    TV's page, which is the very thing the feature was asked for. Two details from that attempt, in
+    case it comes back. A type's sample file must type back as itself: `public.mpeg-4-audio`'s
+    preferred extension is `.mp4`, which types as a movie. And a picture scaled from another size
+    differs by a few levels per channel, so it has to be asked for at the size it is drawn.
+  - **Finder's own change does not redraw either, so this is macOS's to fix.** Oleg's check,
+    2026-11-12: Finder's Open With ▸ Other… with Always Open With ticked changed the default and
+    refreshed neither Finder's icon nor Dirnex's. Do not chase it further from Dirnex's side.
+  - `lsregister -dump` shows each claim's `iconFiles`.
 
 ### Delegates in Swift 6
 

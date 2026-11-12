@@ -21031,6 +21031,48 @@ In the first full run `CompareReadingTests`' "a large pair whose NUL is late" ra
 alone in 0.35 s and in the second full run at 54 s, so it sits close to its bound in a loaded run. The defaults
 domain was compared unchanged.
 
+**2026-11-12: Open With ▸ Always Open “.m4v” Files With** (Oleg's question why `.m4v` drew a plain page where
+`.mkv` and `.mp4` drew VLC's cone, and his go-ahead; core, then app). The page was macOS's: TV opened `.m4v` and
+its claim names no document icon, while VLC's claims for the other two name theirs. Finder's Get Info ▸ Change
+All… was the only way to change that, and Dirnex's Open With opened files once. Probed first, and the probe found
+the design's main fact on Oleg's screen: every `NSWorkspace.setDefaultApplication(at:toOpen:)` raises macOS's own
+"Do you want all documents with the extension “.m4v” to open with “VLC”, or to keep using “TV”?", and he answered
+five to ten of them before saying so. So Dirnex asks no question of its own (his call).
+
+`DefaultApplicationScope` (core) decides which files a change reaches: rows of one type, never a folder, a volume,
+an application or a type with no extension (VLC claims `public.folder`, and `public.data` would be every unknown
+file), named by the shared extension, or by the type's description when the extensions differ. The submenu sits
+at the foot of Open With in the File menu and the right-click menu, lists the same applications with today's
+default ticked, and ends in Other…. A row on a server or in an archive is typed by its name, as Open With's list
+is, so nothing is downloaded. After a change Dirnex forgets its type icons and redraws the visible rows.
+
+Seen live in the `app.dirnex.Dirnex.live` copy, with Oleg answering macOS's dialogs, which computer use cannot
+reach (docs/NOTES.md ▸ Drag and drop, and handing files to other apps). The submenu read “.m4v” with VLC ticked;
+TV, then VLC, were set; Keep “VLC” left the default alone. Two things the run found. Keep answers an error, Cocoa
+256 with `userCanceledErr` beneath it, which showed as "Couldn’t make “TV” the default application." until
+`isDeclined` looked down the underlying chain. And the icon did not follow.
+
+**The icon, the same night** (Oleg: "the icon isn't refreshed, even after restarting the app"). Two causes, both
+measured. `NSWorkspace.icon(for:)` follows a change of default late, 13 s to 9½ minutes, and Dirnex kept the icon
+it read for the life of the process, so a relaunch before macOS caught up kept the stale cone. Dirnex now asks for
+its type icons again after a change and whenever it comes to the front. `LSRegisterURL` on the new application
+brought its icon to every process at once, but not for a change to an application with no icon of its own (set to
+TV, `.m4v` kept VLC's cone for the 11 minutes watched), and it went back out when Oleg found Finder's own Always
+Open With has the same lag: macOS's bug. Quick Look's `.icon`, which agreed with Finder throughout, was tried as
+the source to "match Finder" (Oleg's first call) and dropped (his second): Finder draws `.m4v` as TV's page
+whichever application is the default, so it would have kept a VLC `.m4v` looking like the one he asked about.
+docs/NOTES.md ▸ Drag and drop has the measurements.
+
+**And the files open** (Oleg, later that morning: choosing an application changed the default and opened nothing).
+Finder's Always Open With opens the file too, so once macOS has made the change the rows go through Open With's
+own path, a remote row brought down first; Keep in macOS's dialog opens nothing. Seen live in the copy on a
+two-second `.m4v` made with `AVAssetWriter`: set to QuickTime Player, `lsof` had QuickTime holding the file 0.4 s
+after the change, and set back to VLC, the clip was VLC's current playlist item.
+
+12 core and 10 app tests are new; 5 negative controls failed theirs by name (the application check, the extension
+check, the underlying-error walk, the refresh on coming to the front, and opening after a change). 5 395 core and 2 538 app tests
+pass, the live suites skipped since nothing here reaches a server, and the defaults domain was compared unchanged.
+
 ### After M19 — the follow-on log (2026-08-07 → 2026-09-21)
 
 Ninety-one dated passes that landed outside a milestone of their own, between M18's close on
