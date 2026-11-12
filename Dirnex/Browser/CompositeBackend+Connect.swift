@@ -39,6 +39,21 @@ extension CompositeBackend {
         return backend
     }
 
+    /// Install an already-built SFTP backend under its own descriptor — ``connectSFTP(location:authentication:password:)``
+    /// without the `sftp` transport, so the routing can be asserted over a fake (``register(s3:)``
+    /// gives the reason). Nothing in the app calls it.
+    @discardableResult
+    func register(sftp backend: SFTPBackend, authentication: SFTPAuthentication) -> SFTPBackend {
+        lock.lock()
+        defer { lock.unlock() }
+        sftpConnections[backend.location.descriptor] = backend
+        endpoints[backend.location.descriptor] = .sftp(
+            location: backend.location,
+            authentication: authentication
+        )
+        return backend
+    }
+
     /// Establish (or replace) an FTP connection for `location`, returning its backend so the caller
     /// can test it before navigating a pane onto it. `password` is the plaintext the transport feeds
     /// to `curl` on stdin (held only in memory for the connection's lifetime, mirrored into the
@@ -178,6 +193,35 @@ extension CompositeBackend {
         lock.lock()
         defer { lock.unlock() }
         return endpoints[backendID.rawValue]
+    }
+
+    /// The `ssh` session for `path`'s folder, with the password that signs in to it (`nil` for a
+    /// key), or `nil` when no SFTP connection is serving that path.
+    ///
+    /// The password comes from the live connection, not the Keychain, so opening a terminal never
+    /// raises a Keychain prompt. It dials through the transport's resolver, so call it off the main
+    /// thread.
+    func terminalSession(at path: VFSPath) -> (session: SSHTerminalSession, secret: String?)? {
+        guard let transport = sftpBackend(for: path.backend)?.writeTransport as? SFTPProcessTransport
+        else { return nil }
+        return (
+            transport.terminalSession(in: path.path),
+            transport.isPasswordAuthentication ? transport.password ?? "" : nil
+        )
+    }
+
+    /// The live S3 account connection for `backendID` and the secret it signs with, for a search
+    /// across its buckets (PLAN.md §M38 Slice 5), or `nil` when no account is connected there.
+    ///
+    /// The secret comes from the live connection, as `terminalSession(at:)`'s password does, so a
+    /// search raises no Keychain prompt.
+    func s3AccountSearchSource(
+        for backendID: VFSBackendID
+    ) -> (account: S3AccountBackend, secret: String)? {
+        guard let account = s3AccountBackend(for: backendID),
+              let transport = account.accountTransport as? S3AccountCurlTransport
+        else { return nil }
+        return (account, transport.secretAccessKey)
     }
 
     /// Whether a path on `backendID` can be listed right now without connecting first.

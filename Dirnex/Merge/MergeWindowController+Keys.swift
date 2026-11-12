@@ -8,6 +8,8 @@ import DirnexCore
 /// - ⌥⌘→ / ⌥⌘←: Take Yours and Take Theirs. The arrow points the way the lines go, from a side into
 ///   the result between them, as ⌥⌘→ copies to the right in the compare window.
 /// - ⇧⌥⌘→ / ⇧⌥⌘←: take both sides, the arrow's side first.
+/// - ⌥⌘I: take the edit with the other side's whitespace, where one side changed only whitespace
+///   (PLAN.md §M37 Slice 5). No command in any preset is bound to it.
 /// - ⌥⌘B: Show Base. No command in any preset is bound to it.
 /// - ⌘S: save the result, once every conflict has a choice. ⌘W: close, asking first about choices
 ///   not saved.
@@ -70,6 +72,8 @@ extension MergeWindowController {
         switch (event.charactersIgnoringModifiers?.lowercased(), modifiers) {
         case ("b", [.option, .command]):
             setBaseShown(!isBaseShown)
+        case ("i", [.option, .command]):
+            take(.editWithWhitespace)
         case ("f", [.command]):
             find(.showFindInterface)
         case ("g", [.command]):

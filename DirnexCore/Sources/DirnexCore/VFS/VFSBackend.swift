@@ -374,6 +374,14 @@ public protocol VFSBackend: Sendable {
     /// verbs shows exactly the read-only panel M24 Slice 7 shipped.
     func editableMetadata(at path: VFSPath) -> RemoteMetadataCapabilities
 
+    /// Who this connection's account is on its server, or `nil` when it cannot be asked (PLAN.md
+    /// §M38 Slice 1). The first ask costs a connection, so make it off the main thread. The default
+    /// is `nil`, which leaves Get Info's owner and group rows read-only.
+    func accountIdentity(
+        at path: VFSPath,
+        isCancelled: () -> Bool
+    ) throws -> RemoteAccountIdentity?
+
     /// Write an item's mode or modification time, answering the steps that did not take.
     ///
     /// It **answers** rather than throwing for a refused step, the same rule

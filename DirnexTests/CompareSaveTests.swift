@@ -106,7 +106,7 @@ struct CompareSaveRig {
                 watchCopy: { editor.watched.append($0) }
             )
         )
-        controller.show(CompareWindowController.prepare(
+        try controller.show(CompareWindowController.prepare(
             left: leftSource,
             right: rightSource,
             options: LineDiffOptions(),

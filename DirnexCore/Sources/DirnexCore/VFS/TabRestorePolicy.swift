@@ -27,6 +27,10 @@ public enum TabRestoreRequirement: Sendable, Equatable {
     /// A connected account: this endpoint has to be registered on the pane's backend before the
     /// listing can be asked for.
     case connection(ServerEndpoint)
+    /// A folder on an SMB share (`PinnedShare`): a local path that can come back while the folder is
+    /// there, and also while the share it is on is not mounted, in which case the first navigation
+    /// that wants it mounts the share, by the rules a connection is reopened by.
+    case shareMount(SMBLocation)
     /// The system Photos library (PLAN.md §M28): nothing on disk to check and no server to connect.
     /// Whether access is still granted is the listing's question, and a refusal then reads as the
     /// ordinary load failure naming Privacy & Security ▸ Photos.
@@ -55,7 +59,13 @@ public enum TabRestorePolicy {
         for path: VFSPath,
         endpoint: ServerEndpoint?
     ) -> TabRestoreRequirement? {
-        if path.backend == .local { return .directoryOnDisk }
+        if path.backend == .local {
+            // A share's folder is a local path, and only a path under `/Volumes` can be one.
+            if let share = endpoint?.smbShare, PinnedShare.volumeName(of: path) != nil {
+                return .shareMount(share)
+            }
+            return .directoryOnDisk
+        }
         if let archivePath = path.backend.archivePath { return .archiveOnDisk(path: archivePath) }
         // Ahead of the remote test, which the library answers: there is no endpoint to weigh, so a
         // stored one is ignored rather than trusted.

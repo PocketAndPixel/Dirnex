@@ -2,7 +2,8 @@ import AppKit
 import DirnexCore
 
 /// Fulfilling a promise another application accepted — the second half of dragging a file off a
-/// server into Finder, Mail or Teams (PLAN.md §M23 Slice 4).
+/// server into Finder (PLAN.md §M23 Slice 4), or out of an archive (§M36, `+DragOut`). Other apps go
+/// through `RemoteDragHandoffController`.
 ///
 /// The pane is the delegate rather than an object of its own, for the reason the property is
 /// declared `weak`: whatever fulfils a promise has to outlive the drag, and a drag can be let go
@@ -75,8 +76,18 @@ extension PanelViewController: NSFilePromiseProviderDelegate {
             completionHandler(CocoaError(.fileReadUnknown))
             return
         }
+        // A folder on a server is staged by the queue and moved to `url` (PLAN.md §M36 Slice 3).
+        if entry.kind == .directory {
+            fulfillFolderPromise(entry, writingTo: url, then: completionHandler)
+            return
+        }
+        // A file inside an archive is extracted where a server's file is fetched (PLAN.md §M36).
+        if let member = Self.archiveMember(for: entry) {
+            fulfillMemberPromise(member, writingTo: url, then: completionHandler)
+            return
+        }
         fulfillRemotePromise(for: entry) { source in
-            completionHandler(Self.place(source, at: url))
+            completionHandler(Self.placePromisedFile(source, at: url))
         } onEnded: { error in
             // Only a *failure* answers here: success and cancellation are both settled by the
             // branch above, which is the one that knows whether the bytes made it to `url`.
@@ -85,7 +96,7 @@ extension PanelViewController: NSFilePromiseProviderDelegate {
         }
     }
 
-    /// Copy the fetched file into the destination the receiving app chose.
+    /// Copy the fetched or extracted file into the destination the receiving app chose.
     ///
     /// A copy rather than a move, because the fetched file is the *cache's* — an editor may have it
     /// open, and a later drag of the same row must not have to fetch it again. On APFS
@@ -95,7 +106,7 @@ extension PanelViewController: NSFilePromiseProviderDelegate {
     /// `url` is created by the promise machinery, so an existing file there is ours to replace: a
     /// stale zero-byte placeholder left by an earlier attempt would otherwise fail the copy and
     /// report the wrong thing entirely.
-    private nonisolated static func place(_ source: URL, at url: URL) -> (any Error)? {
+    nonisolated static func placePromisedFile(_ source: URL, at url: URL) -> (any Error)? {
         do {
             if FileManager.default.fileExists(atPath: url.path) {
                 try FileManager.default.removeItem(at: url)

@@ -88,7 +88,7 @@ extension RemoteAttributesController {
             localized: "The server didn’t make every change to “\(entry.name)”",
             comment: "Remote Get Info: the server stored less than was asked; %@ is the item's name."
         )
-        alert.informativeText = Self.partialDetail(verdict.refused)
+        alert.informativeText = Self.partialMessage(for: verdict)
         alert.addButton(withTitle: String(
             localized: "OK",
             comment: "Dismiss button on a file-operation failure alert."
@@ -102,7 +102,33 @@ extension RemoteAttributesController {
     /// Internal and `static` so the wording is reachable from a test with no window: presenting a
     /// real panel in the test host is what destabilizes its neighbours (docs/NOTES.md ▸ Testing),
     /// and the part worth pinning is that each combination says something true.
+    ///
+    /// Whole sentences side by side, so a translator never gets a fragment to reorder.
     static func partialDetail(_ refused: Set<RemoteAttributeField>) -> String {
+        let sentences = [ownershipDetail(refused), modeOrTimeDetail(refused)].compactMap(\.self)
+        // Unreachable: `presentPartial` runs only for a verdict that refused something. Stated
+        // rather than force-unwrapped, since the empty join would be a blank alert.
+        guard !sentences.isEmpty else {
+            return String(
+                localized: "The change was not stored as asked.",
+                comment: "Remote Get Info: a refusal with no field named."
+            )
+        }
+        return sentences.joined(separator: " ")
+    }
+
+    /// The alert's whole body: which fields did not take, then why, where the server said.
+    static func partialMessage(for verdict: RemoteAttributeVerdict) -> String {
+        let detail = partialDetail(verdict.refused)
+        guard let words = verdict.serverWords else { return detail }
+        let quoted = String(
+            localized: "The server said: \(words)",
+            comment: "Remote Get Info: the refusal in the server's own words; %@ is left in its language."
+        )
+        return detail + "\n\n" + quoted
+    }
+
+    private static func modeOrTimeDetail(_ refused: Set<RemoteAttributeField>) -> String? {
         switch (refused.contains(.permissions), refused.contains(.modificationTime)) {
         case (true, true):
             String(
@@ -129,12 +155,7 @@ extension RemoteAttributesController {
                 comment: "Remote Get Info: the modification time was refused."
             )
         case (false, false):
-            // Unreachable: `presentPartial` runs only for a verdict that refused something. Stated
-            // rather than force-unwrapped, since a switch that cannot fail still has to compile.
-            String(
-                localized: "The change was not stored as asked.",
-                comment: "Remote Get Info: a refusal with no field named."
-            )
+            nil
         }
     }
 
@@ -161,5 +182,8 @@ extension RemoteAttributesController {
         for entry in modeBoxes { entry.box.isEnabled = !busy }
         for entry in specialBoxes { entry.box.isEnabled = !busy }
         modificationPicker?.isEnabled = !busy
+        ownerField?.isEnabled = !busy
+        groupField?.isEnabled = !busy
+        groupPopup?.isEnabled = !busy
     }
 }

@@ -23,8 +23,9 @@ import DirnexCore
 /// Slice 5). The rule is the same one the read half is built on, applied to controls instead of
 /// rows: a field is offered only where the listing reported it **and** this account still honours
 /// the verb — a mode over SFTP, a mode and a modification time over FTP, nothing over an object
-/// store or an archive. What Save then reports is what the item reads as afterwards, never what was
-/// sent, because a clean answer from the server is not proof the write landed
+/// store or an archive. An SFTP account that can run a command also gets owner and group (PLAN.md
+/// §M38 Slice 2). What Save then reports is what the item reads as afterwards, never what was sent,
+/// because a clean answer from the server is not proof the write landed
 /// (``RemoteAttributeVerdict``).
 @MainActor
 final class RemoteAttributesController: NSViewController, ClaimsTabNumberKeys {
@@ -39,6 +40,10 @@ final class RemoteAttributesController: NSViewController, ClaimsTabNumberKeys {
     /// mid-session is not chased: the control stays live and Save reports the refusal, which is the
     /// same answer the user would get from a fresh panel one moment later.
     let editability: RemoteAttributeEditability
+    /// Who this account is on the server, or `nil` when that could not be asked. It decides what
+    /// the owner and group controls may offer, and its absence is what the note about an account
+    /// with no exec channel is about.
+    let identity: RemoteAccountIdentity?
     /// Re-list the pane after a change lands, so the row on screen agrees with the server.
     var onApplied: (() -> Void)?
     /// Hand a landed change to the window's undo journal — the local panel's own hook, arriving
@@ -72,6 +77,13 @@ final class RemoteAttributesController: NSViewController, ClaimsTabNumberKeys {
     /// the date along with every mode change (docs/NOTES.md ▸ ACLs and file attributes).
     var pickerBaseline: Date?
     var modeValueField: NSTextField?
+    /// A name typed for root, which can hand an item to anyone. Nothing lists a server's users.
+    var ownerField: NSTextField?
+    /// A name typed for root. An account that is not root picks in ``groupPopup`` instead.
+    var groupField: NSTextField?
+    var groupPopup: NSPopUpButton?
+    /// What each item of ``groupPopup`` stands for, by the item's tag.
+    var groupChoices: [RemotePrincipal] = []
     var saveButton: NSButton?
     /// What the last Save achieved, or `nil` before one. Held rather than passed straight to an
     /// alert because it is the panel's own state — and because "the server did less than was asked"
@@ -85,11 +97,13 @@ final class RemoteAttributesController: NSViewController, ClaimsTabNumberKeys {
     init(
         entry: FileEntry,
         backend: any VFSBackend,
-        editability: RemoteAttributeEditability = .readOnly
+        editability: RemoteAttributeEditability = .readOnly,
+        identity: RemoteAccountIdentity? = nil
     ) {
         self.entry = entry
         self.backend = backend
         self.editability = editability
+        self.identity = identity
         super.init(nibName: nil, bundle: nil)
         title = DialogTitle.ofCommand("file.attributes")
     }
@@ -284,25 +298,10 @@ final class RemoteAttributesController: NSViewController, ClaimsTabNumberKeys {
             makeModifiedRow()
         case .permissions:
             makePermissionsRow()
-        // Text, exactly as the source spelled it, and never resolved against this Mac — see
-        // `FileEntry.ownerName`. A server's `501` put through `getpwuid` here would draw the local
-        // account of whoever is reading the panel over a file belonging to a stranger.
         case .owner:
-            AttributeRow.make(
-                label: String(
-                    localized: "Owner:",
-                    comment: "Info panel field label: the owning user, as the server named it."
-                ),
-                value: entry.ownerName ?? ""
-            )
+            makeOwnerRow()
         case .group:
-            AttributeRow.make(
-                label: String(
-                    localized: "Group:",
-                    comment: "Info panel field label: the owning group, as the server named it."
-                ),
-                value: entry.groupName ?? ""
-            )
+            makeGroupRow()
         case .entityTag:
             AttributeRow.make(
                 label: String(
@@ -377,6 +376,10 @@ final class RemoteAttributesController: NSViewController, ClaimsTabNumberKeys {
         modificationPicker = nil
         pickerBaseline = nil
         modeValueField = nil
+        ownerField = nil
+        groupField = nil
+        groupPopup = nil
+        groupChoices = []
         saveButton = nil
         view = NSView()
         loadView()

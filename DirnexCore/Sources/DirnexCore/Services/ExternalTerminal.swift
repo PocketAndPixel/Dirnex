@@ -20,8 +20,13 @@ public struct ExternalTerminal: Sendable, Hashable, Identifiable {
         /// window already `cd`'d there — so no shell command is typed and no quoting is involved.
         case applicationBundle(candidatePaths: [String])
         /// A command-line launcher taking the directory as its final argument, after
-        /// `leadingArguments` (`wezterm start --cwd <dir>`).
-        case executable(candidatePaths: [String], leadingArguments: [String])
+        /// `leadingArguments` (`wezterm start --cwd <dir>`), or a script to run as its final
+        /// argument, after `scriptArguments` (`wezterm start -- <script>`).
+        case executable(
+            candidatePaths: [String],
+            leadingArguments: [String],
+            scriptArguments: [String]
+        )
     }
 
     /// A stable identifier, for persisting the user's chosen terminal.
@@ -41,7 +46,7 @@ public struct ExternalTerminal: Sendable, Hashable, Identifiable {
         switch launch {
         case let .applicationBundle(candidatePaths):
             return candidatePaths.first(where: pathExists)
-        case let .executable(candidatePaths, _):
+        case let .executable(candidatePaths, _, _):
             return candidatePaths.first(where: pathExists)
         }
     }
@@ -59,10 +64,36 @@ public struct ExternalTerminal: Sendable, Hashable, Identifiable {
                 executablePath: Self.openExecutablePath,
                 arguments: ["-a", installedPath, directoryPath]
             )
-        case let .executable(_, leadingArguments):
+        case let .executable(_, leadingArguments, _):
             return ExternalTerminalInvocation(
                 executablePath: installedPath,
                 arguments: leadingArguments + [directoryPath]
+            )
+        }
+    }
+
+    /// A concrete launch that runs the executable script at `scriptPath` in a new session, or `nil`
+    /// when the terminal isn't installed.
+    ///
+    /// Terminal runs a `.command` file handed to it (probed 2026-11-09). iTerm runs one too, asking
+    /// "OK to run?" first when it is already running, which a person can silence; a launch that
+    /// starts it runs the file at once (iTerm 3.7.7, 2026-11-11). WezTerm takes the program after
+    /// `--` and runs it in a window of its own (20240203, the same day).
+    public func invocation(
+        runningScript scriptPath: String,
+        pathExists: (String) -> Bool
+    ) -> ExternalTerminalInvocation? {
+        guard let installedPath = installedPath(where: pathExists) else { return nil }
+        switch launch {
+        case .applicationBundle:
+            return ExternalTerminalInvocation(
+                executablePath: Self.openExecutablePath,
+                arguments: ["-a", installedPath, scriptPath]
+            )
+        case let .executable(_, _, scriptArguments):
+            return ExternalTerminalInvocation(
+                executablePath: installedPath,
+                arguments: scriptArguments + [scriptPath]
             )
         }
     }
@@ -113,7 +144,8 @@ public extension ExternalTerminal {
                 "/opt/homebrew/bin/wezterm",
                 "/usr/local/bin/wezterm"
             ],
-            leadingArguments: ["start", "--cwd"]
+            leadingArguments: ["start", "--cwd"],
+            scriptArguments: ["start", "--"]
         )
     )
 

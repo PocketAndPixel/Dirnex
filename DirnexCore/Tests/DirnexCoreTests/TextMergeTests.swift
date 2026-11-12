@@ -102,7 +102,12 @@ struct TextMergeTests {
                 Self.row(1, nil, 3, nil, nil)
             ])
         ]
-        for choice in TextMerge.Choice.allCases {
+        // Neither side changed only whitespace, so the four takes are the whole offer.
+        #expect(
+            TextMerge.Choice.allCases.filter { merge.offers($0, forConflict: 0) }
+                == [.yours, .theirs, .yoursThenTheirs, .theirsThenYours]
+        )
+        for choice in TextMerge.Choice.allCases where merge.offers(choice, forConflict: 0) {
             var chosen = merge
             chosen.apply(TextMerge.Step(conflict: 0, choice: choice))
             let (text, conflictRows) = try #require(expected[choice])

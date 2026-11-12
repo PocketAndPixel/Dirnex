@@ -30,6 +30,15 @@ public struct WebDAVResponse: Sendable, Equatable {
     public let entityTag: String?
     /// `<getcontenttype>`, or `nil`.
     public let contentType: String?
+    /// RFC 4331's `<quota-available-bytes>`: the bytes that may still be stored here, or `nil` when
+    /// the server sent no number. Only a quota request names it (``WebDAVQuota``), so a listing's
+    /// rows never carry one.
+    ///
+    /// A negative number is no number. RFC 4331 allows none, and Nextcloud 34 sends **`-3`** for an
+    /// account with no quota (measured 2026-11-10), which is sabre's "unlimited": read as bytes it
+    /// would be a full disk, and as a count of anything it means nothing. Its other two codes, `-2`
+    /// and `-1`, are "unknown" and "not yet computed".
+    public let quotaAvailableBytes: Int64?
 
     public init(
         path: String,
@@ -39,7 +48,8 @@ public struct WebDAVResponse: Sendable, Equatable {
         modified: Date? = nil,
         created: Date? = nil,
         entityTag: String? = nil,
-        contentType: String? = nil
+        contentType: String? = nil,
+        quotaAvailableBytes: Int64? = nil
     ) {
         self.path = path
         self.status = status
@@ -49,6 +59,7 @@ public struct WebDAVResponse: Sendable, Equatable {
         self.created = created
         self.entityTag = entityTag
         self.contentType = contentType
+        self.quotaAvailableBytes = quotaAvailableBytes
     }
 }
 
@@ -227,6 +238,10 @@ private extension WebDAVMultistatusParser {
                 pending.entityTag = value
             case "getcontenttype" where !value.isEmpty:
                 pending.contentType = value
+            // Nextcloud answers a file's in a 200 `propstat` as an empty element, which is no
+            // number either.
+            case "quota-available-bytes":
+                pending.quotaAvailableBytes = Int64(value).flatMap { $0 >= 0 ? $0 : nil }
             default:
                 break
             }
@@ -248,7 +263,8 @@ private extension WebDAVMultistatusParser {
                     modified: accepted.modified,
                     created: accepted.created,
                     entityTag: accepted.entityTag,
-                    contentType: accepted.contentType
+                    contentType: accepted.contentType,
+                    quotaAvailableBytes: accepted.quotaAvailableBytes
                 ))
             } else if let responseStatus {
                 for href in hrefs {
@@ -277,6 +293,7 @@ private struct WebDAVPropertyValues {
     var created: Date?
     var entityTag: String?
     var contentType: String?
+    var quotaAvailableBytes: Int64?
 
     mutating func merge(_ other: WebDAVPropertyValues) {
         isCollection = isCollection || other.isCollection
@@ -285,6 +302,7 @@ private struct WebDAVPropertyValues {
         created = other.created ?? created
         entityTag = other.entityTag ?? entityTag
         contentType = other.contentType ?? contentType
+        quotaAvailableBytes = other.quotaAvailableBytes ?? quotaAvailableBytes
     }
 }
 

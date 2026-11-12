@@ -48,8 +48,15 @@ extension PanelViewController {
     /// Internal rather than private so a test can ask what a pin *would* carry without writing one:
     /// `FavoritesStore` is `UserDefaults.standard`, which in a target that runs inside the app is
     /// the sidebar the person running the tests is looking at (docs/NOTES.md ▸ Testing).
+    ///
+    /// A folder on a mounted share is a local path, so it has no connection to read back, and the
+    /// share it is on is recorded instead, for the day it is not mounted (`PinnedShare`).
     func currentFolderPin() -> FavoriteEntry {
-        FavoriteEntry(path: panel.path, endpoint: reconnectEndpoint(for: tabs[activeTabIndex]))
+        FavoriteEntry(
+            path: panel.path,
+            endpoint: reconnectEndpoint(for: tabs[activeTabIndex])
+                ?? SMBMounter.shared.shareEndpoint(containing: panel.path)
+        )
     }
 
     // MARK: - Popup menu
@@ -172,9 +179,18 @@ extension PanelViewController {
     /// and the endpoint goes on *that* tab: the active one is being left as it is, connection and all.
     func jumpToFavorite(_ entry: FavoriteEntry, inNewTab: Bool = false) {
         // A pinned folder can outlive the directory it points at; catch that here rather than
-        // dropping the user onto a load-failure sheet, and offer to unpin the dead entry.
-        if entry.path.backend == .local, !directoryExists(entry.path) {
-            presentMissingFavoriteEntry(entry.path)
+        // dropping the user onto a load-failure sheet. When what is missing is the share it is on,
+        // mount that; otherwise offer to unpin the dead entry.
+        if entry.path.backend == .local, !Self.directoryExists(entry.path) {
+            let shares = Self.sharesToMount(
+                for: entry,
+                saved: ServerConnectionStore.load().connections
+            )
+            if shares.isEmpty {
+                presentMissingFavoriteEntry(entry.path)
+            } else {
+                openPinnedShare(entry, from: shares, inNewTab: inNewTab)
+            }
             return
         }
         if inNewTab {
@@ -226,14 +242,14 @@ extension PanelViewController {
 
     // MARK: - Helpers
 
-    private func directoryExists(_ path: VFSPath) -> Bool {
+    nonisolated static func directoryExists(_ path: VFSPath) -> Bool {
         var isDirectory: ObjCBool = false
         return FileManager.default.fileExists(atPath: path.path, isDirectory: &isDirectory)
             && isDirectory.boolValue
     }
 
     /// A pinned folder no longer exists — tell the user and offer to unpin it in one step.
-    private func presentMissingFavoriteEntry(_ path: VFSPath) {
+    func presentMissingFavoriteEntry(_ path: VFSPath) {
         let alert = NSAlert()
         alert.messageText = String(
             localized: "“\(path.lastComponent)” isn’t available",

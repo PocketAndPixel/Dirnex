@@ -1,0 +1,9 @@
+dav-status=400
+dav-size=343
+dav-up=0
+dav-headers={"date":["Tue, 10 Nov 2026 20:28:46 GMT"],
+"server":["Apache/2.4.68 (Debian)"],
+"content-length":["343"],
+"connection":["close"],
+"content-type":["text/html; charset=iso-8859-1"]
+}

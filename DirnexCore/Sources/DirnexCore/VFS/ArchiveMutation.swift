@@ -120,12 +120,17 @@ public enum ArchiveMutation {
     /// measured 2026-09-10. So the move is its own guard, and a second one here could only disagree
     /// with it.
     public static func renamedInnerPath(ofInnerPath innerPath: String, to newName: String) -> String? {
-        guard !newName.isEmpty, !newName.contains("/"), newName != ".", newName != ".." else {
-            return nil
-        }
+        guard isMemberName(newName) else { return nil }
         let parent = (innerPath as NSString).deletingLastPathComponent
         guard !parent.isEmpty else { return newName }
         return (parent as NSString).appendingPathComponent(newName)
+    }
+
+    /// Whether `name` can be one member's own name inside the staged tree: not empty, no `/`, and
+    /// neither `.` nor `..`. The whole of the validation a rename or a create needs (see
+    /// ``renamedInnerPath(ofInnerPath:to:)`` for why this list is not the local one).
+    static func isMemberName(_ name: String) -> Bool {
+        !name.isEmpty && !name.contains("/") && name != "." && name != ".."
     }
 
     /// One on-disk item to copy into an archive, and the inner directory it lands in

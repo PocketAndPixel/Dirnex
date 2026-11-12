@@ -24,7 +24,20 @@ extension FileTableView {
            let writers = inputDelegate?.fileTable(self, dragWritersFromRow: row) {
             dragged = Self.draggingItems(for: writers, replacing: grabbed)
         }
-        return super.beginDraggingSession(with: dragged, event: event, source: source)
+        let session = super.beginDraggingSession(with: dragged, event: event, source: source)
+        if row >= 0 { inputDelegate?.fileTable(self, didBegin: session, fromRow: row) }
+        return session
+    }
+
+    /// The pointer moved during a drag, which arrives ahead of whatever app it just entered reading
+    /// the board (measured, 6 ms in Teams), so that app can still be offered something else.
+    ///
+    /// `@objc` by name because `NSDraggingSource` is an inherited conformance, whose optional members
+    /// Swift does not match by signature, and AppKit dispatches this through `respondsToSelector:`.
+    /// `NSTableView` has no implementation of its own for this to replace.
+    @objc(draggingSession:movedToPoint:)
+    func draggingSessionMoved(_ session: NSDraggingSession, to screenPoint: NSPoint) {
+        inputDelegate?.fileTableDraggingSessionMoved(self)
     }
 
     /// One item per writer, all at the grabbed row's frame and only the first with its picture, so a

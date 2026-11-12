@@ -127,13 +127,35 @@ final class SearchProgressSheet {
     /// substitution apiece in fourteen languages for a line that is on screen for seconds. Labelled
     /// numbers carry the same information, scan better in a status line, and have no grammar to get
     /// wrong.
-    private func describe(_ progress: SubtreeSearch.Progress) -> String {
-        String(
-            localized: "Folders searched: \(progress.directoriesListed) · Found: \(progress.hits)",
-            comment: """
-            Search progress detail. %1$lld is how many folders have been listed so far, \
-            %2$lld how many matches were found in them.
-            """
-        )
+    ///
+    /// An account search counts buckets out of a total it knows from the start, since the bucket
+    /// list is its first request (PLAN.md §M38 Slice 5).
+    static func describe(_ report: SearchControl.Report) -> String {
+        switch report {
+        case let .walk(progress):
+            String(
+                localized: "Folders searched: \(progress.directoriesListed) · Found: \(progress.hits)",
+                comment: """
+                Search progress detail. %1$lld is how many folders have been listed so far, \
+                %2$lld how many matches were found in them.
+                """
+            )
+        case let .buckets(progress):
+            String(
+                localized: """
+                Buckets searched: \(progress.bucketsSearched) of \(progress.bucketCount) · \
+                Found: \(progress.hits)
+                """,
+                comment: """
+                Search progress detail for a search across an S3 account. %1$lld is how many \
+                buckets have been searched so far, %2$lld how many the account has, %3$lld how \
+                many matches were found in them.
+                """
+            )
+        }
+    }
+
+    private func describe(_ report: SearchControl.Report) -> String {
+        Self.describe(report)
     }
 }

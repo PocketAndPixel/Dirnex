@@ -61,6 +61,9 @@ public struct SFTPBackend: RemoteTransportBackend {
     /// copied freely, and what it knows about the *server* must not be copied away with it
     /// (``LinkTargetSupport``).
     let links = LinkTargetSupport()
+    /// Who this account is on its server, once asked — a reference for the reason the others here
+    /// are (``RemoteAccountIdentitySupport``).
+    let identitySupport = RemoteAccountIdentitySupport()
 
     public init(location: SFTPLocation, transport: any SFTPTransport) {
         self.location = location

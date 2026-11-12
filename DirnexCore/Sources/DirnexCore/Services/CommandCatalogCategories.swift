@@ -71,6 +71,15 @@ extension CommandCatalog {
             ]
         ),
         Command(
+            id: "view.toggleIconPreviews",
+            title: "Show Icon Previews",
+            category: .view,
+            keywords: [
+                "thumbnail", "thumbnails", "preview", "icons", "pictures", "images", "photos",
+                "quick look", "finder"
+            ]
+        ),
+        Command(
             id: "view.sizeVisualization",
             title: "Size Visualization",
             category: .view,

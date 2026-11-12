@@ -4,8 +4,8 @@ import Foundation
 ///
 /// A search snapshot is the one listing that can neither re-list nor re-gather itself — it keeps the
 /// hits it was given, which is right for the world changing underneath it and wrong for a change the
-/// app made itself. So a delete or a move is applied to it by hand, the way an in-place rename is
-/// (`substituteSearchHit` in the app). Two halves:
+/// app made itself. So a delete or a move is applied to it by hand, the way a rename is
+/// (``renaming(_:after:)``). Two halves:
 ///
 /// - ``applying(_:to:)`` — the rows a delete or a move took away, and the ones a queued rename
 ///   renamed where they stand.
@@ -25,7 +25,8 @@ public enum SearchSnapshot {
         case removed(VFSPath)
         /// Moved, landing at the second path. A landing in the hit's own folder is a rename — the
         /// shape a queued rename takes (an S3 prefix, a rename across devices) — and the row stays
-        /// under its new name; anywhere else, the hit has left the place it was found.
+        /// under its new name, as does every hit inside it when it is a folder; anywhere else, the
+        /// hit has left the place it was found, and so has every hit inside it.
         case moved(VFSPath, to: VFSPath)
 
         var source: VFSPath {
@@ -44,21 +45,41 @@ public enum SearchSnapshot {
     }
 
     /// `entries` after `changes`, or `nil` when none of them touches a row the snapshot holds. Order
-    /// is kept; a path the snapshot does not hold — a row inside an expanded folder, which its own
-    /// re-list handles — changes nothing.
+    /// is kept. A path the snapshot does not hold changes nothing unless a hit is inside it: a row
+    /// inside an expanded folder is not a hit, and its own re-list handles it.
+    ///
+    /// **A hit inside a folder that was deleted or moved away leaves with it** (2026-11-05), whether
+    /// or not the folder was a hit itself — it may have been moved from a folder tab. Until then
+    /// only a row matching the item's own path left, so a hit below a moved folder went on naming
+    /// the folder's old place, and opening, previewing or renaming it failed. It is not pointed at
+    /// the new place instead: the folder's own row leaves because it is no longer where the search
+    /// found it, which is just as true of everything inside it, and a deleted folder has no new
+    /// place. Such a hit is in `departed` like any other, so ⌘Z brings it back with the folder.
     public static func applying(_ changes: [Change], to entries: [FileEntry]) -> Applied? {
         let bySource = Dictionary(
             changes.map { ($0.source, $0) },
             uniquingKeysWith: { _, last in last }
         )
+        // A queued rename of a folder carries the hits inside it, as an in-place one does
+        // (``renaming(_:after:)``, 2026-11-05).
+        let renames = changes.compactMap { change -> Renamed? in
+            guard case let .moved(source, landing) = change, isRename(source, landing) else { return nil }
+            return Renamed(from: source, to: landing)
+        }
+        let leaving = Set(changes.compactMap { change -> VFSPath? in
+            if case let .moved(source, landing) = change, isRename(source, landing) { return nil }
+            return change.source
+        })
         var shown: [FileEntry] = []
         var departed: [FileEntry] = []
         for entry in entries {
             switch bySource[entry.path] {
+            case nil where isInside(entry.path, anyOf: leaving):
+                departed.append(entry)
             case nil:
-                shown.append(entry)
-            case let .moved(source, to: landing)?
-                where landing.backend == source.backend && landing.parent == source.parent:
+                let landing = path(entry.path, after: renames)
+                shown.append(landing == entry.path ? entry : entry.relocated(to: landing))
+            case let .moved(source, to: landing)? where isRename(source, landing):
                 shown.append(entry.renamed(to: landing.lastComponent))
             case .removed?, .moved?:
                 departed.append(entry)
@@ -66,6 +87,19 @@ public enum SearchSnapshot {
         }
         guard shown != entries else { return nil }
         return Applied(entries: shown, departed: departed)
+    }
+
+    /// Whether `path` is somewhere below one of `folders`, on the same backend. Walks up from the
+    /// path rather than testing every folder as a prefix, since a results tab holds up to 5 000
+    /// hits and a move of all of them reports as many folders.
+    static func isInside(_ path: VFSPath, anyOf folders: Set<VFSPath>) -> Bool {
+        guard !folders.isEmpty else { return false }
+        var ancestor = path.parent
+        while let folder = ancestor {
+            if folders.contains(folder) { return true }
+            ancestor = folder.parent
+        }
+        return false
     }
 
     /// What a finished queue job did to the hits it was handed: each item a **move** relocated, from

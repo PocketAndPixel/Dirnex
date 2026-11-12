@@ -24,31 +24,64 @@ extension S3Backend {
     /// `isCancelled` is asked **before** each request, so a stop costs nothing further rather than
     /// one more billed page. Only the search route passes one: a directory listing is over before
     /// anyone could press a button, and a delete's sweep must not be abandoned halfway.
+    ///
+    /// Two more seams, both for a search across an account's buckets (PLAN.md §M38 Slice 5), and
+    /// both defaulted so the three callers above are unchanged:
+    ///
+    /// - `firstPage` is a page already fetched, handed to `body` in place of the first request.
+    ///   That search asks for the first page itself, because it is the request that learns whether
+    ///   the bucket needs another region or path-style addressing (``S3LocationCorrection``), and
+    ///   asking for it twice would bill every bucket a page for nothing.
+    /// - `wantsMore` is asked after each page, **before** the next request. Answering `false` ends
+    ///   the run with ``S3PageRun/stoppedEarly`` rather than throwing: that is a bound the caller
+    ///   chose and can say so, where `pageLimit` is a runaway guard and a run past it is refused.
+    ///
+    /// - Returns: whether the enumeration reached the end of the listing. Only a run that had a
+    ///   next page to ask for and was told not to is ``S3PageRun/stoppedEarly``.
+    @discardableResult
     func enumeratePages(
         prefix: String,
         delimiter: String?,
         at path: VFSPath,
+        firstPage: S3ListingPage? = nil,
         isCancelled: () -> Bool = { false },
+        wantsMore: () -> Bool = { true },
         body: (S3ListingPage) throws -> Void
-    ) throws {
+    ) throws -> S3PageRun {
         var token: String?
         var pages = 0
+        var handedOver = firstPage
 
         while true {
-            if isCancelled() { throw CancellationError() }
-            let page = try listPage(
-                prefix: prefix,
-                delimiter: delimiter,
-                continuationToken: token,
-                at: path
-            )
+            let page: S3ListingPage
+            if let given = handedOver {
+                page = given
+                handedOver = nil
+            } else {
+                if isCancelled() { throw CancellationError() }
+                page = try listPage(
+                    prefix: prefix,
+                    delimiter: delimiter,
+                    continuationToken: token,
+                    at: path
+                )
+            }
             try body(page)
             pages += 1
-            guard page.isTruncated, let next = page.nextContinuationToken else { return }
+            guard page.isTruncated, let next = page.nextContinuationToken else { return .exhausted }
             guard next != token else { throw VFSError.io(path: path, code: EIO) }
             guard pages < pageLimit else { throw VFSError.io(path: path, code: EFBIG) }
+            guard wantsMore() else { return .stoppedEarly }
             token = next
         }
+    }
+
+    /// How an enumeration ended — see ``enumeratePages(prefix:delimiter:at:firstPage:isCancelled:wantsMore:body:)``.
+    enum S3PageRun: Equatable {
+        /// The server said there was nothing more.
+        case exhausted
+        /// There was a next page and the caller's `wantsMore` declined it.
+        case stoppedEarly
     }
 
     /// One page. Internal because `stat` asks for a single page directly, from the main file.

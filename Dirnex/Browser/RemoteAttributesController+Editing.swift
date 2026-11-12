@@ -3,11 +3,11 @@ import DirnexCore
 
 /// Get Info's **write** half for a row that is not on this Mac (PLAN.md §M25 Slice 5).
 ///
-/// Two fields, and the shortness of that list is the protocol rather than a first pass — see
+/// A short list, and its shortness is the protocol rather than a first pass — see
 /// ``RemoteAttributeField``. What a given account will actually take is narrower still and is asked
 /// of the connection, so the controls a panel draws are the ones pressing Save can do something
 /// with: a mode over SFTP, a mode and a modification time over FTP, nothing at all over an object
-/// store or an archive.
+/// store or an archive. Owner and group live in `RemoteAttributesController+Ownership`.
 ///
 /// **A clean answer from the server is not proof the write landed**, which is the finding this half
 /// is built around and the reason Save ends in a re-read. Measured 2026-08-28 against a real `sshd`:
@@ -41,56 +41,61 @@ extension RemoteAttributesController {
                 modeBoxes.append(ModeBox(box: box, cls: cls, access: access))
                 views.append(box)
             }
+            let lastAccess = views.last
+            views.append(makeSpecialBox(under: cls, current))
             let column = NSStackView(views: views)
             column.orientation = .vertical
             column.alignment = .leading
             column.spacing = 2
+            if let lastAccess { column.setCustomSpacing(8, after: lastAccess) }
             return column
         }
         let grid = NSStackView(views: columns)
         grid.orientation = .horizontal
         grid.alignment = .top
         grid.spacing = 20
-
-        let stack = NSStackView(views: [grid, makeSpecialBitsRow(current)])
-        stack.orientation = .vertical
-        stack.alignment = .leading
-        stack.spacing = 8
-        return stack
+        return grid
     }
 
-    /// Set-UID, set-GID and sticky. Worth their own row here rather than being folded into the octal
-    /// echo, because `chmod` over the wire is the **only** route to them — the transfer's preserve
-    /// flag drops all three silently — so this is the one place a user can put one back on a copy.
-    private func makeSpecialBitsRow(_ current: POSIXPermissions) -> NSView {
-        let boxes = [
-            (
+    /// The special bit that closes `cls`'s column: set-UID under Owner, set-GID under Group, sticky
+    /// under Everyone. In the columns rather than a row of their own so they line up in any language.
+    ///
+    /// Worth a checkbox rather than being folded into the octal echo, because `chmod` over the wire
+    /// is the **only** route to them — the transfer's preserve flag drops all three silently — so
+    /// this is the one place a user can put one back on a copy.
+    private func makeSpecialBox(
+        under cls: POSIXPermissions.Class,
+        _ current: POSIXPermissions
+    ) -> NSButton {
+        switch cls {
+        case .owner:
+            specialBox(
                 String(localized: "Set UID", comment: "Mode bit: run as the file's owner."),
-                current.setUserID,
-                SpecialBit.setUserID
-            ),
-            (
+                isOn: current.setUserID,
+                bit: .setUserID
+            )
+        case .group:
+            specialBox(
                 String(localized: "Set GID", comment: "Mode bit: run as the file's group."),
-                current.setGroupID,
-                SpecialBit.setGroupID
-            ),
-            (
+                isOn: current.setGroupID,
+                bit: .setGroupID
+            )
+        case .other:
+            specialBox(
                 String(
                     localized: "Sticky",
                     comment: "Mode bit: restrict deletion in a folder to each item's owner."
                 ),
-                current.sticky,
-                SpecialBit.sticky
+                isOn: current.sticky,
+                bit: .sticky
             )
-        ].map { title, isOn, bit -> NSButton in
-            let box = checkbox(title: title, isOn: isOn)
-            specialBoxes.append(SpecialBox(box: box, bit: bit))
-            return box
         }
-        let row = NSStackView(views: boxes)
-        row.orientation = .horizontal
-        row.spacing = 16
-        return row
+    }
+
+    private func specialBox(_ title: String, isOn: Bool, bit: SpecialBit) -> NSButton {
+        let box = checkbox(title: title, isOn: isOn)
+        specialBoxes.append(SpecialBox(box: box, bit: bit))
+        return box
     }
 
     /// The date control, live only over a connection with a verb that writes one.
@@ -183,6 +188,8 @@ extension RemoteAttributesController {
             permissions: modeBoxes.isEmpty ? nil : editedPermissions,
             modificationTime: modificationPicker?.dateValue,
             shownModificationTime: pickerBaseline,
+            owner: editedOwner,
+            group: editedGroup,
             editable: editability
         )
     }

@@ -36,6 +36,35 @@ struct TabRestorePolicyTests {
         #expect(requirement == .directoryOnDisk)
     }
 
+    /// A share is mounted by Dirnex and unmounted on quit, so a tab inside one comes back to a folder
+    /// that is not there until the share is mounted again (`PinnedShare`).
+    @Test("a tab inside a share needs that share")
+    func shareTabNeedsItsShare() {
+        let share = SMBLocation(host: "nas", share: "media", username: "oleg")
+        #expect(
+            TabRestorePolicy.requirement(for: .local("/Volumes/media/TV"), endpoint: .smb(share))
+                == .shareMount(share)
+        )
+    }
+
+    /// The endpoint is weighed against the path here too: no share is mounted outside `/Volumes`,
+    /// and a server with no share names nothing to mount.
+    @Test("a share's endpoint means nothing for a folder outside /Volumes, nor a server's for any")
+    func shareEndpointNeedsAVolumePath() {
+        let share = SMBLocation(host: "nas", share: "media", username: "oleg")
+        #expect(
+            TabRestorePolicy.requirement(for: .local("/Users/oleg/TV"), endpoint: .smb(share))
+                == .directoryOnDisk
+        )
+        #expect(
+            TabRestorePolicy.requirement(
+                for: .local("/Volumes/media/TV"),
+                endpoint: .smb(share.server)
+            )
+                == .directoryOnDisk
+        )
+    }
+
     /// The archive **file** is the thing to check, not the tab's own path: a tab sitting three
     /// folders into a zip has a path (`/docs/api`) that exists nowhere on disk, so a restore that
     /// stat'ed the path would drop every archive tab but the root's — and one that stat'ed nothing

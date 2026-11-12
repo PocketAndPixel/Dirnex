@@ -196,6 +196,8 @@ struct OperationsSettingsView: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
             }
+
+            GitMergeToolSection()
         }
         .formStyle(.grouped)
         .task {

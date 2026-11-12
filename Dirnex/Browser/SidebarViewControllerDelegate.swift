@@ -27,6 +27,12 @@ protocol SidebarViewControllerDelegate: AnyObject {
         didActivateFavorite entry: FavoriteEntry,
         inNewTab: Bool
     )
+    /// What a folder dragged in from a pane would reconnect with, the endpoint its pin has to carry
+    /// to open again after a relaunch. `nil` for a path that has none, a local one above all.
+    func sidebar(
+        _ sidebar: SidebarViewController,
+        reconnectEndpointFor path: VFSPath
+    ) -> ServerEndpoint?
     /// A saved-search row was picked — re-run its query in the active pane and show the hits in
     /// a virtual results panel (PLAN.md §M4 "Saved searches … in the places strip").
     func sidebar(

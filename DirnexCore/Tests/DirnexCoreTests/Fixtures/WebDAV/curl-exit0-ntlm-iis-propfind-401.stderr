@@ -1,0 +1,8 @@
+dav-status=401
+dav-size=0
+dav-up=201
+dav-headers={"server":["BaseHTTP/0.6 Python/3.13.5"],
+"date":["Tue, 10 Nov 2026 19:42:24 GMT"],
+"www-authenticate":["Negotiate","NTLM"],
+"content-length":["0"]
+}

@@ -28,6 +28,14 @@ import Testing
 ///
 /// Each field past the location is a **claim about that endpoint**, written down rather than
 /// inferred, since a live test's constants are the ones that expire (docs/NOTES.md ▸ Live suites).
+///
+/// PLAN.md §M38 added the two sign-in stand-ins: the NTLM proxy (`Tooling/fake-ntlm-proxy.py`,
+/// `"scheme": "ntlm"`, offering Negotiate beside it as IIS does, which `offersNegotiate` states) and
+/// the Kerberos container (`Tooling/negotiate-standin`, `"scheme": "negotiate"` with no user). The
+/// container's endpoint names a `krb5Config` and a `credentialCache`, and the suite points
+/// `KRB5_CONFIG` and `KRB5CCNAME` at them for the whole test process, since the app's `curl` inherits
+/// its environment and finds the Mac's ticket through exactly those two. That stands in for the
+/// Mac's own Kerberos state: the user's default cache and `/etc` are never touched.
 /// `keychain` stands in for `password` so a real account's password never has to be written into
 /// `/tmp`: it is read from the login Keychain once per run, which raises the Keychain's own prompt
 /// for whoever runs it (CLAUDE.md ▸ How to work here).
@@ -52,8 +60,18 @@ enum WebDAVLiveEnvironment {
             secrets[key] = read
             return read
         }
+        useKerberosStandIn(file.endpoints)
         return file.endpoints.compactMap { WebDAVLiveEndpoint($0, secret: secret) }
     }()
+
+    /// Point Kerberos at the stand-in's realm and ticket for this process, when an endpoint names
+    /// them. Set once, before any request of this suite, and never unset: every `curl` the suite
+    /// spawns inherits it, and nothing else in the test process reads Kerberos.
+    private static func useKerberosStandIn(_ endpoints: [Endpoint]) {
+        guard let kerberos = endpoints.first(where: { $0.krb5Config != nil }) else { return }
+        if let config = kerberos.krb5Config { setenv("KRB5_CONFIG", config, 1) }
+        if let cache = kerberos.credentialCache { setenv("KRB5CCNAME", cache, 1) }
+    }
 
     static var isEnabled: Bool { !endpoints.isEmpty }
 
@@ -87,6 +105,11 @@ enum WebDAVLiveEnvironment {
         let composesNames: Bool?
         let lockGuardsFolder: Bool?
         let keepsUploadDates: Bool?
+        let offersNegotiate: Bool?
+        let redirectsBareFolders: Bool?
+        let quotaBytes: Int64?
+        let krb5Config: String?
+        let credentialCache: String?
     }
 }
 
@@ -132,6 +155,18 @@ struct WebDAVLiveEndpoint: Sendable, CustomTestStringConvertible {
     /// Whether a PUT asking for a date with `X-OC-Mtime` gets it, which the server says in its
     /// answer. Nextcloud does; Apache ignores the header (``WebDAVModificationTime``).
     let keepsUploadDates: Bool
+    /// Whether the server's challenge offers Negotiate beside a password scheme, as IIS's does. An
+    /// account with no name is then signed in with the Mac's ticket rather than told it needs a
+    /// name, so its refusal is the ticket's (PLAN.md §M38).
+    let offersNegotiate: Bool
+    /// Whether the server redirects a folder named without its trailing slash, so a folder's DELETE
+    /// or MOVE is sent twice: bare, then with the slash. A stock Debian Apache does (`mod_dir`'s
+    /// `DirectorySlash`); macOS's Apache, the NAS and Nextcloud take the bare name (PLAN.md §M38).
+    let redirectsBareFolders: Bool
+    /// The quota the account was given, for a server that reports RFC 4331's: the throwaway
+    /// Nextcloud's, which `scripts/live_test_servers.sh` sets. `nil` for a server that reports none,
+    /// which both Apaches and the NAS are (PLAN.md §M38 Slice 7).
+    let quotaBytes: Int64?
 
     var testDescription: String { name }
 
@@ -168,6 +203,9 @@ struct WebDAVLiveEndpoint: Sendable, CustomTestStringConvertible {
         composesNames = file.composesNames ?? false
         lockGuardsFolder = file.lockGuardsFolder ?? true
         keepsUploadDates = file.keepsUploadDates ?? false
+        offersNegotiate = file.offersNegotiate ?? false
+        redirectsBareFolders = file.redirectsBareFolders ?? false
+        quotaBytes = file.quotaBytes
     }
 
     /// `name`'s bytes as this server stores them.
@@ -215,146 +253,6 @@ struct WebDAVLiveEndpoint: Sendable, CustomTestStringConvertible {
         guard let recycleFolder else { return }
         let recycled = VFSPath(backend: location.backendID, path: recycleFolder)
         try? backend.removeItem(at: recycled.appending(folder.lastComponent))
-    }
-}
-
-/// A ``WebDAVTransport`` that forwards to the real one and writes down every request it sent.
-///
-/// A lock rather than an actor because the protocol is synchronous, as ``InMemorySecretStore``
-/// argues for its own.
-final class CountingWebDAVTransport: WebDAVTransport, @unchecked Sendable {
-    /// One request, by method, with what a test asserts about it.
-    enum Request: Equatable, Sendable {
-        case propfind(WebDAVDepth)
-        case propfindBatch(folders: Int)
-        case get(resume: Bool)
-        /// One `curl` carrying this many guarded ranges of one file.
-        case getRanges(Int)
-        case mkcol
-        /// A PUT of a local file, and whether it asked the server for a date.
-        case put(S3WriteCondition, askedForDate: Bool = false)
-        case putEmpty(S3WriteCondition)
-        case move
-        case copy
-        case delete
-    }
-
-    private let base: any WebDAVTransport
-    private let lock = NSLock()
-    private var log: [Request] = []
-
-    init(_ base: any WebDAVTransport) {
-        self.base = base
-    }
-
-    /// Every request so far, in order.
-    var requests: [Request] {
-        lock.lock()
-        defer { lock.unlock() }
-        return log
-    }
-
-    /// Forget what was sent, so a test counts only the gesture it is about.
-    func reset() {
-        lock.lock()
-        log.removeAll()
-        lock.unlock()
-    }
-
-    private func record(_ request: Request) {
-        lock.lock()
-        log.append(request)
-        lock.unlock()
-    }
-
-    func propfind(_ backendPath: String, depth: WebDAVDepth, isCollection: Bool) throws
-        -> WebDAVHTTPResponse {
-        record(.propfind(depth))
-        return try base.propfind(backendPath, depth: depth, isCollection: isCollection)
-    }
-
-    func propfindBatch(_ backendPaths: [String], isCancelled: () -> Bool) throws
-        -> [WebDAVBatchAnswer] {
-        record(.propfindBatch(folders: backendPaths.count))
-        return try base.propfindBatch(backendPaths, isCancelled: isCancelled)
-    }
-
-    func download(
-        _ backendPath: String,
-        to localPath: String,
-        resume: Bool,
-        progress: (Int64) -> Void,
-        isCancelled: () -> Bool
-    ) throws -> WebDAVHTTPResponse {
-        record(.get(resume: resume))
-        return try base.download(
-            backendPath,
-            to: localPath,
-            resume: resume,
-            progress: progress,
-            isCancelled: isCancelled
-        )
-    }
-
-    /// Forwarded rather than left to the protocol's default, which would answer with one plain GET
-    /// and hide every split from the count.
-    func downloadSegments(
-        _ segments: [DownloadSegment],
-        of file: WebDAVTaggedFile,
-        to localPath: String,
-        progress: (Int64) -> Void,
-        isCancelled: () -> Bool
-    ) throws -> WebDAVSegmentedDownload {
-        record(.getRanges(segments.count))
-        return try base.downloadSegments(
-            segments,
-            of: file,
-            to: localPath,
-            progress: progress,
-            isCancelled: isCancelled
-        )
-    }
-
-    func mkcol(_ backendPath: String) throws -> WebDAVHTTPResponse {
-        record(.mkcol)
-        return try base.mkcol(backendPath)
-    }
-
-    func upload(
-        localPath: String,
-        to backendPath: String,
-        headers: WebDAVPutHeaders,
-        progress: (Int64) -> Void,
-        isCancelled: () -> Bool
-    ) throws -> WebDAVHTTPResponse {
-        record(.put(headers.condition, askedForDate: headers.modificationTime != nil))
-        return try base.upload(
-            localPath: localPath,
-            to: backendPath,
-            headers: headers,
-            progress: progress,
-            isCancelled: isCancelled
-        )
-    }
-
-    func putEmpty(_ backendPath: String, condition: S3WriteCondition) throws -> WebDAVHTTPResponse {
-        record(.putEmpty(condition))
-        return try base.putEmpty(backendPath, condition: condition)
-    }
-
-    func move(_ backendPath: String, to destinationPath: String) throws -> WebDAVHTTPResponse {
-        record(.move)
-        return try base.move(backendPath, to: destinationPath)
-    }
-
-    func copy(_ backendPath: String, to destinationPath: String) throws -> WebDAVHTTPResponse {
-        record(.copy)
-        return try base.copy(backendPath, to: destinationPath)
-    }
-
-    func delete(_ backendPath: String) throws -> WebDAVHTTPResponse {
-        record(.delete)
-        return try base.delete(backendPath)
     }
 }
 

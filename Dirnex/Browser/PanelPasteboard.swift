@@ -57,16 +57,57 @@ enum PanelPasteboard {
     ///
     /// `delegate` is held **weakly** by every promise AppKit builds here, so the caller has to be
     /// something that outlives the drag; a pane is, which is why it is the pane that conforms.
+    ///
+    /// `routes` says which rows are promised (`DragOutRoute.isPromised`): a file on a server, since
+    /// M36 Slice 2 a file inside an archive this session can open, and since Slice 3 a folder on a
+    /// server. A row with no route, or a route that promises nothing, gets the plain item, which
+    /// another app takes only for a row on this disk.
     static func dragWriters(
         for entries: [FileEntry],
+        routes: [VFSPath: DragOutRoute],
         promisedTo delegate: any NSFilePromiseProviderDelegate
     ) -> [any NSPasteboardWriting] {
         entries.compactMap { entry -> (any NSPasteboardWriting)? in
             guard let data = PasteboardPayload(entry).encoded() else { return nil }
-            if let promise = RemoteFilePromiseProvider.promise(
-                for: entry, payload: data, delegate: delegate
-            ) { return promise }
+            if routes[entry.path]?.isPromised == true {
+                return RemoteFilePromiseProvider.promise(
+                    for: entry,
+                    payload: data,
+                    delegate: delegate
+                )
+            }
             return item(for: entry, payload: data)
+        }
+    }
+
+    /// How a row whose bytes were on a server offers its file, once the drag has left the promise.
+    enum HandoffFile {
+        /// Declared now, and answered by this provider if anybody reads it.
+        case answeredWhenRead(any NSPasteboardItemDataProvider)
+        /// Here already.
+        case here(URL)
+    }
+
+    /// One item per entry for a drag's board once it has left its promises (`RemoteDragHandoff`).
+    ///
+    /// Every row keeps its payload, which is what a drop back inside Dirnex reads, so it reads no file
+    /// URL and costs no hold. A row `file` says nothing about keeps the shape a plain item has.
+    static func handoffItems(
+        for entries: [FileEntry],
+        file: (FileEntry) -> HandoffFile?
+    ) -> [NSPasteboardItem] {
+        entries.compactMap { entry in
+            guard let data = PasteboardPayload(entry).encoded() else { return nil }
+            guard let offered = file(entry) else { return item(for: entry, payload: data) }
+            let item = NSPasteboardItem()
+            item.setData(data, forType: locationsType)
+            switch offered {
+            case let .answeredWhenRead(provider):
+                item.setDataProvider(provider, forTypes: [.fileURL])
+            case let .here(url):
+                item.setString(url.absoluteString, forType: .fileURL)
+            }
+            return item
         }
     }
 

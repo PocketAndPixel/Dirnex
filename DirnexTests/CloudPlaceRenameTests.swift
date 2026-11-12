@@ -332,6 +332,13 @@ private final class NotificationCounter: @unchecked Sendable {
 private final class CloudOpenRecorder: SidebarViewControllerDelegate {
     var events: [String] = []
 
+    func sidebar(
+        _ sidebar: SidebarViewController,
+        reconnectEndpointFor path: VFSPath
+    ) -> ServerEndpoint? {
+        nil
+    }
+
     func sidebar(_ sidebar: SidebarViewController, didActivate path: VFSPath, inNewTab: Bool) {
         events.append(path.path)
     }

@@ -275,6 +275,13 @@ struct SidebarNewTabTests {
 private final class ActivationRecorder: SidebarViewControllerDelegate {
     var events: [String] = []
 
+    func sidebar(
+        _ sidebar: SidebarViewController,
+        reconnectEndpointFor path: VFSPath
+    ) -> ServerEndpoint? {
+        nil
+    }
+
     private func record(_ name: String, _ inNewTab: Bool) {
         events.append(inNewTab ? "\(name) new-tab" : name)
     }

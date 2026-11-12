@@ -57,12 +57,10 @@ extension PanelViewController {
     /// not of the pane, so a search hit inside a `.zip` renames exactly as a browsed row does — the
     /// distinction four other properties in this app had to be corrected for (PLAN.md §M22 Slice 5).
     ///
-    /// **⇧F2 deliberately does not read this**, and that is a refusal with its own reason rather
-    /// than an oversight: `applyMultiRename` renames each target with `backend.moveItem`, which an
-    /// archive answers `.unsupported` to, so widening the gate they *share* would have enabled the
-    /// multi-rename tool over a flow that fails once per item. Batching N renames into the one
-    /// rewrite the container actually wants is its own slice; until it exists ⇧F2 stays on
-    /// `canRenameHere` and stays gray inside an archive.
+    /// **⇧F2 reads this too, for its first target** (`multiRenameRoute(for:)`, 2026-11-05). Until
+    /// then it stayed on `canRenameHere` and gray inside an archive, because its apply loop renamed
+    /// each target with `backend.moveItem`, which an archive refuses; a marked set inside one
+    /// archive now goes to the container as a single rewrite instead.
     func renameRoute(for path: VFSPath?) -> RenameRoute {
         if let archiveOnDiskPath = path?.backend.archivePath {
             return archiveAcceptsWrites(atOnDiskPath: archiveOnDiskPath)
@@ -232,10 +230,12 @@ extension PanelViewController {
                         try backend.moveItem(at: source, to: destination)
                     }
                 }.get()
-                // A search snapshot cannot re-list itself, so the row it is still drawing has to be
-                // put back under the new name by hand; every other listing re-lists or re-gathers
-                // below.
-                substituteSearchHit(source, renamedTo: newName)
+                // A search snapshot cannot re-list itself, so its rows are put where the rename left
+                // them by hand, hits inside a renamed folder included; every other listing re-lists
+                // or re-gathers below.
+                noteSearchHitsRenamed(
+                    [SearchSnapshot.Renamed(from: source, to: destination)], landing: destination
+                )
                 refreshCurrentDirectory(selecting: destination)
                 focusTable()
                 host?.recordUndoableAction(.rename(from: source, to: destination))

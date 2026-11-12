@@ -17,6 +17,8 @@ import DirnexCore
 ///   bound to it by default.
 /// - ⌘S: save every edited side (`+Save`, PLAN.md §M33 Slice 3). The main menu has no Save item
 ///   to take it, and no command is bound to it either.
+/// - ⌘.: stop the comparison that is running (`+Comparing`, PLAN.md §M37 Slice 3), the Mac's own key
+///   for stopping something. Left alone when none is.
 /// - ⌘W: close the window, asking first about unsaved edits, as its close button does. The menu's
 ///   ⌘W is the browser's Close Tab, which is disabled here, so until Slice 3 the key did nothing.
 /// - ⌘F, ⌘G, ⇧⌘G: find in the pane holding the keyboard, with the system's find bar.
@@ -77,6 +79,13 @@ extension CompareWindowController {
         default:
             break
         }
+        if handleCharacter(character, modifiers) { return true }
+        guard event.keyCode == 53, modifiers.isEmpty else { return false }
+        return escape()
+    }
+
+    /// What a key named by its character does: `true` when it was taken.
+    private func handleCharacter(_ character: String?, _ modifiers: NSEvent.ModifierFlags) -> Bool {
         switch (character, modifiers) {
         case ("f", [.command]):
             find(.showFindInterface)
@@ -93,14 +102,16 @@ extension CompareWindowController {
         case ("s", [.command]):
             saveFromKey()
             return true
+        case (".", [.command]):
+            guard isComparing else { return false }
+            stopComparing()
+            return true
         case ("w", [.command]):
             window?.performClose(nil)
             return true
         default:
-            break
+            return false
         }
-        guard event.keyCode == 53, modifiers.isEmpty else { return false }
-        return escape()
     }
 
     /// The pane the keyboard is in, or was in last: the left one until the right one has had it.

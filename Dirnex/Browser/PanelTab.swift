@@ -64,6 +64,10 @@ final class PanelTab {
     /// the shape `PersistedTab` stores. Consumed and cleared by `restorePendingTreeExpansion`; `nil`
     /// otherwise, or for a flat list, which makes the re-open a no-op.
     var pendingExpandedPaths: [String]?
+    /// Restored tree folders inside an SMB share that is not mounted yet, by share name, waiting for
+    /// that share's row to mount before they can be named (`SMBShareMounts`, PLAN.md §M35). Each one
+    /// is already counted in ``pendingRestoreTreeLoads``.
+    var pendingShareExpansions: [String: [String]] = [:]
     /// This tab's column widths/order, in display order (UI-only, like `cursorOnParentRow`;
     /// see `PanelViewController+Columns`). `nil` until the tab has been given an explicit
     /// layout — restored from disk or inherited from the tab it was spawned from — in which
@@ -187,6 +191,11 @@ final class PanelTab {
     /// with five server tabs, of which one was looked at, would come back with one.
     var pendingConnection: ServerEndpoint?
 
+    /// The SMB share a **restored** tab's folder is on, while this session has not mounted it
+    /// (`PanelViewController+ShareRestore`). Consumed by the mount, after which `SMBMounter` answers
+    /// for the share; until then it is what `persistState` writes back down for a tab nobody opened.
+    var awaitedShare: AwaitedShare?
+
     /// What this tab knows about reconnecting to `backend`: its own pending endpoint when that is the
     /// one, else the one its restored trail carried. `nil` for a backend it has nothing for — which
     /// for a server is a navigation that fails the way it always has, with `serverNotConnected`.
@@ -217,6 +226,7 @@ final class PanelTab {
         pendingCursorPath = nil
         pendingCursorOnParent = false
         pendingMarkPaths = nil
+        pendingShareExpansions = [:]
     }
 
     init(panel: Panel) {

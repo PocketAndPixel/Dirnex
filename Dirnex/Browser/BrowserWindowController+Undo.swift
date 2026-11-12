@@ -83,6 +83,7 @@ extension BrowserWindowController {
                 leftPanel.refreshCurrentDirectory()
                 rightPanel.refreshCurrentDirectory()
                 refreshPanesShowingRewrittenArchives(in: record)
+                followSearchHitRenames(in: record, report: report)
                 // A reverted move puts a vault's image back where it was, so the saved list has to
                 // come back with it. The record names both ends and the disk decides which one is
                 // real, so undo needs no inverse of its own — and a partial revert still lands
@@ -104,12 +105,28 @@ extension BrowserWindowController {
                 leftPanel.refreshCurrentDirectory()
                 rightPanel.refreshCurrentDirectory()
                 refreshPanesShowingRewrittenArchives(in: record)
+                followSearchHitRenames(in: record, report: report)
                 followVaultImageMoves(in: record)
                 presentRedoOutcome(record: record, report: report)
             case let .selection(change):
                 applySelectionChange(change)
             }
         }
+    }
+
+    /// Put every search hit an undone or redone rename reached where it now is, in both panes.
+    ///
+    /// The two `refreshCurrentDirectory` calls above leave a results tab alone, since a snapshot
+    /// cannot re-list, so after ⌘Z of a rename its row went on showing the name the rename had given
+    /// it. Keyed on the record's own `.restore` steps that stayed in their folder, minus the ones
+    /// the report says failed (``SearchSnapshot/renames(appliedBy:report:)``); a journal of moves,
+    /// copies or attribute changes names no rename and this does nothing. An undone *archive*
+    /// rename is a container swap, which carries the member renames it reverses since 2026-11-05,
+    /// so a hit inside the archive is followed too.
+    private func followSearchHitRenames(in record: UndoRecord, report: UndoReport) {
+        let renames = SearchSnapshot.renames(appliedBy: record, report: report)
+        leftPanel.applySearchHitRenames(renames, landing: nil)
+        rightPanel.applySearchHitRenames(renames, landing: nil)
     }
 
     /// Re-list any pane standing *inside* an archive this record just swapped.
@@ -124,7 +141,7 @@ extension BrowserWindowController {
     /// nothing at all.
     private func refreshPanesShowingRewrittenArchives(in record: UndoRecord) {
         for step in record.steps {
-            guard case let .restoreArchive(archive, _, _, _) = step else { continue }
+            guard case let .restoreArchive(archive, _, _, _, _) = step else { continue }
             refreshPanesShowingArchive(at: archive.path)
         }
     }

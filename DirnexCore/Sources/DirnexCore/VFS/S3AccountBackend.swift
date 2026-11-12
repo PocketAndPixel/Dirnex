@@ -69,6 +69,12 @@ public struct S3AccountBackend: ConnectionScopedBackend {
         self.pageLimit = pageLimit
     }
 
+    /// The connection's transport, for a caller that has to sign requests to the account's buckets
+    /// with the same credential — a search across them (PLAN.md §M38 Slice 5), which reads the
+    /// secret from the live connection rather than the Keychain, as `SFTPBackend.writeTransport`
+    /// lets Open in Terminal do.
+    public var accountTransport: any S3AccountTransport { transport }
+
     public var id: VFSBackendID { .s3Account(account) }
     public var connectionDescriptor: String { account.connectionDescriptor }
 
@@ -88,8 +94,15 @@ public struct S3AccountBackend: ConnectionScopedBackend {
     public func listDirectory(at path: VFSPath) throws -> [FileEntry] {
         try requireOwnBackend(path)
         guard path.isRoot else { throw VFSError.notFound(path) }
+        return try buckets().map { entry(for: $0, under: path) }
+    }
 
-        let buckets = try mapping(path, action: .listAllMyBuckets) {
+    /// Every bucket the key can see, with whatever the service said about each — the region above
+    /// all, which a row drops and a search across the account needs (PLAN.md §M38 Slice 5): a bucket
+    /// listed with its region is addressed there at once, rather than through a 301 first.
+    public func buckets() throws -> [S3Bucket] {
+        let path = VFSPath(backend: id, path: "/")
+        return try mapping(path, action: .listAllMyBuckets) {
             try S3BucketEnumeration.allBuckets(pageLimit: pageLimit) { token in
                 let response = try transport.listBuckets(continuationToken: token)
                 guard response.isSuccess else {
@@ -104,7 +117,6 @@ public struct S3AccountBackend: ConnectionScopedBackend {
                 return try S3BucketListParser.parse(response.body)
             }
         }
-        return buckets.map { entry(for: $0, under: path) }
     }
 
     /// Stat the account root, or one bucket in it.

@@ -23,6 +23,18 @@ final class SMBMounter {
     /// by Finder, or a prior connect — is deliberately absent, so we never eject someone else's mount.
     private var ownedMountPoints: Set<String> = []
 
+    /// The share each mount point holds, for every mount this app resolved in this session, its own
+    /// or one it found already there. What `..` at a share's root reads to go up to the server's
+    /// shares (PLAN.md §M35); a share Finder mounted and Dirnex never connected is absent, so `..`
+    /// there still goes to `/Volumes`.
+    private var mountedShares: [String: SMBLocation] = [:]
+
+    /// Whether `path` is a network mount right now, read from the kernel's mount table, which asks no
+    /// server anything. A seam for the tests, which stand a temporary folder in for a mount.
+    var isNetworkMount: (String) -> Bool = { path in
+        MountTable.current().contains { $0.mountPoint == path && !$0.isLocal }
+    }
+
     /// Mount `location`, returning the `/Volumes/…` mount point. A `nil`/empty `username` mounts as
     /// guest; otherwise `password` authenticates (a `nil` password means "empty password"). The
     /// blocking NetFS call runs off-main; the registry update happens back on the main actor.
@@ -34,13 +46,40 @@ final class SMBMounter {
         // If this exact share is already mounted — by Finder, or an earlier connect — reuse that
         // mount instead of asking NetFS again (which returns EEXIST with no mount point).
         if let existing = Self.existingMountPoint(for: location) {
+            record(location, mountedAt: existing.path)
             return existing
         }
+        // Both panes can come back inside one share and ask for it at the same moment, and the
+        // second has no mount to find yet. It waits for the first one's answer rather than asking
+        // NetFS for a share that is already on its way.
+        if let inFlight = mountsInFlight[location] { return try await inFlight.value }
+        let task = Task { try await self.mountWithNetFS(
+            location,
+            username: username,
+            password: password
+        ) }
+        mountsInFlight[location] = task
+        defer { mountsInFlight[location] = nil }
+        return try await task.value
+    }
 
+    /// The mount each share being mounted right now will answer with.
+    private var mountsInFlight: [SMBLocation: Task<URL, any Error>] = [:]
+
+    /// The blocking NetFS call, as `mount` makes it. A seam for the tests, which count the calls and
+    /// answer with a temporary folder.
+    var netfsMount: @Sendable (SMBLocation, String?, String?) -> MountOutcome = { location, user, password in
+        SMBMounter.netfsMount(location, username: user, password: password)
+    }
+
+    private func mountWithNetFS(
+        _ location: SMBLocation,
+        username: String?,
+        password: String?
+    ) async throws -> URL {
         let alreadyMounted = Self.mountedVolumePaths()
-        let outcome = await BlockingWork.run {
-            Self.netfsMount(location, username: username, password: password)
-        }
+        let netfsMount = netfsMount
+        let outcome = await BlockingWork.run { netfsMount(location, username, password) }
 
         guard outcome.status == 0, let mountPoint = outcome.mountPoint else {
             throw SMBMountError(status: outcome.status, location: location)
@@ -50,7 +89,53 @@ final class SMBMounter {
         if !alreadyMounted.contains(mountPoint.path) {
             ownedMountPoints.insert(mountPoint.path)
         }
+        record(location, mountedAt: mountPoint.path)
         return mountPoint
+    }
+
+    /// Remember that `share` is mounted at `path`. Internal so a test can record a mount it made up.
+    func record(_ share: SMBLocation, mountedAt path: String) {
+        mountedShares[path] = share
+    }
+
+    /// Forget a mount recorded at `path`. Only the tests need it, to put back what they made up.
+    func forget(mountedAt path: String) {
+        mountedShares[path] = nil
+        ownedMountPoints.remove(path)
+    }
+
+    /// The share mounted at exactly `path`, when this app mounted or reached it in this session and
+    /// it is still a network mount there. Read from the kernel's mount table, which asks no server
+    /// anything, so it is safe on the main thread with a share that has stopped answering.
+    ///
+    /// The mount-table check is what keeps an ejected share from sending `..` to a server: a disk of
+    /// the same name mounted at the same path later is a local mount, and answers `nil`.
+    func share(mountedAt path: String) -> SMBLocation? {
+        guard let share = mountedShares[path] else { return nil }
+        return isNetworkMount(path) ? share : nil
+    }
+
+    /// The share `path` is on, as a pin records it (`PinnedShare`), when this app mounted or reached
+    /// that share in this session and it is still mounted. By whole path components, so
+    /// `/Volumes/media-1/x` is not on the share at `/Volumes/media`.
+    func shareEndpoint(containing path: VFSPath) -> ServerEndpoint? {
+        guard path.backend == .local else { return nil }
+        let holding = mountedShares.keys.filter { path.path == $0 || path.path.hasPrefix($0 + "/") }
+        return holding.max { $0.count < $1.count }.flatMap(share(mountedAt:)).map(ServerEndpoint.smb)
+    }
+
+    /// Where each of `server`'s shares is mounted, among the mounts this app reached in this session
+    /// and still there — what a tab on the server's list spells its places inside a share through
+    /// (`SMBShareMounts`, PLAN.md §M35).
+    func mounts(of server: SMBLocation) -> SMBShareMounts {
+        var mountPoints: [String: String] = [:]
+        for (path, share) in mountedShares {
+            guard share.server == server.server, let name = share.share, isNetworkMount(path) else {
+                continue
+            }
+            mountPoints[name] = path
+        }
+        return SMBShareMounts(mountPoints)
     }
 
     /// Unmount every share this app mounted — called on quit so we don't leave our mounts behind,
@@ -65,7 +150,7 @@ final class SMBMounter {
 
     // MARK: - NetFS (off-main, no actor state)
 
-    private struct MountOutcome {
+    struct MountOutcome: Sendable {
         let status: Int32
         let mountPoint: URL?
     }
@@ -84,17 +169,12 @@ final class SMBMounter {
         }
 
         let openOptions = NSMutableDictionary()
-        // Suppress NetFS's interactive UI so a wrong password fails fast — *except* when no share was
-        // named. There, letting the UI through is the whole point: `NetFSMountURLSync` on a bare
-        // `smb://host` shows macOS's own share picker (the NetFS header: "the user will be prompted
-        // with a window to let them select one or more items to mount"), which is how the user finds
-        // a share they don't know the name of. Dirnex has no picker of its own *yet* — the shares can
-        // be listed in-process (`EnumerateShares` on the SMB plugin's `NetFSMountInterface_V1`,
-        // <NetFS/NetFSPlugin.h>, measured working against a real server 2026-09-04), and the cost of
-        // not having one is that a failed pick can never be named: NetFS reports no share back, so
-        // `SMBMountError` has to leave the folder unnamed (docs/NOTES.md ▸ SMB).
-        openOptions[kNAUIOptionKey as String] = location.share == nil ? kNAUIOptionAllowUI
-            : kNAUIOptionNoUI
+        // No UI, ever, so a wrong password fails here instead of in NetAuthAgent's dialog. A
+        // location with no share used to let the UI through for macOS's own share picker, which
+        // raised a second dialog on failure and never said which share was picked. A server is
+        // listed by Dirnex now (`SMBShareEnumerator`, PLAN.md §M35), so nothing mounts without a
+        // share, and one that tries fails with a status rather than a window.
+        openOptions[kNAUIOptionKey as String] = kNAUIOptionNoUI
 
         let user: CFString?
         let pass: CFString?
@@ -212,11 +292,18 @@ struct SMBMountError: LocalizedError {
     static let eNetFSNoSharesAvail: Int32 = -5998
     /// The mount was canceled (Carbon `userCanceledErr`), the negative-OSStatus twin of `ECANCELED`.
     static let userCanceledErr: Int32 = -128
+    /// The account may not sign in now: disabled, locked out, or a guest on a server with guest
+    /// access off. `ENETFSACCOUNTRESTRICTED` in `<NetFS/NetFS.h>`; the NAS answered it to a guest
+    /// session on 2026-11-04 although its server info said guests were supported.
+    static let eNetFSAccountRestricted: Int32 = -5999
 
     let status: Int32
     /// Where the mount was aimed. The host is named in every sentence below; the share and the
     /// account are named only by `shareUnavailable`, the one status that cannot diagnose itself.
     let location: SMBLocation
+    /// What the server's share list said about the share, when it was asked after an `ENOENT`
+    /// (PLAN.md §M35). `.unknown` keeps the sentence that names both readings.
+    var absence: SMBShareAbsence = .unknown
 
     private var host: String { location.host }
 
@@ -231,9 +318,9 @@ struct SMBMountError: LocalizedError {
             )
         // A reachable, authenticated server that offered no share to mount comes back as a *negative*
         // OSStatus (from <NetFS/NetFS.h> and <NetAuth/NetAuthErrors.h>), not an errno — almost always
-        // because the Share field was left blank, so there was nothing to open. A bare `smb://host`
-        // can't pick a share without an interactive prompt, and Dirnex suppresses that prompt (so a
-        // bad password fails fast instead of blocking), so there's no fallback share picker here.
+        // because the Share field was left blank, so there was nothing to open. A blank Share field
+        // lists the server's shares now (PLAN.md §M35), which answers an empty list rather than this,
+        // so it is kept for a server that answers a mount this way.
         case Self.kNetAuthErrorNoSharesAvailable, // -6003
              Self.eNetFSNoSharesAvail: // -5998
             return String(
@@ -248,6 +335,23 @@ struct SMBMountError: LocalizedError {
                 localized: "“\(host)” doesn’t allow guest access. Enter a username and password.",
                 comment: "SMB mount failure: the server refused a guest mount; %@ is the host name."
             )
+        case Self.eNetFSAccountRestricted: // -5999
+            guard let username = location.username else {
+                return String(
+                    localized: "“\(host)” doesn’t allow guest access. Enter a username and password.",
+                    comment: "SMB mount failure: the server refused a guest mount; %@ is the host name."
+                )
+            }
+            return String(
+                localized: """
+                “\(username)” can’t sign in to “\(host)” right now. The account may be disabled, or \
+                locked after too many failed attempts.
+                """,
+                comment: """
+                SMB connect failure: the server refused the account itself, not its password; \
+                %1$@ is the account name, %2$@ the host name.
+                """
+            )
         // A share the account may not use and a share that isn’t there are the *same* status.
         // Measured 2026-09-04 against a real Synology: `NetFSMountURLSync` answers ENOENT for a share
         // the server refuses this account (`Photos`, `Movies`) and for one that does not exist
@@ -258,6 +362,14 @@ struct SMBMountError: LocalizedError {
         // simply lacked access hunting for a typo, and in the picker flow it named a Share field they
         // had deliberately left blank.
         case Int32(ENOENT), Int32(ENODEV):
+            if let share = location.share, let sentence = Self.shareAbsent(
+                share: share,
+                host: host,
+                username: location.username,
+                absence: absence
+            ) {
+                return sentence
+            }
             return Self.shareUnavailable(
                 share: location.share,
                 host: host,
@@ -281,14 +393,66 @@ struct SMBMountError: LocalizedError {
         }
     }
 
+    /// The sentence for a share the server's list has spoken about, or `nil` when it has not and the
+    /// status has to carry both readings (``shareUnavailable(share:host:username:)``).
+    ///
+    /// A listed share that will not mount is one this account may not use, and says so plainly. One
+    /// that is not listed is one the server *doesn't offer* this account, which stays true on a server
+    /// that hides from an account the shares it refuses, where "doesn't exist" would not.
+    private static func shareAbsent(
+        share: String,
+        host: String,
+        username: String?,
+        absence: SMBShareAbsence
+    ) -> String? {
+        switch (absence, username) {
+        case (.unknown, _):
+            return nil
+        case let (.notPermitted, username?):
+            return String(
+                localized: "“\(username)” doesn’t have permission to use “\(share)” on “\(host)”.",
+                comment: """
+                SMB mount failure: the server lists the shared folder to this account and refuses it; \
+                %1$@ is the account name, %2$@ the share name, %3$@ the host name.
+                """
+            )
+        case (.notPermitted, nil):
+            return String(
+                localized: "A guest connection doesn’t have permission to use “\(share)” on “\(host)”.",
+                comment: """
+                SMB guest mount failure: the server lists the shared folder and refuses it to guests; \
+                %1$@ is the share name, %2$@ the host name.
+                """
+            )
+        case let (.notOffered, username?):
+            return String(
+                localized: "“\(host)” doesn’t offer a shared folder named “\(share)” to “\(username)”.",
+                comment: """
+                SMB mount failure: the server's list of shared folders for this account has no such \
+                name; %1$@ is the host name, %2$@ the share name, %3$@ the account name.
+                """
+            )
+        case (.notOffered, nil):
+            return String(
+                localized: "“\(host)” doesn’t offer a shared folder named “\(share)” to guests.",
+                comment: """
+                SMB guest mount failure: the server's list of shared folders has no such name; \
+                %1$@ is the host name, %2$@ the share name.
+                """
+            )
+        }
+    }
+
     /// The sentence for the one status that means two different things — the share is not there, or
     /// this account may not use it (see the `ENOENT` case above).
     ///
     /// Four whole sentences rather than one with an interpolated fragment: a fragment spliced into a
     /// localized sentence has to be pre-inflected to survive the case system of half the shipped
-    /// languages (docs/NOTES.md ▸ Localization). The share is absent exactly when the user left the
-    /// Share field blank and picked a folder from macOS’s own share picker, which never tells us what
-    /// they picked — hence the folder going unnamed there rather than being named wrongly.
+    /// languages (docs/NOTES.md ▸ Localization). Used when the server's list could not be had after
+    /// the refusal (``shareAbsent(share:host:username:absence:)`` otherwise). The two sentences with
+    /// no share were for macOS's own share picker, which never said what was picked; nothing mounts
+    /// without a share since Dirnex lists a server itself (PLAN.md §M35), and they stay for a status
+    /// that arrives without one.
     private static func shareUnavailable(share: String?, host: String, username: String?) -> String {
         switch (share, username) {
         case let (share?, username?):

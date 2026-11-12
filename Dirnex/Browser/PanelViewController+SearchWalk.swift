@@ -72,14 +72,18 @@ extension PanelViewController {
             scope: scope,
             landing: landing
         )
-        report(results.completion, hits: results.hits.count, listed: results.directoriesListed)
+        reportSearchEnding(
+            results.completion,
+            hits: results.hits.count,
+            listed: results.directoriesListed
+        )
     }
 
     /// Three completions, three different things to say — and two different *surfaces*, which is the
     /// decision worth stating: a limit the user ran into is an alert, and a stop the user chose is
     /// not. Telling someone that the thing they just asked for happened is noise, but leaving a
     /// partial result set looking complete is worse, so it goes to the status line.
-    private func report(_ completion: SubtreeSearch.Completion, hits: Int, listed: Int) {
+    func reportSearchEnding(_ completion: SubtreeSearch.Completion, hits: Int, listed: Int) {
         switch completion {
         case .complete, .truncated:
             break // nothing more to say; `landSearchResults` raised the truncation alert
@@ -112,7 +116,8 @@ extension PanelViewController {
     }
 
     /// A saved search whose stored scope is somewhere with nothing to search — a results listing, or
-    /// an S3 account pane whose rows are buckets (PLAN.md §M22 Slice 5).
+    /// an SMB server's list of shares (PLAN.md §M22 Slice 5). An S3 account was the first such place
+    /// until M38 Slice 5, and a saved one now opens Find Files instead (`confirmAccountSearch`).
     ///
     /// Not reachable from anything the app itself saves today: ⌥F7 resolves such a pane to a real
     /// directory before it offers the dialog, so what gets stored is that directory. It exists

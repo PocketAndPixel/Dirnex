@@ -92,8 +92,12 @@ public struct VFSBackendID: RawRepresentable, Sendable, Hashable, CustomStringCo
     /// are listed through PhotoKit and fetched to a temp copy before anything can open them, which is
     /// every property this name promises — re-listable, not on this disk, no local URL. It is
     /// read-only, so ``acceptsUploads`` leaves it out.
+    ///
+    /// **So is an SMB server's list of shares** (PLAN.md §M35): listed over the network, one session
+    /// a listing, and nothing in it is a file. A *share* is not, since once mounted it is a
+    /// `/Volumes/…` tree and its pane is `.local`.
     public var isRemoteConnection: Bool {
-        isSFTP || isFTP || isS3 || isS3Account || isWebDAV || isPhotos
+        isSFTP || isFTP || isS3 || isS3Account || isWebDAV || isPhotos || isSMBServer
     }
 
     /// Whether a copy *into* this backend has an upload primitive behind it.

@@ -18,6 +18,16 @@ import Foundation
 ///   end: a 64 MiB upload killed part-way left no file behind, and one killed over an existing file
 ///   left that file's bytes as they were. So a stopped upload is never followed by a DELETE, which
 ///   over a write-back would remove the user's file.
+///
+/// **A stock Debian or Ubuntu Apache redirects a folder named without its slash**, whatever the
+/// method (PLAN.md §M38, measured 2026-11-10 on 2.4.68): `mod_dir`'s `DirectorySlash`, on by
+/// default there, answers 301 with `Location` set to the same URL plus `/`, before `mod_dav` sees
+/// the request. A `Destination` naming an existing folder that way is redirected too, as a 301 with
+/// no `Location` at all, from `mod_dav`'s lookup of it. A **file** named with a slash is a 400, so
+/// no request adds the slash on a guess: each starts bare, and the backend sends it again with the
+/// slash where the server's redirect asked for it (``WebDAVFolderRedirect``). Named with it, DELETE
+/// answered 204, MOVE 201, and MOVE or COPY onto an existing folder 412, as macOS's Apache answers
+/// them bare.
 public extension WebDAVProcessArguments {
     /// Create one folder. The URL ends in `/`, which RFC 4918 recommends for a collection and Apache
     /// accepts either way.
@@ -76,10 +86,19 @@ public extension WebDAVProcessArguments {
     ///
     /// `Overwrite: F` always: an occupied destination answers 412 and nothing moves. A caller that
     /// means to replace something removes it first, as `CopyEngine`'s overwrite path does.
-    static func move(session: WebDAVSession, backendPath: String, to destinationPath: String) -> [
-        String
-    ] {
-        transfer("MOVE", session: session, backendPath: backendPath, to: destinationPath)
+    static func move(
+        session: WebDAVSession,
+        backendPath: String,
+        to destinationPath: String,
+        collections: WebDAVCollectionEnds = []
+    ) -> [String] {
+        transfer(
+            "MOVE",
+            session: session,
+            backendPath: backendPath,
+            to: destinationPath,
+            collections: collections
+        )
     }
 
     /// Duplicate one file on the server. The bytes never come here.
@@ -87,16 +106,30 @@ public extension WebDAVProcessArguments {
     /// Only ever a **file**: `CopyEngine` recreates folders itself and copies what is in them one
     /// file at a time, with progress, conflicts and per-item failures. A COPY of a collection would
     /// be RFC 4918's Depth infinity, one request that cannot be followed or stopped.
-    static func copy(session: WebDAVSession, backendPath: String, to destinationPath: String) -> [
-        String
-    ] {
-        transfer("COPY", session: session, backendPath: backendPath, to: destinationPath)
+    static func copy(
+        session: WebDAVSession,
+        backendPath: String,
+        to destinationPath: String,
+        collections: WebDAVCollectionEnds = []
+    ) -> [String] {
+        transfer(
+            "COPY",
+            session: session,
+            backendPath: backendPath,
+            to: destinationPath,
+            collections: collections
+        )
     }
 
     /// Remove one resource — a folder with everything in it, in one request. The body is read: a
     /// folder holding a locked file answers 424 and names that file (PLAN.md §M32).
-    static func delete(session: WebDAVSession, backendPath: String) -> [String] {
-        common(session: session) + ["-X", "DELETE", url(session, backendPath, isCollection: false)]
+    static func delete(
+        session: WebDAVSession,
+        backendPath: String,
+        isCollection: Bool = false
+    ) -> [String] {
+        common(session: session)
+            + ["-X", "DELETE", url(session, backendPath, isCollection: isCollection)]
     }
 
     /// MOVE and COPY share their shape: the source in the URL, the destination as an **absolute URL**
@@ -107,18 +140,26 @@ public extension WebDAVProcessArguments {
     /// are built on the dialed host, so they name the same server the same way; Apache compares the
     /// scheme and port of the two (a `Destination` naming `https` on an `http` request answered 502).
     ///
-    /// Neither carries a trailing slash, since the caller does not know whether it is moving a file
-    /// or a folder. Apache moved a folder named without one (measured).
+    /// Neither carries a trailing slash unless `collections` names it, since the caller does not
+    /// know whether it is moving a file or a folder. macOS's Apache and the NAS moved a folder named
+    /// without one (measured); a Debian Apache redirects it, and the backend then names that end
+    /// with its slash.
     private static func transfer(
         _ method: String,
         session: WebDAVSession,
         backendPath: String,
-        to destinationPath: String
+        to destinationPath: String,
+        collections: WebDAVCollectionEnds
     ) -> [String] {
-        common(session: session)
+        let destination = url(
+            session,
+            destinationPath,
+            isCollection: collections.contains(.destination)
+        )
+        return common(session: session)
             + ["-X", method]
-            + ["-H", "Destination: \(url(session, destinationPath, isCollection: false))"]
+            + ["-H", "Destination: \(destination)"]
             + ["-H", "Overwrite: F"]
-            + [url(session, backendPath, isCollection: false)]
+            + [url(session, backendPath, isCollection: collections.contains(.source))]
     }
 }

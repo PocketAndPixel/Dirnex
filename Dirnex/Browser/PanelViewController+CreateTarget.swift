@@ -15,6 +15,9 @@ import DirnexCore
 /// cursor sits three levels down puts the new item somewhere the user is not looking — the created
 /// row would appear off screen, or not at all if the root's own rows are scrolled away.
 ///
+/// A browsed archive has no real directory, so `writeDirectory` stays `nil` there and a writable
+/// one answers through `archiveCreationDirectory` instead; `createTarget` is the two together.
+///
 /// One property so the two commands cannot drift: a create target spelled twice is the shape
 /// docs/NOTES.md keeps finding on the wrong side of a fix.
 extension PanelViewController {
@@ -44,10 +47,33 @@ extension PanelViewController {
         return directory == panel.path ? base : directory
     }
 
+    /// Where F7 and ⇧F4 create inside a browsed archive that accepts writes, or `nil` anywhere else
+    /// (taken 2026-11-05; `+ArchiveCreate` makes the member).
+    ///
+    /// **Not folded into `creationDirectory`**, which is also what paste, drop and ⌥⌘V ask: an archive
+    /// already has its own route for the first two (`+ArchiveAdd`), and ⌥⌘V into one is deliberately
+    /// off. Widening that property would have turned on a gesture this one does not mean.
+    ///
+    /// The cursor decides the folder the way `creationDirectory` lets it: the `..` row stands for the
+    /// pane's own folder, and otherwise it is the folder the cursor's row is in. A nested archive and
+    /// a self-extractor answer `nil`, as every other archive write does (`isWritableArchive`).
+    var archiveCreationDirectory: VFSPath? {
+        guard isWritableArchive else { return nil }
+        guard !cursorOnParentRow else { return panel.path }
+        return panel.cursorDirectory
+    }
+
+    /// The folder F7 and ⇧F4 create in: a real directory, or a folder inside a writable archive.
+    /// The one answer both commands and both their validators read.
+    var createTarget: VFSPath? {
+        creationDirectory ?? archiveCreationDirectory
+    }
+
     /// Whether a create lands in the pane's own directory rather than in a folder a tree draws below
     /// it — the case where a dialog has no deeper folder to name.
     var createsInPaneDirectory: Bool {
-        creationDirectory == writeDirectory
+        if let archiveTarget = archiveCreationDirectory { return archiveTarget == panel.path }
+        return creationDirectory == writeDirectory
     }
 
     /// The folder name a create dialog names, which is not always `creationDirectory`'s own.
@@ -62,7 +88,7 @@ extension PanelViewController {
     /// «Create a folder in "/"» — seen live on a bucket 2026-08-13, and true of an SFTP or FTP root
     /// since those shipped. Below a root the two are the same string, so nothing else moves.
     var creationDirectoryName: String {
-        guard !createsInPaneDirectory, let target = creationDirectory else { return panel.path.displayName }
+        guard !createsInPaneDirectory, let target = createTarget else { return panel.path.displayName }
         return target.displayName
     }
 }

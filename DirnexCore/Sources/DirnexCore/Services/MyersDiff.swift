@@ -38,8 +38,18 @@ struct MyersDiff {
         _ right: [Int32],
         costLimit: Int
     ) -> (left: [Bool], right: [Bool]) {
+        changes(left, right, costLimit: costLimit, check: {})
+    }
+
+    /// `changes`, asking `check` often enough that a large search can be stopped.
+    static func changes<Stop: Error>(
+        _ left: [Int32],
+        _ right: [Int32],
+        costLimit: Int,
+        check: () throws(Stop) -> Void
+    ) throws(Stop) -> (left: [Bool], right: [Bool]) {
         var diff = MyersDiff(left: left, right: right, costLimit: max(1, costLimit))
-        diff.solve()
+        try diff.solve(check: check)
         return (diff.leftChanged, diff.rightChanged)
     }
 
@@ -58,9 +68,10 @@ struct MyersDiff {
         rightChanged = Array(repeating: false, count: right.count)
     }
 
-    private mutating func solve() {
+    private mutating func solve<Stop: Error>(check: () throws(Stop) -> Void) throws(Stop) {
         var pending = [Box(leftStart: 0, leftEnd: left.count, rightStart: 0, rightEnd: right.count)]
         while var box = pending.popLast() {
+            try check()
             trimCommonEnds(&box)
             if box.leftStart == box.leftEnd || box.rightStart == box.rightEnd {
                 markAllChanged(box)
@@ -69,7 +80,7 @@ struct MyersDiff {
             // A split on a corner would hand back the same box forever. The search cannot produce
             // one once the common ends are trimmed, but a box that is all change is still a correct
             // answer, where a loop is not.
-            guard let split = middle(of: box),
+            guard let split = try middle(of: box, check: check),
                   split.x > box.leftStart || split.y > box.rightStart,
                   split.x < box.leftEnd || split.y < box.rightEnd else {
                 markAllChanged(box)
@@ -119,7 +130,10 @@ struct MyersDiff {
 private extension MyersDiff {
     /// A point on a shortest path through `box`, strictly inside it, or `nil` if the search ended
     /// without the two halves meeting (then the whole box is reported as changed).
-    func middle(of box: Box) -> (x: Int, y: Int)? {
+    func middle<Stop: Error>(
+        of box: Box,
+        check: () throws(Stop) -> Void
+    ) throws(Stop) -> (x: Int, y: Int)? {
         let context = SearchContext(left: left, right: right, box: box)
         let fullCost = (context.leftLength + context.rightLength + 1) / 2
         let limit = min(fullCost, costLimit)
@@ -128,6 +142,7 @@ private extension MyersDiff {
         var forward = Frontier(isForward: true, limit: limit)
         var backward = Frontier(isForward: false, limit: limit)
         for cost in 0..<limit {
+            if cost % ComparisonStop.searchStepsBetweenChecks == 0 { try check() }
             if let point = forward.advance(
                 cost: cost, against: backward, in: context, checksMeeting: forwardMeets
             ) {

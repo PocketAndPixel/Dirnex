@@ -2,14 +2,23 @@ import AppKit
 import DirnexCore
 import UniformTypeIdentifiers
 
-/// A dragged row whose bytes are not on this Mac — what Finder, Mail or Teams is handed so a file
-/// on a server can be dropped into them (PLAN.md §M23 Slice 4).
+/// A dragged row whose bytes are not a file on this Mac yet — what Finder is handed so a file on a
+/// server can be dropped into it (PLAN.md §M23 Slice 4), since M36 Slice 2 a file inside an archive,
+/// which the promise extracts where a server's file is downloaded, and since Slice 3 a server's
+/// folder, which the queue stages (`RemoteFolderPromise`).
 ///
-/// A **promise** is the only shape available: the receiving app wants a `file://` URL, and there is
-/// no such URL until somebody has spent a transfer. macOS's own answer to that is
-/// `NSFilePromiseProvider` — the board advertises "a file of this type, under this name, on demand",
-/// and the bytes are fetched when (and only when) something accepts the drop. So arrowing past a
-/// 4 GB object and dragging it to the desktop costs nothing until the mouse is let go.
+/// Which rows get one is `DragOutRoute`'s decision, read by `PanelPasteboard.dragWriters`; this type
+/// only builds the promise it is asked for. The name predates the archive member and is kept, since
+/// the pane, the handoff and their tests all spell it.
+///
+/// There is no `file://` URL for such a row until somebody has spent a transfer. macOS's own answer
+/// to that is `NSFilePromiseProvider` — the board advertises "a file of this type, under this name,
+/// on demand", and the bytes are fetched when (and only when) something accepts the drop. So arrowing
+/// past a 4 GB object and dragging it to the desktop costs nothing until the mouse is let go.
+///
+/// **Not every app can take one.** Teams and everything else built on Chromium refuse a promise
+/// outright, so the board stops being this the moment the pointer is over another app
+/// (`RemoteDragHandoff`, which also says why a promise and a file URL cannot share an item).
 ///
 /// **It carries the payload too**, which is what keeps one drag from being two. Overriding the three
 /// `NSPasteboardWriting` members adds `app.dirnex.locations` to the promise's own types, so a drag
@@ -31,19 +40,7 @@ final class RemoteFilePromiseProvider: NSFilePromiseProvider {
     /// private type is simply not advertised and the promise is still a perfectly good promise.
     private var locations: Data?
 
-    /// Whether `entry` is a row a promise can stand for.
-    ///
-    /// Two conditions and each rules out a different thing. It must live on a **server**, because a
-    /// local row already has a real `file://` URL and needs nothing promised; and it must be a
-    /// **file**, because a promise is one file — a folder would mean a recursive fetch behind a
-    /// Finder drop, with no progress surface and no way to stop it, which PLAN.md §M23 puts out of
-    /// scope deliberately rather than by omission. A remote folder still drags *inside* Dirnex on
-    /// its payload alone, exactly as it did before this existed.
-    static func canPromise(_ entry: FileEntry) -> Bool {
-        entry.path.backend.isRemoteConnection && entry.kind == .file
-    }
-
-    /// The promise for `entry`, or `nil` when the row needs none (``canPromise(_:)``).
+    /// The promise for `entry`, which the caller has already routed to one (`DragOutRoute`).
     ///
     /// `payload` is passed in rather than encoded here so that the caller's one decision about what
     /// goes on the board — `PanelPasteboard` — stays the only place a payload is made.
@@ -51,11 +48,11 @@ final class RemoteFilePromiseProvider: NSFilePromiseProvider {
         for entry: FileEntry,
         payload: Data,
         delegate: any NSFilePromiseProviderDelegate
-    ) -> RemoteFilePromiseProvider? {
-        guard canPromise(entry) else { return nil }
-        let provider = RemoteFilePromiseProvider(
-            fileType: fileType(for: entry.name), delegate: delegate
-        )
+    ) -> RemoteFilePromiseProvider {
+        // A server's folder is promised as one (PLAN.md §M36 Slice 3): Finder took `public.folder`
+        // in probe P1, where a type off the name would call `photos.2024` some kind of document.
+        let type = entry.kind == .directory ? UTType.folder.identifier : fileType(for: entry.name)
+        let provider = RemoteFilePromiseProvider(fileType: type, delegate: delegate)
         provider.entry = entry
         provider.locations = payload
         return provider

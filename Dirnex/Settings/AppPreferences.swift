@@ -36,10 +36,6 @@ final class AppPreferences: ObservableObject {
         }
     }
 
-    /// Posted (on the main actor) whenever `showHidden` flips, so every open pane can apply the
-    /// new value to its tabs and re-render. `object` is the `AppPreferences` that changed.
-    static let showHiddenDidChange = Notification.Name("Dirnex.showHiddenDidChange")
-
     /// View ▸ show Finder tags as dots at the right edge of each name, where Finder puts them
     /// (PLAN.md §M6 "Finder tags: column…"). Default **on**: someone who tags files sees them
     /// without having to find a setting first, and someone who doesn't pays nothing for it — an
@@ -51,10 +47,6 @@ final class AppPreferences: ObservableObject {
             NotificationCenter.default.post(name: Self.showTagsDidChange, object: self)
         }
     }
-
-    /// Posted (on the main actor) when `showTags` flips, so every open pane installs or removes the
-    /// column live. `object` is the `AppPreferences` that changed.
-    static let showTagsDidChange = Notification.Name("Dirnex.showTagsDidChange")
 
     /// View ▸ show each file's cloud sync state as a badge at the right edge of its name, where
     /// Finder puts it (PLAN.md §M6 "iCloud/provider sync status"). Default **on**, and it can afford
@@ -68,9 +60,17 @@ final class AppPreferences: ObservableObject {
         }
     }
 
-    /// Posted (on the main actor) when `showSyncStatus` flips, so every open pane picks the badges
-    /// up or drops them live. `object` is the `AppPreferences` that changed.
-    static let showSyncStatusDidChange = Notification.Name("Dirnex.showSyncStatusDidChange")
+    /// View ▸ draw a picture of an image's, a movie's or a PDF's content as its row's icon, the way
+    /// Finder's list view does (2026-11-11). Default **on**, as Finder's is: a picture is loaded only
+    /// for a row on screen, off the main thread, and only for a file on this Mac with its bytes here
+    /// (`RowIcon`), so a share or a cloud placeholder costs nothing. Off, every file draws its type icon.
+    @Published var showIconPreviews: Bool {
+        didSet {
+            guard showIconPreviews != oldValue else { return }
+            defaults.set(showIconPreviews, forKey: Keys.showIconPreviews)
+            NotificationCenter.default.post(name: Self.showIconPreviewsDidChange, object: self)
+        }
+    }
 
     /// View ▸ show the Total-Commander-style function-key bar along the window bottom (PLAN.md
     /// §M6). Default **on**: the bar is a signature discoverability win — it puts Copy/Move/
@@ -86,10 +86,6 @@ final class AppPreferences: ObservableObject {
         }
     }
 
-    /// Posted (on the main actor) when `showFunctionBar` flips, so every open window installs or
-    /// collapses its bar live. `object` is the `AppPreferences` that changed.
-    static let showFunctionBarDidChange = Notification.Name("Dirnex.showFunctionBarDidChange")
-
     /// Panels ▸ how tall each file row is drawn, and how big the icon in it (PLAN.md §M15). A
     /// single app-wide value like `showHidden`, not a per-tab one: it is a reading preference, not
     /// a question you ask of one directory. Changing it posts `rowDensityDidChange` so every open
@@ -103,10 +99,6 @@ final class AppPreferences: ObservableObject {
         }
     }
 
-    /// Posted (on the main actor) when `rowDensity` changes, so every open pane re-sizes its rows
-    /// and repaints. `object` is the `AppPreferences` that changed.
-    static let rowDensityDidChange = Notification.Name("Dirnex.rowDensityDidChange")
-
     /// Panels ▸ what the size-visualization column draws: the bar, the folder-share percentage, or
     /// both (PLAN.md §M15). A single app-wide value like `rowDensity`, not a per-tab one — it is a
     /// reading preference, not a question about one directory. Changing it posts
@@ -119,10 +111,6 @@ final class AppPreferences: ObservableObject {
             NotificationCenter.default.post(name: Self.sizeVizDisplayModeDidChange, object: self)
         }
     }
-
-    /// Posted (on the main actor) when `sizeVizDisplayMode` changes, so every open pane repaints
-    /// its size-bar column. `object` is the `AppPreferences` that changed.
-    static let sizeVizDisplayModeDidChange = Notification.Name("Dirnex.sizeVizDisplayModeDidChange")
 
     /// How Quick View draws a file that can be shown two ways — its source, or the page it
     /// describes (PLAN.md §M16). HTML and Markdown follow it; CSV and TSV follow
@@ -193,12 +181,6 @@ final class AppPreferences: ObservableObject {
         }
     }
 
-    /// Posted (on the main actor) when `quickViewJavaScriptEnabled` flips, so every open Quick View
-    /// reloads the page it is showing. `object` is the `AppPreferences` that changed.
-    static let quickViewJavaScriptDidChange = Notification.Name(
-        "Dirnex.quickViewJavaScriptDidChange"
-    )
-
     /// Panels ▸ how large a file Quick View may pull down from a server on its own, in **bytes**
     /// (PLAN.md §M21 Slice 10).
     ///
@@ -249,20 +231,6 @@ final class AppPreferences: ObservableObject {
             NotificationCenter.default.post(name: Self.remoteRefreshFloorDidChange, object: self)
         }
     }
-
-    /// Posted (on the main actor) when `remoteRefreshFloor` changes, so every open remote pane
-    /// re-arms — turning polling off has to stop the pane the user is looking at, not the one they
-    /// see after the next navigation.
-    static let remoteRefreshFloorDidChange = Notification.Name(
-        "Dirnex.remoteRefreshFloorDidChange"
-    )
-
-    /// Posted (on the main actor) when `quickViewFetchLimit` changes, so an open Quick View
-    /// re-weighs the row it is showing — raising the limit has to resolve the card the user is
-    /// looking at, not the one they see after the next cursor step.
-    static let quickViewFetchLimitDidChange = Notification.Name(
-        "Dirnex.quickViewFetchLimitDidChange"
-    )
 
     /// Panels ▸ the three colors the user owns (PLAN.md §M15 Slice 2), each as `#RRGGBB` or the
     /// empty string for **Follow System** — the default, so an untouched install renders exactly as
@@ -409,12 +377,6 @@ final class AppPreferences: ObservableObject {
         }
     }
 
-    /// Posted (on the main actor) when `showVaultsInFinder` flips, so the vaults that are unlocked
-    /// right now are remounted to match. `object` is the `AppPreferences` that changed.
-    static let showVaultsInFinderDidChange = Notification.Name(
-        "Dirnex.showVaultsInFinderDidChange"
-    )
-
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
         restoreSession = defaults.object(forKey: Keys.restoreSession) as? Bool ?? true
@@ -424,6 +386,8 @@ final class AppPreferences: ObservableObject {
         showTags = defaults.object(forKey: Keys.showTags) as? Bool ?? true
         // Defaults on, like `showTags`, and for the same `object(forKey:)` reason.
         showSyncStatus = defaults.object(forKey: Keys.showSyncStatus) as? Bool ?? true
+        // Defaults on, like `showTags`, and for the same `object(forKey:)` reason.
+        showIconPreviews = defaults.object(forKey: Keys.showIconPreviews) as? Bool ?? true
         // Defaults on, like `showTags`: `object(forKey:)`, not `bool(forKey:)` (which answers
         // `false` for a never-written key and would ship the bar hidden).
         showFunctionBar = defaults.object(forKey: Keys.showFunctionBar) as? Bool ?? true

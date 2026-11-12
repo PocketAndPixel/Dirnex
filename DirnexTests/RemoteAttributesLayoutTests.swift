@@ -90,6 +90,62 @@ struct RemoteAttributesLayoutTests {
         }
     }
 
+    @Test("each special bit sits under its own column")
+    func specialBitsLineUpWithTheColumns() throws {
+        let sftp = VFSBackendID.sftp(SFTPLocation(host: "srv", username: "oleg"))
+        let controller = RemoteAttributesController(
+            entry: entry(on: sftp),
+            backend: LocalBackend(),
+            editability: RemoteAttributeEditability(editable: [.permissions])
+        )
+        controller.loadViewIfNeeded()
+        let panel = controller.view
+        panel.setFrameSize(panel.fittingSize)
+        panel.layoutSubtreeIfNeeded()
+        func left(_ view: NSView) -> CGFloat { view.convert(view.bounds, to: panel).minX }
+
+        let columns: [(POSIXPermissions.Class, RemoteAttributesController.SpecialBit)] = [
+            (.owner, .setUserID), (.group, .setGroupID), (.other, .sticky)
+        ]
+        for (cls, bit) in columns {
+            let read = try #require(controller.modeBoxes.first {
+                $0.cls == cls && $0.access == .read
+            })
+            let special = try #require(controller.specialBoxes.first {
+                $0.bit == bit
+            })
+            #expect(abs(left(read.box) - left(special.box)) < 0.5, "under \(cls)")
+        }
+    }
+
+    @Test("owner and group controls leave the body as tall as its content")
+    func ownershipControlsFit() throws {
+        let sftp = VFSBackendID.sftp(SFTPLocation(host: "srv", username: "oleg"))
+        let editable = RemoteAttributeEditability(editable: [.permissions, .owner, .group])
+        let row = entry(on: sftp)
+        let identities = [
+            RemoteAccountIdentity.parse("uid=0(root) gid=0(root) groups=0(root)"),
+            RemoteAccountIdentity.parse("uid=501(oleg) gid=20(staff) groups=20(staff),80(admin)")
+        ]
+        for identity in identities {
+            let controller = RemoteAttributesController(
+                entry: row,
+                backend: LocalBackend(),
+                editability: editable,
+                identity: identity
+            )
+            controller.loadViewIfNeeded()
+            let panel = controller.view
+            panel.setFrameSize(panel.fittingSize)
+            panel.layoutSubtreeIfNeeded()
+            func all(_ view: NSView) -> [NSView] { [view] + view.subviews.flatMap(all) }
+            let body = try #require(all(panel).lazy.compactMap { $0 as? NSScrollView }.first)
+            let content = try #require(body.documentView)
+            #expect(body.frame.height == content.frame.height)
+            #expect(panel.frame.height <= AttributesControllerLayout.sheetHeight)
+        }
+    }
+
     /// No shape reaches the cap in English — values truncate to one line and only the notes wrap — so
     /// the content is made taller than any translation could by adding a block to it, which is what
     /// a long language does to the notes.

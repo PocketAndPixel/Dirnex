@@ -70,7 +70,10 @@ struct DragPromiseTests {
 
     /// What a drag session puts on its board: each item's writer, as AppKit writes them.
     private func writeDrag(_ entries: [FileEntry], to board: NSPasteboard) -> Bool {
-        let writers = PanelPasteboard.dragWriters(for: entries, promisedTo: pane())
+        let pane = pane()
+        let writers = PanelPasteboard.dragWriters(
+            for: entries, routes: pane.dragOutRoutes(for: entries), promisedTo: pane
+        )
         board.clearContents()
         return board.writeObjects(writers)
     }
@@ -121,25 +124,33 @@ struct DragPromiseTests {
 
     // MARK: - Which rows are promised
 
-    @Test("only a file on a server is promised")
-    func promisedRows() {
-        #expect(RemoteFilePromiseProvider.canPromise(remote("/srv/report.pdf")))
-        // A local row already has real bytes and a real URL: promising it would put a second,
-        // slower path in front of a file Finder can already take.
-        #expect(!RemoteFilePromiseProvider.canPromise(local("/tmp/a.txt")))
+    /// Whether the pane would promise `entry` — `DragOutRoute`, asked the way a drag asks it.
+    private func isPromised(_ entry: FileEntry) -> Bool {
+        pane().dragOutRoutes(for: [entry])[entry.path]?.isPromised == true
     }
 
-    @Test("a remote folder is not promised — a promise is one file")
-    func remoteFolderIsNotPromised() {
-        // Deliberately out of scope (PLAN.md §M23): a recursive fetch behind a Finder drop has no
-        // progress surface and no way to stop it. The row still drags inside Dirnex on its payload.
-        #expect(!RemoteFilePromiseProvider.canPromise(remote("/srv/photos", kind: .directory)))
+    @Test("a file on a server is promised, a file on this disk is not")
+    func promisedRows() {
+        #expect(isPromised(remote("/srv/report.pdf")))
+        // A local row already has real bytes and a real URL: promising it would put a second,
+        // slower path in front of a file Finder can already take.
+        #expect(!isPromised(local("/tmp/a.txt")))
+    }
 
+    /// Out of scope at M23, where a recursive fetch behind a Finder drop had no progress surface and
+    /// no way to stop it; since PLAN.md §M36 Slice 3 the queue stages it, with both
+    /// (`FolderDragOutTests`).
+    @Test("a remote folder is promised too, as one promise")
+    func remoteFolderIsPromised() {
+        let folder = remote("/srv/photos", kind: .directory)
+        #expect(isPromised(folder))
+
+        let pane = pane()
         let writers = PanelPasteboard.dragWriters(
-            for: [remote("/srv/photos", kind: .directory)], promisedTo: pane()
+            for: [folder], routes: pane.dragOutRoutes(for: [folder]), promisedTo: pane
         )
         #expect(writers.count == 1)
-        #expect(!(writers.first is NSFilePromiseProvider))
+        #expect(writers.first is RemoteFilePromiseProvider)
     }
 
     @Test("the promised type comes off the extension, and an extension-less name still drags")
@@ -180,24 +191,44 @@ struct DragPromiseTests {
         #expect(types.contains("com.apple.pasteboard.promised-file-content-type"))
     }
 
-    @Test("an archive member drags on its payload alone — carried, but never promised")
-    func archiveMemberIsCarriedWithoutAPromise() throws {
-        // Slice 5 put the row on the board (a drop inside Dirnex reads it and extracts, as F5
-        // copy-out does) and deliberately gave it no promise: a promise is one file fetched behind
-        // somebody else's drop, and an encrypted archive would raise a passphrase sheet there.
+    /// M23 Slice 5 gave a member no promise, because an encrypted archive would have raised a
+    /// passphrase sheet behind somebody else's drop. M36 Slice 2 promises one whenever the archive
+    /// needs no passphrase this session does not hold — which `/tmp/a.zip`, not being there to read,
+    /// does not — and the locked case is the next test.
+    @Test("an archive member is promised, and still carries the payload")
+    func archiveMemberIsPromised() throws {
         let member = entry(
             VFSPath(backend: VFSBackendID.archive(forArchiveAt: "/tmp/a.zip"), path: "/inner.txt")
         )
-        #expect(!RemoteFilePromiseProvider.canPromise(member))
-
-        let writers = PanelPasteboard.dragWriters(for: [member], promisedTo: pane())
-        #expect(writers.count == 1)
-        #expect(!(writers.first is RemoteFilePromiseProvider))
+        #expect(isPromised(member))
 
         let board = board("archive")
         #expect(writeDrag([member], to: board))
         #expect(PanelPasteboard.payloads(in: board).map(\.name) == ["inner.txt"])
-        // Nothing another app can accept: no file URL and no promised type at board level.
+        // A promise, not a file URL: nothing is extracted until something takes the drop.
+        #expect(PanelPasteboard.fileURLs(in: board).isEmpty)
+        let types = try #require(board.types).map(\.rawValue)
+        #expect(types.contains("com.apple.pasteboard.promised-file-content-type"))
+    }
+
+    /// Decision A: a locked archive's member goes to no other app, and still drags inside Dirnex.
+    @Test("a member of a locked archive drags on its payload alone, with nothing promised")
+    func lockedMemberIsCarriedWithoutAPromise() throws {
+        let member = entry(
+            VFSPath(backend: VFSBackendID.archive(forArchiveAt: "/tmp/a.zip"), path: "/inner.txt")
+        )
+        let writers = PanelPasteboard.dragWriters(
+            for: [member],
+            routes: [member.path: .insideDirnexOnly(.lockedArchive)],
+            promisedTo: pane()
+        )
+        #expect(writers.count == 1)
+        #expect(!(writers.first is RemoteFilePromiseProvider))
+
+        let board = board("locked")
+        board.clearContents()
+        #expect(board.writeObjects(writers))
+        #expect(PanelPasteboard.payloads(in: board).map(\.name) == ["inner.txt"])
         #expect(PanelPasteboard.fileURLs(in: board).isEmpty)
         let types = try #require(board.types).map(\.rawValue)
         #expect(!types.contains("com.apple.pasteboard.promised-file-content-type"))
@@ -225,9 +256,9 @@ struct DragPromiseTests {
         // The pane here has no window controller, so the fetch funnel starts nothing at all — which
         // is exactly the shape of a path that returns early and reports to nobody.
         let pane = pane()
-        let provider = try #require(RemoteFilePromiseProvider.promise(
+        let provider = RemoteFilePromiseProvider.promise(
             for: remote("/srv/report.pdf"), payload: Data("{}".utf8), delegate: pane
-        ))
+        )
         let destination = FileManager.default.temporaryDirectory
             .appendingPathComponent("dirnex-promise-\(UUID().uuidString).pdf")
         let answered = Answer()
@@ -277,9 +308,9 @@ struct DragPromiseTests {
         let backend = CountingBackend(outcome: .succeed)
         let (pane, host) = hostedPane(backend)
         let entry = Fixture.entry("report.pdf")
-        let provider = try #require(RemoteFilePromiseProvider.promise(
+        let provider = RemoteFilePromiseProvider.promise(
             for: entry, payload: Data("{}".utf8), delegate: pane
-        ))
+        )
         let destination = FileManager.default.temporaryDirectory
             .appendingPathComponent("dirnex-promise-\(UUID().uuidString)")
             .appendingPathComponent(entry.name)
@@ -308,9 +339,9 @@ struct DragPromiseTests {
         // one, which is holding another application's completion handler open, and it is why
         // `onCancel` exists at all.
         let (pane, host) = hostedPane(CountingBackend(outcome: .block))
-        let provider = try #require(RemoteFilePromiseProvider.promise(
+        let provider = RemoteFilePromiseProvider.promise(
             for: Fixture.entry("report.pdf"), payload: Data("{}".utf8), delegate: pane
-        ))
+        )
         let destination = FileManager.default.temporaryDirectory
             .appendingPathComponent("dirnex-promise-stop-\(UUID().uuidString).pdf")
         defer { try? FileManager.default.removeItem(at: destination) }
@@ -332,9 +363,9 @@ struct DragPromiseTests {
     @Test("the promised name is the row's own")
     func promisedName() throws {
         let pane = pane()
-        let provider = try #require(RemoteFilePromiseProvider.promise(
+        let provider = RemoteFilePromiseProvider.promise(
             for: remote("/srv/report.pdf"), payload: Data("{}".utf8), delegate: pane
-        ))
+        )
         #expect(pane.filePromiseProvider(provider, fileNameForType: provider.fileType)
             == "report.pdf")
     }

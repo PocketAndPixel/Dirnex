@@ -113,11 +113,20 @@ public enum UndoStep: Sendable, Equatable, Codable {
     /// primitives — rather than the `VFSBackend`, for the reason ``restoreAttributes`` is: an
     /// archive being browsed is a real file on this disk whatever backend is showing its insides,
     /// and the swap needs an atomic same-directory rename no backend verb offers.
+    ///
+    /// `renames` is what the swap does to member names, in the order this direction carries them
+    /// out, for the listings that cannot re-list (``SearchSnapshot/renames(appliedBy:report:)``,
+    /// 2026-11-05). A swap of whole containers says nothing about what changed inside them, so a
+    /// rewrite that renamed members (F2 or ⇧F2 inside an archive) records them here, and undo then
+    /// puts a search hit back under its old name as it does for a rename on disk. It plays no part
+    /// in the swap. `nil` for every other rewrite, and for every step journaled before it existed,
+    /// which is why it is optional: a persisted journal without the key still decodes.
     case restoreArchive(
         archive: VFSPath,
         snapshot: VFSPath,
         expected: ArchiveUndoWitness,
-        restored: ArchiveUndoWitness
+        restored: ArchiveUndoWitness,
+        renames: [PathRename]? = nil
     )
 
     /// Undo/redo a text file saved from the compare window: exchange its bytes with the copy taken
@@ -161,12 +170,13 @@ public enum UndoStep: Sendable, Equatable, Codable {
             )
         case let .restoreRemoteAttributes(path, apply, reverse):
             return .restoreRemoteAttributes(path: path, apply: reverse, reverse: apply)
-        case let .restoreArchive(archive, snapshot, expected, restored):
+        case let .restoreArchive(archive, snapshot, expected, restored, renames):
             return .restoreArchive(
                 archive: archive,
                 snapshot: snapshot,
                 expected: restored,
-                restored: expected
+                restored: expected,
+                renames: renames.map(PathRename.reversal(of:))
             )
         case let .restoreSavedFile(file, snapshot, expected, restored):
             return .restoreSavedFile(
@@ -216,11 +226,19 @@ extension UndoRecord {
     /// inverted. Undoing a record pushes its `inverted` onto the redo stack; redoing reverts
     /// that (re-applying the original operation) and pushes *its* inverted — the original
     /// record — back onto the undo stack. So one inversion drives both directions.
+    ///
+    /// **The steps run in reverse order**, as the inverse of any sequence does (2026-11-05). For
+    /// almost every record the order is immaterial — a move's or a copy's top-level items, one
+    /// path's attributes — and that is why forward order went unnoticed. A batch rename across a
+    /// tree is the record where it matters: its undo renames a folder back before the file inside
+    /// it, so its redo has to rename the file before the folder, or the file's path names a folder
+    /// that has not been renamed yet (``multiRename(_:date:)``). Reversing twice gives the original
+    /// order back, so a record that is undone and redone comes back exactly as it was.
     var inverted: UndoRecord {
         UndoRecord(
             label: label,
             date: date,
-            steps: steps.map(\.inverse),
+            steps: steps.reversed().map(\.inverse),
             nonReversibleCount: nonReversibleCount
         )
     }
@@ -305,11 +323,16 @@ public extension UndoRecord {
     /// batch"). Returns `nil` when nothing was renamed. Because the tool never applies a rename
     /// whose target equals another still-present name, every original is free at undo time and
     /// `.restore`'s clobber guard never trips on a batch of its own making.
+    ///
+    /// `items` is in the order the renames were **carried out**, deepest first (``RenameOrder``),
+    /// and the steps undo them in reverse (2026-11-05). In a tree batch that renamed `docs/a.txt`
+    /// and then `docs`, each pair's paths are the ones that were true when that rename ran, so
+    /// `docs` has to come back first for `docs/b.txt` to be where the next step looks for it.
     static func multiRename(
         _ items: [(original: VFSPath, renamed: VFSPath)],
         date: Date = Date()
     ) -> UndoRecord? {
-        let steps = items.map { UndoStep.restore(from: $0.renamed, to: $0.original) }
+        let steps = items.reversed().map { UndoStep.restore(from: $0.renamed, to: $0.original) }
         guard !steps.isEmpty else { return nil }
         return UndoRecord(label: .rename, date: date, steps: steps)
     }
@@ -320,11 +343,16 @@ public extension UndoRecord {
     ///
     /// Built by ``ArchiveUndoSnapshot/record(date:)`` rather than called directly, because half of
     /// it — `expected` — can only be read once the rewrite has landed.
+    ///
+    /// `renamed` is the member renames the rewrite carried out, in the order it ran them, when it
+    /// was a rename (F2 or ⇧F2 inside an archive). The step holds their reversal, since this record
+    /// is the undo direction; its inverse turns them forward again for redo.
     static func archiveRewrite(
         archive: VFSPath,
         snapshot: VFSPath,
         expected: ArchiveUndoWitness,
         restored: ArchiveUndoWitness,
+        renamed: [PathRename] = [],
         date: Date = Date()
     ) -> UndoRecord {
         UndoRecord(
@@ -334,7 +362,8 @@ public extension UndoRecord {
                 archive: archive,
                 snapshot: snapshot,
                 expected: expected,
-                restored: restored
+                restored: restored,
+                renames: renamed.isEmpty ? nil : PathRename.reversal(of: renamed)
             )]
         )
     }
@@ -362,7 +391,7 @@ public extension UndoRecord {
     var archiveSnapshotPaths: Set<String> {
         Set(steps.compactMap { step in
             switch step {
-            case let .restoreArchive(_, snapshot, _, _), let .restoreSavedFile(_, snapshot, _, _):
+            case let .restoreArchive(_, snapshot, _, _, _), let .restoreSavedFile(_, snapshot, _, _):
                 snapshot.path
             default:
                 nil

@@ -30,6 +30,7 @@ extension RemoteAttributesController {
                 comment: "Info panel note explaining that a symlink's own attributes are shown."
             )))
         }
+        if ownershipNeedsItsReason { notes.append(AttributeRow.note(Self.noCommandNote)) }
         notes.append(AttributeRow.note(String(
             localized: """
             A listing from a server or an archive carries no access-control list, no extended \

@@ -108,16 +108,27 @@ extension SyncDirectoriesController {
                 ).first
             }
             guard let fresh, !isScanning, comparison == self.comparison else { return }
-            rows = Self.rows(rows, replacing: fresh, direction: direction)
+            rows = Self.rows(
+                rows,
+                replacing: fresh,
+                direction: direction,
+                change: changes[fresh.relativePath]
+            )
             tableView.reloadData()
             updateChrome()
+            readChanges()
         }
     }
 
     /// `rows` with `fresh` answered in them: gone when its two files agree, in its place by path
     /// otherwise. A row whose status did not move keeps the action and the tick the user gave it;
     /// one whose status moved means something else now, so it takes the direction's default.
-    static func rows(_ rows: [Row], replacing fresh: SyncEntry, direction: SyncDirection) -> [Row] {
+    static func rows(
+        _ rows: [Row],
+        replacing fresh: SyncEntry,
+        direction: SyncDirection,
+        change: SyncChange? = nil
+    ) -> [Row] {
         var rows = rows
         let index = rows.firstIndex { $0.entry.relativePath == fresh.relativePath }
         guard fresh.status != .identical else {
@@ -132,7 +143,11 @@ extension SyncDirectoriesController {
             )
             return rows
         }
-        let action = DirectorySync.defaultAction(for: fresh.status, direction: direction)
+        let action = DirectorySync.defaultAction(
+            for: fresh.status,
+            direction: direction,
+            change: change
+        )
         let row = Row(entry: fresh, action: action, included: isActionable(action))
         if let index {
             rows[index] = row

@@ -153,6 +153,7 @@ extension Collection<RemoteMetadataStep> {
             case .preserveDuringTransfer: used.insert(.preserveFlag)
             case .setMode: used.insert(.changeMode)
             case .setModificationTime: used.insert(.setModificationTime)
+            case .setOwnership: break // never built for this protocol
             }
         }
         return used

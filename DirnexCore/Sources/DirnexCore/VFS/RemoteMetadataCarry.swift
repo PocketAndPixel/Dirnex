@@ -27,6 +27,12 @@ public enum RemoteMetadataStep: Sendable, Hashable {
     /// the local truth on a host whose own offset is not zero. The coarse, year-less, zone-less
     /// stamp FTP is known for belongs to `LIST`, not to the protocol.
     case setModificationTime(Date)
+    /// Change an item's owner, its group, or both, by the name the server knows it by — Get Info's
+    /// step (PLAN.md §M38 Slice 1), never a transfer's. A `nil` leaves that one alone.
+    ///
+    /// Only an SFTP account with an exec channel can spell it. It is skipped everywhere else, as
+    /// any step a protocol cannot spell is, because nothing builds one for those backends.
+    case setOwnership(owner: String?, group: String?)
 }
 
 /// A fact about the source that a transfer could not carry.
@@ -269,6 +275,11 @@ public enum RemoteMetadataRefusal: Sendable, Equatable {
     /// `remote setstat "…": Permission denied`. Says nothing about what the server can do, so it is
     /// counted as a loss for this item and never latched.
     case itemRefused(String)
+    /// **A `chown` that did not run to its end**, with whatever it printed (PLAN.md §M38 Slice 2).
+    /// One command on its own channel, so unlike a line of an `sftp` batch it is known to be about
+    /// the owner and group and nothing else, and its words say why (`illegal group name`, `you are
+    /// not a member of group daemon`). Never latched, for the reason ``itemRefused(_:)`` is not.
+    case ownershipRefused(String)
 }
 
 /// What one transfer moved, and whether the metadata riding with it arrived.

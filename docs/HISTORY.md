@@ -1,4 +1,4 @@
-# Dirnex — build history (M0 → M34)
+# Dirnex — build history (M0 → M36)
 
 The shipped record of Dirnex's milestones: the milestone checklists as they were completed,
 plus the per-pass progress log — what was probed, what was decided, what was rejected and why.
@@ -26,11 +26,14 @@ beta. **M31** (a compare window of our own) was planned and closed 10-22, in fiv
 **M32** (WebDAV) was planned 10-22 and closed 10-24, its last pass running the live suite against
 Nextcloud in a container as well as Apache. **M33** (copying a change across, and saving) and
 **M34** (a three-way merge) were planned together on 10-25, M33 first because M34's result pane,
-undo and save are its; M33 closed 10-26 and M34 10-27. **After M19** carries the thirty-one dated
-passes from 2026-08-07 → 08-25 that landed outside a milestone of their own — it sits at the end
-rather than in date order, because it is the file's catch-all rather than a numeric slot. Two
-sections frame them, both handed over by the plan on 2026-09-01 once it had nothing left to say
-about them: **Scope decided against** sits ahead of M0, and **The questions the plan asked** closes
+undo and save are its; M33 closed 10-26 and M34 10-27. **M35** (an SMB server's shares, as a
+pane) was planned 11-04 and closed 11-05, its last live check waiting a day for the NAS. **M36** (drag
+and paste, where M23 stopped) was planned 11-07 and closed 11-08, the first of five that take up what
+earlier milestones left undone by choice.
+**After M19** carries the thirty-one dated passes from 2026-08-07 → 08-25 that landed outside a
+milestone of their own — it sits at the end rather than in date order, because it is the file's
+catch-all rather than a numeric slot. Two sections frame them, both handed over by the plan on
+2026-09-01 once it had nothing left to say about them: **Scope decided against** sits ahead of M0, and **The questions the plan asked** closes
 the file.
 
 This file is **archive, not instruction.** It moved out of [PLAN.md](../PLAN.md) once M7
@@ -18973,7 +18976,2102 @@ than the strip has been in the row.
   double-click on the × of a pane's rightmost tab closed the tab and left the window's size alone, and a
   double-click on a strip's free space in full screen did nothing.
 
+**2026-11-03: a row dragged off a server reaches Teams and everything else built on Chromium** (core,
+then app). Asked for by Oleg: dragging a file from FTP, SFTP and the rest into another app, with Teams
+the one named. M23's promise had only ever worked in Finder. "Finder, Mail or Teams" in its source
+comment had never been measured, and Teams refused every promised row with operation 0 and no callback.
+
+- **Why one board could not serve both.** Chromium reads the board once, on entry, and takes only
+  `public.file-url`. Finder reads a file URL ahead of a promise on the same item, and an empty answer
+  makes it refuse. A promise wrapped in another writer is refused, and one written back after a rewrite
+  reports a copy and delivers nothing. NOTES.md ▸ Drag and drop has each measurement.
+- **What landed.** The drag starts as promises, so Finder is unchanged and nothing is fetched until the
+  drop. When the pointer enters another regular app's window, the board is rewritten to lazy file URLs
+  and the fetch starts. The move arrives 6 ms ahead of Teams' read, so the rewrite wins, and it is one
+  way. A read holds for up to three seconds, so an ordinary file feels like an ordinary drag. A slower
+  file shows its progress on the drag image and is taken after the pointer leaves and comes back, since
+  Chromium does not read again until then. A different app gets its own wait after a refusal. Every row
+  of a set shares one answer, because a drop of three that attaches two reads as success.
+- **Letting go early** refuses the drop. A set up to the open/edit size (`RemoteFetchPurpose.dragOut`, at
+  least 64 MiB) finishes, so the next try is immediate. A larger one stops and leaves nothing behind.
+- **Where it lives.** `RemoteDragHandoff` in the core holds the rules as a pure state machine, since a
+  drag session cannot be synthesized. In the app, `RemoteDragHandoffController` runs them against the
+  session, `RemoteDragStatus` draws the line under the row, and `PanelPasteboard.handoffItems` writes the
+  board.
+- **The tests found a flaw in the first design.** A hold spinning the run loop for a fetch on the main
+  actor could never finish, because a run loop nested in a main-queue job does not drain the main queue.
+  The transfer moved off the main actor and leaves its result in a locked box, which the hold polls.
+- **Tests:** `RemoteDragHandoffTests` pins every rule in the core, and `RemoteDragHandoffControllerTests`
+  drives the controller against a gated backend and scripted surfaces. Full runs green (4 706 core, 2 145
+  app with the known `GestureWaitTests` issue, 2 119 of them executed with the live servers up), both
+  linters clean, with SwiftLint 0.65.0 here against CI's 0.65.1.
+- **Run live** with full-screen computer-use against a throwaway SFTP server and a copy of it throttled
+  to 30 KB/s, with real Teams and real Finder: a small file, a file landing inside the hold (1.65 s), one
+  outlasting it and taken after leaving and coming back, a second try at that file, two marked rows,
+  Finder by promise with nothing fetched until the drop, Finder after crossing another app, a drop back
+  inside Dirnex after crossing Teams, and 70 MB let go early, which stopped and left nothing behind. Over
+  anonymous FTP, throttled too: a small file and a slow one into Teams, and Finder by promise.
+- **Run by Oleg:** a text file and a 3.1 MB JPEG out of a real S3 bucket into a Chromium drop page, both
+  read back at the right size, and a 36.1 MB RAW file from it into a Mail message. On 2026-11-04, a 3.1
+  MB JPEG off the NAS over WebDAV into a Mail message. FTPS shares FTP's backend and was not dragged on
+  its own.
+- **Left as limits** (LOCATION-SUPPORT.md): hovering over any regular app starts the download, even on
+  the way somewhere else. A large file that crosses another app on its way to Finder has to arrive before
+  Finder takes it. A folder still does not drag out.
+- **The live runs' traps** are in LIVE-VERIFICATION.md. Three "Finder" drops had gone into Claude's
+  floating panel, which screenshots leave out, and read as Finder delivering nothing. A throttled
+  `sftp-server` missed the large download, which goes over the exec channel.
+
+### M35 — An SMB server's shares, as a pane (M)
+
+**Closed 2026-11-05**, a day after it was planned. With the Share field blank, a connect now lists
+the server's shares itself, through `EnumerateShares` on the SMB plugin's `NetFSMountInterface_V1`,
+and NetFS's own picker and its dialog are gone. The pane shows the server's disk shares as folders,
+read-only and one level deep, the way an S3 account shows its buckets. Return mounts a share with
+the pane's own account and goes into it. ⌘Return opens it in the other pane, → in a tree mounts it
+and lists it beneath its row, and `..` at the root of a share Dirnex mounted goes back to the list
+with the cursor on that share. A refusal says which it is: a share this account may not use, a
+share the server does not offer to this account or to guests, or an account that cannot sign in
+right now. On Oleg's decision, a tree tab on the list comes back as it was left: the shares mounted
+again, the folders inside them open, and the cursor on the same row.
+
+Three findings are worth not re-deriving. A session whose `OpenSession` failed still lists, as an
+identity nobody asked for, so the list is asked for only after `OpenSession` answered 0
+(docs/NOTES.md ▸ SMB). Each listing costs a session: about 2.3 s by the bare name `nas`, and over
+8 s by `nas.local`, which is the mDNS stall again. And below an expanded share a tree's rows are
+local paths under the mount point, which is under no tab's root. So a tab writes them through the
+share (`media/Movies/…`) and, after a relaunch, resolves them against the mount point the share has
+then (`SMBShareMounts`).
+
+Some paths were not exercised by the close, and are recorded rather than argued. The plain
+permission sentence was not seen, since no share is listed to `dirnex-test` and refused. ⌘Return
+into the other pane, a saved sidebar row, and `..` from a share typed into the sheet while its
+server is not connected, which reads the Keychain, were not run live. Marks inside a share are
+written and restored the way the cursor is, and were not checked there.
+
+Left deliberately undone: **anything that writes to the list**, so no share is created, renamed or
+deleted, and nothing is copied onto it; **a comment column**; and **a way up from a share Finder
+mounted**, which keeps `..` → `/Volumes`.
+
+It began as an item on the plan's *Still open* list, opened by a bug report on 2026-09-04 and
+carried there until M35 took it:
+
+> **Dirnex's own SMB share picker.** With the Share field blank the app hands the mount to NetFS's
+> own UI (`kNAUIOptionAllowUI`), which is macOS's share picker — the only way today to browse a
+> server's shares. It costs two things the user sees. A failed pick raises **two** dialogs,
+> NetAuthAgent's generic *"There was a problem connecting to the server"* and Dirnex's after it; and
+> NetFS never reports back *which* share was picked, so the second one cannot name the folder that
+> failed. That is what makes it worth a slice rather than a nicety: a share the account may not use
+> and a share that is not there come back as **one** status (ENOENT), so only the *listing* tells
+> them apart — and the server names a refused share to the very account it refuses. The listing is
+> reachable in-process, measured 2026-09-04 against a real NAS: `EnumerateShares` on the SMB plugin's
+> `NetFSMountInterface_V1` (`<NetFS/NetFSPlugin.h>`), credentials in memory, no subprocess and
+> nothing in `argv` (docs/NOTES.md ▸ SMB). One enumeration therefore buys all three — the picker, the
+> exact refusal (*"“dirnex-test” doesn't have permission to use “Photos”"* rather than a sentence
+> that has to hedge), and the duplicate dialog going away. The hedging wording shipped 2026-09-04 as
+> the half that needed no new machinery.
+
+The section as the plan carried it through the milestone:
+
+**Planned 2026-11-04.** With the Share field blank, Dirnex hands the mount to NetFS's own UI
+(`kNAUIOptionAllowUI`), macOS's share picker. A failed pick raises two dialogs, NetAuthAgent's and
+then Dirnex's, and the second cannot name the share, because NetFS never says which one was picked.
+This milestone lists the shares itself, as rows in the pane, the way an S3 account lists its buckets
+(§M21 Slice 9) and the way Finder and Total Commander show a server. Oleg chose the pane over a list
+inside the Connect sheet on 2026-11-04.
+
+Probed 2026-11-04 against the NAS, through the SMB plugin's `NetFSMountInterface_V1` in a scratch
+package (`CreateSessionRef` → `CreateURL` → `OpenSession` → `EnumerateShares` → `CloseSession`):
+
+- **The listing runs as whoever the session is, and a session that failed to open still lists.** As
+  `dirnex-test`, `OpenSession` answered 0 with `MountedByUser = dirnex-test`, and `home` read *"Home
+  directory of dirnex-test"*. As a guest, `OpenSession` answered **-5999**
+  (`ENETFSACCOUNTRESTRICTED`; the NAS has guest off although `GetServerInfo` says `SupportsGuest =
+  1`), and `EnumerateShares` on the same session then answered 0 anyway, with `home` reading *"Home
+  directory of olegasd"*: an identity nobody asked for. With no `OpenSession` at all it did the same.
+  So **a listing is asked for only after `OpenSession` answered 0**, on that session.
+- **`CreateURL` with `UserName` and `Password` escapes the password**: a password with an `@` came
+  back as `%40`, the host parsed as `nas`, and the password round-tripped. The URL is a `CFURL` in
+  memory and never reaches `argv`.
+- **Each share is a dictionary**: `NetShareTypeStr` (`Disk`), `NetCommentStr`, `AlreadyMounted`,
+  `HasPassword`. `IsHidden` and `PrinterShare` are in the header and were absent here. No `IPC$`
+  came back. Three shares, the same for both identities: `home`, `media`, `share`.
+- **It costs a session per listing**: by the bare name `nas`, `GetServerInfo` 1.2 s, `OpenSession`
+  76 ms, `EnumerateShares` 1.0–1.3 s. By `nas.local`, 3.0 s and 5.2 s, which is NOTES.md ▸ *Resolving
+  a host name*'s mDNS stall again.
+
+Decided before Slice 1:
+
+- **A share-less `SMBLocation` is a server, and a server is a backend.** `VFSBackendID.smbServer`
+  is its URL without a share (`smb://dirnex-test@nas`), and `ServerEndpoint.smb` answers it as its
+  `backendID` when there is no share, so session restore, the path bar and the reach tests treat it
+  as they treat an S3 account. A share stays what it is today: a mount, browsed as `.local`.
+- **Read-only, depth 0.** The rows are the server's disk shares, as folders, and nothing below them:
+  a share is entered by mounting it. Hidden and printer shares are left out. Nothing creates,
+  renames or deletes a share, and nothing copies into the list.
+- **Return on a share mounts it** through `SMBMounter`, with no UI, with the server pane's own
+  credentials, and goes into the mount point. ⌘Return opens it in the other pane's new tab, as a
+  bucket does.
+- **The refusal says which it is.** A share that is listed and still answers `ENOENT` is a share
+  this account may not use, and the sentence says so with no hedge. A share typed into the sheet that
+  answers `ENOENT` is looked up the same way; one that is not listed gets *"“nas” doesn't offer a
+  shared folder named “X” to “dirnex-test”"*, which stays true on a server that hides refused shares.
+- **`..` at the root of a share Dirnex mounted goes up to the server**, with the cursor on that
+  share. Only for shares mounted through Dirnex in this session, from the pane, the sheet or a saved
+  row. A share Finder mounted keeps `..` → `/Volumes`.
+- **`kNAUIOptionAllowUI` goes.** No connect raises NetFS's own dialog again.
+- **→ on a share row in a tree mounts it** and lists the mount point beneath the row, as → on a
+  bucket row connects. A refresh finds the mount already there and asks the server nothing.
+- **Left undone**: a comment column, and a share Finder mounted gaining a way up.
+
+#### Slices
+
+1. **The server backend** (core, additive). `SMBShare` and its parse from the plugin's dictionary,
+   `SMBServerBackend` over an injected `SMBShareEnumerating`, `VFSBackendID.smbServer`, and the
+   endpoint's `backendID`. Tests over a fake enumerator.
+2. **The pane** (app). The NetFS plugin as the enumerator, the connect with a blank Share, Return
+   and ⌘Return on a share, `..` back to the server, restore, the sidebar row, the sentences, and every
+   reach test that lists the remote backends.
+3. **Live, on the NAS.** Connect, list, mount, go up, restore, a guest refusal, and a saved row.
+   LOCATION-SUPPORT.md and NOTES.md ▸ SMB updated.
+
+#### Progress
+
+- **Slice 1 landed 2026-11-04.** `SMBShare` and its parse (`shares(fromSharepoints:)`, pinned
+  against the NAS's real answer), `SMBShareEnumerating`, `SMBServerBackend`, `SMBShareAbsence`,
+  `VFSBackendID.smbServer`, and the four core sites that name a backend kind (`isRemoteConnection`,
+  the endpoint's `backendID`, `LocationSource` drawing `.networkVolume`, and `SearchRoute`
+  answering `.unavailable`). `SMBServerBackendTests`, 4 suites.
+- **Slice 2 landed 2026-11-04.** `SMBShareEnumerator` drives the plugin, and was
+  first run from a scratch package against the NAS: `dirnex-test` listed `home`, `media` and
+  `share` three times in one process, and a guest threw -5999 where the probe had listed as
+  `olegasd`. A blank Share connects the server (`PanelViewController+SMBServer`), Return and
+  ⌘Return mount a share row, `..` at the share's mount point goes back, → in a tree mounts, a
+  restored tab reconnects, and `SMBMounter` never lets NetFS's UI through. An `ENOENT` asks the
+  list once more and says which reading it is; -5999 has a sentence of its own. Five new sentences
+  in all 14 languages. `SMBServerPaneTests` and `SMBRefusalSentenceTests`.
+- **Slice 3, run live 2026-11-04** on the NAS as `dirnex-test`, Debug build from `build/debug-dd`,
+  launched by path. Nothing touched the login Keychain: a temporary probe made `SecretKeychain`
+  an `InMemorySecretStore` seeded from an environment variable and filled the sheet's password
+  field, which background computer-use will not type into. Both were removed afterwards and the
+  defaults domain was put back (71 keys unchanged by content).
+  - `smb://dirnex-test@nas` with the Share field blank: no NetFS dialog, and the pane became
+    *dirnex-test@nas* with `home`, `media` and `share` as folders, dashes for size and date, and no
+    `..` row.
+  - Return on `media` mounted `//dirnex-test@nas/media` at `/Volumes/media` and went in. Go ▸ Go Up
+    came back to the list with the cursor on `media`. → on `share` in the tree mounted it and drew
+    its `#recycle` and one file beneath the row.
+  - `smb://dirnex-test@nas/Photos` in the sheet: *"“nas” doesn’t offer a shared folder named
+    “Photos” to “dirnex-test”."*, inline. `smb://nas` as a guest: *"“nas” doesn’t allow guest
+    access. Enter a username and password."*, inline, with no NetAuthAgent dialog before it.
+  - Quit asked for both unmounts, and both went 10.7 s later, after the window had closed (the
+    approver wait NOTES.md ▸ SMB records). Relaunch restored the list tab, listed it, and **brought
+    the `share` expansion back, which mounted `share` again at launch**. That is the tree restoring
+    what it was left with, and only when restore may reach a server at all
+    (`RemoteRefreshPolicy`). **Oleg decided 2026-11-04 to keep it, and more: a tab comes back
+    exactly as it was left**, shares mounted, the folders inside them open, the cursor and the
+    marks where they were.
+  - **Not run live**: the plain permission sentence, since no share is listed to `dirnex-test` and
+    refused; ⌘Return into the other pane; a saved sidebar row; and `..` from a share typed into the
+    sheet when its server is not connected, which reads the Keychain.
+- **Restoring inside a share, 2026-11-04 (reported by Oleg).** A tab left with `media/Movies` open
+  and the cursor on a film came back with only `home` and `media` open and the cursor on `home`.
+  Everything a tab restores is written relative to its root, and below an expanded share the rows
+  are local paths under the mount point, which are under no root, so `rootRelativePath` dropped
+  them. They are now written through the share (`media/Movies/Crime.mkv`, `SMBShareMounts`), and on
+  the way back a folder inside a share waits in `pendingShareExpansions`, counted in the restore
+  window, until the share's own row has mounted it. It then resolves against the mount point the
+  share has this time, which need not be `/Volumes/media`. A share that does not mount gives up
+  what waited inside it and closes the window. `isSMBShareRow` is one level deep now, since
+  `media/Movies` on the list is not a share called `Movies`. `SMBTreeRestoreTests` runs the
+  persist and both restore paths against a temporary folder standing in for the mount, with real
+  listings off the disk. With the two changes switched off, the persist test and the deferral test
+  fail.
+  - **Live on the NAS, 2026-11-05.** Run as `dirnex-test@nas`, with a temporary probe that gave that
+    one account its password from the environment and kept every secret in memory, so there was no
+    Keychain prompt. The probe is now removed. The tab was opened by hand to `home`, `media`,
+    `media/Movies` and `media/Movies/The Hobbit`, with the cursor on a film inside `The Hobbit`. On
+    quit the app saved those four paths and the cursor as
+    `media/Movies/The Hobbit/<film>.mkv`. Both shares were unmounted about 6 s after the quit, so the
+    relaunch had to mount them again. It did, in about 8 s, and the tree came back exactly: all four
+    folders open and the cursor on the same film. A second quit saved the same state. The
+    defaults domain was restored, and all 71 keys are unchanged.
+
+**2026-11-05: F7 and ⇧F4 work inside a browsed archive** (core, then app). Two plain "no" cells in
+LOCATION-SUPPORT.md's archive column, picked from what was still open once M35 closed. Both keys did
+nothing at all there: `creationDirectory` is `nil` in a browsed archive, so the dialogs never opened
+and the menu items were gray.
+
+- **Probed first.** Against bsdtar 3.5.3 (libarchive 3.7.4), an empty folder and an empty file staged
+  into an extracted zip, 7z, tar and tar.gz each came back as their own entries after the repack. The
+  encrypted route's walk records every directory, children or not.
+- **Core:** `ArchiveMutation+Creation`. `createdInnerPath(named:inInnerDirectory:)` takes rename's
+  name check, now shared as `isMemberName`. `stage(_:at:inWorkingDirectory:)` makes the member in the
+  staged tree with `mkdir` or `O_CREAT | O_EXCL`, so the create is its own collision check: a taken
+  name, a twin differing only in case and a symlink of that name are each refused as
+  `alreadyExists` naming the member, and nothing is replaced. `ArchiveMutationCreationTests`. With
+  `O_EXCL` removed as a control, the collision, case-twin and symlink tests failed, and the symlink was
+  followed out of the scratch tree.
+- **App:** `ArchiveWriter.create` is rename's twin over `rewrite`. `archiveCreationDirectory` answers
+  for a writable archive (not a nested one, not a self-extractor). It is kept apart from
+  `creationDirectory` because paste, drop and ⌥⌘V also read that one, and ⌥⌘V into an archive is
+  deliberately off. `createTarget` joins the two for F7, ⇧F4 and both validators.
+  `+ArchiveCreate` runs the rewrite, journals it, re-lists and puts the cursor on the new row. Neither
+  key confirms, for rename's reason. **⇧F4 with a new name makes the empty member first and then opens
+  it as F4 opens any member** (the user's call, over adding it on the first save), so the row is there
+  at once and the save comes back through the write-back question as a second rewrite. No new strings:
+  the failure titles are the local ones.
+- **Tests:** `ArchiveCreateTests` drives the writer on real zip, AES-256 zip and tar.gz files with a
+  scratch undo store. `ArchiveCreateReachTests` covers the gates and runs ⇧F4 through a pane to a
+  refusal from inside the archive. A successful create through a pane would file a copy into the
+  developer's own undo store, so the pane is driven only to the refusal. The ⇧F4 test compares the
+  detail sentence, because the old path also ended in a one-button "Can't create “TWO.TXT”" sheet (the
+  archive backend refuses `createFile` as unsupported). With the ⇧F4 branch and the validator change
+  removed as a control, exactly those two tests failed.
+- **Live**, Debug build from `build/debug-dd`, launched by path, background computer-use on a scratch
+  zip holding `readme.txt` and `docs/api.md`:
+  - File ▸ New Folder offered «Create a folder in “sample.zip”.». Create put `untitled folder/` in the
+    zip beside the untouched members, with the cursor on the new row, and saved a 518-byte undo copy,
+    the original's size.
+  - Edit ▸ Undo Change Archive put the zip back, matching the checksum taken before the run.
+  - ⇧F4 with `notes.txt` added a 0-byte member and opened its extracted copy in TextEdit. An atomic
+    write to that copy, standing in for the editor's save, raised «Save “notes.txt” back into
+    “sample.zip”?». Save Back left `notes.txt` at 28 bytes with the written text, and `readme.txt`
+    unchanged.
+  - F7 with `docs` answered «Can’t create “docs”: An item with that name already exists here.», and
+    the zip's checksum did not change.
+  - TextEdit, which the run had started, was quit. The defaults domain was restored, and all 71 keys
+    are unchanged.
+- **Not run live**: an encrypted archive (its passphrase sheet is a secure field background
+  computer-use will not type into), a nested archive's gray items, and the code-page chooser after a
+  refused create. The first is covered by `ArchiveCreateTests` and the other two by reasoning from the
+  shared gates. **Not handled**: an archive with hidden names lists only its wrapper while every
+  rewrite works on the payload, so a folder made at its root is not among the rows. Paste has the same
+  disagreement there (NOTES.md ▸ Archives and encryption).
+
+**2026-11-05: ⇧F2 renames a marked set inside an archive in one rewrite** (core, then app). Asked for by
+the user straight after F7 and ⇧F4. The third plain "no" in the archive column, left open since
+2026-09-10, when F2 learned to rewrite the container and the multi-rename tool did not: its apply
+loop renamed each target with `backend.moveItem`, which an archive refuses, so it stayed gray.
+
+- **Core:** `ArchiveMutation+Renaming`. `renameMoves(for:)` turns a batch into moves for one staged
+  tree, **deepest member first**, so a tree selection holding a folder and a file inside it works: the
+  file moves inside the folder's old name and the folder then carries it. A batch that only works in
+  one order (a swap or a chain), two members landing on one name in one folder, the same member twice,
+  or a name no member can have is refused before the archive is opened. The tool's planner already
+  reports swaps and chains as collisions; the writer refuses them again so it is safe whoever calls
+  it. `stage(_:ofArchiveAt:inWorkingDirectory:)` is F2's staged move, moved into the core, still its
+  own collision guard. `ArchiveMutationRenamingTests`. With the sort and the swap check removed as a
+  control, the four tests aimed at them failed.
+- **App:** `ArchiveWriter.rename(_:)` takes the batch, and F2's single rename is now the batch of one,
+  so the two cannot drift. `multiRenameRoute(for:)` answers for ⇧F2's whole marked set and is what its
+  menu item and `beginMultiRename` both read: every target a member of one writable archive goes to
+  that archive (F2's own route decides writability, so nested archives and self-extractors stay gray),
+  any other set holding an archive member is refused, and everything else keeps `canRenameHere`. The
+  refused mixes are new: a results tab whose marks spanned an archive and a folder used to be enabled
+  and then failed member by member. `renameArchiveMembers` is all or nothing, one undo record for the
+  batch, and the code-page question comes before the tool opens, with no resume, since answering it
+  clears the marks. No new strings.
+- **Tests:** `ArchiveMultiRenameTests` on real zip and AES-256 zip files with a scratch undo store:
+  three members in one rewrite (one undo copy), a folder with its child, a collision outside the batch
+  and a swap each leaving the archive byte-identical. `ArchiveMultiRenameReachTests` covers the route
+  and drives the apply through a pane to a refusal from the staged move, compared by its detail
+  sentence, because the backend loop would have answered "The other items were renamed."
+  `RenameReachTests`' archive row now expects ⇧F2 on. With the apply's archive branch and the
+  validator change removed as a control, exactly those three tests failed.
+- **Live**, Debug build from `build/debug-dd`, launched by path, background computer-use on a scratch
+  zip holding `readme.txt`, `notes.txt` and `docs/api.md`. With `docs` expanded in the tree and all
+  four rows marked, File ▸ Multi-Rename Tool… opened on the four, and the mask `[N]_v2` previewed
+  "4 of 4 will be renamed". Rename 4 Items left `docs_v2/`, `docs_v2/api_v2.md`, `notes_v2.txt` and
+  `readme_v2.txt` in the zip, each with its bytes, and one 692-byte undo copy, the original's size.
+  The cursor landed on `docs_v2`. One Edit ▸ Undo Change Archive put the zip back, matching the
+  checksum taken before the run. The defaults domain was restored, and all 71 keys are unchanged.
+  **Not run live**: a refusal, which the tool's planner stops before Rename can be pressed (the pane
+  test hands the apply a proposal it would have caught), an encrypted archive, and the code-page
+  question.
+- **Not handled here, and not new**: the backend loop a local ⇧F2 ran took the targets in the order
+  they came. Fixed in the entry below.
+
+**2026-11-05: ⇧F2 over a folder and a file inside it renames both, and undoes and redoes** (core, then
+app). Found while writing the entry above and taken by the user straight after. Two bugs, the second
+hidden behind the first.
+
+- **The rename.** A tree marks a folder before its children (`selectedEntries` filters
+  `displayedEntries`), and the backend loop renamed in that order, so the folder's rename left the
+  file's path naming nothing and the file was reported as failed. `MultiRenameOrderTests` shows it on
+  disk before anything else: `docs` → `guides`, then `docs/a.txt` → `docs/b.txt` throws. The loop now
+  runs `RenameOrder.deepestFirst`, the same rule the archive path's `renameMoves` uses, which now
+  calls it too. Stable within one depth, so a flat batch runs exactly as before.
+- **The undo, which deepest-first alone would have broken.** `UndoJournal.revert` applies a record's
+  steps in order, and `UndoRecord.inverted`, which redo runs, kept that order. So undo would have
+  looked for `docs/b.txt` before `guides` had become `docs` again, and redo would have renamed the
+  folder before the file. `multiRename(_:)` now lists its steps last rename first, and `inverted`
+  reverses its steps, as the inverse of any sequence does. Every other multi-step record is
+  order-independent (top-level moves and copies, one path's attributes), so nothing else moves. With
+  either half reverted as a control, the on-disk rename, undo, redo and undo test fails;
+  `MultiRenameTests`' record test now pins the reversed order.
+- **The cursor** lands on the first renamed item at the shallowest depth (`RenameOrder.shallowest`),
+  since a deeper item's renamed path may sit in a folder the batch renamed after it. In a flat batch
+  that is the first item, where it always landed. The archive path lands the same way.
+- **Live**, Debug build from `build/debug-dd`, launched by path, background computer-use on a scratch
+  folder holding `docs/a.txt` and `top.txt`. With `docs` expanded and all three rows marked, the
+  mask `[N]_v2` renamed them to `docs_v2/a_v2.txt` and `top_v2.txt` with no failure, and the cursor
+  landed on `docs_v2`. Edit ▸ Undo Rename put all three back, Redo Rename renamed all three again, and
+  a last Undo left the folder as it started, with the same bytes. The defaults domain was restored,
+  and all 71 keys are unchanged.
+- **Not changed here**: a results tab kept the old parent path for a hit inside a folder the batch
+  renamed, as it already did after F2 on a folder hit. Fixed in the entry below.
+
+**2026-11-05: a search hit inside a renamed folder moves with it, in every results tab, and ⌘Z
+follows** (core, then app). Asked for by the user from the entry above. A results tab cannot re-list,
+so the app applies its own renames to it by hand, and `substituteSearchHit` did that for one row: the
+renamed item itself, and only in the tab the rename ran in. A hit inside a renamed folder went on
+showing the folder's old name in its path, which addresses nothing, so opening, previewing or
+renaming it failed. Two more gaps sat beside it: another results tab showing the same hits was not
+updated at all, and ⌘Z or ⇧⌘Z of a rename left the row on the name the rename had given it, since
+undo re-lists both panes and a snapshot is the one listing that does not.
+
+- **Core:** `SearchSnapshot+Renames`. `path(_:after:)` folds renames in the order they ran, so a hit
+  takes its new path whether it was renamed itself or sits inside a renamed folder; ⇧F2's
+  deepest-first order is what makes the fold land right. `renaming(_:after:)` applies it to the
+  rows, keeping order and each row's own name (`FileEntry.relocated(to:)`, which `renamed(to:)` now
+  calls). `renames(appliedBy:report:)` reads an undo's or redo's renames off its own `.restore` steps
+  that stayed in their folder, leaving out any the report names as failed. `applying(_:to:)`, the
+  queued-job path, now carries a folder's hits when the folder's rename ran as a job (an S3 prefix).
+  `SearchSnapshotRenameTests`; with the rename limited to the exact row, as before, five fail. The
+  round trip had passed that control at first, because it compared against paths the same function
+  produced; it now spells the renamed paths out.
+- **App:** `noteSearchHitsRenamed` replaces `substituteSearchHit` at all four rename sites (F2, ⇧F2,
+  and both archive routes) and reaches every results tab in both panes, as `noteSearchHitsDeleted`
+  always has; the gesture's tab takes the landing, the others keep the cursor on their own row. Undo
+  and redo call `applySearchHitRenames` on both panes (`followSearchHitRenames`). An undone *archive*
+  rename is a container swap with no rename step in it, and was not followed until the entry below. `SearchHitRenameTests`
+  moved to the new call and gained the folder case and the every-tab case; with the update limited to
+  the gesture's tab, the every-tab test fails.
+- **Live**, Debug build from `build/debug-dd`, launched by path, background computer-use, on a fixture
+  in `build/live-search-fixture` (`notes/notes-a.txt`, `notes2/notes-d.txt`, `other/notes-c.txt`)
+  found through a seeded saved search, which opened in two results tabs. The Multi-Rename Tool on the
+  `notes` hit renamed the folder to `notes_v2`. Get Info on the `notes-a.txt` hit then read
+  "Where: …/build/live-search-fixture/notes_v2" in **both** tabs. Edit ▸ Undo Rename put the folder
+  back, the folder row read `notes` again, and Get Info on `notes-a.txt` read "…/notes". `notes-d.txt`,
+  in `notes2`, read "…/notes2" throughout. The fixture was removed and the defaults domain restored;
+  all 71 keys are unchanged. **Not run live**: F2 itself (its inline field cannot be committed from
+  the background; it calls the same `noteSearchHitsRenamed`), redo, and a hit on a server.
+- **Not changed here**: a hit inside a folder that was **moved** elsewhere keeps the old path. The
+  folder's own row leaves the tab, as every moved hit does, and the hits under it were not followed
+  until the second entry below.
+
+**2026-11-05: ⌘Z and ⇧⌘Z of a rename inside an archive move its search hits too** (core, then app).
+Asked for by the user from the entry above. A rewrite's undo is `.restoreArchive`, a swap of the
+archive with the copy taken before it, which is exact and needs no diff, and so it said nothing about
+what changed inside. The panes browsing the archive re-list after the swap; a results tab holding hits
+inside it cannot, and kept the names the rename had given them.
+
+- **Core:** `PathRename`, one rename from the path that was true when it ran, now shared by the
+  snapshot (`SearchSnapshot.Renamed` is a name for it) and the journal. `.restoreArchive` gained an
+  optional `renames`: what the swap does to member names in this direction. It plays no part in the
+  swap; its inverse reverses and flips the list for redo (`PathRename.reversal(of:)`), and
+  `SearchSnapshot.renames(appliedBy:report:)` reads it, unless the report says the swap failed.
+  `archiveRewrite(renamed:)` and `ArchiveUndoSnapshot.record(renamed:)` take the renames the
+  rewrite ran and store their reversal, since an undo record is the undo direction. Optional, so a
+  journal from before decodes with `nil`, and a delete, an add or a save back carries nothing.
+  `ArchiveUndoRenameTests`, including a step spelled by hand as an older build wrote it; with the
+  inverse passing the renames through unreversed, the two tests aimed at it fail.
+- **App:** F2 and ⇧F2 inside an archive pass the renames they ran to `journalArchiveRewrite`, the same
+  list their search hits follow at once. `ArchiveMultiRenameReachTests` checks the record the funnel
+  journals.
+- **Live**, Debug build from `build/debug-dd`, launched by path, background computer-use, on a scratch
+  zip holding `notes/notes-a.txt`, `notes2/notes-d.txt` and `top-notes.txt`, found through a saved
+  search scoped to the zip's root (which runs as a walk over the archive). The Multi-Rename Tool on
+  the `notes` hit made it `notes_v2`, and Get Info on the `notes-a.txt` hit read "Where: /notes_v2".
+  Edit ▸ Undo Change Archive put the zip back, matching the checksum taken before the run; the folder
+  hit read `notes` and `notes-a.txt` read "/notes". Redo Change Archive brought `notes_v2` and
+  "/notes_v2" back, and a last undo left the zip as it started. The defaults domain was restored;
+  all 71 keys are unchanged.
+
+**2026-11-05: a search hit inside a folder that was moved or deleted leaves with it, and ⌘Z brings it
+back** (core). Found by reading the code after the rename entries above. A results tab cannot re-list,
+so a delete or a move is applied to it by hand, and `SearchSnapshot.applying` matched only the exact
+path of each item that left. A hit inside a moved or deleted folder fell through as unchanged and went
+on naming the folder's old place, so opening, previewing, Get Info, F4 or F2 on it failed with "not
+found". The same held for a folder moved or deleted from a folder tab, which was never a hit itself,
+for any results tab holding hits inside it. ⌘Z made those rows right again only because the folder
+went back to where they thought it was.
+
+- **Rule:** such a hit **leaves** the tab with the folder, rather than being pointed at the new place.
+  The folder's own row leaves because it is no longer where the search found it, which is as true of
+  everything inside it, and a deleted folder has no new place. It goes into `departed` like any other
+  hit, so the app remembers it under the existing rule (a Trash pass or a move, a hit on this Mac) and
+  ⌘Z brings it back with the folder; ⇧F8 follows none of them.
+- **Core:** `applying(_:to:)` collects the sources of every delete and every move that left its
+  folder, and an entry not matched exactly departs when one of them is among its ancestors
+  (`isInside(_:anyOf:)`, a walk up the path's parents into a set, since a tab holds up to 5 000 hits
+  and a move of all of them reports as many folders). A move that stayed in its own folder is still a
+  queued rename and carries its hits, as before. `SearchSnapshotFolderTests`: the folder hit moved and
+  deleted, a folder that was not a hit, a folder and a hit inside it moved together, the queued rename
+  control, the narrowness controls (a sibling sharing the folder's prefix, the same path on a server),
+  and the whole chain against `CopyEngine` and `UndoJournal.revert` on a real tree. With the new case
+  disabled, the five tests aimed at it fail and the controls pass.
+- **App:** nothing new. Every delete reaches every results tab in both panes through
+  `noteSearchHitsDeleted`, and every finished move through `applySearchHitChanges`, whichever tab it
+  started in. `SearchHitFolderTests` drives both through the pane: a moved and a trashed folder hit
+  round-trip through ⌘Z, a permanently deleted one follows nothing, and a folder moved or trashed from
+  a folder tab empties a results tab behind it of the hits inside. With the core's new case disabled,
+  all four fail.
+- **Live**, Debug build from `build/debug-dd`, launched by path, background computer-use, on a fixture
+  in `build/live-folder-fixture` (`Work/notes/notes-a.txt`, `Work/notes/deep/notes-b.txt`,
+  `Work/other/notes-c.txt`, an empty `Archive`), with both panes seeded to local tabs so no server
+  tab reconnected, and a saved search for `notes` scoped to `Work`, which opened in two results tabs.
+  F8 on the `notes` hit, from the function bar, sent the folder to `~/.Trash` and left only
+  `notes-c.txt` in **both** tabs; Edit ▸ Undo Move to Trash put the folder back and all four rows
+  with it, in the background tab too. F6 on the same hit moved it into `Archive` (no sheet) with the
+  same result, and Undo Move brought all four back. From the `Work` folder tab, opened into `notes`,
+  F8 on `deep`, which was never a hit, took only `notes-b.txt` out of the results tab behind it, and
+  Undo put it back. The fixture was removed and the defaults domain restored; all 71 keys are
+  unchanged. **Not run live**: ⇧F8, a redo, and a hit on a server.
+
 ---
+
+### M36 — Drag and paste, where M23 stopped (M)
+
+**Closed 2026-11-08**, the day after it was planned, in three slices and two probes. Every way into a
+browsed archive now reaches one funnel, `beginArchiveAdd`: ⌘V, ⌥⌘V, a drop from Dirnex or another
+app, and F5/F6. It stages a row on a server or in another archive first, asks the Replace question,
+repacks, and on a move removes the originals. A file inside an archive drags out the way a server's
+file does, promised to Finder and extracted for any other app, unless the archive is locked this
+session, when it stays inside Dirnex and the status line says why. A folder on a server drags into
+Finder: F5's own queue job stages it in the temp root with its bar and Stop, and moves it to the path
+Finder named once all of it is here. Mail takes the same promise.
+
+Three findings are worth not re-deriving. **The add path was not one path**, and reading it before any
+Swift found two bugs on the route the drop and ⌥⌘V were about to join: F5/F6 from a server pane into
+an archive read whatever local file had the server's spelling, and F6 of the folder holding an
+archive put the folder into the archive and then trashed it, archive and all. **Finder and a promised
+folder** (probe P1): Finder asks at the drop folder's own path with nothing there yet, picks `Name 2`
+itself on a clash, ends the drag at once with operation 1 whatever the answer, draws nothing while it
+waits, still took a folder answered after 100 s, and shows nothing for an error, so a failure is
+Dirnex's to report (docs/NOTES.md ▸ Drag and drop). **Mail takes a promised folder, and a lazy file
+URL naming one**, but a compose window's header strip refuses any file URL while taking a promise, so
+the first four probe drops there read as refusals of a folder.
+
+Two run traps are in docs/LIVE-VERIFICATION.md and one test trap is in docs/NOTES.md. A background
+click on the other pane's row does not make that pane active, so F5 ran the other way. Restoring a
+minimized window brings it back in front. And a negative control that removed a branch sent its
+input down a neighbour's failure path, whose alert ran modally in the test host and waited on Oleg's
+screen.
+
+Some paths were not exercised by the close, and are recorded rather than argued. Edit ▸ Move Items
+Here being enabled was not checked, since computer use will not press a menu item that touches the
+clipboard. Three drags were not run live: F5 from a server into an archive, a member of an archive
+dropped into a Chromium app, and a server folder that crosses another app on its way to Finder,
+whether alone or with files.
+
+Left deliberately undone: **a folder for the apps that refuse a promise**, Teams, Chrome and the rest
+of Chromium, since probe P2's half for them was not run: Chrome is read-only to computer use, and a
+drop into Teams uploads to the account's chat files. **A folder inside an archive**, which probe P1
+answers for too, leaving the extraction of a subtree behind the promise. And **a folder dragged with
+files keeps no promise** once the pointer has been over another app, because the board's rewrite to
+file URLs is one way.
+
+The section as the plan carried it through the milestone:
+
+- **A folder dragged out of a server** (M23). A promise is one file, and a recursive fetch behind a
+  drop had no progress surface and no way to stop it, so a folder travels inside Dirnex only
+  (LOCATION-SUPPORT.md <sup>k</sup>). Since then, `RemoteDragHandoff` (2026-11-03) shows a file's
+  progress under the dragged row when another app is the target, and stops a large one when the drop
+  is refused. The first question is whether that carries to a folder of unknown size, and to
+  Finder's promise.
+- **An archive member dragged out to another app** (M23). A promise is fulfilled behind somebody
+  else's drop, where an encrypted archive would have to raise a passphrase sheet with nothing on
+  screen to answer it on. And `extractArchiveSources` reports a failure with an alert rather than
+  through a completion handler, so this needs M23 Slice 4's always-answers contract first.
+- **A drop into a browsed archive** (M23). ⌘V adds to a top-level archive by repacking, and a drop
+  does not.
+- **⌥⌘V move-paste into an archive** (M23), refused today whether pasted or dropped.
+
+Inherited from M23's risk row (§6): the payload carries locations, not policy, and every paste and
+drop ends in the path F5 takes. A drop into an archive is ⌘V's repack, never a second way in. A live
+check of a drag needs full-screen control or Oleg's hands (docs/LIVE-VERIFICATION.md).
+
+**Opened 2026-11-08.** Reading the add path before any Swift found it was not one path. ⌘V read file
+URLs only, so a ⌘C on a server or inside another archive enabled Paste over an archive and then did
+nothing. And two bugs sat on the route the drop and ⌥⌘V were about to join:
+
+- **F5/F6 from a server pane into an archive read this Mac's disk.** `addSelectionToArchive` handed
+  the rows to `ArchiveWriter.add`, which copies `URL(fileURLWithPath: entry.path.path)`: whatever
+  local file has the server's spelling, or a failure naming one. F6 then offered to delete the server
+  originals.
+- **F6 of the folder holding the archive trashed the archive.** An archive's contents carry the
+  backend `archive:<file>`, and `isSelfOrDescendant` stops at the backend compare, so nothing saw that
+  `proj` holds `proj/backup.zip`. The add put `proj` into the archive and the move then trashed `proj`,
+  archive and all. Reproduced as a failing core test before the fix.
+
+#### Slices
+
+1. **One way into an archive** (landed 2026-11-08, core then app). ⌘V, ⌥⌘V, a drop and F5/F6 all
+   reach `beginArchiveAdd`, which admits through `TransferAdmission.pasteAdmits` (moved into the core
+   from the app), asks the Replace question, stages through `materialize` (⌥F5's funnel, under the new
+   `RemoteFetchPurpose.addToArchive`), rewrites from the staged files and removes the *originals* on a
+   move. `TransferAdmission.recurses` learned that an archive lives inside its file. F5 from one archive
+   into another is now the add ⌘V already was, rather than "Open a folder on disk".
+2. **An archive member dragged out to another app** (landed 2026-11-08, core then app). The core's
+   `DragOutRoute` is now the one answer to what a dragged row offers another app, where three places
+   in the app each read the backend for themselves. A file in an archive is promised to Finder and
+   extracted for any other app, unless the archive is locked this session (decision **A**).
+3. **A folder dragged out of a server** (landed 2026-11-08, probe, core, then app). Finder is promised
+   the folder as `public.folder`; when it takes the drop, `MaterializeRunner`'s queue job (F5's engine,
+   with a bar and Stop since 2026-08-30) stages the tree in the temp root, and `RemoteFolderPromise`
+   moves it to Finder's path once all of it is here. No app gets a file URL for it (decision **B**);
+   Mail takes the promise itself, so a folder dragged alone reaches Mail the way it reaches Finder.
+
+Probes owed before Slices 2 and 3, each needing a real drag session (full-screen control or Oleg's
+hands): **P1**, Finder and an `NSFilePromiseProvider` whose type is `public.folder` — is it taken, what
+URL comes back when the name is already there, and does Finder draw or time out anything while it
+waits (**run 2026-11-08**, below); **P2**, Teams, Chrome and Mail handed a lazy `public.file-url` that
+names a folder (**Mail run 2026-11-08**, below; **Teams and Chrome still owed**: Chrome is read-only to
+computer use, and a drop into Teams uploads). A third, a member's promise fulfilled while a passphrase sheet is up
+on Dirnex's inactive window, was dropped with decision A, which never raises one there.
+
+Decided by Oleg on 2026-11-08, both as recommended:
+
+- **A — a member of an encrypted archive** is offered to other apps only when the archive's passphrase
+  is already held this session (unlocked by a preview, ⏎ or F5). Otherwise the row still drags inside
+  Dirnex, and the status line says to unlock the archive first. Nothing ever asks for a passphrase
+  behind somebody else's drop.
+- **B — a server folder into Finder** is fetched by F5's own queue job into the temp root, with its
+  bar and Stop in Dirnex, then moved to the URL Finder named before the promise is answered. Stop or a
+  failure leaves nothing in Finder's folder. Other apps get no folder until P2 shows one is taken.
+
+#### Progress
+
+- *2026-11-08, Slice 1.* Core: `TransferAdmission.recurses` (archive containment),
+  `TransferAdmission.pasteAdmits`, `RemoteFetchPurpose.addToArchive`; +8 tests, 4 786 green. Three
+  controls run one at a time, each failing only its own tests: containment (3 tests, 7 issues), the
+  archive same-folder copy (1), a member's move (1). App: `ArchiveAddReachTests` (10), over a real
+  `bsdtar` zip with a scratch undo store, since through a pane the default store is the developer's own
+  Application Support. Three controls: rewriting from the rows' paths instead of the staged files (the
+  server test then read *this Mac's bytes*), a drop gate without the archive (4 tests), and the
+  admission removed at both sites (1). Two strings in all 14 languages. The full app suite, run in
+  parallel: 2 202 tests passed with the known `GestureWaitTests` issue, the defaults domain unchanged
+  by content; the live suites were not up. **Two earlier full runs hung** on an app-modal alert in
+  front of the test host: the end-to-end adds were slower than their waits under the full suite's
+  load, and finished after their tests had freed the host. Fixed in the suite, not the app (NOTES.md ▸
+  Testing ▸ Waits).
+- *2026-11-08, Slice 1 live*, on a fresh Debug build with background computer use and the `.sdef`
+  verbs, saved tabs cleared first so no server tab could raise a Keychain prompt, and the defaults
+  domain imported back afterwards (71 keys unchanged by content). ⌘V of a file Dirnex had copied added
+  it to a real zip with its bytes, the original left alone. ⌥⌘V from the other pane added a file and
+  sent the original to the Trash, and the other pane's listing followed. F6 with the folder holding a
+  zip under the cursor raised "Can’t add to “holder.zip”", and the zip stayed byte-identical. **The run
+  found one bug**: after ⌥⌘V, focus had moved to the pane holding the originals, because their
+  removal focuses its own pane. It now takes focus only if that pane had it when the add finished, so
+  F6 is unchanged; seen fixed on a rebuilt binary. **Not run live**: Edit ▸ Move Items Here being
+  enabled (computer use will not press a menu item that touches the clipboard), F5 from the throwaway
+  `sshd`, and a real drag, which needs a person.
+- *2026-11-08, Slice 2.* Core: `DragOutRoute` (+7 tests, 4 793 green), with three controls one at a
+  time: the lock ignored, a member folder extracted, the lock asked of every row. App: the route
+  decides the drag's writers and its handoff; `RemoteFilePromiseProvider.canPromise` is gone. Finder's
+  promise for a member is extracted through the window's `ArchivePreviewCache` with the passphrase the
+  session holds and never asks for one; the handoff extracts off the main actor where it downloads,
+  says "Extracting…" on the drag image, and a locked row is named on the status line the first time
+  the pointer is over another app. `ArchiveDragOutTests` (7) runs against real `bsdtar` and AES-256
+  zips, and `DragPromiseTests`' member test now pins the promise instead of its absence. Four controls,
+  each failing only its own tests: a promise answered without the bytes, the handoff not extracting,
+  the lock ignored, the notice removed. Three strings in all 14 languages. The first full parallel
+  run failed one handoff test: a "stopped?" check put before every row could stop a download before
+  it reached the server, which the test watches for, so the check now guards extractions only. Then
+  2 210 app tests passed, with the known `GestureWaitTests` issue, and the defaults domain was
+  unchanged.
+- *2026-11-08, Slice 2 live*, with full-screen control on a fresh Debug build, saved tabs cleared first
+  and the defaults domain imported back afterwards (71 keys unchanged by content). A file dragged out
+  of a plain zip into a Finder window landed with its bytes. The same file dropped into a TextEdit
+  document arrived as an attachment, reusing the copy Finder's promise had extracted, so nothing was
+  extracted twice. A file of a password-protected zip dragged toward Finder landed nothing and
+  extracted nothing, and the status line read "Open a file in “secret.zip” first to drag its files
+  out" while the pointer was over Finder. **Not run live**: a Chromium app. Chrome is granted to
+  computer use as read-only, so nothing may be dropped on it, and a drop into Teams uploads the file
+  to the account's chat files. TextEdit takes the same hand-off code, but from outside it cannot be
+  told whether TextEdit read the hand-off's file URL or took the promise itself.
+- *2026-11-08, probe P1*, with a throwaway drag source promising `public.folder` into real Finder, the
+  drags done with full-screen control. Finder takes it and asks at the drop folder's own path, with
+  nothing there yet; on a clash it asks for `Name 2` itself. The drag ends at once with operation 1
+  whatever the answer. Finder draws nothing while it waits, stays responsive (AppleEvents in the usual
+  ~140 ms), and took a folder answered 100 s after the drop. An error answer shows nothing and leaves
+  nothing, so a failure is Dirnex's to report. A folder staged in `$TMPDIR` and moved onto the path is
+  taken like one written there. NOTES.md ▸ Drag and drop has the list.
+- *2026-11-08, Slice 3.* Core: `DragOutRoute.downloadFolder`, promised and not handed off
+  (`isHandedOff`), and a bucket or share listed at an account's top level stays inside Dirnex; +3 tests,
+  4 796 green. Two controls, one at a time, each failing only its own tests: the account guard removed
+  (2 issues), the folder handed off (4). App: the promise's type is `public.folder`; fulfilling it queues
+  `materializeRemoteFiles` with nothing asked first, and `RemoteFolderPromise.settle` moves the staged
+  tree off the main actor, refuses a path something else now holds, sweeps the holder on every ending,
+  and answers Finder before the alert. The handoff starts only for rows it hands off, so a folder alone
+  keeps its promise across other apps. `FolderDragOutTests` (8), and `DragPromiseTests`' M23 folder test
+  now pins the promise. Five controls, each failing only its own tests: replacing what is at the path,
+  answering without queuing, no sweep after the move, a type off the name, the handoff bringing the
+  folder down. **A first version of the second control removed the folder branch**, which sent the folder
+  into the file fetch, whose failure alert ran modally in the test host and waited on Oleg's screen
+  (NOTES.md ▸ Testing ▸ Negative controls). One string in all 14 languages. The full app suite: 2 218
+  tests passed with the known `GestureWaitTests` issue, the defaults domain unchanged; the live suites
+  were not up.
+- *2026-11-08, Slice 3 live*, on the Debug build launched by path with full-screen control, against the
+  throwaway `sshd` through a key-authenticated tab seeded with Dirnex quit, so nothing read the
+  Keychain. A three-level folder dragged into Finder landed byte-identical, the temp root empty after it.
+  Dropped again, it landed as `m36-folder 2`. A folder holding a file the server refuses to read raised
+  "Couldn’t copy “m36-broken” from the server" with the server's refusal, and nothing landed. A 400-file
+  folder showed "Downloading m36-many" in the queue bar, and Stop left nothing in Finder's folder or the
+  temp root, with no alert. Claude's own floating panel covered the first spot chosen for the Finder
+  window, as on 2026-11-03, and the window list caught it before any drag. Afterwards the defaults domain
+  was imported back (71 keys unchanged by content), `known_hosts` restored byte for byte and the servers
+  taken down. **Not run live**: a folder dragged across another app on its way to Finder, alone or with
+  files.
+- *2026-11-08, Slice 3 live on real servers*, asked for by Oleg, on the `build/debug-dd` build (the
+  default DerivedData build cannot reach the LAN), through the saved sidebar rows FTP DT, WebDAV DT and
+  Amazon, one Keychain prompt each, answered by Oleg. A three-level fixture with a space in one name was
+  copied up with F5, dragged back into Finder and compared: **byte-identical over FTP, WebDAV and S3**,
+  dates kept, the temp root empty after each. A **bucket** row dragged from the account pane landed
+  nothing, as routed. The fixture was deleted from the NAS and the bucket afterwards, the NAS keeping
+  its usual `#recycle` copy, and the defaults domain imported back (71 keys unchanged by content). Two
+  slips on the way, neither touching a server's files: a background click selected a row of the other
+  pane without making it active, so F5 copied the NAS home's `#recycle` *down* into the scratch folder,
+  and restoring Mail's minimized viewer put it over Dirnex, so a click opened a mailbox's name for
+  editing, left unchanged with Return (LIVE-VERIFICATION.md).
+- *2026-11-08, probe P2, Mail half*, with full-screen control and a draft that was discarded afterwards
+  and is not in Drafts. **A folder dragged alone from S3 in Dirnex reached Mail through the promise**:
+  the drag has no handoff, Mail took the promised folder, and the tree that arrived in Mail's
+  `WebKitDropDestination` was byte-identical. The probe's **lazy `public.file-url` naming a folder in
+  `$TMPDIR` was taken too**, read 0.22 s into the drag when the pointer entered the draft, attached as a
+  folder with operation 1. Its control, a lazy URL naming a file, was taken at the same spot. **The first
+  four probe drops were all refused** with operation 0 and no read, the file control included: they
+  landed on the 278-point draft's header strip, which took the promise but refuses a file URL. Enlarged,
+  the draft took them. So Mail needs nothing more from Dirnex; whether the handoff should offer a folder
+  as a file URL waits on Teams and Chrome, the apps that refuse a promise.
+
+**2026-11-08: a folder dragged to Gmail, Teams or any app but Finder goes as a zip** (core, then app).
+Asked for by Oleg the day M36 closed. A local folder dragged from Dirnex into a Gmail draft in Chrome
+answered "Attachment failed", because Chrome hands the page the folder as a file. A server's folder
+showed no drop box at all, since its drag carried only Finder's promise, which Chrome refuses. Gmail
+takes a dropped file and fails on a folder, so Oleg chose to zip the folder for every app but Finder.
+
+- **What landed.** A folder on this disk now routes as `DragOutRoute.folderURL`, and a server's folder
+  (`.downloadFolder`) joins the drag's handoff. Once the pointer is over an app other than Finder,
+  the board offers a lazy URL to `<folder>.zip`. ⌥F5's `bsdtar` packer makes it in the temp root
+  (`DragOutZip`), after `MaterializeRunner` has staged a server's folder. The drag image says
+  "Compressing…" meanwhile. The transfer loop the controller ran moved into `RemoteDragTransfer`.
+- **Finder still gets the folder.** A rewritten board serves whoever reads it next, so a drag holding a
+  folder rewrites it again whenever the pointer crosses between Finder and another app
+  (`RemoteDragHandoff.Audience`). Finder then gets a local folder by its own URL, and a server's as its
+  staged tree. A throwaway drag source measured this first: rewritten back to the plain folder URL
+  over Finder, the board dropped the folder, not the zip.
+- **What a zip costs.** Hovering over another app starts it, as it starts a download. `bsdtar` zipped
+  11 MB of source in 0.29 s and 200 MB of random bytes in 2.66 s. A zip never finishes after the drag.
+  The drag's end removes what the drop did not take: the zip unless another app took it, the staged
+  tree unless Finder did. What was taken stays until the temp root is cleared at the next launch, for
+  the upload or copy that reads it after the drop.
+- **Two things change for the receiving app.** Mail now gets a zip where it took the folder's promise.
+  A page that takes real folders, such as Google Drive in Chrome, gets one too, since Dirnex can tell
+  apps apart but not the pages inside one.
+- **One wrong sentence fixed on the way.** A server's folder alone that failed to come down would
+  have said "Couldn't extract from the archive", because that title was chosen whenever no row was a
+  server *file*. The choice is now `handoffFailureTitle`, pinned by a test.
+- **Tests:** `DragOutRouteTests` and `RemoteDragHandoffTests` gain the routes and the audience rules
+  (4 804 core tests green). Two controls each failed only their own tests: no audience change, and a
+  local folder routed as a plain URL. `FolderZipHandoffTests` (8) runs real `bsdtar` zips. It stages
+  a "server" folder for real through a backend that mirrors a local directory under a server's id,
+  routed as `CompositeBackend` routes. Seven controls each failed only their own tests: Finder offered
+  the other apps' rows, Finder handed the zip instead of the tree, nothing swept at the end, a zip left
+  to finish, a failed zip's directory left, a folder taken as already here, and the old failure title.
+  The full app run passed 2 225 tests with the known `GestureWaitTests` issue, the defaults domain
+  unchanged by content. It ran before the title fix, and the six drag suites (54 tests) ran green
+  after it. Three strings were added in all 14 languages.
+- **Run by Oleg** on the `build/debug-dd` build, in real Chrome and Teams. A local folder, `drag`, went
+  into a Gmail draft as `drag.zip` (54K). A folder off the NAS, `dav-probe3`, went into the same draft
+  as `dav-probe3.zip` (1K), where before it raised no drop box, and into a Teams chat as
+  `dav-probe3.zip`. He reported the rest of the list working too, including a local folder dragged
+  across Chrome into Finder, which was to land as the folder.
+
+**2026-11-09: a folder goes to other apps as itself, and as a zip only while ⇧ is held** (core, then
+app). Reported by Oleg the day after the zip shipped: a season dragged off the SMB share into VLC
+started compressing. The share is mounted at `/Volumes/media`, so to Dirnex it was a folder on this disk,
+and every app but Finder got a zip: a 141 GB folder read over the network for a zip VLC had no use for.
+A per-app answer was looked at first and dropped. Each app's `Info.plist` names the folder types it
+opens (VLC, VS Code, Terminal, Preview, Notes, Mail and Claude do; Chrome, Teams and Safari do not),
+but Gmail and Google Drive are one app to Dirnex, and the list would need tending app by app. Oleg's
+design instead: the folder by default, and the zip while ⇧ is held, the one modifier no drag operation
+uses. He chose live ⇧ over a press that latches the zip for the rest of the drag, as ⌥ works in Finder.
+
+- **Measured first** with a throwaway drag source, driven with computer use. VLC added a dropped
+  folder URL to its playlist. ⇧ pressed with the pointer still brought the source no `movedTo` and
+  no flags event, while a 10 ms timer in `.common` read the flags changing. And over Teams the board
+  rewritten on the press was read 4 ms later, without the pointer leaving (NOTES.md ▸ Drag and drop).
+- **What landed.** `RemoteDragHandoff` trades its Finder-or-other-apps audience for `Form`: `.folders`
+  for Finder, and for any other app until ⇧; `.zips` for another app while ⇧ is held. The zips are a
+  second piece of work (`compression`), started once the transfer has landed, because a server's
+  folder is zipped from the tree the transfer staged. A drag whose board began without a promise, such
+  as folders on this disk, is left alone until ⇧. `needsReentry` now says when "move out and back in"
+  applies, since letting go of ⇧ also writes a board of real URLs. In the app, `RemoteDragTransfer`
+  stages a server's folder and `DragOutCompression` makes the zips; `DragShiftWatch` reads ⇧ every
+  20 ms in `.common` while a drag holds a folder. The drag's end keeps a zip only if the drop took the
+  zip and a staged tree only if it took the folder, and a zip that failed is reported only if the drag
+  ended still asking for zips. The row's line says "Hold ⇧ for a zip" over another app and "As a zip"
+  once it is made: two strings, in all 14 languages.
+- **Tests:** the ⇧ rules are `RemoteDragHandoffShiftTests`, and the core ran 5 105 tests green. Three
+  controls each failed only their own tests: a zip over any other app whatever ⇧ said (7 tests),
+  Finder obeying ⇧, and a zip started after the drag ended. `FolderZipHandoffTests` was rewritten
+  for ⇧ (11 tests, the fixtures moved to `FolderZipFixtures`), including a press with the pointer still
+  that the real timer notices. Three controls there: a watch that never notices, an end that keeps
+  nothing, a zip failure reported whatever was dropped. The full app run passed 2 392 tests with the
+  known `GestureWaitTests` issue, the defaults domain unchanged by content; the live suites skipped
+  without their configs, and none of them drags.
+- **Run live** on the `build/debug-dd` build, with computer use. A local folder of two clips dragged
+  to VLC said "Hold ⇧ for a zip" under the row, landed in VLC's playlist as the folder, and left the
+  temp root empty. Held over Teams with the pointer still, a ⇧ press made `Season Probe.zip` with both
+  clips in it, the line went back to "Hold ⇧ for a zip" when ⇧ was let go, and the drag's end, taken
+  by no zip, removed it. A drop with ⇧ held needs a person's hands (LIVE-VERIFICATION.md), so the zip
+  reaching Gmail and Teams this way waits for Oleg.
+- **Oleg's own drops with ⇧ held then reached Gmail and Teams as the folder**: Gmail failed on
+  `drag (1K)` and Teams attached the folder's two files. Finder took the folder with or without ⇧, as
+  built. He asked for **⇧ to mean the zip in Finder too** ("let a user decide"), and that landed. The
+  first theory for the folder was a key let go a moment before the button, so a 150 ms grace on ⇧'s
+  release went in, with an env-gated log beside it (`DIRNEX_DRAG_LOG`, and `DIRNEX_FAKE_SHIFT_FILE`
+  for a held key computer use cannot give). A drop with the fake ⇧ held from before the entry
+  attached `Season Probe.zip` in Teams. Oleg's retry, logged, showed the theory wrong: in six drops ⇧
+  went down only once the pointer was over Teams or Chrome, the board became the zip and was read
+  again within 30 ms, ⇧ was still held at the drop, and the drop took the folder. **Teams and Chrome
+  drop what they read on entry** (NOTES.md ▸ Drag and drop).
+- **So ⇧ counts as the pointer enters an app** (`RemoteDragHandoff` keeps the app it entered). A change
+  over the app the pointer is in leaves the board alone and turns the line to "Now move out and back
+  in"; the hint reads "Hold ⇧ and re-enter for a zip". The grace and the probe came out again. This
+  also mended a sweep that went by the board at the drop: a key changed over Teams would have deleted
+  the staged tree Teams had read on entry and was still uploading. Two strings replaced one, in 14
+  languages. Tests: the entry rule in the core (56 in the three drag suites); a control letting ⇧ count
+  on every move failed only the three tests about it. In the app, a change over the app asks for a
+  re-entry and leaves the board (`FolderZipHandoffTests`, 11), with a control that drops the line
+  failing only that test. The core ran 5 107 tests green and the app 2 394, with the known issue; one
+  app run before that failed `GitMergeSocketEdgeTests`' `stale` ("expected notListening"), which passed
+  alone three times and in the next full run.
+- **Run by Oleg** on the `build/debug-dd` build: a local folder, `drag`, entered with ⇧ held, landed as
+  `drag.zip` in Finder, in a Gmail draft (54K) and in a Teams chat.
+
+### M37 — Compare and merge, past M31 and M34 (M–L)
+
+**Closed 2026-11-09**, two days after it opened, in nine slices. A binary pair, or a pair past the text
+limit, opens in a byte view: hex side by side at the same offset, of any size, up before its scan ends. The
+compare window takes a side of up to 1/32 of this Mac's memory, says "Comparing…" and can be stopped. A
+member changed inside its archive behind an edit can be merged and repacked with both edits in it. A
+conflict that whitespace explains is labelled and gains a take that keeps both edits. `git mergetool`
+reaches the merge window through the app's own binary and answers git when the window closes. And
+Synchronize can keep what a sync left equal, per pair of folders and only when asked, so a file changed on
+both sides merges over the version both sides last held and is saved into both.
+
+Five findings are worth not re-deriving. **Memory, not the window, limits the text path**, about 13 times
+one side's bytes for a pair, and the slowest step was the column count walking `Character`s. **Replacing a
+pane's text that already holds millions of attribute runs ran for over four minutes** in
+`NSMutableRLEArray`, a bug the shipped app had at any size on every re-compare, and emptying the storage
+first takes 0.02 s (docs/NOTES.md ▸ Text fields and text views). **git's whitespace options drop whitespace
+edits**, so `-Xignore-all-space` writes the edit alone where the new take writes both, and no ignore option
+reaches `ThreeWayMerge`. **`open` hands an app it starts the caller's environment**, so a launch from
+`git mergetool` would carry `GIT_*` for a whole session. **A clone keeps a locked file's flag, and Spotlight
+indexes a copy under Application Support unless a folder above it ends `.noindex`**, which together decided
+how a kept version is stored (docs/NOTES.md ▸ Keeping a file's previous bytes).
+
+Some paths were not exercised by the close, and are recorded rather than argued. Escape was not pressed in
+any of the new windows, since full-screen control keeps that key for itself and a test pins each one. Nor
+were a vault inside a remembered pair, an evicted cloud placeholder in a sync's walk, a side near this Mac's
+2 GiB text limit, two real copies of Dirnex at once with `git mergetool`, Gatekeeper's first launch, or any
+language live besides German and Russian: the other twelve are the catalog and the width tests.
+
+Left deliberately undone: **aligning a byte comparison across insertions**, which needs gaps in the rows and
+a size limit and has no oracle. **Whitespace reaching a merge's regions**, labelled and offered as a take
+instead, so no edit goes missing in silence. **A sync's record with a side on a server**, which M38 takes
+up. Go to Offset, copying bytes and Swap Sides in the byte view.
+
+The section as the plan carried it through the milestone:
+
+- **A file over 64 MiB in the compare window** (M31), refused by name today and left to the
+  external tools.
+- **A binary comparison** (M31). `ByteComparator` answers "differ", and the window refuses the pair
+  by name.
+- **Synchronize as a way into a merge** (M34). A merge needs a real base, and Synchronize keeps no
+  record of the last sync, so this item starts by giving it one.
+- **Being git's merge tool** (M34). `git mergetool` hands the tool its files and waits for it to
+  exit, so this needs a command-line entry point Dirnex does not have.
+- **An archive member changed behind an edit** (M34). No base is kept for a member's edit.
+- **A merge that ignores whitespace** (M34). It was left because it would drop a whitespace edit
+  without a word, and M34's risk row names an ignore option reaching `ThreeWayMerge` as its tell. So
+  this one is a decision before it is a slice. It is built only in a form where a whitespace-only
+  change on either side still survives or is shown, and otherwise goes back to the *undone* column.
+
+Inherited from M31's and M34's risk rows (§6): lines compare as bytes, git stays the oracle for
+regions, and a merge is offered only over a base that really was the file's.
+
+**Opened 2026-11-08.** Probed on this Mac (64 GB) with git 2.54, through throwaway release harnesses
+over the real core:
+
+- **The text path grows in a straight line, and the window is not what limits it.** Log-shaped text
+  with 500 edits, both sides read, compared once, each pane built once:
+
+  | One side | Read and decode, each | Compare | Pane text, each | Footprint |
+  |---|---|---|---|---|
+  | 64 MiB (651 543 lines) | 0.5 s | 1.0 s | 2.9 s | 0.5 GiB |
+  | 256 MiB | 2.1 s | 4.3 s | 11.4 s | 2.0 GiB |
+  | 512 MiB | 4.2 s | 8.8 s | 23.5 s | 4.1 GiB |
+  | 1 GiB (10.4 million lines) | 8.4 s | 18.3 s | 47 s | 8.3 GiB |
+
+  TextKit 2 stays lazy at 256 MiB: setting the text took 0.02 s, the first draw 0.01 s and a jump
+  anywhere 3 ms, at about 0.75 GiB per pane for ASCII text. So memory is the limit, about 13 times
+  one side's bytes for a pair, and the slowest step is the pane text, where `columns(of:)` walking
+  `Character`s is the first suspect.
+- **Two hazards that a higher limit makes worse.** A dense pair (256 MiB, 868 724 changes) took 33 s
+  to compare rather than 4.3 s, with nothing on screen and no way to stop it. And a Windows-1251 file
+  takes **65 s per side at 64 MiB**, in `NSString.stringEncoding(for:)`, which is already true at
+  today's limit.
+- **A comparison at the same offset is nearly free.** Two 1 GiB files with 2 000 patches: 0.37 s from
+  the page cache, and `cmp -l` agrees on the 15 938 differing bytes. Sixteen bytes inserted 4 KiB in
+  make 1 069 480 528 bytes differ (99.6 %), in 4.2 million stretches, so the stretches need a bound.
+- **What `git mergetool` hands a tool.** Four paths, relative, with the command's working directory
+  at the top of the worktree even when `git mergetool` ran in a subfolder. The three versions are
+  temporary files beside the file (`a_LOCAL_74127.txt`), removed afterwards, and `$MERGED` holds the
+  conflict markers. `$BASE` is 0 bytes for add/add. Under `trustExitCode`, exit 0 stages the file, and
+  exit 1 prints "merge of added.txt failed" and leaves it `AA`.
+- **git's whitespace options drop whitespace edits, as M34 feared.** With `-Xignore-space-change` or
+  `-Xignore-all-space`: ours re-indents and theirs edits the same line, and the result is theirs
+  alone (`  B!`, the re-indent gone); the mirror image gives the same; and both re-indenting
+  differently takes theirs, with no conflict. Each of the three stops as a conflict without the
+  option.
+
+Decided before Slice 1 (2026-11-08, Oleg, on the probes above):
+
+- **A byte view at the same offset, of any size.** Hex rows side by side, with no alignment. It takes
+  a binary pair and a text pair too large for the text window, instead of refusing them, and says
+  plainly when nearly every byte differs from some point on, which is what an insertion looks like.
+  **Aligning across insertions goes back to the *undone* column**: it needs gaps in the rows, a size
+  limit, and has no oracle.
+- **The text window's limit becomes a share of this Mac's memory**: a side of up to 1/32 of it, and
+  never under today's 64 MiB, so a pair costs at most about 40 % of memory. The merge window keeps
+  64 MiB: it holds three or four panes, and M34's reads stay as they are.
+- **A sync keeps a base only when asked, per folder pair.** A checkbox in the Synchronize window, off
+  by default, in keeping with §6's rule about what Dirnex remembers without being asked. It keeps
+  each text file of up to 64 MiB that the sync left equal on both sides, an APFS clone where the
+  volumes allow, under a total budget with the oldest dropped first, and never a vault path.
+- **git reaches Dirnex through the app's own binary and a private socket.**
+  `Dirnex.app/Contents/MacOS/Dirnex --git-merge "$LOCAL" "$BASE" "$REMOTE" "$MERGED"` runs as a plain
+  command before any AppKit starts, launches the copy it belongs to if that copy is not up, and exits
+  when the merge window closes: 0 for saved, 1 for anything else. No new build target and no
+  Automation prompt, and it works from any terminal or IDE. M34's window and refusals are reused, and
+  Save writes `$MERGED` alone. git stays the one that stages it.
+- **Whitespace never reaches `ThreeWayMerge`.** The regions stay byte-exact. A conflict that whitespace
+  explains is labelled, and gains one more take: this side's text with the other side's indentation.
+  Save still waits for an answer to every conflict, so a whitespace edit is either kept or was chosen
+  against.
+
+#### Slices
+
+1. **The byte comparison** (core, additive). The differing stretches of two local files at the same
+   offset, bounded, cancellable and reporting as it goes; the rows a window shows; pages read on
+   demand. `cmp -l` is the oracle.
+2. **The byte window** (app). One table of hex rows for both sides, a page loaded off the main thread,
+   next and previous difference, an overview strip, and the opening routes: ⌥F3, the Synchronize row
+   and the conflict dialog, in place of the two refusals.
+3. **Larger text** (core, then app). The column count's fast path, encoding detection bounded on a
+   large file, the limit as a share of memory, "Comparing…" in the window and a Stop that really
+   stops, and the byte view past the limit.
+4. **An archive member's edit** (app, on M34's base). A base kept for a member, the member read again
+   at save when the archive moved, and Merge… in the archive's question.
+5. **Whitespace in a merge** (core, then the merge window). What whitespace explains in a conflict, the
+   extra take, and git as the check that the regions did not move.
+6. **git's merge tool** (core, then app). The request and the socket's protocol against a fake, the
+   binary's command-line entry, a merge window whose end answers the command, and a way to set it up.
+7. **The sync's record** (core). The kept versions, the budget, and which side changed since.
+8. **Merge from Synchronize** (app). The checkbox, keeping after a sync, "changed on both sides", and
+   Merge… on such a row.
+9. **Live, and the record.** Every entry point on a real pair, 14 languages, and M37 closed.
+
+**Done when:**
+- a binary pair and a pair past the text limit open and show every difference, checked against
+  `cmp -l`, with the window up before the scan ends;
+- a 256 MiB text pair opens without a beachball on this Mac, and a dense one can be stopped;
+- a member changed behind its edit merges and repacks with both edits in it;
+- `git mergetool` resolves `UU` and `AA` files through the window and reports a closed window as a
+  failure, and nothing but `$MERGED` is written;
+- a file changed on both sides of a remembered sync merges over the base that sync kept, and a pair
+  with no record offers no merge;
+- no ignore option reaches `ThreeWayMerge`, and nothing is saved while a conflict is open.
+
+#### Progress
+
+**2026-11-08: Slice 1 landed** (core only; the app is untouched).
+
+- **Core:**
+  - `BinaryDifferenceList` holds the stretches, with an exact count of differing bytes. Two differing
+    bytes join when fewer than a row's width of equal bytes lie between them. Past 100 000 stretches
+    the gap doubles and the list is joined up again, so a pathological pair loses resolution and no
+    difference.
+  - `BinaryComparison` is the scan, the bytes only one side has, stepping between changes, and the
+    dense stretch an insertion leaves. Like `ByteComparator`, it refuses an evicted placeholder.
+  - `BinaryFilePair` holds both files open and reads a page at any offset, from any thread.
+  - `BinaryHexLayout`, `BinaryHexRow`, `BinaryPage` and `BinaryPageCache` are what the window draws.
+  - `ByteComparator.requireRegularFiles` and `requireDownloaded` went from private to internal, so
+    the two comparisons share those rules.
+- **Tests:** 67 in six suites. `BinaryComparisonCmpTests` asks `/usr/bin/cmp -l` about 40 random
+  pairs at the sizes where an off-by-one would show, an inserted run, a chunk boundary and this Mac's
+  own programs. The rest pin what joins and what stays apart, every promise of the list at every
+  bound, the refusals, reports and Stop, the hex text column by column, and pages past a file's end.
+  Full run: 4 871 core tests. The app suite was not run, since the app is untouched.
+- **Measured** in release, on 1 GiB pairs:
+
+  | Pair | Time | Stretches | Differing bytes |
+  |---|---|---|---|
+  | 2 000 patches | 0.44 s | 2 000 | 15 929, as `cmp -l` counts |
+  | Sixteen bytes inserted 4 KiB in | 1.79 s | 1, named as dense from 4096 to the end | 1 069 543 201 |
+  | One byte in every 19 differing | 0.57 s | 1, the gap doubled once | 56 513 536 |
+  | A file against itself | 0.09 s | 0 | 0 |
+
+- **Negative controls:** 14 faults put in the source, one at a time. Eleven failed at once. Three
+  passed, and each was a gap in the tests, now closed: a stretch touching the bytes only one side
+  has, a scan ending exactly on a report's boundary, and a file that shrank to exactly a chunk's
+  edge.
+- **Found on the way, for Slice 6:** `VFSPath.local` with a relative path gives a path from the root
+  (`data/a.bin` became `/data/a.bin`), and `git mergetool` passes relative paths. The command-line
+  entry has to resolve them against its own working directory first.
+
+**2026-11-08: Slice 2 landed** (the byte window, and the routes to it).
+
+- **App (`Dirnex/Compare/`):**
+  - `BinaryCompareWindowController`, with `+Table`, `+Changes`, `+Layout` and `+Banner`. The window
+    knows its rows from the two sizes, so it is up before the scan ends, and closing it stops the
+    scan.
+  - `BinaryHexTable`, `BinaryHexCell` and `BinaryCompareStyle`: one table holds both sides, so they
+    are level by construction, with each cell drawn in one pass.
+  - `BinaryRowSource` reads a page off the main thread when a row needs one: one read at a time, and
+    only of a page still on screen.
+  - `ModalLevelKeeper` is the text window's rule for opening over a modal window, moved so both
+    windows share it. `CompareToolbar` can show only its arrows and counter.
+  - **Routes:** `CompareOpener` sends a binary, undecodable or too-large pair to the byte view, which
+    covers ⌥F3, the Synchronize row and the conflict dialog. A file that cannot be opened is still an
+    alert. Twelve new strings, in all 14 languages.
+- **Core:** `BinaryFilePair` keeps each file's size from `fstat` at open, and `BinaryComparison.scan`
+  takes an open pair, so the rows and the scan see the same two files. `percentScanned`, whose first
+  version overflowed `Int64` near 2^62, and `changeRows`.
+- **Tests:** 6 more in the core and 36 in the app. Full runs: 4 877 core tests, and the app suite
+  green twice in a row without the live server suites, whose code this slice does not touch.
+- **Decided in the slice:**
+  - **An ordinary table, not a custom view.** It brings the row keys, scrolling and accessibility with
+    it, and it is exact for any file up to about 16 TiB once it is kept out of Auto Layout.
+  - **"No differences" waits for the scan to end.** Before that the counter is blank, since it would
+    be a claim about bytes nobody has compared.
+  - **Left out:** a Go to Offset, copying bytes, Swap Sides, a file that changes while it is shown,
+    and a Stop short of closing the window.
+- **Negative controls:** 10 faults, one at a time, each failed its own test: the intrinsic height left
+  in, no refill on scroll, a close that keeps scanning, "No differences" said early, the next
+  difference missing one on the current row, a jump after the user moved, reading every wanted page,
+  the tail marked as a change, the header's height left out of a jump, and a page queued again while
+  it was being read.
+- **Found by a full run:** that last one, a real double read that passed alone and failed once in a
+  full suite, depending on when a redraw landed. Its test now holds the read open and asks during it.
+  The waits in these suites went from 10 s to 60 s, after a full run's other suites held the main
+  actor long enough to expire them.
+- **Run live** on the Debug build, driven from the background: the patched program pair (5 changes, 6
+  bytes, as patched), a 70 MiB text pair (24 bytes, as `cmp -l` counts) and a sparse 20 GiB pair, whose
+  window was up at "Compared 51 %" and landed on the last row. The row keys, the arrows, the close
+  button and the screen reader's tree were each tried there. Two bugs only that run could find:
+  - **An accessibility read crashed the app** on the 20 GiB pair, and the first two fixes left a real
+    client with no table at all (docs/NOTES.md ▸ A table of billions of rows).
+  - **A change opened with one row above it, not three**, since the column header floats over the
+    clip view.
+  - An earlier window-less probe had also passed a table Auto Layout then cut at 10^10 points, the
+    case the 1 TiB test now resizes for.
+- **Not run live:** the keys the window takes with its monitor (⌥⌘↓, ⌥⌘↑, ⌘W, Escape), which a
+  background run cannot send and tests pin through `handleKey`; the Synchronize row and the conflict
+  dialog, which go through the same `CompareOpener` call; the light appearance; and any translation.
+
+**2026-11-08: Slice 3 landed** (larger text).
+
+- **Probed first, in release, on 256 MiB pairs:**
+  - `columns(of:)` was 11.2 s of a pane's 11.7 s. On the dense pair, 27 s of the 32 s was row alignment,
+    not the search.
+  - Encoding detection on a sample is only as good as the sample. Over 235 legacy-encoded files of 2 to
+    8 MiB in 25 encodings, the file's start agreed with the whole-file answer on 185, and 256 KiB of
+    lines holding a non-ASCII byte on 233. The two left are KOI8-R, which the detector gets wrong on the
+    whole file as well.
+  - **Everything on the main thread was cheap but one thing:** replacing a pane's text that already held
+    1.9 million attribute runs ran for over four minutes in `NSMutableRLEArray`, a bug the shipped app
+    has at any size with enough marked words, on every re-compare. Emptying the storage first takes
+    0.02 s (docs/NOTES.md ▸ Text fields and text views).
+- **Core:** the column count's ASCII path. Detection past 4 MiB, which is all Quick View reads, shown a
+  sample and the whole file decoded by its answer. `ComparedText.windowByteLimit` and
+  `ComparedText.precheck`, which reads a few KiB so a binary of gigabytes is not read whole under the
+  larger limit. `ComparisonStop` and a `check` through `LineDiff`, `MyersDiff`, `RowAlignment`,
+  `TextComparison` and the pane text. `ComparedDocument.read` can be stopped between its steps, and
+  `isEdited` answers at once for lines nothing touched.
+- **App:**
+  - **A side past 64 MiB opens the window first**, on stand-ins with the files' names, and reads with it
+    on screen. A smaller pair is read first, as it always was, so nothing flashes for a small file that
+    turns out to be undecodable.
+  - **"Comparing…", a spinner and Stop in the toolbar** once a comparison runs past 200 ms, and ⌘. for
+    Stop. Stop, a newer comparison and closing the window each stop the work.
+  - **Stop empties the panes** and offers Compare Again. By then a swap or a copy may have changed what
+    the old panes were a comparison of, so they are not left up.
+  - The panes' attributed text, fills and kinds are built off the main thread. Three new strings, in all
+    14 languages. A Synchronize row and the conflict dialog take the same route.
+- **Measured** on the Release build, on this 64 GB Mac:
+
+  | | Before | After |
+  |---|---|---|
+  | Pane text, 256 MiB | 11.7 s | 0.7 s |
+  | `isEdited`, 256 MiB | 0.6 s | 0 |
+  | Read a 64 MiB Windows-1251 file | 65 s | 2.9 s |
+  | Stop reaching the work, dense 256 MiB, 8 moments | no way to stop | at most 0.38 s |
+  | Re-compare of a dense pane, main thread | over 4 minutes | at most 0.35 s |
+
+- **Tests:** 38 more in the core and 27 more in the app. Full runs: 4 915 core tests, and 2 289 app tests,
+  green in two runs of three without the live server suites, whose code this slice does not touch. The
+  third failed only `PanesDividerDetentTests`' queued-mouse test, which passed alone three times and in
+  the next full run.
+- **Negative controls:** 30 faults, one at a time, each failed its own test. Three passed at first, and
+  each was a gap, now closed: the loop over a block's alike pairs, the walk over the rows, and Comparing
+  shown at once.
+- **Found by the live run:** the copy arrows and pencils looked enabled while the files were still being
+  read, and the toolbar sat 2 pt higher with Stop in it, moving the panes 4 pt when it left. Both fixed,
+  pinned, and seen fixed.
+- **Run live** on a Release build driven from the background: a 256 MiB pair (window up in under half a
+  second, Comparing… and Stop on screen, 144 changes, worst main-thread answer 106 ms over 371 samples), a dense pair
+  (Stop, 0.3 % CPU after it, Compare Again, then 954 300 changes), Ignore Case on the dense pair, a
+  64 MiB Windows-1251 pair (Russian as written, its one change found), and a 3 GiB pair past the limit,
+  in the byte view with its 4 differing bytes. The sampler's control read 979 ms for a 1 s `SIGSTOP`.
+- **Decided in the slice:**
+  - **Stop empties rather than keeping the last comparison**, as above. A Show Bytes beside Compare Again
+    was left out.
+  - **The sides are read one after the other.** Reading them at once would save about 2 s at 256 MiB.
+- **Not run live:** ⌘. and Escape during a comparison, which a background run cannot send and a test pins
+  through `handleKey`; a pair from a Synchronize row or the conflict dialog; a side near this Mac's
+  2 GiB limit; and any translation.
+
+**2026-11-08: Slice 4 landed** (core, then app). A member changed inside its archive under an edit can be
+merged instead of overwritten.
+
+- **Found first:** a save back never looked at the archive. The rewrite extracts the archive as it is now
+  and replaces the member with the copy, so another member's change survived and a change to the same
+  member was replaced without a word, however long ago the copy was extracted.
+- **Decided with Oleg before writing it:** a set with changed members is asked as the server batch is:
+  Save Back, **Skip Changed Files** where some members are clean, Keep Editing. The members it skips
+  stay watched, so each one's next save asks on its own, Merge… included.
+- **Core:** `ArchiveMemberBase` is a member's bytes and the archive's `ArchiveIdentity` read just before
+  their extraction. `ArchiveMemberCheck` answers `unmoved`, `noBase`, `same`, `different` (with the
+  member's size) or `unreadable` for each member of one archive. An archive with the stamped identity
+  is one `stat` and no read; the moved members are extracted in **one** call through an injected
+  extractor and compared through `ByteComparator`, and the extraction is removed. No size bound, since
+  the rewrite that follows extracts every member anyway. `keep` reads one member again into an
+  `EditBaseStore`, stamped first, for a merge.
+- **App:**
+  - **The base** (`ArchivePreviewCache+Bases`). The cache stamps each extraction with the archive's
+    identity from before it and the copy's revision as it landed. When an edit's watch starts on a copy
+    nothing has written since, the cache keeps a clone of it in `DirnexExtract/Bases`, which the launch
+    purge clears and no watch watches. `PanelHost.watchEdit` is now the one call F4, ⏎, a user script
+    and the compare window's Edit make, keeping a server file's base or a member's.
+  - **The question** checks each member first, with the passphrase this window was given and no prompt.
+    One changed member is named before the usual body, with Merge… first where its three versions are
+    text within 64 MiB; one that could not be read says so; a set names how many and the first three.
+    With nothing found, the question is the one it was.
+  - **Merge…** reads the archive's version again through the pane's passphrase funnel, and opens M34's
+    window on it, the copy and the base. Its save writes the result into the editor's copy, makes the
+    archive's version the copy's base, and carries the copy back through the archive's own question and
+    rewrite. A landed rewrite drops the bases of the copies it took in.
+  - Eight new strings, in all 14 languages. "Skip Changed Files" is one shared title now.
+- **[LOCATION-SUPPORT.md](docs/LOCATION-SUPPORT.md):** the merge row's archive cell, with footnote zzz.
+- **Tests:** 9 in the core (`ArchiveMemberCheckTests`, over a fake extractor) and 17 in the app:
+  `ArchiveMemberBaseTests` (4), `ArchiveMemberCheckLiveTests` (4, real zips through `ArchiveExtractor`,
+  one of them the milestone's sentence end to end: extract, edit, another writer's change, the check,
+  the offer, the archive's version kept, the merge, its adoption and the rewrite, with both edits in the
+  archive after) and `ArchiveWriteBackQuestionTests` (9). Full runs: 4 924 core and 2 305 app tests,
+  without the live server suites, whose code this slice does not touch; the new suites again once the
+  last test was added.
+- **Negative controls:** 7 faults in the core and 12 in the app, one at a time. In the core, each failed
+  its own test; one first try changed nothing a test could see (a missing member already fails the byte
+  comparison) and was replaced by one that did. In the app, 11 failed their own tests. **One passed:** the
+  cache reading the archive's identity after the extraction instead of before. Only a write during a
+  `bsdtar` run tells the two apart, and no test can make one; the core's `keep` pins the same order with
+  a fake extractor that does write.
+- **Run live** on the Debug build, driven from the background, with shell writes to the copies standing
+  in for TextEdit's saves and a repack under the same name for another app:
+  - F4 kept the base beside the copy, byte for byte. With line 2 changed on both sides and line 5 in the
+    archive, the question named the change with Merge… first. The window showed the base as extracted,
+    theirs' line 5 merged and one conflict; Take Both and Save wrote the copy and left the archive's
+    version as the only base; the plain question followed and Save Back put **both edits** in the archive,
+    the other members untouched and no base left.
+  - Two members saved together after another app changed only `keep.txt`: the plain question about two
+    files. After it changed `other.txt`: "1 of them has changed inside the archive…" with Skip Changed
+    Files, which wrote back `notes.txt` alone and kept the other app's `other.txt`. The skipped copy's
+    next save asked on its own with Merge…, merged clean, and went back with both edits.
+  - The defaults domain was restored and compared unchanged.
+- **Not run live:** an encrypted archive (the check reads with the window's passphrase or not at all), a
+  member taken out of the archive, the compare window's save, ⏎ and a user script as the edit's start,
+  a tar or 7z archive, the light appearance, and any translation. The check's cost on a large compressed
+  archive was not measured; the rewrite after it reads the whole archive anyway.
+- **Left open:** a change to the same member between the check and the rewrite is replaced, as M34 left
+  the upload's window over SFTP and FTP. And a merge window saved again after its rewrite landed asks the
+  plain question, since a landed rewrite drops the copy's base.
+
+**2026-11-08: Slice 5 landed** (core, then the merge window). A conflict whitespace explains is labelled,
+and where one side changed only whitespace, the conflict can take the other side's text with that
+whitespace, which keeps both edits.
+
+- **Probed first**, with git 2.54 through `merge-tree`: `-Xignore-space-change` and `-Xignore-all-space`
+  drop a stripped trailing space and a CRLF conversion exactly as they drop a re-indent. Each settles on
+  the side with the edit and says nothing.
+- **Decided with Oleg before writing it:** the extra take carries every whitespace change a line can
+  carry, its indentation, its trailing whitespace and its line ending, rather than the indentation alone.
+  It is named for its sides: Take Theirs with Your Whitespace, or Take Yours with Their Whitespace.
+- **Core:**
+  - `ConflictWhitespace` reads each conflict once the merge is made: yours changed only whitespace,
+    theirs did, or the two sides are the same but for whitespace. Whitespace is git's `-w`, line for
+    line, so a blank line added is a line. A conflict is read with the shared lines `--zdiff3` moved out
+    of it, since its base range is still the whole stretch both sides replaced.
+  - `WhitespaceCarry` puts one side's whitespace on the other's lines. Each line is paired with its base
+    line as the compare window lays a block out, and its four parts are carried one at a time. An
+    indentation the edit deepened keeps its extra depth on top of the other side's, and a line the edit
+    added follows the paired line whose base indentation it starts with. A part both sides changed
+    differently refuses the take rather than guessing.
+  - `TextMerge.Choice.editWithWhitespace`, `TextMerge.whitespace` and `offers(_:forConflict:)`. `apply`
+    traps on a choice the conflict does not offer. `MergeRowLayout.rows` takes the columns the result
+    repeats rather than the choice.
+  - `ThreeWayMerge` is untouched, and no ignore option reaches it.
+- **App:** a fifth take, enabled only on a conflict that offers it and named for its sides in its tooltip
+  and in Edit ▸ Undo, with ⌥⌘I. The banner says what whitespace explains in the current conflict before
+  how many are open. Eight new strings, in all 14 languages.
+- **Tests:** 22 more in the core and 4 more in the app.
+  - git is the check twice, over 623 triples: this repository's files and 500 short random texts, one
+    side respaced over a stretch and the other edited inside it. The merge is git's plain `--zdiff3` byte
+    for byte from git's comparisons, and from its own but for 5 ties. Each of git's `--diff3` conflicts is
+    labelled exactly as `git diff -w` reads its three sections: 445 labelled, of all three kinds, 276 of
+    them offering the take. And on the four probed cases, `merge-tree -X` writes the edit alone where the
+    take writes both.
+  - Without git: over 3 000 random edits, the edit survives but for whitespace, line for line, and every
+    line it kept takes the other side's exactly (402 refused). Over 2 000 merges, any sequence of choices
+    with the take among them keeps every column whole and level.
+  - Full runs: 4 946 core tests, and 2 310 app tests without the live server suites, whose code this
+    slice does not touch. `check_localization_keys.py` found every extracted key in the catalog.
+- **Negative controls:** 14 faults in the core and 6 in the app, one at a time, each failed its own test.
+  Two first ended the run by trapping on the new precondition, so the tests now require the take to be
+  offered before making it, and both then failed by name. One passed at first, a take offered when carrying
+  changed nothing, since the case that tested it was refused earlier for another reason. It has a case of
+  its own now: theirs removed every line yours respaced.
+- **Found on the way:** pairing only alike lines left a short edited line unpaired (`x` made `x!`), and
+  the whitespace the other side gave it was dropped without a word. The pairing now takes the compare
+  window's rows, where the lines between two alike pairs sit side by side.
+- **Run live** on the Debug build, driven from the background, on a real `git merge` conflict in a scratch
+  repository opened through Resolve Conflict… (`reveal`, then `run operation "file.resolveConflict"`). It
+  held three conflicts: yours re-indented a function that theirs edited and added a line to, both changed
+  one line, and both re-indented another differently, spaces against a tab.
+  - The first was named "Yours changed only whitespace in this conflict…", with the fifth take enabled and
+    titled Take Theirs with Your Whitespace. Pressing it put theirs' two edits in the result at yours'
+    indentation and went on to the next.
+  - On the ordinary conflict the sentence was gone and the take dimmed. On the third the banner said the
+    two sides differ only in whitespace, and the take stayed dimmed.
+  - Save wrote exactly those choices, with no markers, and git still listed the file `UU`. The defaults
+    domain was restored and compared unchanged.
+- **Not run live:** ⌥⌘I, which the window takes with its key monitor and a background run cannot send, so
+  a test pins it through `handleKey`; a labelled conflict whose whitespace cannot be carried, pinned in the
+  core and the app tests; the server and archive entries, which open the same window; the light
+  appearance; and any translation.
+
+**2026-11-09: Slice 6 landed** (core, then app). `git mergetool` opens the merge window and waits for it.
+
+- **Probed first**, with git 2.54 on this Mac:
+  - git runs its tool with `GIT_EXEC_PATH`, `GIT_EDITOR=true` and `GIT_PREFIX` set, and `open` hands all
+    of that to an app it starts, where it would stay for the whole session.
+  - `open <path>` starts that copy with another copy of the same bundle id running, and starts nothing
+    when that copy is already up.
+  - A binary's path holding a space, a quote and a dollar sign survives `cmd`'s `eval` once single-quoted.
+- **Decided with Oleg before writing it:** a button in Settings ▸ Operations that writes all three values
+  to the global git config, naming a tool it replaces. Stop Using takes them out, and the row says when
+  the config runs another copy of Dirnex.
+- **Core:**
+  - `GitMergeArguments` reads the command line and makes each path absolute. `GitMergeRequest` and
+    `GitMergeAnswer` are what cross the socket, and only a saved result exits 0.
+  - `GitMergeWire` frames one request and one answer. `GitMergeSocketPath` names a socket per copy.
+  - `GitMergeClient` is the command's whole conversation, over an injected transport.
+  - `GitMergeToolSetup` reads, writes and removes the three values.
+- **App (`Dirnex/GitMerge/`):** `GitMergeCommand` runs first in `main.swift`, before any window. The socket
+  and `GitMergeListener`, 0600 and peer-checked. `GitMergeService` opens M34's window on the four files and
+  answers when it closes, or when the app quits with it open. Save writes `$MERGED` alone and keeps no
+  undo copy. `GitMergeToolSection` is the Settings row. Twelve new strings, in all 14 languages.
+- **Decided in the slice:**
+  - **A launched app gets a Dock launch's environment** rather than only losing `GIT_*`, since it outlives
+    the merge and a shell's `PATH` or virtual environment would otherwise stay in it.
+  - **The socket is under Application Support**, not the per-user temporary folder macOS cleans out.
+  - **A refusal waits for its alert** before answering, and goes to the terminal as well, in the app's words.
+  - **A window whose command has gone stays up**, as after ⌃C, and its Save still writes the file.
+  - **An empty `$BASE` is labelled as no base**, which a tracked empty file would also get. git's four
+    files can't tell the two apart, and it only words a pane.
+- **Tests:** 68 more in the core and 44 more in the app. A real `git mergetool` ran the command the setup
+  wrote, against a stand-in tool at a hostile path, for `UU`, `AA`, exit 0 and exit 1. The app suites use a
+  real Unix socket and the real merge window and Save. Full runs: 5 014 core and 2 354 app tests, without
+  the live server suites, whose code this slice does not touch. `check_localization_keys.py` found every
+  extracted key in the catalog.
+- **Negative controls:** 52 faults, one at a time. 47 failed their own tests at once. Three passed, and each
+  was a gap, now closed and failing by name: five paths with one empty, a session finished twice, and a client
+  that says nothing holding up the next, whose test had no time limit. One failed only by hanging the run for
+  560 s, and now fails by name. One more pass showed a redundant line in the Settings model, which is gone.
+- **Found by the live run:** `NSApp.activate(ignoringOtherApps:)` did nothing with another app in front, so
+  with Dirnex already running the window opened behind the terminal waiting for it. The command now runs
+  `open` on its own copy, which brings it forward (docs/NOTES.md ▸ Windows).
+- **Run live** on the Debug build, driven from the background, in a scratch repository with git's config kept
+  out of the real `~/.gitconfig`:
+  - With no Dirnex running, `git mergetool` started the copy it belongs to, with `launchd` as its parent, a
+    Dock launch's `PATH` and no `GIT_*`. Take Yours and Save wrote the file with no markers, with git still
+    waiting and the file still `UU`. Closing the window: exit 0, staged, the temporary files gone, nothing else
+    written.
+  - `AA`, with Dirnex up: "None: both sides added the file". Don't Save: "merge of added.txt failed", exit 1, still
+    `AA`, the file's bytes unchanged. Saved and then quit with the window open: exit 0, staged, socket gone.
+  - A binary conflict: the alert, the command waiting behind it, then the sentence on standard error and exit 1.
+  - The app killed with a window up: "Dirnex closed before the merge was finished", exit 1, and the next launch
+    took over the socket it left. The command killed with a window up: the app stayed up through that window's
+    close.
+  - The Settings row against a scratch config: `vimdiff` named and replaced, the written config driving a real
+    `git mergetool`, another copy's command shown with both buttons, and Stop Using leaving the rest of the
+    file. The defaults domain was restored and compared unchanged.
+- **Not run live:** ⌘S and ⌘W, which a background run cannot send; a rebase or a stash, whose words a test pins
+  and which M34 ran live; two real copies of Dirnex at once, measured on throwaway apps with one bundle id; a
+  Release build; Gatekeeper's first launch; the light appearance; and any translation.
+- **Left open:** a Save after ⌃C writes `$MERGED` with nothing waiting on it, so git has moved on and the file
+  stays unstaged.
+
+**2026-11-09: Slice 7 landed** (core only; the app is untouched). What a sync left equal can be kept, and a later
+look says which side moved on from it.
+
+- **Probed first**, on this Mac:
+  - `clonefile` keeps a locked file's `uchg`, and `rm` then refuses the clone, so a store could never evict it.
+    Mode 0444 comes across and removes fine, a `deny delete` ACL does not come across, and mode 000 refuses.
+  - Spotlight found a token in a file under Application Support within two seconds, even under a name with no
+    extension. In a folder ending `.noindex` it found nothing, even through `mdimport`.
+  - This repository with its build products and worktrees holds 71 945 text files of up to 64 MiB, 1.7 GiB: 6 s to
+    clone them and 14 s to compare each clone with its file. No file had a NUL past the first 8 KiB, so the sniff
+    the compare window already uses is enough here, and 13 did not decode, which a merge's own read refuses.
+- **Decided with Oleg before writing it: local pairs only.** A pair with a side on a server has no record. A
+  version is proved against both sides' bytes, which would download every text file on every sync, and no server
+  listing has a clock that can say what changed. It went to M38 with that reason.
+- **Core:**
+  - `SyncRecordPair` is the one definition of which pairs can have a record. It answers `nil` for a server side, a
+    folder with itself and a side inside a vault, and has no direction, so swapping the panes finds the same record.
+  - `SyncRecordStore` keeps one folder per pair under `SyncRecords.noindex`, excluded from backups. A record's
+    existence is the user's yes: `remember` and `forget` are the checkbox, and `keep` does nothing without one.
+    `purge` is for launch.
+  - `keep` walks the two folders as they now stand, and clones each text file of up to 64 MiB that both hold. The
+    clone is what gets compared with the other side, so a write during the comparison leaves nothing kept. Flags
+    are cleared and the mode set to 0600 on every clone. A version that still holds both sides' bytes is confirmed
+    rather than copied again. A file the sides disagree on keeps the version they last agreed on.
+  - `SyncRecordBudget` is 5 GiB across every pair, oldest dropped first, with ties settled by the file's identifier.
+  - `SyncRecord.change` says which side changed since, by bytes alone: `unchanged`, `changedOnLeft`,
+    `changedOnRight`, `changedAlike`, `changedOnBoth(base:)`, `noVersion` or `unreadable`. A `touch` is no change, and
+    an edit that kept the date and the size is one.
+- **Tests:** 65 in 8 suites, over real files. Forty random histories check every kept version and every answer
+  against a plain model, one test takes the milestone's sentence through `TextMerge` with both edits in the result,
+  and a stop is tried at every moment of a pass. Full run: 5 079 core tests. The app builds, and its suite was not run,
+  since no app file changed.
+- **Negative controls:** 60 faults, one at a time. 54 failed at once. Six passed, and each was a gap, now closed and
+  failing by name: a replaced version counted against the budget, because the test's dates spared the other record;
+  confirming a version against one side only; a stop counted as a failed file; a failed file not counted; a stop not
+  heard between files; and removing the replaced versions before the record is written.
+- **Run on real pairs**, through the real store in a release build, with `/usr/bin/cmp` as the judge:
+
+  | Pair | First pass | Second, nothing changed | After edits | Versions | `cmp` |
+  |---|---|---|---|---|---|
+  | Same volume, 29 246 files, 1.7 GiB | 9.5 s | 4.2 s | 5.5 s | 12 504 (262 MiB) | 4 168 checked against both sides, 0 differ |
+  | Store on another APFS volume, a real copy each | 0.38 s | 0.10 s | 0.12 s | 563, a locked file among them | 282 checked, 0 differ |
+
+  One edit of each kind on each pair gave the right answer, and the two-sided edit held its old version through the
+  next pass. Forget emptied both stores.
+- **Not checked:** a real evicted placeholder, whose flag no test can set, so the decision is pinned through
+  `ComparisonSubject`; and two windows syncing one pair at once, which the design leaves reading as no version.
+- **For Slice 8:** nothing in the app calls this yet. It needs the store's parent (Application Support), `purge` at
+  launch, the vault mount points, `keep` when the sync's queue jobs have finished, and `change` for a row on both sides.
+
+**2026-11-09: Slice 8 landed** (core, then app). A file changed on both sides of a remembered sync merges from its
+Synchronize row, over the version that sync kept.
+
+- **Decided with Oleg before writing it:**
+  - **Save writes both files**, so the two agree at once, the row leaves the list and the kept version becomes the
+    merge. Writing one side and letting the next sync copy it would leave the row reading as changed on both sides, and
+    a Right → Left mirror would overwrite the merge.
+  - **Both Directions leaves such a row unticked as a conflict**, where the newer file used to overwrite the older one's
+    edit. A mirror keeps its copy, with the row marked.
+- **Core:** `isRemembered`, one `stat` for the box as the window opens. `keep(relativePath:left:right:for:)`, the one file
+  a merge just wrote. `SyncRecord.changes(of:)` for a window's rows, `SyncChange.mergeBase`, and
+  `DirectorySync.defaultAction(for:direction:change:)`.
+- **App:**
+  - **The box** takes effect with Synchronize, as a dialog's controls do, so Cancel leaves the record alone and unticking
+    removes nothing until it is committed. Ticking it on two folders already in sync enables Synchronize, which is how a
+    record starts. A pair that cannot have a record has no box and the window keeps its size; the box's row otherwise
+    adds 26 pt to the window rather than taking it from the table.
+  - **After a sync**, `finishSyncRecord` waits for the copies and the deletes, then keeps. `PanelHost.runToCompletion`
+    queues the copies in order and returns once the queue has drained, which the fire-and-forget `enqueue` could not say.
+    The status line reports the count, what did not fit, or a failure.
+  - **The rows:** `readChanges` runs after every set of rows, off the main thread, by bytes. A row changed on both sides
+    has its action in orange, a tooltip saying so, and a clause in the footer.
+  - **Merge…** comes first on the row's menu, where both sides are within 64 MiB and both can take the result. Yours is
+    the left file, Theirs the right. `MergeInput.secondTarget` is the second file Save writes, each checked against what
+    was read. A second file refused leaves the result unsaved, so the window goes on saying so.
+  - `ModalLevelKeeper` raises the merge window over the app-modal Synchronize window, as the compare window is.
+  - `PanelHost` moved out to its own file, at `PanelViewController.swift`'s 500-line ceiling. `SyncRecordStorage` purges
+    at launch. Eleven new strings, in all 14 languages.
+- **[LOCATION-SUPPORT.md](docs/LOCATION-SUPPORT.md):** a new row, with footnote aam.
+- **Tests:** 13 more in the core and 34 in the app, over real folders and the real merge window. Full runs: 5 092 core and
+  2 388 app tests, without the live server suites, whose code this slice does not touch.
+  `check_localization_keys.py` found every extracted key in the catalog, and the three source checks passed.
+- **Negative controls:** 52 faults, one at a time. 46 failed their own tests at once. Two failed only by hanging the run on
+  a question nobody answered, and they now fail by name through a helper that answers only the questions a test expects.
+  Two passed, and each was a gap, now closed: a stale read landing, which the test could not tell from a fresh one, and a
+  file become a link since it was kept. Two did not apply at first, since SwiftFormat had rewrapped their text, and failed
+  by name once they did.
+- **Found on the way:**
+  - Asking the undo store once for both files would have removed the first file's copy (docs/NOTES.md ▸ Keeping a file's
+    previous bytes).
+  - Two files written a moment apart read as neither newer, which Both Directions already calls a conflict, so the first
+    tests of what the record adds passed without it. The rig now makes one side an hour newer.
+- **Run live** on the Debug build, driven from the background, in two scratch folders and the real store under Application
+  Support:
+  - The box off by default. Ticked with one row to copy: the copy landed and the record held the three text files, each
+    matching both sides by `cmp`, with the binary left out, and the store excluded from Time Machine.
+  - Edits on both sides of two files, and one side of a third: the two in orange and "2 changed on both sides", the third
+    green. The merge window over the modal window at level 8, dropping to 0 once it closed. One file merged clean and one
+    had a real conflict, whose Base read "As of the last sync" and whose Save stayed disabled until a take. Save wrote both
+    files, moved the kept version to the merge, took the row out of the list and said "Kept 3 versions for merging" after
+    the next sync. ⌘Z went one file per press.
+  - Relaunched: the box still on, the record intact, and a planted stray file and folder gone. Both Directions showed the
+    conflict unticked with its ⚠. Unticking and Cancel left the record, and unticking and Synchronize removed it.
+  - The defaults domain was restored and compared unchanged.
+- **Not run live:** the right-click itself, which a background run cannot open, so a temporary probe pressed Merge… and a
+  test pins the menu item; a vault inside the pair; an evicted cloud placeholder; a side over 64 MiB; the Save Anyway
+  question on the second file, pinned by a test; the light appearance; and any translation in the window.
+- **Left open:** under Both Directions, a file changed on one side only still goes by the clock, so an edit with an older
+  date than the other side's untouched file is overwritten. The record knows better, and this slice was not asked to use it.
+
+**2026-11-09: Slice 9, live and closed.** Every sentence of *Done when*, on a Release build of the finished
+milestone (ad-hoc, hardened runtime off) on this 64 GB Mac, with `cmp`, `diff` and `git` as the judges.
+
+| *Done when* | Seen |
+|---|---|
+| A binary pair and a pair past the limit show every difference, the window up before the scan ends | A patched `/bin/zsh`: "5 of 1 357 312", 4 changes, `cmp -l` 5. Text of 3.2 GiB: "4 of 3 219 128 320", `cmp -l` 4. A 20 GiB sparse pair: window up at "Compared 81 %", then "3 of 21 474 836 480", `cmp -l` 3 |
+| A 256 MiB text pair opens with no beachball, and a dense one can be stopped | "Change 1 of 169", `diff` 169. Worst main-thread answer 139 ms over 181 samples, against a control of 1 067 ms for a 1 s `SIGSTOP`. Dense: Comparing…, Stop, 100 % CPU to 0, Compare Again |
+| A member changed behind its edit merges and repacks with both edits | F4 on a member, the zip rewritten by another app: Merge… first, one conflict, Take Both, Save, Save Back. Both edits in the member, the other member intact, no base left |
+| `git mergetool` resolves `UU` and `AA`, reports a closed window as a failure, and writes only `$MERGED` | `UU`: Take Yours, Save, close, exit 0, staged, git's temporaries gone. `AA`: closed unsaved, "merge of aa.txt failed", exit 1, still `AA`, bytes unchanged, nothing else in the tree |
+| A file changed on both sides merges over the kept base, and a pair with no record offers no merge | A real right-click: Merge… first on the row, Base "As of the last sync", Save into both, the row gone, the kept version the merge. A binary row's menu had no Merge… |
+| No ignore option reaches `ThreeWayMerge`, and nothing is saved with a conflict open | `merge` builds `LineDiffOptions(isMinimal:)` and nothing else. Save was disabled with a conflict open in every window above |
+
+- **Routes no slice had run live:** Compare Contents… on a Synchronize row, to the byte view ("3 of 2 000") and to
+  the text window, and Compare Contents… in the copy conflict dialog, to the byte view over the dialog.
+- **Real keys**, through full-screen control: ⌥⌘↓ and ⌥⌘↑ in the byte view (1, 2, 3, 2), ⌘W in each window,
+  ⌘. on a running comparison, ⌥⌘I and ⌘S in a merge.
+- **Languages and appearance:** all 54 keys M37 added are in all 14 languages, placeholders intact. German in the
+  light appearance (the Synchronize window, the text toolbar in Comparing… and Stopped) and Russian in dark (a merge
+  window with the whitespace banner on two lines, the byte view) drew whole. The box's label and three more pane
+  subtitles joined the width tests, in every language. Those tests found **eight of Slice 8's strings with no `en`
+  entry**, unlike every other key. English fell back to the key, so nothing read wrong, and they now have one.
+- **Found by a full run:** a merge saved into both sides of a sync left the two files with different dates, so a
+  second write landing more than two seconds after the first, on a slow disk or behind a Save Anyway question, left the
+  row listed as newer over identical bytes. The second file now takes the first's modification time as it is written, so
+  the undo record and the next save's check both see the final state. Only the app suite under load showed it, and it
+  came after this slice's live pass, so a core test and the real merge window's Save pin it rather than a live run. The
+  two controls, the date ignored and the second file given none, each failed by name.
+- **Tests:** 5 094 core and 2 389 app tests, the app suite green twice in a row, without the live server suites, whose
+  code this slice does not touch. The new suites' waits went to 60 s, as Slice 2's did. The defaults domain was
+  restored and compared unchanged, and the kept versions and fixtures were removed.
+- **Not run live:** as listed at the top of this section.
+
+### M38 — Remote: what M8, M22, M24, M25 and M32 left (M–L)
+
+**Closed 2026-11-11**, two days after it opened, in ten slices and five passes outside the list. An SFTP
+item's owner and group change by name over the exec channel, with the set-id bits sent again after them.
+Open in Terminal on an SFTP folder is an `ssh` session in the user's own terminal, a password reaching it
+through a one-shot pipe. ⌥F7 on an S3 account searches every bucket up to a bound it states first. A server
+folder drags into the sidebar. WebDAV signs in by NTLM and Negotiate. A saved WebDAV server's quota and an
+SFTP server's free space show in its sidebar tooltip. A pin or a tab inside an SMB share mounts its share.
+And a sync's record can have a side on a server, so a file changed on both sides merges from Synchronize
+over the version that sync copied.
+
+Five findings are worth not re-deriving. **No listing supplies a numeric owner on a current server**:
+`sftp`'s `ls -ln` prints names once the server answers `users-groups-by-id`, so ownership goes by name
+over `chown`, and any group change clears set-uid and set-gid, the same group included. **A Debian or
+Ubuntu Apache redirects any request naming a folder without its slash**, PROPFIND included, so a folder's
+stat, delete and move all failed there until each was sent again with the slash (`WebDAVFolderRedirect`).
+**A copy built in a folder of its own cannot reach the LAN on this Mac**, since macOS files a Debug
+launcher's UUID under the bundle id it first saw, so LAN runs happen in `build/debug-dd`
+(LIVE-VERIFICATION.md). **iTerm runs a `.command` it was launched with at once and asks "OK to run?" when
+it is already running**, which is why the password pipe waits two minutes. And **a merge's save counted
+as done before its upload**, which holds for an editor's watched copy and not for a Synchronize row's,
+whose copy nothing watches; Slice 10 found it live and made the carry say whether it landed.
+
+Some paths were not exercised by the close, and are recorded rather than argued: real AWS, IIS, a Windows
+domain, Active Directory and a hosted Nextcloud; root over GNU coreutils (BusyBox in the close, BSD in Slice
+1's run); a password pin or a password tab reconnecting through the Keychain itself, a probe standing in for
+it; the NAS for Open in Terminal, whose accounts may not run a command; and Escape in any new window.
+
+Left deliberately undone, each with what its probe found: **WebDAV locks of our own**, since a lock around
+the save cannot see a write made before it, and one held from the download on would lock everyone else out
+for as long as an editor is open and past a crash; **OAuth for WebDAV**, which needs a sign-in flow and a
+token store first; **a faster Find Files walk in Photos**, where one fetch for every date saves about 1 ms
+a month while a name costs 2.0 ms an asset and no fetch can filter by name; and **a quota over SFTP**,
+which the protocol does not carry.
+
+The section as the plan carried it through the milestone:
+
+- **Owner and group in a remote Get Info** (M25). `chown` and `chgrp` take a numeric id, while
+  `sftp`'s `ls -la` prints names, so a panel built on a listing has nothing to send. A remote
+  `chgrp` also clears set-uid and set-gid without a word, so a change needs the ordering rule
+  `AttributeChangePlan` already encodes locally.
+- **Open in Terminal for an SFTP account** (M24). A local shell cannot `cd` to a server, so this is
+  an `ssh` session to the account's own host. A key account is the easy half; a password account
+  needs its secret kept out of `argv`.
+- **Searching an S3 account pane** (M22). Its rows are buckets, and "search every bucket" is a far
+  more expensive question than the one ⌥F7 asks, so it needs a bound the user sees before it starts.
+- **Dragging a remote folder into the sidebar** (M8). A remote folder cannot ride `.fileURL`, and M8
+  named a private `VFSPath` pasteboard type as the way. M23's `app.dirnex.locations` payload is that
+  type, and a pin on an account already carries where to reconnect (LOCATION-SUPPORT.md
+  <sup>ii</sup>).
+- **A faster Find Files walk in Photos** (LOCATION-SUPPORT.md <sup>nnn</sup>). One PhotoKit fetch
+  could answer every capture date in the library at once, but names cost about 1.1 ms an asset, so a
+  search walks month by month today.
+- **WebDAV locks of our own** (M32). Left because the entity tag already guards the write, so the
+  first question is what a lock would add that the tag does not.
+- **WebDAV sign-in by NTLM, Negotiate and OAuth** (M32), left with no reason recorded. The
+  transport is `curl`, which has flags for NTLM and Negotiate, so the first probe is whether this
+  Mac's `curl` was built with both. OAuth needs a sign-in flow and somewhere to keep the token first.
+- **WebDAV quota** (M32). Left because the NAS does not report it, so the first question is which
+  servers do. The Nextcloud container M32 used is the place to measure.
+- **A sync's record with a side on a server** (M37). Left because a kept version is proved against
+  both sides' bytes, which would download every text file on every sync, and no server listing has a
+  clock that can say what changed. The first question is whether the rows the sync itself copied are
+  proof enough, with Merge… downloading the server's file when it is asked for.
+
+Inherited from M25's risk row (§6): a capability is learned per connection when it is first needed,
+and what cannot be carried is reported rather than approximated. And from M32's: nothing branches on
+a namespace prefix or the `Server` header, and a capability is used only where the server's own
+answer shows it.
+
+**Opened 2026-11-09.** Probed on this Mac with OpenSSH 10.3 and `curl` 8.7.1, against the throwaway
+servers and the system Photos library:
+
+- **`sftp`'s `ls -ln` prints names on a current server.** Against OpenSSH's own `sftp-server` it gave
+  `oleg staff`, because the client resolves ids through the server's `users-groups-by-id` request. With
+  that one request withheld (`sftp-server -P users-groups-by-id`) the same command gave `501 20`. So
+  no listing supplies a number on any current server.
+- **The exec channel needs no number at all.** `chown -h -- :admin '<path>' 2>&1 && echo <token>`
+  changed the group by name, and printed a refusal in the server's words otherwise (`you are not a
+  member of group daemon`, `nosuch: illegal group name`). `--` goes before the owner operand: BSD's
+  `chgrp -h admin -- path` took `--` for a file and exited 1 after changing the link. `sftp`'s own
+  `chgrp` follows a symlink and changes the target; `-h` changed the link.
+- **Any group change clears set-uid and set-gid**, the same group included, and on a directory too.
+  `chgrp` then `chmod 6755` kept both bits. `chmod` then `chgrp` lost both.
+- **A non-root account can change a group to one of its own and no owner at all.** `chown` to another
+  uid was refused and to itself succeeded. One `id` answers uid, gid and every group with its name.
+  `getent` does not exist on macOS.
+- **Open in Terminal over `ssh`.** A `.command` file handed to Terminal with `open -a` ran with a real
+  tty, `ssh -t` got one on the server, `cd` into a folder named `it's a $dir` held, and the file
+  deleted itself first. A one-shot FIFO behind `SSH_ASKPASS_REQUIRE=force` carried a secret and left
+  nothing on disk, and a wrong secret ended cleanly with exit 255 under `NumberOfPasswordPrompts=1`.
+  Tested through a key's passphrase, since the throwaway `sshd` takes keys only. iTerm and WezTerm are
+  not installed here, so their launch is read from their documentation.
+- **Photos: the reason still holds, so this item goes back to the *undone* column.** With 33 assets over
+  12 months, one fetch per month cost 14 ms in all and one fetch for every date 3.9 ms. So the saving is
+  about 1 ms a month, while a name costs 2.0 ms an asset through the public call. A `filename` predicate
+  raises `NSInvalidArgumentException` ("Unsupported predicate"), so no fetch can filter by name. The
+  private `originalFilename` key answers in 0.0013 ms, but it names only the primary resource, so a
+  search for a Live Photo's `.MOV` would miss it in silence.
+- **WebDAV locks: nothing a lock adds is worth holding one, so this goes back to *undone*.** On Apache
+  `LOCK` gave a token, a `PUT` without it answered 423, and with it 204. A lock around the save cannot
+  see a colleague's write made before it, which is the only gap left: a write in the second the tag was
+  read, on a server whose tag cannot show it. Only a lock held from the download onward closes that, and
+  it would lock everyone else out of a file for as long as an editor has it open, and past a crash until
+  its timeout.
+- **`curl` here has NTLM, SPNEGO, GSS-API and Kerberos built in**, so both sign-ins are a transport
+  change. No server on this Mac speaks either. OAuth still needs a sign-in flow and somewhere to keep the
+  token, so it goes back to *undone*.
+- **Quota.** Apache answers 404 inside the 207 for both RFC 4331 properties, and an `allprop` volunteers
+  neither. No pane shows free space for any backend: the one reader is a volume's sidebar tooltip.
+- **`S3Backend.subtreeListing` has no cap**, because a bucket root search never needed one. A search
+  over an account needs a bound of its own.
+
+Decided before Slice 1 (2026-11-09, Oleg, on the probes above):
+
+- **Owner and group go over the exec channel, by name.** An account with no exec channel keeps today's
+  read-only rows and says why, since it has no way to learn which groups it may use. A non-root account
+  gets its own groups, on items it owns, and no owner control. Root gets both. A change that would clear
+  a set-id bit re-sends the mode after it, and its undo does too.
+- **Open in Terminal is an `ssh` session in the user's terminal**, `cd`'d to the pane's folder, for key
+  and password accounts alike. A password goes through a one-shot FIFO and never reaches `argv` or the
+  disk. An account with no exec channel is refused by name.
+- **A sync's record may have one side on a server.** A version is kept only for a file the sync itself
+  just copied, so nothing extra is downloaded, with the server row's size, date and tag beside it. A file
+  is changed on both sides when its local bytes moved and the server row's stamp moved, and Merge…
+  downloads the server's file only when pressed. A same-size SFTP edit inside the same minute stays
+  unseen, which is no worse than today.
+- **NTLM and Negotiate are built and verified on stand-ins**: a local server that checks the real NTLMv2
+  proof, and a Kerberos and Apache container. No real IIS is involved, and the record will say so.
+- **Quota is measured on Nextcloud** (the image is now on this Mac), and if a server reports one it
+  appears in the tooltip of the server's sidebar row, as a volume's does.
+- **Back to *undone*** with what the probes found: WebDAV locks, OAuth, and the faster Photos walk.
+
+#### Slices
+
+1. **Owner and group** (core, additive). `id`'s parse, the command and its token, the two new fields,
+   the set-id rule, the read-back and the undo.
+2. **Owner and group in Get Info** (app). The controls, the note for an account with no exec channel,
+   14 languages.
+3. **Open in Terminal for an SFTP account** (core, then app). The session's arguments and the one-shot
+   secret, each terminal's launch, and the refusal.
+4. **A remote folder into the sidebar** (app). `app.dirnex.locations` on the sidebar, with the endpoint
+   `reconnectEndpoint(for:)` already gives a pin.
+5. **Searching an S3 account** (core, then app). The bound, what Find Files says before it starts, and a
+   results tab across buckets.
+6. **NTLM and Negotiate** (core, then app). The schemes, the connect probe, the batch and upload
+   behaviour each one needs, and the stand-ins.
+7. **WebDAV quota** (core, then app). Nextcloud's answer first, then the row's tooltip.
+8. **A sync's record with a server side** (core). The stamp beside a version, keeping from what the sync
+   copied, and what changed since.
+9. **Merge from Synchronize over a server** (app). The checkbox for such a pair, the row, and Merge…
+   downloading the server's file and saving to both.
+10. **Live, and the record.** Every item on real servers, 14 languages, and M38 closed.
+
+**Done when:**
+- an SFTP item's group, and as root its owner, can be changed and undone from Get Info with its set-id
+  bits intact, and an account with no exec channel says why it cannot;
+- Open in Terminal lands in the pane's folder on a key account and on a password account, with no secret
+  in `argv` or on disk;
+- ⌥F7 on an S3 account pane says its bound before it starts and reports a bucket it stopped short in;
+- a remote folder dragged into the sidebar reconnects after a relaunch;
+- a WebDAV server asking for NTLM or Negotiate can be signed in to, on the stand-ins;
+- a server that reports a quota shows it, and one that does not shows nothing;
+- a file changed on both sides of a remembered sync with a server side merges over the version that sync
+  copied, and a pair with nothing copied offers no merge.
+
+#### Progress
+
+**2026-11-09: Slice 1 landed** (core only; the app is untouched). `RemoteAccountIdentity` reads `id`,
+`SSHOwnershipCommand` builds the one `chown` and reads its token, `RemoteAttributeField` gained `.owner`
+and `.group`, and `RemoteMetadataStep.setOwnership` runs over the exec channel ahead of any `chmod` in
+`SFTPBackend.applyMetadata`. A change on a set-id item sends its mode again, and so does its undo.
+`VFSBackend.accountIdentity(at:isCancelled:)` defaults to `nil`, and `CompositeBackend` forwards it in
+Slice 2. 48 new tests read real `id` output from macOS, GNU and busybox, and six negative controls each
+failed the test that watches them. The builders' exact strings also ran on a real `sshd`: a `6755` file
+went to `admin` with its mode intact, the undo brought back `staff` and `6755`, a stranger's group and an
+unknown one each came back in the server's words, and an `sftp`-only account answered no identity.
+
+**2026-11-10: Slice 2 landed** (the app, with two small additions to the core). Get Info asks
+`accountIdentity` off the main thread before an SFTP panel opens, and `CompositeBackend` forwards it. Root
+gets a field for each of owner and group, since nothing lists a server's users. Any other account gets a
+popup of its own groups on items it owns, led by the item's own group when the account is not in it. An
+SFTP account with no answer keeps text rows and a note saying why. FTP, WebDAV and S3 get no such note,
+since read-only is simply what those rows are. All of it is in 14 languages. In the core, a refused `chown`
+is now `RemoteMetadataRefusal.ownershipRefused`, so it blames the owner and group and not the mode, and
+`RemoteAttributeVerdict.serverWords` carries its sentence to the alert. Beside a `chown` the mode is judged
+by the read-back alone. That came from the live run: on an immutable file the `chown` and the `chmod` re-sent
+behind it were both refused, and the alert reported a loss on a mode nobody had touched.
+
+Run live on throwaway `sshd`s, in a copy built under its own bundle id. A popup pick took a `6755` file to
+`admin` with its mode intact, and Edit ▸ Undo brought back `staff` and `6755`, both read with `ls -ln`. A
+locked file and an unknown name each came back in the server's words, naming only the field refused. An
+`sftp`-only account showed the note, in English and Russian. 9 core tests and 26 app tests are new, four of
+them live, and four negative controls each failed the tests that watch them.
+
+**Not seen:** a click in the popup's own menu, since the background tools refuse to open one (an env-gated
+`performActionForItem` chose the item, and it is gone); and a real root login. The root layout ran against
+a server whose `id` claims root, so typed text reached a real `chown` and its refusal, but a typed change
+that lands was not watched. Both are Slice 10's. **A known rough edge:** root typing a number where the
+listing prints a name is told the owner was not stored as asked, because a read-back compares what it
+has, and the panel then shows what landed.
+
+**2026-11-10: Slice 3 landed** (core, then the app). Open in Terminal on an SFTP folder is now an `ssh`
+session in the user's own terminal, in the pane's folder. `SFTPProcessArguments.terminal` keeps the other
+channels' host key policy and timeout, adds `-t`, and lets a key ask its question. `SSHTerminalStage`
+writes a `.command` that deletes itself, in a private folder of its own. For a password it adds a helper
+that reads a `OneShotSecretPipe`, so the secret is in the kernel's pipe and nowhere else, and is gone after
+one read or after two minutes. Two minutes because iTerm asks "OK to run?" first. The password comes from
+the live connection, so opening a terminal raises no Keychain prompt. `accountIdentity` is asked before any
+window opens, and an account that answers nothing is refused by name, in 14 languages. When `ssh` itself
+fails (status 255) the script waits for a Return, since iTerm closes a session the moment it ends.
+
+Run live in a copy built under its own bundle id, launched through LaunchServices, on throwaway `sshd`s. On
+a key account, Terminal ran `ssh` with no secret in its arguments, the server's log showed a session on a
+real tty, `lsof` put its `bash -l` in a folder named `it's a $dir`, and the staging folder was gone. On a
+`ForceCommand internal-sftp` account the pane listed the folder, no `ssh` started, and the alert named the
+account, in English and Russian. A live suite runs the real script under `script(1)` against a real `sshd`,
+with a secret through the pipe and a wrong one. 28 core tests and 12 app tests are new, four of them live,
+and 22 negative controls were each caught.
+
+On the NAS, two password accounts signed in from that copy, and Open in Terminal refused each by name. A
+temporary probe, now gone, read why: past the sign-in, the server answered the check with `Permission denied,
+please try again.` and status 1. So it is the NAS's rule about those accounts, and the refusal is right.
+
+**Not seen:** a password session reaching a shell on a real server. The throwaway `sshd` takes keys only,
+and neither NAS account may run a command. The pipe ran through a key's passphrase, which reaches `ssh`
+the same way, and the password flags are the ones browsing already uses. iTerm and WezTerm, which are not installed here: their launches come from iTerm2's source and
+WezTerm's documentation. All three are Slice 10's. **A known rough edge:** a server that could not be asked
+at all gets the same refusal as an account with no shell, since `accountIdentity` answers `nil` for both, and
+the sentence is worded to be true of each.
+
+**2026-11-10: Slice 4 landed** (one initializer in the core, then the app). A folder on a server can be
+dragged into the sidebar. The sidebar now reads `app.dirnex.locations` ahead of file URLs, so a selection
+keeps its server rows and its order. `FavoriteEntry(draggedRow:endpoint:)` says what can be a pin, through
+`TabRestorePolicy`, and the endpoint comes from `reconnectEndpoint(for:at:)`, so a dragged pin is the one the
+menu makes. A server row with no endpoint, a symlink, a folder in an archive, a bucket in an account pane and
+a share in a server pane draw no insertion line, since each would be a row that cannot open. A bucket's and a
+share's paths answer `notFound` when listed, because those rows are reached by connecting. No new strings.
+
+Run live with real drags on a throwaway `sshd`, in a copy built under its own bundle id. A server folder drew
+the insertion line and landed where it showed, with its endpoint in the store. A server file and a local
+symlink drew none, a marked folder and file pinned the folder alone, and a local folder pinned as before. After
+a relaunch with both panes local the server had seen no new login, and opening the pin logged in and listed
+the folder. 11 core tests and 9 app tests are new, and 13 negative controls were each caught.
+
+**Not seen:** FTP, WebDAV and S3 live, which go through the same reader as SFTP; a password account, whose
+reconnect is the restore's; a folder in Photos; and a folder dragged from Finder, which was read from a real
+board in a test rather than dragged. All are Slice 10's.
+
+**2026-11-10: a pin on an unmounted share mounts it** (reported the same day, outside the slice list; core,
+then the app). Dirnex unmounts what it mounted on quit, so a pin inside a share raised "moved or deleted" on
+the next launch and offered to remove a folder that was fine. A pin made on a share now records it, in the
+`endpoint` field server pins already use. Picking one whose volume is not mounted mounts it and goes in, with
+the row spinning. An older pin has no record, so it tries the saved SMB servers in sidebar order, and every one
+is tried because a server lists a share even to an account it refuses. The one that mounts is written back onto
+the pin. `/Volumes/Macintosh HD` is a link with no mount entry of its own, so `PinnedShare` asks about links, and
+a folder missing from a volume that *is* mounted still gets the old alert. No new strings. 18 core tests and
+15 app tests are new, and 13 negative controls were each caught.
+
+Run live on the NAS with the pin that was reported, which predates the record. The first saved account mounted
+`media` at `/Volumes/media`, the pane landed on `TV`, and the pin came back with the share on it, in its place
+and under its own name.
+
+**Not seen:** a second pick after a quit, which goes through the record and is covered by tests; the row's
+spinner; and a double-click, which the row's activity guards.
+
+**2026-11-10: a tab inside a share comes back too** (asked for the same day; core, then the app). A tab is
+written down with its share as a pin is, and `TabRestorePolicy` answers `.shareMount` for a folder under
+`/Volumes` with a share endpoint. That tab comes back while its volume is not mounted, waiting on the share
+(`AwaitedShare`), and its first navigation mounts it before listing, by the rules a restored server tab
+reconnects by. The launch activation mounts at any refresh floor but 0, a gesture mounts at any floor, and an
+account with no saved password stands down on the status line. Oleg chose that over mounting only on a switch,
+which would have left the tab in front empty at launch. Both panes can restore into one share, so `SMBMounter`
+hands a second caller the first one's mount instead of asking NetFS again. No new strings. 4 core tests and 12
+app tests are new, and 9 negative controls were each caught.
+
+Run live on the NAS: the TV pin opened `media/TV` in the left pane, the tab was written down with the share
+before and at quit, and the share was unmounted. On relaunch the tab, still the active one, mounted `media` in
+3 s and listed it with nothing clicked, landing on the row it was left on.
+
+**Not seen:** a background tab mounting on a switch, a floor of 0, an account with no saved password, and both
+panes in one share live; each is covered by tests.
+
+**2026-11-10: Slice 5 landed** (core, then the app). ⌥F7 on an S3 account pane searches every bucket the key can
+see, each up to its first 10,000 objects in the order S3 lists keys. Oleg chose a bound per bucket over one
+allowance for the account, which a large bucket early in the alphabet could spend for every bucket after it.
+Find Files states the bound under its fields before the search starts, and offers no scope choice, since an
+account has one place. `S3AccountSearch` takes one bucket at a time and uses its first page as the probe. A
+bucket in another region, or one label too deep for the endpoint's certificate, is re-aimed by
+`S3LocationCorrection`: the two rules the connect kept to itself, now in the core and asked by both.
+`S3Backend.boundedSubtreeListing` cuts the last page, so the number is exact, and at Stop it returns the pages
+already read. A bucket cut short or refused is named in an alert afterwards, refusals grouped by reason, and
+the search goes on past it. The buckets a hit lives in are connected and their secret filed, as entering them
+would, so a hit opens, copies and previews; the secret comes from the live account connection, so a search
+raises no Keychain prompt. Save Search is off for such a tab (`SearchRoute.isSavable`, Oleg's call), since a
+sidebar re-run has no dialog to say the bound; editing the search in its tab reopens the dialog and works.
+Five strings in 14 languages. 33 core tests and 10 app tests are new, and 15 negative controls were each
+caught.
+
+Run live against a throwaway S3 endpoint that verifies every signature (a wrong secret refused in the same
+run), through a real pane and `curl`, from a temporary test in the app target, since deleted. Over four
+buckets, a search for "report" returned four hits from three of them. `big` was read for exactly ten pages,
+so its first key matched and its 12,001st did not, and the alert named it. `locked` was asked once and named
+as lacking `s3:ListBucket`. `west` answered 301 and was asked again signed for `us-west-2`, where its hit then
+lived. Every hit stat'd through the router, and Save Search was off.
+
+**Not seen:** the dialog, the progress sheet and the alert on screen (computer use on the copy was declined, so
+their text was read from the views); real AWS, with its listed `<BucketRegion>` and a real 301; Stop during a
+live search; an account of many large buckets. All are Slice 10's. **A known rough edge:** the progress
+sheet's title names the account by its host ("Searching “127.0.0.1”…"), as a walk names a server.
+
+**2026-11-10: Slice 6 landed** (core, then the app). A WebDAV server asking for NTLM or Negotiate can be
+signed in to. `WebDAVAuthScheme` gained `.ntlm` and `.negotiate`. A named account answers with Basic, NTLM
+or Digest, in that order over HTTPS and as Digest, NTLM, Basic over plain HTTP, so an IIS offering
+Negotiate, NTLM and Basic over HTTP now gets NTLM where it used to get Basic. An account with no user name
+signs in by Negotiate with the Mac's own Kerberos ticket (`curl --negotiate -u :`), Oleg's call, so nothing
+typed is sent. A named account on a Kerberos-only server is told to leave the name empty, and a refused
+ticket is told to get one in Ticket Viewer and to connect by the server's name. Both are in 14 languages,
+with Ticket Viewer under the name macOS gives it in each. The Connect sheet drops a settled scheme that no
+longer fits the account (`WebDAVAuthScheme.fits`). NTLM needed nothing past its spelling: `curl` signs a
+connection in once, a batch's later sections ride it, a body goes once, and `--fail` trips only on the
+proof's answer (NOTES.md ▸ curl). 21 core tests and 4 app tests are new, the core's fixtures are real `curl`
+runs of its own builders against the stand-ins, and five negative controls were each caught.
+
+Built and verified on two stand-ins, with no real IIS or Active Directory, as decided:
+`Tooling/fake-ntlm-proxy.py` checks the real NTLMv2 proof in front of the throwaway Apache and offers
+Negotiate beside NTLM as IIS does, and `Tooling/negotiate-standin` is an MIT KDC with Debian's Apache and
+`mod_auth_gssapi` in a container. `scripts/live_test_servers.sh` brings both up and down, the Kerberos one
+only when Docker is running and its image is built. Its ticket lives in a cache of its own, so the Mac's
+Kerberos state is never touched. The WebDAV live suite ran over all seven endpoints, and with the
+stand-in's credential cache pointed at nothing, 11 issues appeared, all on the Kerberos endpoint.
+
+Run live in a copy built under its own bundle id. With the stand-in's ticket in its environment, a restored
+tab signed in to the share as `probe@DIRNEX.TEST` with no password, which the server's log confirms, and
+without it the same tab sent one anonymous request. Both refusals were seen on screen, in English and
+Russian: the ticket's as an alert from a saved row with no name, the named account's in the Connect sheet
+and as an alert. A temporary env-gated line, now gone, filled the sheet's password, which the background
+tools will not type.
+
+**Not seen:** a real IIS, a Windows domain, and a ticket from Active Directory or the Kerberos SSO extension;
+NTLM over HTTPS; and a server taking the NTLM token macOS's SPNEGO offers when there is no ticket, which
+the stand-in refuses. All are Slice 10's. **Known rough edges:** a restored Negotiate tab with no ticket says
+only "The server refused that. This account may not have permission for it." on its status line, since a
+reconnect does not go through the probe's sentences. A stock Debian or Ubuntu Apache's `mod_dir` answers
+301 to a DELETE, MOVE or PUT naming a folder without its slash, which is how Dirnex names one, so deleting
+or moving a folder fails there: an M32 gap found here, **since fixed** (the next note). And **a build that
+predates this slice cannot read a saved-server list holding NTLM or Negotiate**. Measured with a scheme this
+build does not know: the whole list is refused, so that build shows no saved servers, and a server saved
+there writes over all of them. Tabs, pins and history lose only the one endpoint (`StoredServerEndpoint`).
+The release in `/Applications` shares the defaults domain with a Debug build.
+
+**2026-11-10: a folder on a stock Debian Apache** (found in Slice 6's live run; core, then the app). A Debian
+or Ubuntu Apache redirects any request naming a folder without its slash (`mod_dir`'s `DirectorySlash`),
+PROPFIND included, so a stat of any folder failed there, not only deleting and moving one. A file named with
+the slash answers 400, so nothing adds it on a guess. Every request still starts bare, and
+`WebDAVFolderRedirect` sends it once more with the slash where the redirect asks. A `Location` of the same
+URL plus `/` names the source, and a redirect with no `Location` names a MOVE's or COPY's destination,
+which is how `mod_dav`'s lookup of an existing folder answers. Each end is asked again at most once. A PUT
+is never sent again, since that redirect says a folder holds the name. The transport's DELETE, MOVE and
+COPY now say which ends are named as folders. A server that never redirects is sent byte for byte what it
+was before, and on one that does, a folder costs one request more per delete, move or stat. No new
+strings. 13 core tests are new, on 16 runs of the core's own builders through `curl` against Apache
+2.4.68, and seven negative controls were each caught.
+
+The Kerberos stand-in keeps Debian's default now, so the live suite has one server that redirects, and a
+stat of a folder joined the suite. All 13 live tests passed on all seven endpoints. The stand-in's own log
+shows each folder's DELETE and MOVE answered 301 and then done by the slashed request, and the PUT onto a
+folder not sent again. With the resend switched off, the three tests that failed before failed again, on
+that endpoint alone. **Not seen:** an Ubuntu Apache, and any other server that redirects. The NAS was not
+asked, since it never redirects (M32), so what it is sent has not changed.
+
+**2026-11-10: Slice 7 landed** (core, then the app). A saved WebDAV server's sidebar tooltip shows, under its
+address, the space its server says is left: RFC 4331's `quota-available-bytes`, read by
+`WebDAVBackend.quota()` from one `Depth: 0` request of the root that names that property alone. Measured
+first: Nextcloud 34 answers it on every folder as the account's space, `-3` for an account without a quota and
+`0` for a full one, and holds its answer for five minutes. Both Apaches here answer 404, as the NAS did in M32,
+and Finder's own WebDAV client never asks. Two calls were Oleg's. The tooltip says "available" with no total,
+since what Nextcloud reports as used is the folder's and not the account's. And it is asked after a listing on
+the connection, at most every five minutes (`ServerQuotaBook`), never before one, so a wrong password costs no
+second failed login, and with the refresh floor at 0 nothing is asked unasked. A request that got no answer keeps
+the last one; an answer without a number clears it. One string in 14 languages. `scripts/live_test_servers.sh`
+gives the Nextcloud account a 1 GB quota, and the live suite asks every endpoint. 14 core tests and 11 app tests
+are new, one of them live, the fixtures are real runs of the core's own builder against Nextcloud and both Apaches, and 12 negative
+controls were each caught.
+
+The live suite's first run found the app's `curl` transport had no quota request of its own, so the protocol's
+default sent the plain stat and every server read as one without a quota. A logging proxy in front of Nextcloud
+showed the listing's body on every request. The requirement has no default now, so the compiler names a
+transport that lacks it (NOTES.md ▸ Design lessons, the opt-in seams).
+
+Run live in a copy built under its own bundle id, with the saved rows' password from a temporary env-gated probe
+(now gone) so nothing read the Keychain, and the proxy logging what the app sent. Opening the Nextcloud row
+sent the connect, the listing and then the quota request, and the tooltip read "1,07 GB available" under the
+address. The Apache row's read the address alone, after three requests in its log. Two background polls and a
+reopen within five minutes asked nothing more. With the quota then cut to 500 MB and the container restarted
+to drop its cache, the first listing past the five minutes asked again, and the tooltip changed in place to
+"524,3 MB available".
+
+**Not seen:** a real hosted Nextcloud or ownCloud, any other server that reports a quota (IIS, Yandex, rclone),
+and the tooltip in the other 13 languages, whose strings the coverage suite reads from the build.
+
+**2026-11-11: an SFTP server's space on its row** (outside the slice list, Oleg's go-ahead after the probe;
+core, then the app). A saved SFTP server's tooltip now shows, under its address, the space left "of" a total,
+as a volume's does: OpenSSH's `statvfs` extension, `sftp`'s `df`, asked with no path, so of the login
+directory where the row opens. Probed first on four servers (NOTES.md ▸ sftp / ssh ▸ Space left): this
+Mac's `sftp` draws the table whatever the server, in KiB, and `Avail` is what an account may write (ext4's 5 %
+reserve stays out). A chrooted account reads its chroot, `internal-sftp` keeps the extension, and a withheld
+one is a single stderr sentence. Oleg chose the total, since this is a filesystem's own `statvfs` where
+WebDAV's "used" was a folder's. It is the filesystem's space and not the account's, so a per-user quota
+does not show.
+
+`SFTPDiskFree` reads the transcript with both streams folded: the table is an answer, the sentence throws
+`ServerSpaceUnsupported`, and anything else is a session that never got there, which keeps the last answer.
+`ServerSpace` holds either protocol's answer and WebDAV's five-minute rule, and `ServerQuotaBook` now keys
+on either server and stops asking one that cannot say until relaunch. The tooltip reuses the volume row's
+"%@ available of %@", so there are no new strings. `SFTPTransport.diskFree()` has no default, after Slice 7's
+lesson. 13 core tests are new and one moved, over nine captured transcripts; 6 app tests are new, one of them
+live against `statvfs` on this Mac; and 10 negative controls were each caught.
+
+Run live in a copy built under its own bundle id, with three saved key rows, so nothing read the Keychain,
+and a temporary env-gated probe, now gone, logging each row's tooltip. On a macOS server logging its
+requests, opening the row sent `pwd`, the listing, then one `statvfs "/Users/oleg"` in its own session, and
+the tooltip read "545,24 GB available of 2 TB", as `df -k` does here. Polls and a navigation within five
+minutes asked nothing. The chrooted row read "67,1 MB available of 67,1 MB", the 64 MiB `tmpfs`. With
+10 MiB written into it, the first poll past five minutes changed it in place to "56,6 MB available of
+67,1 MB". The withheld row kept its address. Its refused `df` was one session with no request in it, and
+the eight polls past five minutes each listed and asked nothing more. The two-line tooltip was also seen
+drawn on screen, under a resting pointer.
+
+**Not seen:** the NAS, whose DSM user quotas are the case where the volume's space overstates an account's
+(asking it reads the password from the Keychain); a server that is not OpenSSH; and a password account, whose
+transcript was captured from an interactive session with a key, the route the password one takes.
+
+**2026-11-11, on the NAS** (the same day; SwiftLint is now 0.65.1 here too, CI's pin). Probed from the shell
+over the password route as `dirnex-test`, with one Keychain read. DSM answers `df`, after three lines of
+OpenSSH 10's post-quantum warning, but its login directory is `/`, a chroot holding only the shares, on an
+8 GB filesystem of its own (7.66 GiB, with an ext4 reserve). Every share is on the 15 TB volume. So the row
+would read "6,66 GB available of 8,22 GB". And with Oleg's 1 GB user quota on `homes`, `df "/home"` still
+answered the whole volume, so even the right filesystem overstates a quota'd account. The transcript is a
+fixture, and LOCATION-SUPPORT now says "yes, limited". The copy built for the live run never reached the NAS
+("No route to host", the Local Network refusal this Mac gives a new bundle id), so the row itself was not
+seen on the NAS. Which filesystem the row should ask is Oleg's call, still open.
+
+**2026-11-11: the row asks the shares** (Oleg's call; core, then a line in the app). The first session now
+lists the login directory beside its `df`, framed by a trailing `pwd`. When the directory holds nothing but
+folders, a second session asks each of them, at most eight. A folder on the login directory's own
+filesystem keeps that answer. Otherwise the folders' shared filesystem is the answer, and none when they
+are spread over several volumes. A second session that reaches no folder is no answer, so a dropped
+connection cannot put the 8 GB root back. `SFTPTransport.diskFree(_:)` now runs whichever batch it is
+handed. The fixtures were all recaptured through the two batches, among them both NAS sessions and two
+DSM-shaped chroots of bind mounts in a container. The first macOS captures listed Oleg's own home folder,
+since the throwaway `sshd` logs in as him; they were deleted unread by any test, and the server was pinned
+to a scratch folder (NOTES.md ▸ sftp / ssh ▸ Space left). 26 core tests cover it, and 7 negative controls
+were each caught. Both suites are green with the live servers up.
+
+Run live. In a copy under its own bundle id, the chroot whose folders share a 48 MiB volume read "50,3 MB
+available of 50,3 MB" after four logins, the one spread over two volumes kept its address, and the pinned
+macOS folder, which holds a file, cost one `df` session and read "543,65 GB available of 2 TB". That copy
+could not reach the NAS, and neither can any copy built in a folder of its own (LIVE-VERIFICATION.md), so
+the NAS ran in `build/debug-dd` with Oleg's saved rows, his Debug build quit first and relaunched after,
+with a temporary tooltip probe, now gone. "SFTP DT" read "11,11 TB available of 15,35 TB", the data
+volume. The three defaults keys the run moved were put back.
+
+**Not seen:** a DSM account whose shares sit on two volumes; a server that is not OpenSSH; and any way to
+show a quota over SFTP, which the protocol does not carry.
+
+**2026-11-11: Slice 8 landed** (core only; the app is untouched). A sync's record can have one side on a
+server. `SyncRecordPair` takes a local folder and a folder on SFTP, FTP, S3 or WebDAV when its caller passes
+`allowingServerSide`, which the app does from Slice 9, and still refuses two servers, anything that takes no
+upload and a local side in a vault. The server side is spelled into `second`, its account's id and its path
+joined by a NUL, rather than given a field. An M37 build then decodes the record and finds its folder named
+for it, where a field of its own would have had that build's launch purge remove every server record
+(docs/NOTES.md ▸ Persisted state). A version gains `serverRevision`, the server row's size, date and tag, so
+`RemoteFileRevision` is now `Codable`.
+
+`keep(after:for:using:)` takes the sync's `SyncDecision`s and keeps only what they copied: single files, and
+the text files in a folder copied whole. A copy counts as landed when its source still reads as the comparison
+listed it, its destination has moved from what it held, and the two sides are one size. Nothing on the server
+is read. The stamps come from `DirectorySync.survey`, the walk the comparison itself takes, so a stamp is kept
+by the route it is later read by, since SFTP's exec channel and its listing print dates their own ways. A sync
+that copied nothing walks nothing. A local pair handed its decisions is walked as before, and the walk never
+keeps a server pair. `keep(relativePath:local:server:for:)` is the core half of Merge…'s save in Slice 9.
+`SyncRecord.change(of:left:right:)` over two entries reads the local side by bytes and the server's by its
+stamp, and `changes(of:)` uses it for a server pair's rows. Both sides moved is `changedOnBoth` over the copied
+version, so Both Directions makes it a conflict.
+
+40 tests in 3 suites, over a stand-in server whose stamps a test sets and which counts its listings and its byte
+reads. They cover the pair's rules; keeping an upload, a download and a whole folder; a failed copy of one size
+in each direction; a write since the comparison on each side; replacing, forgetting, the budget, the route, and
+Merge…'s save. On the change side they cover each side in either pane, a `touch`, a weak tag, and the same minute
+with and without a tag. The milestone's sentence runs through `TextMerge`, with the server's file downloaded once
+and only then. 30 random histories against a model checked 254 answers, of all five kinds. 5 371 core tests pass;
+the app builds, and its suite was not run, since no app file changed. **Negative controls:** 22 faults, one at a
+time. 19 failed their tests by name at once. Leaving a server pair to the walk ended the run instead, with
+Foundation's `NSException` on the NUL in its path. Two passed, the size check in Merge…'s save and the clone's own
+size check, because each covered the other. The clone's check followed from the ones before it and is gone, and
+the save's then failed by name.
+
+**Known rough edges:** a stamp moves without the bytes for a `touch`, a restore, and an SFTP file passing six months
+old, when its listing drops the time of day. Each reads as a server change, which can only turn a copy into a
+merge that resolves clean. A same-size SFTP write inside the listing's minute stays unseen, as decided. A file
+deleted from both sides keeps its version until a sync that copies something walks the pair. **Unwatched:** the
+check that the local file did not move while it was cloned, since no test can write between those two reads.
+
+**2026-11-11: Slice 9 landed** (the app). The Synchronize window offers the box on a pair with one folder on SFTP,
+FTP, WebDAV or S3. Its tooltip says such a record keeps only what each sync copied, the one new string, in 14
+languages. `SyncDirectoriesController.Decision` is now the core's `SyncDecision`, and `finishSyncRecord` hands the
+sync's rows to `keep(after:)`, so a server pair keeps what was copied and a local pair is walked as before. A row
+changed on both sides is marked and offers Merge… by the existing rules, its server half read from the row's
+stamp. Merge… on such a row brings the server's file down through `materialize`, with its weighing and its Stop,
+then reads the three versions with the local file as the one Save writes first, whichever pane it is in. Save
+writes the local file with its undo and the fetched copy with none (`MergeInput.secondTargetKeepsUndo`). It then
+carries the copy up through `BrowserWindowController.writeBack`, the compare window's route, with its check
+against the download, its question when somebody wrote the server's file since, and its precondition where there
+is a tag. Once the upload lands, the server's file is stat'd again and the merge is kept beside that stamp
+(`PanelViewController+SyncServerMerge`). An upload that does not land leaves the version the sync copied.
+
+9 app tests are new over a stand-in server, two of them run with the server in either pane, one changed, and a live suite runs the whole round trip against the
+throwaway `sshd`. The comparison, the copies, the keep, a change on each side, the download, the merge, the
+guarded write and the keep again all go through the real transport. On that server the walks went over the exec
+channel's `find` and the copies and `stat`s over `sftp`, on a clock 14 hours ahead. A stamp kept from either
+route read as unchanged on the next walk. The suite's first run also saw the accepted gap for itself: `five` made
+`FIVE` and uploaded in the same minute read as unchanged. Full runs: 5 371 core tests, and 2 513 app tests with the
+servers up, 2 486 of them executed. **Negative controls:** 12 faults, one at a time, each failed by name, among them
+Synchronize handing the record no rows, which only the new end-to-end test through `onApply` could see.
+
+Run live in the copy built under its own bundle id (`build/live-copy`, rebuilt there since the folder had gone),
+against the throwaway `sshd`, with a restored SFTP key tab, so nothing read the Keychain. Two temporary
+env-gated probes, both now gone and the copy rebuilt without them, pressed Merge… on the changed row and kept the
+cloud rows out of the sidebar. The box showed on the server pair. Ticked, Synchronize uploaded `notes.txt` and kept
+one version, with the server's row (31 bytes, a minute-aligned date) beside it. With the first line edited here
+and the last on the server, the next Synchronize opened the merge window: Yours the local file, Theirs named
+`oleg@127.0.0.1:` and the server path, both edits merged with no conflict. Save wrote the local file and the copy,
+uploaded the result, replaced the version with the merge beside the server's new 32-byte row, and the window then
+read "The folders are already in sync". The defaults domain was compared unchanged, and `known_hosts` was put back.
+
+**Not seen:** FTP, WebDAV and S3 live, which take the same route; the row's own right-click menu and the box's
+tooltip on screen, which the background tools cannot open or hover; a write on the server between Merge… and Save,
+whose question is `writeBack`'s own and pinned in its tests; and a pair with the server on the left in the app,
+covered by tests in both orders. All are Slice 10's. **A known rough edge:** the merge's stamp comes from a `stat`,
+while a later look reads the walk. The two agreed on OpenSSH here, and a server whose two routes disagreed would
+read the merged file as changed on the server, which merges clean.
+
+**2026-11-11: Slice 10, live and closed.** Every sentence of *Done when*, in the copy built under its own
+bundle id (`build/live-copy`), against throwaway servers: an Alpine OpenSSH container with a root key login and
+a password account, the repo's pyftpdlib and Apache, and SeaweedFS's S3 gateway, which refused a wrong key with
+`SignatureDoesNotMatch`. MinIO, the obvious S3 stand-in, publishes no free image any more: Docker Hub has no
+repository and quay.io asks for a login. Two temporary env-gated probes, both gone and the copy rebuilt without
+them, kept the cloud rows out of the sidebar and answered the copy's Keychain reads from a file of throwaway
+secrets, read once and deleted, so nothing reached the login Keychain and no secret sat in an environment that a
+terminal the copy launched would inherit.
+
+| *Done when* | Seen |
+|---|---|
+| An SFTP item's group, and as root its owner, changed and undone from Get Info, set-id bits intact; no exec channel says why | A real root login, over BusyBox's `id` and `chown`: `dana` typed as owner and `admins` as group on a `6755` file, then Save. The server read `6755 dana:admins`, and Edit ▸ Undo Change Attributes brought back `6755 root:root`. The note for an account with no exec channel was seen in Slice 2 |
+| Open in Terminal lands in the pane's folder on a key account and on a password account, with no secret in `argv` or on disk | All six: key and password, each in Terminal, iTerm 3.7.7 and WezTerm 20240203. The server's `/proc/<pid>/cwd` read `/home/dana/work` for the password shell and `/srv/share` for root's. No process's arguments held the password, no file written during the run did, and every staging folder was gone |
+| ⌥F7 on an S3 account pane states its bound first and reports a bucket it stopped short in | The dialog's line under the fields, "Buckets searched: 3 of 6 · Found: 4" on the sheet, and an alert naming `big`, `big2`, `big3` and `big4`, whose matching key past the 10,000th was not among the six hits. Over 22 buckets, Stop at 4 of 22 left a results tab of 11 hits and "Search stopped · Found: 11" |
+| A remote folder dragged into the sidebar reconnects after a relaunch | Real drags of an FTP, a WebDAV and an S3 folder, each landing where its insertion line showed, each with its endpoint in the store. Relaunched with both panes local, the FTP and WebDAV servers logged nothing until a pin was opened, and each pin then signed in, FTP and WebDAV by password, and listed its folder |
+| NTLM and Negotiate on the stand-ins | Slice 6 |
+| A quota shows where one is reported, and nothing where not | Slice 7 |
+| A file changed on both sides of a remembered sync with a server side merges over the version that sync copied, and a pair with nothing copied offers no merge | FTP and WebDAV with the server on the right, S3 with it on the left. For each: the box ticked, the first Synchronize uploading and keeping one version beside the row's stamp (FTP's date, Apache's weak tag, S3's ETag), an edit on each side, the row marked, Merge… from the real right-click menu, Save into both, `cmp` equal, and the kept version replaced by the merge beside the server's new stamp. A pair with nothing copied is tests: a sync handed no rows keeps nothing (Slice 9), a file with no version reads `noVersion` (Slice 8), and that offers no merge (M37) |
+
+- **Found and fixed: a declined upload left the merge window with nothing to save.** A colleague's write
+  between Merge… and Save on WebDAV raised `writeBack`'s question after one HEAD, and Keep Editing sent no PUT.
+  The local file held the merge and the record kept the version the sync copied, as designed, but the window
+  counted the result saved and disabled Save, and nothing would ever upload it. M34's rule that a save "counts as
+  done before it runs" holds for an editor's watched copy, whose next save is carried as F4's is, and a
+  Synchronize row's copy has no watcher. Oleg's call: fix it here. `MergeSaving.carry` now answers whether the
+  result got where it was going. When it did not, Save stays enabled, and the next Save carries again without
+  writing the files, which already hold the result, so they gain no second undo entry. M34's, M37's and the
+  archive member's carries answer `true` and behave as before. The recovery that already worked, Merge… again
+  from the still-marked row, was seen too: it downloaded the colleague's write and met it as one conflict.
+  Seen live on the fixed build: Keep Editing, Save still enabled, a second Save that left the local file's inode
+  and date alone, the question again, Upload, PUT 204, and the merge kept beside the server's new tag. One test is
+  new and one extended, and four negative controls each failed them by name: Save ignoring the pending carry, the
+  files always written, the carry's answer dropped, and the sync's carry always answering `true`.
+- **Languages:** the 17 strings M38 added are in all 14 languages with their placeholders, and
+  `check_localization_keys.py` found all 1 331 extracted keys in the catalogs. The account search's line is a
+  wrapping label, two lines in French. The one fixed-width line is the progress sheet's: measured with
+  three-digit counts, French is 293 pt and Brazilian Portuguese 283 pt beside a 280 pt bar, and "Compartiments
+  parcourus : 20 sur 22 · Trouvés : 1 900" was whole on screen.
+- **Seen on the way:** iTerm ran the session's `.command` with no question when the launch started it, and asked
+  "OK to run?" when it was already running (docs/NOTES.md ▸ sftp / ssh). Killing the local `ssh` makes it exit
+  255, so the script waits for Return, as for a failed sign-in. The box's tooltip and the row's "Changed on both
+  sides since the last sync" were read on screen.
+- **Rough edges, not fixed:** the row menu reads "Copy to sync-ftp" twice when both folders share a name, as the
+  column headers do. The account search's alert names buckets in S3's byte order
+  (`big, big10, big11, … big2`), where the pane sorts them naturally. A results tab of hits from many buckets shows
+  leaf names only, as every results tab does.
+- **Tests:** 5 371 core and 2 517 app tests, 2 490 of them executed with the live servers up; the S3 live suites
+  skip, needing a real account, and the one known issue is older than this milestone. Both linters clean at CI's
+  pins. The defaults domain was compared unchanged after the suite. The copy's domain, its five undo snapshots and
+  its sync records were removed, the containers and both images too, iTerm and WezTerm were uninstalled with
+  their preferences, and `known_hosts` was put back byte for byte.
+- **Not run live:** as listed at the top of this section.
+
+**2026-11-11: a compare or merge window's questions stay on it** (found in Slice 10's run, Oleg's go-ahead; the
+app). After `writeBack`'s question, the Synchronize window came forward over the merge window it was about. The
+question had never been on the merge window: `NSAlert.sheetHost(over:)` hosts on `NSApp.modalWindow` first, so
+an app-modal *window* gets the alert rather than its parent, and the Synchronize window is one. That rule is
+right for a window that cannot take a click while another is modal, and the compare and merge windows can
+(`CompareWindow.worksWhenModal`). So a visible window that works while another is modal now hosts its own
+alerts, and every question the compare and merge windows ask goes through that lookup.
+
+The first build of it was half a fix, and only a real click showed it. The question came up on the merge window
+and the Synchronize window stayed behind, and Keep Editing did nothing: an app-modal session passes events only to
+the modal window and to windows that work while it is up, and a sheet is a window of its own, whose `NSPanel`
+answers `false`. The copy was stopped by its PID with the question still up. `NSAlert.beginSheet(on:)` now gives
+the alert's panel its host's `worksWhenModal`, and the three helpers every such alert goes through use it. Seen
+live on the fixed build, with real clicks: the question on the merge window, Keep Editing taking the click, the
+merge window still in front with Save enabled, Save again, Upload, PUT 204, and Synchronize behind it all along,
+reading "The folders are already in sync" once the merge window closed. 6 app tests are new, and 4 negative
+controls each failed them by name: the old lookup, no visibility check, any window hosting its own, and the
+alert's panel left as it was. A plain window's alert still goes on the modal window, and a compare window not on
+screen leaves its alert there too. 2 523 app tests pass, the live suites skipped since nothing here reaches a
+server, and the defaults domain was compared unchanged.
+
+**2026-11-11: a folder's own icon, and a picture of an image, a movie or a PDF** (Oleg's report that every file
+icon looked the same, and his go-ahead for both halves; core and app). Probed first, and the obvious ask was the
+wrong one. Drawing each file's default application was the idea; `NSWorkspace.icon(forFile:)` matched
+`icon(for: UTType)` pixel for pixel on 47 of 47 files in Downloads, so macOS 26 itself draws no per-file
+difference, and an application's icon on every file it opens would make a PDF, a PNG and a HEIC all Preview.
+What Finder's list view shows instead is a Quick Look picture of the content. The real bug was elsewhere: every
+folder drew the generic folder, so all 92 packages measured (`/Applications` among them) and Home's special
+folders looked alike.
+
+`RowIcon` (core) decides from the listing alone: a folder's own icon and a picture of its content only for an
+item on this Mac's storage with its bytes here, never over a remote backend, inside an archive, on a share
+(`MNT_LOCAL` clear) or for a dataless cloud item; pictures only for images, movies and PDFs, since at 16 pt a page
+of text or a note on a blank page says less than the type icon; and the type icon everywhere else, a package
+keeping its type so an application on a server is drawn as one. `RowIconLoader` (app) loads both off the main
+thread and keys them by path, date, size, row size and appearance. A folder's icon is fetched *and drawn* into a
+bitmap there, because the first draw is the cost: Home's 26 folders took 40 ms to fetch and 199 ms more to draw
+in a fresh process. Off the main thread it came out byte for byte the main thread's (15 of 15), while Quick
+Look's `.icon` took 308 ms against 56 and drew three applications differently. The appearance is in the key
+because an application's icon has a dark variant on macOS 26 and a folder's has not. A pane draws the
+placeholder, then swaps the image into its visible rows when the loader says so, with no reload. View ▸ Show
+Icon Previews, on by default as Finder's is, turns the pictures off; folders keep their own icons either way.
+`AppPreferences.swift` reached SwiftLint's ceiling with it, so its change notifications moved to
+`AppPreferences+Notifications.swift`.
+
+Seen live in the `app.dirnex.Dirnex.live` copy: Home's special folders and the Drive folders, `/Applications`
+with every application's icon and the two custom folder icons, Downloads with pages for the PDFs and pictures
+for the SVG and the HEIC while text, audio, zip and dmg kept their type icons, the toggle off and on again
+without a navigation, and a light launch drawing the light variants. 12 core tests and 5 app tests are new, and
+3 negative controls each failed theirs by name: an unreadable mount table read as local, the dataless check
+dropped, and text previewed. The thumbnail test's first fixture was transparent (docs/NOTES.md ▸ Fixtures), which
+the test now checks before it blames the loader. 5 383 core and 2 528 app tests pass, the live suites skipped.
+In the first full run `CompareReadingTests`' "a large pair whose NUL is late" ran past its 60 s wait; it passed
+alone in 0.35 s and in the second full run at 54 s, so it sits close to its bound in a loaded run. The defaults
+domain was compared unchanged.
+
+**2026-11-12: Open With ▸ Always Open “.m4v” Files With** (Oleg's question why `.m4v` drew a plain page where
+`.mkv` and `.mp4` drew VLC's cone, and his go-ahead; core, then app). The page was macOS's: TV opened `.m4v` and
+its claim names no document icon, while VLC's claims for the other two name theirs. Finder's Get Info ▸ Change
+All… was the only way to change that, and Dirnex's Open With opened files once. Probed first, and the probe found
+the design's main fact on Oleg's screen: every `NSWorkspace.setDefaultApplication(at:toOpen:)` raises macOS's own
+"Do you want all documents with the extension “.m4v” to open with “VLC”, or to keep using “TV”?", and he answered
+five to ten of them before saying so. So Dirnex asks no question of its own (his call).
+
+`DefaultApplicationScope` (core) decides which files a change reaches: rows of one type, never a folder, a volume,
+an application or a type with no extension (VLC claims `public.folder`, and `public.data` would be every unknown
+file), named by the shared extension, or by the type's description when the extensions differ. The submenu sits
+at the foot of Open With in the File menu and the right-click menu, lists the same applications with today's
+default ticked, and ends in Other…. A row on a server or in an archive is typed by its name, as Open With's list
+is, so nothing is downloaded. After a change Dirnex forgets its type icons and redraws the visible rows.
+
+Seen live in the `app.dirnex.Dirnex.live` copy, with Oleg answering macOS's dialogs, which computer use cannot
+reach (docs/NOTES.md ▸ Drag and drop, and handing files to other apps). The submenu read “.m4v” with VLC ticked;
+TV, then VLC, were set; Keep “VLC” left the default alone. Two things the run found. Keep answers an error, Cocoa
+256 with `userCanceledErr` beneath it, which showed as "Couldn’t make “TV” the default application." until
+`isDeclined` looked down the underlying chain. And the icon did not follow.
+
+**The icon, the same night** (Oleg: "the icon isn't refreshed, even after restarting the app"). Two causes, both
+measured. `NSWorkspace.icon(for:)` follows a change of default late, 13 s to 9½ minutes, and Dirnex kept the icon
+it read for the life of the process, so a relaunch before macOS caught up kept the stale cone. Dirnex now asks for
+its type icons again after a change and whenever it comes to the front. `LSRegisterURL` on the new application
+brought its icon to every process at once, but not for a change to an application with no icon of its own (set to
+TV, `.m4v` kept VLC's cone for the 11 minutes watched), and it went back out when Oleg found Finder's own Always
+Open With has the same lag: macOS's bug. Quick Look's `.icon`, which agreed with Finder throughout, was tried as
+the source to "match Finder" (Oleg's first call) and dropped (his second): Finder draws `.m4v` as TV's page
+whichever application is the default, so it would have kept a VLC `.m4v` looking like the one he asked about.
+docs/NOTES.md ▸ Drag and drop has the measurements.
+
+**And the files open** (Oleg, later that morning: choosing an application changed the default and opened nothing).
+Finder's Always Open With opens the file too, so once macOS has made the change the rows go through Open With's
+own path, a remote row brought down first; Keep in macOS's dialog opens nothing. Seen live in the copy on a
+two-second `.m4v` made with `AVAssetWriter`: set to QuickTime Player, `lsof` had QuickTime holding the file 0.4 s
+after the change, and set back to VLC, the clip was VLC's current playlist item.
+
+12 core and 10 app tests are new; 5 negative controls failed theirs by name (the application check, the extension
+check, the underlying-error walk, the refresh on coming to the front, and opening after a change). 5 395 core and 2 538 app tests
+pass, the live suites skipped since nothing here reaches a server, and the defaults domain was compared unchanged.
 
 ### After M19 — the follow-on log (2026-08-07 → 2026-09-21)
 
@@ -18986,6 +21084,21 @@ because several read as a chain and refer to the entry below. Moved out of [PLAN
 §4 on 2026-08-23, once the plan had nothing left to say about them; what is still open from this
 stretch stayed there. The last six came out of **§5** on 2026-09-10 for the same reason — the
 plan keeps the testing *strategy*, which is a rule, and the history keeps what each pass *found*.
+
+The *Still open* list that stayed in the plan emptied in two steps. Before M35, everything that came
+off it came off in the eight days to **2026-09-01**, ending with three entries below: both of M25's
+own leftovers, *"A remote attribute change cannot be undone"* and *"Many remote write-backs do not
+coordinate"*, and the last parity cell, *"No multipart upload over SFTP or FTP"*, which closed by
+being **half built and half proved impossible**. SFTP splits a large upload into parts that go at
+once and are joined by the server (3.6× through the shipped path, 16.92 s → 4.73 s on 32 MiB over a
+2 MB/s-per-connection link). FTP cannot: it has no way to write at an offset into a file that does
+not already exist at full length, and no way to make one without sending the file twice, so the
+refusal went to [LOCATION-SUPPORT.md](LOCATION-SUPPORT.md)'s *"cannot be closed from here"* list.
+The gap a bug report opened on **2026-09-04**, Dirnex's own SMB share picker, closed as **M35** on
+2026-11-05, and §M35 quotes the item as the plan carried it. The same day, F7, ⇧F4 and ⇧F2 inside a
+browsed archive closed the three plain "no" cells in LOCATION-SUPPORT.md's archive column (§M35 ▸
+Progress). What the list still holds is M15's own cut. This summary moved out of the plan on
+2026-11-05.
 
 **2026-09-21 — A Windows self-extractor browses as an archive, and can never be rewritten.
 VERIFIED against the reported file, headlessly; the GUI pass is still owed.** Reported with a

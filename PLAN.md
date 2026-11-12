@@ -4,7 +4,7 @@ A dual-pane, keyboard-first file manager for macOS in the spirit of Total Comman
 built native (Swift), with macOS-only superpowers TC never had: Quick Look, Spotlight
 search, APFS clones, Finder tags, a command palette, and universal undo.
 
-Status: **M0–M34 shipped** (14 languages; M29's licensing is on in betas, off in stable until the
+Status: **M0–M38 shipped**, **M39–M40 planned** (14 languages; M29's licensing is on in betas, off in stable until the
 store opens; M30's Report a Bug is in every release built while `DIRNEX_BUG_REPORT_URL` is set) ·
 Created: 2026-07-05 ·
 Log: [docs/HISTORY.md](docs/HISTORY.md) · What works where:
@@ -99,7 +99,7 @@ Dirnex/
 Sizes are relative (S ≈ days, M ≈ 1–2 weeks, L ≈ 3+ weeks of focused work).
 Each milestone ends in something runnable; no milestone depends on a later one.
 
-### Shipped: M0 → M34 (2026-07-05 → 2026-10-27)
+### Shipped: M0 → M38 (2026-07-05 → 2026-11-11)
 
 Every milestone is closed. The checklists and the full per-pass progress log — what was probed,
 decided, and rejected — live in **[docs/HISTORY.md](docs/HISTORY.md)**; source comments citing
@@ -109,13 +109,13 @@ decided, and rejected — live in **[docs/HISTORY.md](docs/HISTORY.md)**; source
 |---|---|---|---|
 | M0 | Scaffolding | 07-05 | — |
 | M1 | Read-only dual-pane browser | 07-06 | — |
-| M2 | Operation engine | 07-07 | Side-by-side text diff in the conflict dialog |
+| M2 | Operation engine | 07-07 | Side-by-side text diff in the conflict dialog — **since shipped** 2026-10-22 with M31 Slice 4, as Compare Contents… for two local files whose bytes are here |
 | M3 | Discoverability layer | 07-08 | SQLite stores (JSON is fine); per-workspace palette entries |
 | M4 | VFS payoff | 07-12 | libarchive C-module gate (`bsdtar` instead); search tag chip + content-grep fallback |
 | M5 | Network and sync | 07-14 | — |
 | M6 | Mac-native power features | 07-19 | — |
 | M7 | Release readiness | 07-19 | — |
-| M8 | The sidebar as a first-class surface | 07-21 | Dragging a *remote* (SFTP) folder into the sidebar — stays menu-only; Recents ordered by modification date, not the true last-used stamp |
+| M8 | The sidebar as a first-class surface | 07-21 | Dragging a *remote* (SFTP) folder into the sidebar — stays menu-only, **since shipped** 2026-11-10 with M38 Slice 4, for SFTP, FTP, WebDAV and S3; Recents ordered by modification date, not the true last-used stamp |
 | M9 | iCloud Drive, for real | 07-21 | Per-item download percentage (macOS exposes none through the URL resource keys); Put Back inside the iCloud trash — the origin is an opaque provider reference with no path in it |
 | M10 | Google Drive and Docs | 07-22 | A real Drive API backend (OAuth + Drive v3, native Docs export/import) — dropped 2026-07-22; sync status in Drive's *mirror* mode, which macOS exposes to no one but Finder |
 | M11 | F4 Edit, and Quick View at full size | 07-22 (text preview 07-27) | A built-in text editor (F4 hands the file to the user's own); write-back for archive and SFTP files — **both since shipped**, archives 2026-08-09 and SFTP with M21 Slice 10; a slideshow timer or thumbnail filmstrip in the preview |
@@ -129,24 +129,88 @@ decided, and rejected — live in **[docs/HISTORY.md](docs/HISTORY.md)**; source
 | M19 | Encryption | 08-09 | **`zipcrypt` and AES-128** (the first is broken, the second buys nothing on hardware AES — both taken at open); **encryption for any container but zip**, since libarchive's 7-Zip writer refuses it and tar has no notion of it; **a passphrase for the paths that are not F5** — preview and *nested*-archive entry failed with `passphraseRequired` rather than prompting, and the encrypted route extracted the whole archive rather than the requested members, so a member filter plus a per-archive passphrase held for the session was its own slice (the passphrase half **landed 2026-08-09**, user-reported — see HISTORY.md ▸ After M19; the **member filter landed 2026-08-25**, closing the milestone: `ArchiveMemberFilter` skips what nobody asked for, and one member of a 600 MB archive costs 0.001 s against 1.53 s); **encrypting in place**, or any gesture that removes the plaintext afterwards, because that delete belongs to the user with the Trash's own rules in view; and **vault paths in anything the user saved on purpose** — a named workspace or a favorite pointing inside a vault is kept, since §6's rule is about what Dirnex remembers *without being asked* (the derived-data clause itself was closed 08-09 by fixing the frecency index and session restore, not by stating the leak — see HISTORY.md §M19 ▸ Follow-up) |
 | M20 | Every place reachable without the sidebar | 08-12 | Individual places as ⌘K palette results (the palette is a registry of *commands*, places are live data — a different mechanism, worth its own decision); reordering or editing places from the menu, which stays the sidebar's job; a Finder-style "Computer" or "Network" destination, which is not a place Dirnex has; and a **Help menu** — Slice 2 claimed Help ▸ Search made "Trash" findable and the app declares no Help menu at all, so adding one is its own decision and was not taken |
 | M21 | Amazon S3, and the mounts we already reach | 08-19 | **Atomicity of any kind** — a prefix rename or delete is N copies and N deletes, so stopping partway leaves items under both names, and no layer can make it otherwise; **a byte counter during a server-side copy**, which would cost a round trip per object (~25 min of pure latency on a 50 000-file prefix), so those jobs report items; **`copyMetadata` and `DirectorySync` by timestamp**, since S3 has no settable mtime, no permissions and no symlinks; **a File Provider mount** (Mountain Duck / `rclone mount` territory — a different product with a different lifecycle); **AES-style client-side encryption, versioning, lifecycle rules and storage-class changes**, none of which a file manager's ten verbs have a place for; and **the 200-committed multipart refusal seen from Amazon**, which AWS documents and answers `412` with the code in practice, so it stays pinned against our own SigV4-verifying endpoint |
-| M22 | Find Files on a connected server | 08-16 | **Content-grep and tags remotely** — no remote backend can answer either without reading every file, so `SearchFields` withholds them rather than skipping the clause (which would return *more* results under the same name); **an exact remote timestamp**, since FTP's `LIST` stamps are year- and zone-less on the server's clock — **since shipped** over FTP for servers that answer `MLSD` (2026-10-19); **searching an S3 *account* pane**, whose rows are buckets — "search every bucket" is a different and much more expensive question than the one ⌥F7 asks; and GNU `find -printf`, retired at the probe rather than handled, since choosing it would have shipped the common case unverified — POSIX `find … -exec ls -ldn {} +` instead, at the cost of the date column |
+| M22 | Find Files on a connected server | 08-16 | **Content-grep and tags remotely** — no remote backend can answer either without reading every file, so `SearchFields` withholds them rather than skipping the clause (which would return *more* results under the same name); **an exact remote timestamp**, since FTP's `LIST` stamps are year- and zone-less on the server's clock — **since shipped** over FTP for servers that answer `MLSD` (2026-10-19); **searching an S3 *account* pane**, whose rows are buckets — "search every bucket" is a different and much more expensive question than the one ⌥F7 asks — **since shipped** 2026-11-10 with M38 Slice 5, each bucket up to a bound stated before the search; and GNU `find -printf`, retired at the probe rather than handled, since choosing it would have shipped the common case unverified — POSIX `find … -exec ls -ldn {} +` instead, at the cost of the date column |
 | M23 | Copy, paste and drag, wherever the file is | 08-26 | Dragging a *folder* out of a server as a promise (a promise is one file; a recursive fetch behind a Finder drop has no progress surface and no way to stop it) and dragging an archive **member** out to another app, for the same reason one layer along — an encrypted archive would have to raise a passphrase sheet behind somebody else's drop, and `extractArchiveSources` reports failures with an alert rather than through a completion handler, so it would need Slice 4's always-answers contract first (taken by the user 2026-08-26, F5 copy-out being the route); `⌥⌘V` move-paste into an archive, which stays gated where it was; a *drop* into a browsed archive, where ⌘V adds by repacking and a drag does not; and the pasteboard as an automation surface — nothing here is scriptable that F5 was not. **Left for a human**, since a drag *session* cannot be synthesized: an actual drag between two panes and a Finder drag onto a connected server. A drag from a server into Finder **ran live 2026-10-24**, where a marked set dropped nothing until it was fixed (HISTORY.md §M32) |
-| M24 | Every local-only feature, on a file that is not local | 08-28 | **Content-grep and tag search on a server**, withheld at M22 for the reason that has not changed — no remote backend can answer either without reading every file; **ACLs and extended attributes remotely**, which SFTP and FTP do not carry at all; **Open in Terminal for an SFTP account**, which is an `ssh` session and a different feature; and a **folder that is not already here**, refused by every one of the seven hand-offs — a folder is an unknown number of objects in an unknown number of requests, and copying a tree out is F5's job |
-| M25 | What a remote write carries, and what a remote delete costs | 08-29 | **A Trash the protocols do not have** — taken at §7 on 08-29, and the one part of the milestone that closed by not being built; **owner and group in a remote Get Info**, because `chown`/`chgrp` take a numeric id while `sftp`'s own `ls -la` prints names, so a panel built on a listing has nothing to send; **comparing by timestamp on FTP and S3**, refused by construction and always will be — `LIST` is year-less and zone-less, and an S3 `LastModified` is when the object was *written*; and ACLs and xattrs again, which is a limit rather than a gap |
+| M24 | Every local-only feature, on a file that is not local | 08-28 | **Content-grep and tag search on a server**, withheld at M22 for the reason that has not changed — no remote backend can answer either without reading every file; **ACLs and extended attributes remotely**, which SFTP and FTP do not carry at all; **Open in Terminal for an SFTP account**, which is an `ssh` session and a different feature — **since shipped** 2026-11-10 with M38 Slice 3; and a **folder that is not already here**, refused by every one of the seven hand-offs — a folder is an unknown number of objects in an unknown number of requests, and copying a tree out is F5's job |
+| M25 | What a remote write carries, and what a remote delete costs | 08-29 | **A Trash the protocols do not have** — taken at §7 on 08-29, and the one part of the milestone that closed by not being built; **owner and group in a remote Get Info**, because `chown`/`chgrp` take a numeric id while `sftp`'s own `ls -la` prints names, so a panel built on a listing has nothing to send — **since shipped** 2026-11-10 with M38 Slices 1–2, by name over the exec channel; **comparing by timestamp on FTP and S3**, refused by construction and always will be — `LIST` is year-less and zone-less, and an S3 `LastModified` is when the object was *written*; and ACLs and xattrs again, which is a limit rather than a gap |
 | M26 | Move to Trash, wherever the file lives | 08-31 | **The remote backends**, which have no Trash at all and are already degraded to a confirmed permanent delete (§M5, and M25 §7's decision not to invent one); **chasing the refusal further into TCC and `fileproviderd`**, which is not observable from here past the three candidates already eliminated — the fix does not depend on knowing which policy denies; and **Put Back for an item *Finder* deleted out of a provider domain**, or for anything trashed before the store shipped, both of which keep the honest answer the restore flow already gives by name. A **third** origin source landed 2026-09-20 — a network share's own `#recycle`, where the bin mirrors the original path so there is no record to be missing (HISTORY.md ▸ the follow-on log) |
 | M27 | Legacy code-page archive names | 09-09 | **Inferring** the code page — no reader can, and a wrong guess is a plausible name for the wrong file, so it is a chooser over a preview and never a detector; **preserving an un-representable name byte-for-byte**, the rejected streaming rewrite, which keeps bytes nobody can read and still cannot extract that row *out* of the archive; and **persisting the declaration** across sessions, since it is a guess the user made about one archive and a wrong one silently outliving the session is worse than being asked again |
 | M28 | iCloud Photos, as folders of originals | 09-13 | **Import, delete and album edits**, each a write Photos mediates with its own confirmation; **smart albums** — one a person made is returned by no PhotoKit fetch, and the system ones are views over the library rather than places; **shared albums, the Shared Library and hidden photos**, left out as Photos' own Library view leaves them out; **a per-asset time zone**, which PhotoKit does not expose, so months are cut in the Mac's; **⌘L inside the library**, which has no real directory to start from; and **Photos' lowercase `.mov`** for a Live Photo's movie, since a row's name is part of its path. **Exercised later that evening**: the download of an original that is only in iCloud, on clips recorded for it — the bar sat at zero and Stop was ignored until the request carried a progress handler (HISTORY.md §M28); after that fix a 219 MB copy arrived byte-identical and Stop on a 276 MB one stored nothing |
 | M29 | A license, and the reminder it removes | 10-01 | **Revoking a refunded key inside the app** (the server marks it; an in-app list waits until refunds are actually abused); **trials that stop working, and activation limits**; **any copy protection beyond the signature**, since the source is open and the reminder is a request, not a lock; and **the Keychain** for the key, which is signed rather than secret. **Seen only in tests or a Debug build**: the Renew reminder on a release build, the prominent Renew… in Settings ▸ License, a pasted production key, and the 13:00 rule |
 | M30 | Report a Bug, and a Help menu to hold it | 10-07 | **Anything the user didn't type or tick** in a report: no logs, no screenshots, no file names or paths, one crash report at most; **the website** naming Help ▸ Report a Bug…, until a stable release has it (the private repo's C8). **Seen only in tests**: Email Instead's draft, since this Mac's Mail has no account |
 | M31 | A compare window of our own | 10-22 | **Editing, copying a block across and saving**, a later milestone's decision — **since shipped** as M33, for whole lines; **a three-way merge** — **since shipped** as M34; **a file over 64 MiB** in the window, refused by name and left to the external tools; **a binary comparison**. **Seen only through a probe**: a Mac with no external diff tool. **Not run live**: an external tool from the conflict dialog, FTP and S3 pairs, and Escape |
-| M32 | WebDAV | 10-24 | **Depth infinity**; **locks of our own**; **NTLM, Negotiate and OAuth**; **setting a time on Apache**, which has no way to take one (Nextcloud's `X-OC-Mtime` is used where it is answered); **Apache's offset PUT** as a segmented upload; **quota**; **CalDAV, CardDAV, versioning and WebDAV ACLs**; **a Trash**, which the protocol does not have, so a NAS's `#recycle` softens the delete sheet instead. **All run live 2026-10-24**, on the NAS and a throwaway Apache, which found and fixed three bugs: ⌥F5 with a server folder in the set, Put Back into a folder deleted since, and dragging a marked set out (HISTORY.md §M32) |
+| M32 | WebDAV | 10-24 | **Depth infinity**; **locks of our own**, which M38's probe found add nothing worth holding one; **NTLM, Negotiate and OAuth**, NTLM and Negotiate **since shipped** 2026-11-10 with M38 Slice 6; **setting a time on Apache**, which has no way to take one (Nextcloud's `X-OC-Mtime` is used where it is answered); **Apache's offset PUT** as a segmented upload; **quota**, **since shipped** 2026-11-10 with M38 Slice 7 where the server reports one; **CalDAV, CardDAV, versioning and WebDAV ACLs**; **a Trash**, which the protocol does not have, so a NAS's `#recycle` softens the delete sheet instead. **All run live 2026-10-24**, on the NAS and a throwaway Apache, which found and fixed three bugs: ⌥F5 with a server folder in the set, Put Back into a folder deleted since, and dragging a marked set out (HISTORY.md §M32) |
 | M33 | Copy a change across, and save | 10-26 | **Typing in a pane** and **find and replace**, M11's call; **copying every change at once**, which is F5; **a save that changes the encoding or the line endings**, since a save keeps both; **editing in the conflict dialog's window**, whose right-hand file waits on that dialog. **Not run live**: FTP and S3 sides, a Synchronize row compared again after a save, a side with nowhere to save, and an editor's unsaved edit met by a save |
 | M34 | A three-way merge | 10-27 | **Synchronize as an entry point**, until a sync keeps a record of the last one; **three files picked by hand**, whose base would be a guess; **an archive member** changed behind an edit; **being git's merge tool**, which needs a command-line entry point; **conflict markers** in any form; **a merge that ignores whitespace**; **a binary file**. **Not run live**: FTP in the app, a batch's question, a file past the content check's limit, the take keys and the light appearance. Over SFTP and FTP a write between the check and the upload goes unseen, since that upload carries no condition |
+| M35 | An SMB server's shares, as a pane | 11-05 | **Anything that writes to the list**: creating, renaming or deleting a share, or copying onto it; **a comment column**; **a way up from a share Finder mounted**, which keeps `..` → `/Volumes`. **Not run live**: the plain permission sentence, since no share is listed to `dirnex-test` and refused; ⌘Return into the other pane; a saved sidebar row; `..` from a share typed into the sheet while its server is not connected; and marks inside a share after a relaunch |
+| M36 | Drag and paste, where M23 stopped | 11-08 | **A folder for Teams, Chrome and the rest of Chromium**, which refuse a promise — **since shipped** the same day as a zip of the folder for every app but Finder, after Gmail answered "Attachment failed" for a folder, and **since 2026-11-09 as the folder itself, with the zip for an app the pointer enters with ⇧ held**, after VLC was handed a zip of a whole season (HISTORY.md, after §M36); **a folder inside an archive**, which probe P1 answers for too, leaving the extraction of a subtree behind the promise; **a folder dragged with files** losing its promise once the pointer has been over another app, the board's rewrite to file URLs being one way. **Not run live**: Edit ▸ Move Items Here being enabled, F5 from a server into an archive, an archive member into a Chromium app, and a server folder crossing another app on its way to Finder |
+| M37 | Compare and merge, past M31 and M34 | 11-09 | **Aligning a byte comparison across insertions**, which needs gaps in the rows and a size limit, and has no oracle; **whitespace in a merge's regions**, labelled and offered as a take instead, so no edit goes missing in silence; **a sync's record with a side on a server**, **since shipped** 2026-11-11 with M38 Slices 8–9, keeping only what each sync copied; Go to Offset, copying bytes and Swap Sides in the byte view |
+| M38 | Remote: what M8, M22, M24, M25 and M32 left | 11-11 | **WebDAV locks of our own**, since a lock around the save cannot see a write made before it, and one held from the download on would lock everyone else out while an editor is open; **OAuth for WebDAV**, which needs a sign-in flow and a token store; **a faster Find Files walk in Photos**, which saves about 1 ms a month while a name costs 2.0 ms an asset; **a quota over SFTP**, which the protocol does not carry. **Not run live**: real AWS, IIS, a Windows domain and a hosted Nextcloud; root over GNU coreutils; a password pin reconnecting through the Keychain itself; and the NAS for Open in Terminal, whose accounts may not run a command |
 
 ### Next
 
-No milestone is planned. M33 (copying a change across, and saving) closed 2026-10-26 and M34 (a
-three-way merge) 2026-10-27, and both are archived in [docs/HISTORY.md](docs/HISTORY.md).
+**Planned 2026-11-07: M36–M40.** These five milestones take up what earlier milestones left undone by
+choice rather than for a hard limit, in the order Oleg set: drag and paste, compare and merge, remote,
+Quick View, and everything else. Each item names the milestone that left it and the reason given
+then, because that reason is what the design has to answer. Nothing left here has been probed yet. Each
+milestone opens with its probes, and its slices are written then (CLAUDE.md ▸ How to work here). An
+item whose reason still holds after the probe goes back to the *undone* column with what the probe
+found.
+
+M36 (drag and paste, where M23 stopped) closed 2026-11-08, M37 (compare and merge, past M31 and M34)
+2026-11-09 and M38 (remote: what M8, M22, M24, M25 and M32 left) 2026-11-11, and all three are archived in
+[docs/HISTORY.md](docs/HISTORY.md).
+
+#### M39 — Quick View (L)
+
+- **RTF** (M16, M18), with a source and a page view. It is `NSAttributedString`'s job and shares
+  nothing with the Markdown renderer.
+- **`.webarchive` and `.mhtml`** (M16), which need `loadData` rather than a file load.
+- **Markdown: math, footnotes, definition lists, emoji shortcodes and wiki links** (M18). A wiki
+  link names another file, so it depends on following a link, the item below.
+- **More mermaid diagram types** (M18). Only flowchart and sequence draw today. A class diagram,
+  gantt, state chart or ER diagram falls back to a code fence naming itself.
+- **Following a link to another file** (M18). A preview that follows links is a browser, and needs
+  its own history and its own way back.
+- **Exporting the rendered page** to HTML or PDF (M18). That is a file operation, so it goes through
+  the operation engine with a destination and a conflict policy.
+- **Syntax highlighting** (M17): a theme picker, since the colors are a fixed light and dark table;
+  JSON keys colored apart from values; setext headings and indented code blocks in a Markdown file's
+  source; and Ruby's `=begin` block comment. The JSON and Markdown items need a lookahead or a
+  previous line that the single pass does not keep.
+- **A slideshow timer or a thumbnail filmstrip** (M11). Left because that is an image viewer, and the
+  point of full-size Quick View is that the file list stays the navigation.
+
+Inherited from M17's and M18's risk rows (§6): the highlighter stays one pass with no state stack, and
+only ever adds color. Markdown is judged against a corpus of real files rather than the spec, an
+unreadable construct falls back to its own text, and the generated page stays inert. Mermaid gains
+diagram types, never a config surface read from the diagram's source.
+
+#### M40 — Everything else (M)
+
+- **Places as ⌘K results** (M20). The palette is a registry of commands and places are live data, so
+  this is a second mechanism and its own decision.
+- **Per-workspace palette entries** (M3). Workspaces are reached through the Workspaces… popup
+  today.
+- **Privilege escalation for a multi-selection, and recursively** (M14). The single-item path proved
+  the mechanism, and those sheets refuse a root-only change by name.
+- **Escalating the undo of a non-owned change** (M14), refused today with
+  `attributeRestoreNeedsAdministrator`.
+- **Recents ordered by when each item was last used** (M8). Modification date stands in today,
+  because `mdfind` returns paths in no useful order and a statted `FileEntry` carries no last-used
+  date.
+- **Find Files: the tag chip, and a content-grep fallback for volumes Spotlight does not index**
+  (M4).
+- **Localization** (M12): the stock Finder tag names in the ⌃T menu, which are
+  `FinderTag.systemTagName` data in the core and stay English; a lint rule keeping bare literals out
+  of UI files, which the sweeps stand in for; and the "Results for Search results" stutter, a wording
+  decision rather than a translation gap.
+- **Revoking a refunded key inside the app** (M29). The server marks a refunded key, and M29 set the
+  in-app list to wait until refunds are actually abused. Dirnex never asks a server whether a license
+  is real, so the list ships in the app.
+- **SMB** (M35): a comment column on a server's share list, from the `NetCommentStr` that
+  `EnumerateShares` already returns; and a way up from a share Finder mounted, which keeps `..` →
+  `/Volumes`.
 
 The app's share of selling Dirnex (the private companion repo `dirnex-home`, milestones C1–C15) was
 two milestones, **M29** (a license, and the reminder it removes) and **M30** (Report a Bug), both
@@ -158,40 +222,19 @@ your key?" link in Settings ▸ License.
 
 ### Still open
 
-Everything through M34 is shipped, and the record of it — the milestone checklists, the sixty
-dated passes that landed outside a milestone of their own, and the reasoning behind every decision —
-is in **[docs/HISTORY.md](docs/HISTORY.md)**. What is still open, rather than merely imaginable, is
-the *undone* column in the table above, plus the list below. Everything that came off this list came
-off in the eight days to **2026-09-01** (HISTORY.md ▸ the follow-on log): both of M25's own
-leftovers — *"A remote attribute change cannot be undone"* and *"Many remote write-backs do not
-coordinate"* — and the last parity cell, *"No multipart upload over SFTP or FTP"*, which closed by
-being **half built and half proved impossible**. SFTP splits a large upload into parts that go at
-once and are joined by the server (measured 3.6× through the shipped path, 16.92 s → 4.73 s on
-32 MiB over a 2 MB/s-per-connection link); FTP cannot, and that is now a measurement rather than an
-assumption — it has no way to write at an offset into a file that does not already exist at full
-length, and no way to make one without sending the file twice. The refusal moved to
-[docs/LOCATION-SUPPORT.md](docs/LOCATION-SUPPORT.md)'s *"cannot be closed from here"* list with the
-numbers behind it. What remains here is M15's own cut, and one gap a bug report opened on
-**2026-09-04**.
+Everything through M38 is shipped, and the record of it — the milestone checklists, the dated
+passes that landed outside a milestone of their own, and the reasoning behind every decision — is in
+**[docs/HISTORY.md](docs/HISTORY.md)**, which also tells how everything else on this list came off
+it (HISTORY.md ▸ the follow-on log). What is still open, rather than merely imaginable, is M39–M40
+under *Next*, which take up the items in the table's *undone* column that were left by choice, plus
+the list below. The column itself stays as each milestone's record.
 
 - **The thumbnail grid, brief view and the `PaneSurface` extraction** — M15's cut, and one unit
   rather than three items, argued in HISTORY.md §M15. Any future grid inherits two constraints from
-  it: skip `FileEntry.isDataless` rows, and move sort off the column header first.
-
-- **Dirnex's own SMB share picker.** With the Share field blank the app hands the mount to NetFS's
-  own UI (`kNAUIOptionAllowUI`), which is macOS's share picker — the only way today to browse a
-  server's shares. It costs two things the user sees. A failed pick raises **two** dialogs,
-  NetAuthAgent's generic *"There was a problem connecting to the server"* and Dirnex's after it; and
-  NetFS never reports back *which* share was picked, so the second one cannot name the folder that
-  failed. That is what makes it worth a slice rather than a nicety: a share the account may not use
-  and a share that is not there come back as **one** status (ENOENT), so only the *listing* tells
-  them apart — and the server names a refused share to the very account it refuses. The listing is
-  reachable in-process, measured 2026-09-04 against a real NAS: `EnumerateShares` on the SMB plugin's
-  `NetFSMountInterface_V1` (`<NetFS/NetFSPlugin.h>`), credentials in memory, no subprocess and
-  nothing in `argv` (docs/NOTES.md ▸ SMB). One enumeration therefore buys all three — the picker, the
-  exact refusal (*"“dirnex-test” doesn't have permission to use “Photos”"* rather than a sentence
-  that has to hedge), and the duplicate dialog going away. The hedging wording shipped 2026-09-04 as
-  the half that needed no new machinery.
+  it: skip `FileEntry.isDataless` rows, and move sort off the column header first. The list's own
+  rows have drawn a picture of an image, a movie or a PDF since 2026-11-11 (View ▸ Show Icon
+  Previews, HISTORY.md after §M38), and a grid would take its thumbnails from the same `RowIcon`
+  rule and `RowIconLoader`.
 
 ## 5. Cross-cutting: testing strategy
 
@@ -232,7 +275,7 @@ plan keeps the strategy, which is a rule that outlives any one pass.
 | M31's compare window grows into an editor one small step at a time: selectable text, then editable text, then something has to save it. And a diff can be wrong in the quiet direction, showing two different files as the same | Editing is a later milestone's decision, stated in M31's first bullet. The tell is a text view becoming editable, or a Save command appearing, before that decision is taken. Against the quiet error there are three defenses: lines compare as bytes, every corpus pair has to match git's minimal counts, and a pair with no visible change says what differs. **Held (closed 2026-10-22).** Both panes are `isEditable = false`, and nothing in the window saves. All three defenses shipped and were seen working: the history run found no disagreement with git, and live, an encoding-only, a byte-order-mark-only and a line-ending-only pair each said what differed |
 | M32's WebDAV backend is fitted to one server. The NAS and the throwaway `httpd` are both Apache `mod_dav`, so every fixture, every live run and every probe agree with Apache, and a parser can pass all of them while reading Apache's spelling rather than the protocol | The parser matches elements by namespace URI and reads only what RFC 4918 promises, so `lp1:` and `D:` are one case rather than two. The fixtures are captured bytes, and the corpus gets a second implementation family (Nextcloud's sabre/dav, in a container) before the milestone closes. The tell is a branch keyed on a prefix, on the `Server` header or on a slash at the end of an href. A capability only Apache has, such as the offset PUT, stays unused until a second server answers it the same way. **Held (closed 2026-10-24).** Nextcloud 34's sabre/dav ran every probe and the whole live suite: its `d:` prefix, with `oc:` and `nc:` beside it, parsed unchanged, and no branch keys on a prefix, a header or a slash. What differed was behaviour, each now a claim in the endpoint's config or a rule with its fixture: names stored composed, a lock that guards only the file, a strong tag shared by every write in one second, `creationdate` at the epoch, a 404 for a PUT into a missing folder, and `X-OC-Mtime` honoured, which is the one capability Dirnex now uses there and asks of every server, believing only an answer that says so. The offset PUT stays unused |
 | M33 grows the compare window into the text editor M11 refused, one reasonable step at a time: copy a block, then fix one character, then type. And a save can write bytes nobody chose: an encoding, a byte-order mark or line endings the file did not have | M31's row named a Save command appearing *before the decision* as its tell, and M33 is that decision, taken for line operations only. The panes stay `isEditable = false` and an edit is a `LineEdit` on the core model, so the tell is now a keystroke reaching a pane's text storage, or find and replace appearing. Hand edits go to the user's own editor, which the window watches. Against the quiet error: an unedited side must encode back byte-identical over the repository's history, a side that does not opens read-only with the reason named, and a character the encoding cannot hold is refused rather than substituted. **Held (closed 2026-10-26).** The panes are still `isEditable = false`, every edit is a `LineEdit` on `ComparedDocument`, and no find or replace arrived; a hand edit goes to the user's editor, which the window watches. An unedited side came back byte-identical for all 7 449 text versions in this repository's history and all 555 676 text files measured on the development Mac. The two hand-made files that did not come back open read-only, with the reason in the banner. A character the encoding cannot hold is refused with its line, and copied lines take the line ending of the file they land in |
-| M34's merge is wrong in the quiet direction: a region read as changed on one side when both sides changed it drops an edit, and nothing on screen shows what went missing. A stale base does the same | git is the oracle in two styles, `--diff3` for the regions and `--zdiff3` for the trimming, and the properties that need no git (a text merged with itself comes back, a side equal to the base yields the other, every one-sided change survives) run over random texts. No ignore option reaches a merge, the uploaded bytes replace the base after every upload, and Save is refused while a conflict is open. The tell is a merge offered without a real base, such as the server's copy standing in for one, or an ignore option reaching `ThreeWayMerge`. **Held (closed 2026-10-27).** git agreed in both styles on every corpus triple apart from 113 named ties, and the three properties ran over random texts. No ignore option reaches `ThreeWayMerge`. Merge… is offered only with a base that was the server's own bytes: taken when the edit's watch starts on a copy nothing has written, replaced by each upload's sent duplicate, forgotten with a record whose upload outcome is unknown, and never the server's copy standing in. Save is refused while a conflict is open, and no marker is written. The quiet failure the row names turned up once, in the check rather than the merge: over SFTP a same-size write in the minute of the last upload went unseen and was overwritten, and the save now compares the server's bytes with the base |
+| M34's merge is wrong in the quiet direction: a region read as changed on one side when both sides changed it drops an edit, and nothing on screen shows what went missing. A stale base does the same | git is the oracle in two styles, `--diff3` for the regions and `--zdiff3` for the trimming, and the properties that need no git (a text merged with itself comes back, a side equal to the base yields the other, every one-sided change survives) run over random texts. No ignore option reaches a merge, the uploaded bytes replace the base after every upload, and Save is refused while a conflict is open. The tell is a merge offered without a real base, such as the server's copy standing in for one, or an ignore option reaching `ThreeWayMerge`. **Held (closed 2026-10-27).** git agreed in both styles on every corpus triple apart from 113 named ties, and the three properties ran over random texts. No ignore option reaches `ThreeWayMerge`. Merge… is offered only with a base that was the server's own bytes: taken when the edit's watch starts on a copy nothing has written, replaced by each upload's sent duplicate, forgotten with a record whose upload outcome is unknown, and never the server's copy standing in. Save is refused while a conflict is open, and no marker is written. The quiet failure the row names turned up once, in the check rather than the merge: over SFTP a same-size write in the minute of the last upload went unseen and was overwritten, and the save now compares the server's bytes with the base. **Held again through M37 (closed 2026-11-09)**, which added four more ways into the window: no ignore option reaches `ThreeWayMerge`, whose options carry only `isMinimal`, and a conflict that whitespace explains is labelled instead. A sync's base is a version both sides were found holding byte for byte, an archive member's is the member as extracted, and git's is git's own |
 
 ## 7. Open questions
 

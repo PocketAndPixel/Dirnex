@@ -21,10 +21,20 @@ public enum WebDAVConnectError: Error, Sendable, Equatable {
     case credentialsRequired
     /// The server refused the credentials it was sent.
     case credentialsRefused
-    /// The server asked for credentials in schemes Dirnex does not speak — NTLM, Negotiate or a
-    /// bearer token (PLAN.md §M32). The schemes are named, lowercased, so the sentence can say
-    /// which.
+    /// The server asked for credentials in schemes Dirnex does not speak — a bearer token, say
+    /// (PLAN.md §M32, and §M38 for NTLM and Negotiate, which it now does). The schemes are named,
+    /// lowercased, so the sentence can say which.
     case unsupportedAuthentication(schemes: [String])
+    /// The server signs in only by Negotiate, and the account has a user name. Negotiate uses this
+    /// Mac's Kerberos ticket rather than a typed account (``WebDAVAuthScheme/negotiate``), so the way
+    /// in is an account with no name, and nothing was sent.
+    case kerberosOnly
+    /// The server asked for Negotiate, the account has no name, and the request signed with this
+    /// Mac's ticket was refused too: the Mac holds no ticket for the server's realm, or the address
+    /// is not the name the server's key was made for. Measured on the stand-in 2026-11-10: with no
+    /// ticket, macOS's SPNEGO offered an NTLM token instead and the server rejected it, and an IP
+    /// address in place of `localhost` was refused with a valid ticket in the cache.
+    case kerberosTicketRefused
     /// Something answered, and it is not a WebDAV folder: a web page, or a server that does not
     /// know PROPFIND (macOS's Apache answers a folder without WebDAV with 405 and an `Allow` header
     /// that lacks it). The usual cause is the root path — Nextcloud's account lives at
@@ -62,18 +72,24 @@ public enum WebDAVChallenge {
         return schemes
     }
 
-    /// The scheme to answer with, or `nil` when none is one Dirnex speaks.
+    /// The scheme a **named** account answers with, or `nil` when none of those offered sends a
+    /// password Dirnex can send. Negotiate is never the answer here, since it signs in as whoever
+    /// holds the Mac's ticket rather than as the account typed (``WebDAVAuthScheme/negotiate``).
     ///
-    /// When both are offered, the transport decides: over HTTPS, Basic, which costs one round trip
-    /// where Digest costs two and sends nothing TLS is not already protecting; over plain HTTP,
-    /// Digest, which keeps the password off a wire anyone can read.
+    /// When several are offered, the transport decides. Over HTTPS, Basic, which costs one round
+    /// trip and sends nothing TLS is not already protecting; then NTLM, whose handshake is paid once
+    /// per connection; then Digest, which pays a 401 on every request. Over plain HTTP the order
+    /// turns round on Basic, which would put the password on a wire anyone can read: Digest first,
+    /// as before NTLM was spoken, then NTLM, and Basic last. So an IIS offering Negotiate, NTLM and
+    /// Basic over HTTP now gets NTLM where it used to get Basic.
     public static func preferred(among schemes: [String], overTLS: Bool) -> WebDAVAuthScheme? {
-        switch (schemes.contains("basic"), schemes.contains("digest")) {
-        case (true, true): overTLS ? .basic : .digest
-        case (true, false): .basic
-        case (false, true): .digest
-        case (false, false): nil
-        }
+        let order: [WebDAVAuthScheme] = overTLS ? [.basic, .ntlm, .digest] : [.digest, .ntlm, .basic]
+        return order.first { schemes.contains($0.rawValue) }
+    }
+
+    /// Whether the challenge offers Negotiate, the scheme an account with no name signs in with.
+    public static func offersTicket(_ schemes: [String]) -> Bool {
+        schemes.contains(WebDAVAuthScheme.negotiate.rawValue)
     }
 
     /// The comma-separated elements of one header value, commas inside a quoted string (with its
@@ -141,8 +157,13 @@ public enum WebDAVConnectProbe {
     /// A server that answers the first request without asking is either public or exempts reads,
     /// and an account the user typed still logs in: a server that serves reads anonymously may
     /// want the account for writes. Basic goes out then, since nothing named another scheme — and
-    /// if the authenticated request is answered with a challenge for Digest alone, it is asked once
-    /// more in Digest rather than reported as a wrong password.
+    /// if the authenticated request is answered with a challenge for another scheme alone, it is
+    /// asked once more in that one rather than reported as a wrong password.
+    ///
+    /// An account with **no name** that is asked for credentials signs in with the Mac's Kerberos
+    /// ticket when the server offers Negotiate (PLAN.md §M38), and is told it needs an account
+    /// otherwise. A named account is never signed in by Negotiate, so a server offering nothing else
+    /// says so by name rather than as a scheme Dirnex does not speak.
     public static func connect(
         to location: WebDAVLocation,
         over transport: (WebDAVAuthScheme?) -> any WebDAVTransport
@@ -152,11 +173,40 @@ public enum WebDAVConnectProbe {
             guard location.hasCredentials else { return WebDAVConnection(authentication: nil) }
             return try authenticate(location, with: .basic, over: transport, mayChangeScheme: true)
         case let .challenge(schemes):
-            guard location.hasCredentials else { throw WebDAVConnectError.credentialsRequired }
+            guard location.hasCredentials else {
+                return try signInWithTicket(location, offered: schemes, over: transport)
+            }
             guard let scheme = WebDAVChallenge.preferred(among: schemes, overTLS: location.usesTLS)
-            else { throw WebDAVConnectError.unsupportedAuthentication(schemes: schemes) }
+            else { throw unspeakable(schemes) }
             return try authenticate(location, with: scheme, over: transport, mayChangeScheme: false)
         }
+    }
+
+    /// Sign an account with no name in with the Mac's ticket, when the server offers Negotiate.
+    ///
+    /// One request, since `curl` sends the token on its first request rather than waiting for the
+    /// 401 (measured on the stand-in: one line in Apache's log per request, each carrying its
+    /// token). A refusal is the ticket's, never a password's: nothing typed was sent.
+    private static func signInWithTicket(
+        _ location: WebDAVLocation,
+        offered schemes: [String],
+        over transport: (WebDAVAuthScheme?) -> any WebDAVTransport
+    ) throws -> WebDAVConnection {
+        guard WebDAVChallenge.offersTicket(schemes) else {
+            throw WebDAVConnectError.credentialsRequired
+        }
+        switch try rootAnswer(at: location, over: transport(.negotiate)) {
+        case .folder: return WebDAVConnection(authentication: .negotiate)
+        case .challenge: throw WebDAVConnectError.kerberosTicketRefused
+        }
+    }
+
+    /// Why a named account cannot answer `schemes`: Negotiate alone is a server for the Mac's ticket,
+    /// and anything else is a scheme Dirnex does not speak.
+    private static func unspeakable(_ schemes: [String]) -> WebDAVConnectError {
+        WebDAVChallenge.offersTicket(schemes)
+            ? .kerberosOnly
+            : .unsupportedAuthentication(schemes: schemes)
     }
 
     private static func authenticate(
@@ -169,17 +219,16 @@ public enum WebDAVConnectProbe {
         case .folder:
             return WebDAVConnection(authentication: scheme)
         case let .challenge(schemes):
-            if mayChangeScheme,
-               let named = WebDAVChallenge.preferred(among: schemes, overTLS: location.usesTLS),
-               named != scheme {
-                return try authenticate(
-                    location,
-                    with: named,
-                    over: transport,
-                    mayChangeScheme: false
-                )
+            guard mayChangeScheme else { throw WebDAVConnectError.credentialsRefused }
+            guard let named = WebDAVChallenge.preferred(among: schemes, overTLS: location.usesTLS)
+            else {
+                // Reads were public and the write side asks for nothing a typed account can send.
+                // An empty challenge is still a refusal of what was sent.
+                guard schemes.isEmpty else { throw unspeakable(schemes) }
+                throw WebDAVConnectError.credentialsRefused
             }
-            throw WebDAVConnectError.credentialsRefused
+            guard named != scheme else { throw WebDAVConnectError.credentialsRefused }
+            return try authenticate(location, with: named, over: transport, mayChangeScheme: false)
         }
     }
 
