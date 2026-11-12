@@ -360,9 +360,11 @@ Decided before Slice 1 (2026-11-12, Oleg, on the probes above):
    throwaway `sshd`: the cross-folder link with a heading cost 3 sessions (stat, listing, download) and
    opened scrolled; a same-folder link cost no listing; the server HTML file's link worked after the
    fix and not before; a missing file got its sentence. Inside a zip: the cross-folder link with a
-   heading. **Not run live**: full screen, which moves the window into a Space of its own on Oleg's
-   display, though its surface is wired by the same line as full window's; a web link opening the
-   browser; a saved page's link; a link from a results listing, which its test covers.
+   heading. At full screen (run 2026-11-13, at Oleg's go): `sub/deep.md#part-two` entered `sub` and put
+   the heading at the top, just under the strip the header drops into; Go ▸ Back came home and a second
+   click did the same; a sibling took a cursor step; an anchor scrolled in place; and the missing file's
+   alert came up over the full-screen window and left it there. **Not run live**: a web link opening
+   the browser; a saved page's link; a link from a results listing, which its test covers.
 6. **Markdown: GitHub alerts, footnotes and emoji shortcodes** (core and stylesheet). The shortcode
    table's source is asked when the slice opens.
 7. **Markdown: wiki links and definition lists.** Wiki links go through Slice 4's resolver.

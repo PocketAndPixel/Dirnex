@@ -397,6 +397,10 @@ so a trap goes here only if it can bite any live run; one tied to an area goes u
   display-scope `mouse_move` can, and that needs full-screen control. Without it, measure the title
   bar instead (its height is the close button's superview, NOTES.md ▸ Windows) and say the drop was
   not seen.
+  - **Entering full screen takes the front, even from a background `app_menu`.** Seen 2026-11-13: View ▸
+    Quick View Full Screen on the copy left `lsappinfo front` naming `app.dirnex.Dirnex.live` until it
+    quit, so Oleg's typing would have gone to it for the whole run. Tell him first, keep the run short,
+    and check the front app afterwards.
 - **Background computer-use cannot ⌘-click, so reach a sidebar row's ⌘ gesture by keyboard.** Its
   `app_click` takes no modifiers. Measured 2026-10-14 checking servers opening in a new tab: View ▸
   Focus Sidebar, then `down` keys, then `app_key cmd+return` arrived as ⌘Return. Two cautions. Section
