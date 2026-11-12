@@ -77,6 +77,21 @@ struct SMBTreeRestoreTests {
         return pane
     }
 
+    /// `treePane()` with its view loaded and its own first listing landed, for a test that waits on a
+    /// listing. Loading the view opens the tab's path, the server's root, through this pane's
+    /// `LocalBackend`, and a listing landing after the tree is set up replaces it: seen in CI on
+    /// 2026-11-12, where the cursor waited 30 s for a film and ended on `/Users`, a row of this Mac's
+    /// own root under the server's name. So that listing lands first, and the tree is set up after it.
+    private static func loadedTreePane() async throws -> PanelViewController {
+        let pane = treePane()
+        pane.loadViewIfNeeded()
+        try await settleUntil { pane.tabs[0].hasLoaded }
+        let listing = DirectoryListing(path: root, entries: [row(mediaRow)])
+        pane.panel = Panel(model: DirectoryModel(listing: listing))
+        pane.panel.enterTreeMode()
+        return pane
+    }
+
     // MARK: - Writing it down
 
     @Test("folders and a cursor inside a mounted share are written through the share")
@@ -114,7 +129,7 @@ struct SMBTreeRestoreTests {
     func reopensInsideTheShareOnceMounted() async throws {
         let mount = try Self.makeMount()
         defer { try? FileManager.default.removeItem(at: mount.deletingLastPathComponent()) }
-        let pane = Self.treePane()
+        let pane = try await Self.loadedTreePane()
         let tab = pane.tabs[0]
         tab.pendingCursorPath = "media/Movies/Hobbit.mkv"
 
@@ -144,7 +159,7 @@ struct SMBTreeRestoreTests {
 
     @Test("a share that does not mount gives up what waited inside it and closes the restore")
     func failedShareClosesTheRestore() async throws {
-        let pane = Self.treePane()
+        let pane = try await Self.loadedTreePane()
         let tab = pane.tabs[0]
         tab.pendingExpandedPaths = ["media", "media/Movies"]
         tab.pendingCursorPath = "media/Movies/Hobbit.mkv"
