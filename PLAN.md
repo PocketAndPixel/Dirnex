@@ -310,7 +310,26 @@ Decided before Slice 1 (2026-11-12, Oleg, on the probes above):
    `\ansicpg1252`: the document reads them as code page 1252 ("estÃ¡"), as the spec says to, and the
    source shows what the bytes say ("está").
 4. **Following a link, core.** An `href` resolved against the document's location on its own backend:
-   percent-decoding, the fragment split off, a target outside the backend refused by name.
+   percent-decoding, the fragment split off, a target outside the backend refused by name. **Landed
+   2026-11-12**: `DocumentLink.resolve(_:from:)` answers `.sameDocument(fragment:)`, `.location(VFSPath,
+   fragment:)` on the document's own backend, `.external(URL)` for `http`, `https` and `mailto`, or
+   `.refused` with a fact and no sentence (the app words it): another host, a `file:` URL from a
+   document not on this disk, any other scheme by name (`javascript`, `ftp`, `shortcuts`, a drive
+   letter), or a name that decodes to hold `/` or NUL. **Probed first**, because WebKit hands
+   `decidePolicyFor` only the URL it resolved, never the `href`: a generated page loaded under
+   `DocumentLink.baseURL(for:)`, the document's own path in `x-dirnex-document:///`, delivered every
+   synthetic click there with the backend path as its path, `#anchor` against the document (and it
+   scrolled), `""` as the document and `.` as its folder, names with a space, `é` and `#` round-tripped,
+   and `//host/x` with `host` as the host. So the resolver reads the `href` as written and WebKit's URL
+   alike, and 25 probed pairs pin both to one answer. **One departure from the line above**: `..` past
+   the root stops at the root rather than being refused, as RFC 3986 and WebKit both do, since WebKit
+   clamps before the app sees the click. RFC 3986's steps are written out rather than asked of
+   `URL(string:relativeTo:)`, which re-encodes every `%` in a string once it meets one invalid
+   character (`My%20Docs/100%.md` read back as a folder named `My%20Docs`). 17 tests, 87 cases. **For
+   Slice 5**: the generated page moves to that base URL (today's `file://` folder resolves `""`, `.` and
+   `#anchor` all to the folder); the preview needs the document's `VFSPath`, which it does not hold
+   today; and an HTML file from a server is loaded from its local copy, so its links come back as
+   `file:` URLs there and this resolver refuses them, which Slice 5 either maps or leaves to local HTML.
 5. **Following a link, app.** The click moves the pane, the fragment scrolls after the render, a web
    link opens in the browser; at all three sizes and on a server.
 6. **Markdown: GitHub alerts, footnotes and emoji shortcodes** (core and stylesheet). The shortcode
