@@ -31,6 +31,8 @@ extension QuickViewPreviewView {
         standDownText()
         loadToken += 1
         let token = loadToken
+        let location = documentLocation(for: url)
+        let fragment = takePendingFragment(for: location)
         Task { [weak self] in
             let page = await BlockingWork.run {
                 SavedPage.read(url)
@@ -47,7 +49,14 @@ extension QuickViewPreviewView {
                     return
                 }
                 surface.isHidden = false
-                surface.showArchive(page.archive, document: page.document, source: url)
+                surface.showArchive(
+                    page.archive,
+                    document: page.document,
+                    source: url,
+                    origins: page.origins,
+                    location: location,
+                    fragment: fragment
+                )
             }
         }
     }
@@ -58,6 +67,9 @@ extension QuickViewPreviewView {
         let archive: Data
         /// The sealed URL of the page itself, which its in-page anchors arrive against.
         let document: URL
+        /// The seal's table of synthetic origins and the real ones they stand for, which sends a
+        /// clicked link where its author pointed it (PLAN.md §M39 ▸ Slice 5).
+        let origins: [String: String]
 
         /// Blocking; call it off the main thread. `nil` for a file over the limit, or one that is
         /// not the saved page its name says.
@@ -70,11 +82,13 @@ extension QuickViewPreviewView {
                 ? try? MHTMLArchive.webArchive(from: data)
                 : WebArchive(propertyList: data)
             guard let archive else { return nil }
-            let sealed = WebArchiveSeal.seal(archive).archive
+            let result = WebArchiveSeal.seal(archive)
+            let sealed = result.archive
             guard let encoded = try? sealed.propertyListData() else { return nil }
             return SavedPage(
                 archive: encoded,
-                document: URL(string: sealed.mainResource.url) ?? url.deletingLastPathComponent()
+                document: URL(string: sealed.mainResource.url) ?? url.deletingLastPathComponent(),
+                origins: result.origins
             )
         }
     }

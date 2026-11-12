@@ -47,19 +47,24 @@ public enum WebArchiveSeal {
         /// The real URL behind `sealedURL`, or `nil` for a URL that is not one of this archive's —
         /// for a link the user clicked, which should open where its author pointed it.
         public func originalURL(for sealedURL: String) -> String? {
-            guard let split = WebArchiveSeal.splitOrigin(sealedURL),
-                  split.origin.lowercased().hasPrefix(WebArchiveSeal.scheme + "://")
-            else { return nil }
-            let host = split.origin.dropFirst(WebArchiveSeal.scheme.count + 3).lowercased()
-            if host == WebArchiveSeal.cidHost {
-                let id = split.rest.dropFirst().removingPercentEncoding ?? String(
-                    split.rest.dropFirst()
-                )
-                return "cid:" + id
-            }
-            guard let original = origins[WebArchiveSeal.scheme + "://" + host] else { return nil }
-            return original + split.rest
+            WebArchiveSeal.originalURL(for: sealedURL, origins: origins)
         }
+    }
+
+    /// ``Sealed/originalURL(for:)`` from the origin table alone, for a caller that keeps the table and
+    /// not the archive: Quick View holds the sealed page as the property list WebKit loads, and
+    /// needs only the table to send a clicked link where its author pointed it (PLAN.md §M39 ▸ Slice 5).
+    public static func originalURL(for sealedURL: String, origins: [String: String]) -> String? {
+        guard let split = splitOrigin(sealedURL),
+              split.origin.lowercased().hasPrefix(scheme + "://")
+        else { return nil }
+        let host = split.origin.dropFirst(scheme.count + 3).lowercased()
+        if host == cidHost {
+            let id = split.rest.dropFirst().removingPercentEncoding ?? String(split.rest.dropFirst())
+            return "cid:" + id
+        }
+        guard let original = origins[scheme + "://" + host] else { return nil }
+        return original + split.rest
     }
 
     /// `archive` with every origin and `cid:` it holds moved into ``scheme``, in its resources' URLs and

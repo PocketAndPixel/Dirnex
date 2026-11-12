@@ -22436,6 +22436,95 @@
         }
       }
     },
+    "Can’t follow this link": {
+      "comment": "Quick View alert title when a link clicked in a rendered page leads nowhere Dirnex will go.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diesem Link kann nicht gefolgt werden"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Can’t follow this link"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se puede seguir este enlace"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Impossible de suivre ce lien"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Non puoi seguire questo link"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "このリンクをたどれません"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 링크를 따라갈 수 없음"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kan deze link niet volgen"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nie można przejść pod ten link"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Não é possível seguir este link"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не удалось перейти по ссылке"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не вдається перейти за посиланням"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法打开此链接"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "無法打開此連結"
+          }
+        }
+      }
+    },
     "Can’t move here": {
       "comment": "Move failure title: destination can't receive files.",
       "localizations": {
@@ -47085,6 +47174,95 @@
         }
       }
     },
+    "Dirnex doesn’t follow “%@:” links.": {
+      "comment": "Quick View link refusal; %@ is the link's URL scheme, such as javascript, shown before its colon.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex folgt keinen „%@:“-Links."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex doesn’t follow “%@:” links."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex no sigue los enlaces «%@:»."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex ne suit pas les liens «%@:»."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex non segue i link “%@:”."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnexは“%@:”リンクをたどりません。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex는 “%@:” 링크를 따라가지 않습니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex volgt geen “%@:”-links."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex nie otwiera linków „%@:”."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O Dirnex não segue links “%@:”."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex не переходит по ссылкам «%@:»."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex не переходить за посиланнями «%@:»."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex 不会打开“%@:”链接。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex 不會打開「%@:」連結。"
+          }
+        }
+      }
+    },
     "Dirnex grows from its users’ wishes and feedback. If it’s useful to you, a license keeps it going.": {
       "comment": "License reminder text when there is no license.",
       "localizations": {
@@ -64290,6 +64468,95 @@
         }
       }
     },
+    "It doesn’t name a place Dirnex can go to.": {
+      "comment": "Quick View link refusal: the link's address cannot be read as a place.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Er nennt keinen Ort, zu dem Dirnex gehen kann."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "It doesn’t name a place Dirnex can go to."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No indica un lugar al que Dirnex pueda ir."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Il n’indique aucun emplacement où Dirnex peut aller."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Non indica un posto in cui Dirnex possa andare."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnexが移動できる場所を示していません。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex가 이동할 수 있는 위치를 가리키지 않습니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hij noemt geen plek waar Dirnex naartoe kan."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nie wskazuje miejsca, do którego Dirnex może przejść."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ele não indica um lugar aonde o Dirnex possa ir."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Она не указывает на место, куда Dirnex может перейти."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Воно не вказує на місце, куди Dirnex може перейти."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "它没有指向 Dirnex 可以前往的位置。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "它沒有指向 Dirnex 可以前往的位置。"
+          }
+        }
+      }
+    },
     "It hasn’t finished uploading, or it’s set to stay on this Mac.": {
       "comment": "Why a cloud provider refused Remove Download: not uploaded yet, or pinned to this Mac.",
       "localizations": {
@@ -64375,6 +64642,184 @@
           "stringUnit": {
             "state": "translated",
             "value": "它尚未上傳完成，或已設定為保留在這部 Mac 上。"
+          }
+        }
+      }
+    },
+    "It leads to another computer, “%@”.": {
+      "comment": "Quick View link refusal; %@ is the other computer's host name.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Er führt zu einem anderen Computer, „%@“."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "It leads to another computer, “%@”."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lleva a otro ordenador, «%@»."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Il mène à un autre ordinateur, «%@»."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Porta a un altro computer, “%@”."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "別のコンピュータ“%@”につながっています。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "다른 컴퓨터 “%@”(으)로 연결됩니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hij leidt naar een andere computer, “%@”."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Prowadzi do innego komputera, „%@”."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ele leva a outro computador, “%@”."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Она ведёт на другой компьютер, «%@»."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Воно веде на інший комп’ютер, «%@»."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "它通往另一台电脑“%@”。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "它通往另一台電腦「%@」。"
+          }
+        }
+      }
+    },
+    "It points to a file on a computer’s own disk, and this document is on a server or in an archive.": {
+      "comment": "Quick View link refusal: a file: link in a document that is on a server or inside an archive.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Er verweist auf eine Datei auf der eigenen Festplatte eines Computers, und dieses Dokument liegt auf einem Server oder in einem Archiv."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "It points to a file on a computer’s own disk, and this document is on a server or in an archive."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apunta a un archivo del disco de un ordenador, y este documento está en un servidor o dentro de un archivo comprimido."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Il pointe vers un fichier sur le disque d’un ordinateur, et ce document se trouve sur un serveur ou dans une archive."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Punta a un file sul disco di un computer, e questo documento si trova su un server o in un archivio."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "コンピュータ自身のディスク上のファイルを指していますが、この書類はサーバ上またはアーカイブ内にあります。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "컴퓨터 자체 디스크의 파일을 가리키지만, 이 문서는 서버나 압축 파일 안에 있습니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hij verwijst naar een bestand op de eigen schijf van een computer, en dit document staat op een server of in een archief."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wskazuje plik na dysku komputera, a ten dokument znajduje się na serwerze lub w archiwum."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ele aponta para um arquivo no disco de um computador, e este documento está em um servidor ou dentro de um arquivo compactado."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Она указывает на файл на диске компьютера, а этот документ находится на сервере или в архиве."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Воно вказує на файл на диску комп’ютера, а цей документ розташовано на сервері чи в архіві."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "它指向某台电脑自身磁盘上的文件，而此文稿位于服务器上或归档中。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "它指向某台電腦自身磁碟上的檔案，而此文件位於伺服器上或封存檔中。"
           }
         }
       }
@@ -117445,6 +117890,95 @@
           "stringUnit": {
             "state": "translated",
             "value": "%2$@ 上沒有名為「%1$@」的儲存桶。"
+          }
+        }
+      }
+    },
+    "There’s no “%@” in “%@”.": {
+      "comment": "Quick View link target missing; %1$@ is the name the link names, %2$@ the folder it should be in.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "In „%2$@“ gibt es kein „%1$@“."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "There’s no “%@” in “%@”."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No hay ningún «%@» en «%@»."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Il n’y a pas de «%@» dans «%@»."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Non c’è nessun “%@” in “%@”."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%2$@”内に“%1$@”はありません。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%2$@”에 “%1$@”이(가) 없습니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Er is geen “%@” in “%@”."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "W „%2$@” nie ma „%1$@”."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Não há “%@” em “%@”."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "В «%2$@» нет «%1$@»."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "У «%2$@» немає «%1$@»."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%2$@”中没有“%1$@”。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "「%2$@」中沒有「%1$@」。"
           }
         }
       }

@@ -22,6 +22,8 @@ extension QuickViewPreviewView {
         standDownText()
         loadToken += 1
         let token = loadToken
+        let location = documentLocation(for: url)
+        let fragment = takePendingFragment(for: location)
         ensureWebSurface { [weak self] surface in
             guard let self, token == loadToken else { return }
             guard let surface else {
@@ -29,7 +31,7 @@ extension QuickViewPreviewView {
                 return
             }
             surface.isHidden = false
-            surface.show(url)
+            surface.show(url, location: location, fragment: fragment)
         }
     }
 
@@ -73,6 +75,7 @@ extension QuickViewPreviewView {
                 return
             }
             pin(surface, inside: content)
+            routeLinks(of: surface)
             webSurface = surface
             completion(surface)
         }

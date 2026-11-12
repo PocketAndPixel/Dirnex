@@ -331,7 +331,38 @@ Decided before Slice 1 (2026-11-12, Oleg, on the probes above):
    today; and an HTML file from a server is loaded from its local copy, so its links come back as
    `file:` URLs there and this resolver refuses them, which Slice 5 either maps or leaves to local HTML.
 5. **Following a link, app.** The click moves the pane, the fragment scrolls after the render, a web
-   link opens in the browser; at all three sizes and on a server.
+   link opens in the browser; at all three sizes and on a server. **Landed 2026-11-13**: a Markdown
+   page loads under `DocumentLink.baseURL(for:)` of the file's own location, which the window now hands
+   every surface with the file (`PanelViewController.quickViewSourceLocation`). A click the navigation
+   policy refuses is resolved and handed to the window (`QuickViewWebView+Links`,
+   `BrowserWindowController+QuickViewLinks`), which moves the **active** pane at every size: a target the
+   listing shows takes a cursor step with no request, anything else is `stat`ed and then entered with the
+   cursor on it (`PanelViewController+LinkTarget`), and from a results listing it opens in a new tab so
+   the results stay. A heading waits on the surface (`QuickViewLinks.pendingFragment`), survives a
+   server file's download card, and is scrolled to after the load. `http`, `https` and `mailto` go to
+   `NSWorkspace`; a refusal is an alert naming its reason, in 14 languages, and so is a file that is not
+   there ("There's no “nope.md” in “docs”."). HTML files follow links too: a local one resolves its
+   `file:` URLs; **a server's or an archive's is now drawn from its bytes under its location's base URL**
+   (`Page.copied`), because the live run found every link on one dead. On a `file:` page WebKit asks the
+   delegate only about a file that exists inside the read access, and the copy sits alone in a temp
+   folder (docs/NOTES.md ▸ Previews: web views). That made Slice 4's copy-relative helper unneeded, and it
+   went. A saved page's sealed links go back to their real URL (`WebArchiveSeal.originalURL(for:origins:)`,
+   the seal's table kept beside the page), and a converted office document follows web links only. The
+   `Page` enum moved to `QuickViewWebView+Page.swift` to keep the class under the length ceiling. 16 app
+   tests in three suites: what each kind of page resolves against, the policy, the pending heading, the
+   wording; real clicks in a real page, including the server HTML case; and a real pane landing. Negative
+   controls: without the scroll call, with the old `file://` folder base, without the existence check,
+   and with server HTML loaded from its copy, each failed exactly its own test. **Run live** in
+   `app.dirnex.Dirnex.live`. At pane size on this disk: an anchor scrolled in place; a sibling, a sibling
+   carrying `#far-section`, `../top.md`, `sub/deep.md#part-two` and both links in an HTML file moved the
+   pane and scrolled; Go ▸ Back came home on the row it left; and missing, `//nas.example` and `ftp:`
+   each raised their alert. At full window: an HTML link and a Markdown link with a heading. On a
+   throwaway `sshd`: the cross-folder link with a heading cost 3 sessions (stat, listing, download) and
+   opened scrolled; a same-folder link cost no listing; the server HTML file's link worked after the
+   fix and not before; a missing file got its sentence. Inside a zip: the cross-folder link with a
+   heading. **Not run live**: full screen, which moves the window into a Space of its own on Oleg's
+   display, though its surface is wired by the same line as full window's; a web link opening the
+   browser; a saved page's link; a link from a results listing, which its test covers.
 6. **Markdown: GitHub alerts, footnotes and emoji shortcodes** (core and stylesheet). The shortcode
    table's source is asked when the slice opens.
 7. **Markdown: wiki links and definition lists.** Wiki links go through Slice 4's resolver.

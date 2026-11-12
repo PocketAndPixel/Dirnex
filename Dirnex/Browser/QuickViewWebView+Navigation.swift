@@ -13,6 +13,11 @@ extension QuickViewWebView: WKNavigationDelegate {
     /// with something else — a preview that has quietly become a browser, showing a document the
     /// user never selected. An in-page anchor (`#top`) is the one exception, since it moves the
     /// reading position rather than the document.
+    ///
+    /// Refused is not ignored, since §M39: a click the policy turns down is handed on
+    /// (`followLink`), and a link to another file moves the pane's cursor there, which the preview
+    /// then follows with its header naming the new file. So the preview never shows what the list
+    /// does not, and the pane's Back is the way back.
     /// This is also where the JavaScript preference is applied, and it has to be here rather than
     /// on the configuration: `WKWebViewConfiguration` is copied at init, so a view built with
     /// scripts enabled keeps them for life. Probed on one live view over four loads — the delegate's
@@ -29,21 +34,25 @@ extension QuickViewWebView: WKNavigationDelegate {
             ?? AppPreferences.quickViewJavaScriptValue
         guard let url = navigationAction.request.url else { return (.cancel, preferences) }
         let inFrame = navigationAction.targetFrame.map { !$0.isMainFrame } ?? false
-        let allowed = isPermitted(url, inFrame: inFrame, isClick: Self.isClick(navigationAction))
+        let isClick = Self.isClick(navigationAction)
+        let allowed = isPermitted(url, inFrame: inFrame, isClick: isClick)
         // The one place a `WKFrameInfo` for a child frame can be had, and the only way to search a
         // converted workbook's sheet: a `file://` frame is a different origin, so no script running
         // in the page can reach into it (`QuickViewWebView+Find`).
         if allowed, inFrame, let frame = navigationAction.targetFrame {
             childFrames.append(frame)
         }
+        if !allowed, isClick, !inFrame { followLink(url) }
         return (allowed ? .allow : .cancel, preferences)
     }
 
     /// A load finished. The DOM a reload rebuilds carries none of the highlights the search drew, so
-    /// they go back on rather than the user having to retype.
+    /// they go back on rather than the user having to retype; and a heading the link that led here
+    /// named is scrolled to, now that it exists.
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
         fadeInOnce()
         redrawFindAfterReload()
+        scrollToTarget()
     }
 
     func webView(
@@ -61,14 +70,12 @@ extension QuickViewWebView: WKNavigationDelegate {
     /// The empty document `clearPage` loads, and the page this preview is showing — compared
     /// without the fragment, so an in-page anchor still works.
     ///
-    /// For a generated document that comparison is against the file's *directory*, which is what
-    /// the page's links resolve against. Probed, so the difference is stated rather than assumed: a
-    /// `#anchor` is allowed and scrolls; a sibling `other.md` is refused; a remote URL is refused;
-    /// `../` is never even attempted. A link to `.` or `""` does compare equal and is allowed — and
-    /// measured harmless, since WebKit leaves the generated document on screen. A tightening that
-    /// admitted only fragments was written and measured to change nothing else, so it was dropped
-    /// rather than carried: it would have had to carve out the initial load and the reload, both of
-    /// which arrive here too.
+    /// For a generated document that comparison is against its base URL, the document's own path
+    /// (``DirnexCore/DocumentLink/baseURL(for:)``), which is what the page's links resolve against.
+    /// A **click** must also carry a fragment to be allowed: since §M39 a refused click is followed
+    /// rather than dropped, so a link to the page itself with no `#anchor` — `""`, `index.html` from
+    /// `index.html` — is refused here and lands on the document it already shows. The initial load
+    /// and a reload are not clicks, so they still pass on the comparison alone.
     ///
     /// An embedded frame is the one other thing a *converted* page may load: a sheet page from inside
     /// its own bundle, and nothing outside it — a link in a workbook cell must no more replace a sheet
@@ -89,6 +96,7 @@ extension QuickViewWebView: WKNavigationDelegate {
             if inFrame { return !isClick && url.scheme?.lowercased() == WebArchiveSeal.scheme }
             if url.fragment != nil, url.deletingFragment == document.deletingFragment { return true }
         }
+        if isClick, !inFrame, url.fragment == nil { return false }
         return url.standardizedFileURL.deletingFragment == page.permittedURL
     }
 
