@@ -254,9 +254,11 @@ final class QuickViewPreviewView: NSView {
             showRenderedMarkdown(url)
         } else if let url, Self.isWebArchive(url) {
             showWebArchive(url)
+        } else if let url, Self.isRichTextSource(url), style == .rendered {
+            showRichText(url)
         } else if let url, Self.isText(url) || Self.offersBothStyles(url) {
-            // HTML reaches the text backend only here, in `.source` — `isText` still refuses it, so
-            // that a file which is *only* ever text keeps the one rule it always had. Markdown
+            // HTML and RTF reach the text backend only here, in `.source` — `isText` still refuses
+            // both, so that a file which is *only* ever text keeps the one rule it always had. Markdown
             // needs no such exception: `isText` takes it already, which is what made `1` work on a
             // `.md` before this milestone existed.
             showText(url)

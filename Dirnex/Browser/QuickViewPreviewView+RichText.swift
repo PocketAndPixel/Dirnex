@@ -87,6 +87,13 @@ extension QuickViewPreviewView {
         richTextDocumentType(of: url) != nil
     }
 
+    /// Whether `url` is RTF in a single file, the one rich-text format that is also text — so it has a
+    /// source to show beside its page (PLAN.md §M39 ▸ Slice 3). An RTFD is a folder, and an
+    /// OpenDocument file is a zip.
+    static func isRichTextSource(_ url: URL) -> Bool {
+        richTextDocumentType(of: url) == .rtf
+    }
+
     private static func richTextDocumentType(of url: URL) -> NSAttributedString.DocumentType? {
         guard let type = documentContentType(of: url) else { return nil }
         if type.conforms(to: .rtfd) || type.conforms(to: .flatRTFD) { return .rtfd }

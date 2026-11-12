@@ -30,6 +30,7 @@ public enum SyntaxHighlighter {
         case .nginx: SyntaxNginxScanner.tokens(in: text)
         case .ignoreFile: SyntaxIgnoreScanner.tokens(in: text, dialect: .ignore)
         case .gitAttributes: SyntaxIgnoreScanner.tokens(in: text, dialect: .attributes)
+        case .rtf: SyntaxRTFScanner.tokens(in: text)
         }
     }
 

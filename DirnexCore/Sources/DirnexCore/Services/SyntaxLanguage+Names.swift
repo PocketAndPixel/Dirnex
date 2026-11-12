@@ -77,6 +77,8 @@ extension SyntaxLanguage {
         // `.mdc` is a Cursor rules file: Markdown under a front matter block.
         case .markdown: ["md", "markdown", "mdown", "mkd", "mdx", "mdc"]
         case .diff: ["diff", "patch"]
+        // An RTFD package's text is its `TXT.rtf`, which routes here by the same extension.
+        case .rtf: ["rtf"]
         }
     }
 

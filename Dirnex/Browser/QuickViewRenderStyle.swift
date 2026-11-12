@@ -8,9 +8,10 @@ import Foundation
 /// decodes bytes, the app decides which surface they land on.
 ///
 /// Which files offer both is `QuickViewPreviewView.dualStyleKind(of:)` — HTML since §M16, Markdown
-/// since §M18, CSV, TSV and JSON since 2026-09-15, XML since 2026-09-16 — and the single predicate is the point: the same
-/// question used to be spelled three times. Everything else has one honest rendering and ignores
-/// this entirely — a photograph has no source, and a `.txt` has no document.
+/// since §M18, CSV, TSV and JSON since 2026-09-15, XML since 2026-09-16, RTF since §M39 — and the
+/// single predicate is the point: the same question used to be spelled three times. Everything else
+/// has one honest rendering and ignores this entirely — a photograph has no source, and a `.txt` has
+/// no document.
 enum QuickViewRenderStyle: String, CaseIterable, Identifiable {
     /// The file's own text, in the same monospaced, selectable view every other text file gets.
     case source
@@ -67,11 +68,17 @@ enum QuickViewRenderStyle: String, CaseIterable, Identifiable {
                 localized: "Tree",
                 comment: "Quick View header, short name for a JSON file drawn as a tree of keys and values"
             )
+        // Not "Page": its Chinese is a *web* page, and an RTF file is a letter or a manual.
+        case (.rendered, .richText):
+            String(
+                localized: "Document",
+                comment: "Quick View header, short name for an RTF file drawn as its formatted document"
+            )
         }
     }
 }
 
-/// The three families of file that offer both styles, and what separates them: what the rendered
+/// The families of file that offer both styles, and what separates them: what the rendered
 /// style is called, and which remembered choice a file follows (2026-09-15).
 ///
 /// They remember separately because their defaults are opposite, and each is right for its family.
@@ -84,6 +91,9 @@ enum QuickViewRenderStyle: String, CaseIterable, Identifiable {
 /// JSON defaults to its tree for the table's reason — a minified file, an API dump or a source map is
 /// one line — and remembers apart from the table too, which was the user's choice: `1` on a JSON file
 /// changes JSON files only.
+///
+/// RTF defaults to its document for a reason of its own: that is all it ever showed before it had a
+/// source, and a letter's control words are what nobody opening it is looking for.
 enum QuickViewDualStyleKind: Equatable {
     /// HTML and Markdown: the markup, or the page it describes.
     case page
@@ -95,12 +105,16 @@ enum QuickViewDualStyleKind: Equatable {
     /// XML and property lists: the text, or a tree of elements and attributes, or of keys and values —
     /// a table, for a list of like elements (2026-09-16). Apart from JSON, for JSON's reason.
     case xml
+    /// RTF: its control words, or the formatted document `NSAttributedString` reads (PLAN.md §M39 ▸
+    /// Slice 3). It opens on the document, which is all it showed before it had a source, and an RTFD
+    /// package or an OpenDocument file is not in it: neither is text.
+    case richText
 
     /// The style a file of this family opens in until the user picks the other.
     var defaultStyle: QuickViewRenderStyle {
         switch self {
         case .page: .default
-        case .table, .json, .xml: .rendered
+        case .table, .json, .xml, .richText: .rendered
         }
     }
 }

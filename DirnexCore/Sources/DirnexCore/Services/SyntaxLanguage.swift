@@ -61,6 +61,8 @@ public enum SyntaxLanguage: String, Sendable, CaseIterable {
     case markdown
     /// A unified diff or patch.
     case diff
+    /// Rich Text Format, as the control words it is written in (PLAN.md §M39 ▸ Slice 3).
+    case rtf
 
     /// How a language is scanned: from the grammar table, or by a scanner of its own.
     ///
@@ -78,6 +80,7 @@ public enum SyntaxLanguage: String, Sendable, CaseIterable {
         case nginx
         case ignoreFile
         case gitAttributes
+        case rtf
     }
 
     var scanning: Scanning {
@@ -89,6 +92,7 @@ public enum SyntaxLanguage: String, Sendable, CaseIterable {
         case .nginx: .nginx
         case .ignoreFile: .ignoreFile
         case .gitAttributes: .gitAttributes
+        case .rtf: .rtf
         default: .grammar(tableGrammar)
         }
     }
@@ -138,7 +142,7 @@ public enum SyntaxLanguage: String, Sendable, CaseIterable {
         case .powerShell: ToolingGrammars.powerShell
         // Unreachable: `scanning` routes these before it asks for a grammar, and the switch above
         // is exhaustive over everything else.
-        case .markup, .markdown, .diff, .dotenv, .nginx, .ignoreFile, .gitAttributes:
+        case .markup, .markdown, .diff, .dotenv, .nginx, .ignoreFile, .gitAttributes, .rtf:
             LanguageGrammar()
         }
     }

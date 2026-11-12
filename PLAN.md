@@ -293,7 +293,22 @@ Decided before Slice 1 (2026-11-12, Oleg, on the probes above):
    backend. Not run live: a server or a zip as the location, which reach the same code through the
    local copy.
 3. **RTF source and page.** `QuickViewDualStyleKind.richText`, a small control-word scanner, the
-   header, 14 languages.
+   header, 14 languages. **Landed 2026-11-12**: `SyntaxRTFScanner` colors a control word as a keyword
+   and its parameter as a number, `\'hh`, `\\`, `\{`, `\}`, `\~`, `\-` and `\_` as the characters they
+   are, a backslash before a line break (Cocoa's paragraph mark) as a keyword, braces as tags, and a
+   `{\*…}` group, which the spec lets a reader skip whole, as one comment: most of a Word file and none
+   of its text. One saved depth while such a group is skipped is all it remembers; `\bin` and a
+   picture's hex are left as text and say why. The family opens on the document and remembers apart
+   (`Dirnex.pref.quickViewRichTextStyle`), and the header calls it **Document** rather than Page, whose
+   Chinese is a *web* page. The corpus: 1 779 distinct RTF files on this Mac, all Cocoa's but 16 of
+   Word's and 1 of Aspose's, none with `\bin`; all of them scanned in 90 ms in a release build, the
+   largest (1.37 MB) in 6.4 ms. 16 core tests and 5 app tests, and the two older RTF tests now ask for
+   the document. **Run live** in `app.dirnex.Dirnex.live`, full window: TextEdit-shaped, Word and
+   1.37 MB files in both styles, `1` on RTF leaving Markdown on its page and `2` on Markdown leaving
+   RTF on its source, and an RTFD drawn as its document with no style offered. Seven RTF files here,
+   six of them Software Update's Portuguese and Hindi legal texts, carry raw UTF-8 under
+   `\ansicpg1252`: the document reads them as code page 1252 ("estÃ¡"), as the spec says to, and the
+   source shows what the bytes say ("está").
 4. **Following a link, core.** An `href` resolved against the document's location on its own backend:
    percent-decoding, the fragment split off, a target outside the backend refused by name.
 5. **Following a link, app.** The click moves the pane, the fragment scrolls after the render, a web
