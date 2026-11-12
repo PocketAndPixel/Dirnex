@@ -147,6 +147,11 @@ extension PanelViewController {
         other.target = self
         other.representedObject = rows
         items.append(other)
+        // Every file of this type from now on, rather than these files this once (`+AlwaysOpenWith`).
+        if let always = alwaysOpenWithItem(for: rows, candidates: candidates) {
+            items.append(.separator())
+            items.append(always)
+        }
         return items
     }
 
@@ -194,8 +199,9 @@ extension PanelViewController {
     /// The download happens **here**, after the app was chosen, rather than before the menu was
     /// built — so escaping out of the list costs nothing at all. One failure sentence covers both
     /// halves deliberately: the user asked for these files in this application, and "the transfer
-    /// failed" and "the launch failed" are the same disappointment from their side.
-    private func open(_ rows: [FileEntry], with application: ApplicationRef) {
+    /// failed" and "the launch failed" are the same disappointment from their side. Always Open … With
+    /// comes here too, once macOS has made the change (`+AlwaysOpenWith`).
+    func open(_ rows: [FileEntry], with application: ApplicationRef) {
         let failureMessage = {
             String(
                 localized: "Couldn’t open with “\(application.displayName)”.",

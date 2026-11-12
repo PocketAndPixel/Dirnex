@@ -147,7 +147,46 @@ enum FileIconProvider {
         }
     }
 
+    /// Posted when ``forgetTypeIcons()`` has run, so every pane asks again for its visible rows.
+    static let typeIconsDidChange = Notification.Name("Dirnex.typeIconsDidChange")
+
+    /// Ask again for every type's icon: after this app changed a type's default application, and
+    /// whenever the app comes to the front.
+    ///
+    /// macOS draws a type with the document icon its default application declares for it: `.m4v`
+    /// drew the system's page with a video glyph while TV opened it, and VLC's cone once VLC did
+    /// (2026-11-12). It redraws minutes after a change, or not at all while watched, Finder's own
+    /// change included, which is macOS's bug. Without asking again, an icon read at launch stayed for
+    /// the life of the process, so a relaunch before macOS caught up kept the old icon all session
+    /// (seen by Oleg). Asking again after a change and on coming to the front picks up macOS's icon
+    /// whenever it does change. Every type is asked rather than the one changed, since a type that
+    /// conforms to it can draw the same icon, and asking costs one lookup per type on screen.
+    ///
+    /// Not Quick Look's `.icon`, which agreed with Finder in every check: tried the same day, it drew
+    /// `.m4v` as TV's page for the 15 minutes watched after VLC became the default, as Finder did, so
+    /// it does not follow the default application for that type (docs/NOTES.md ▸ Drag and drop).
+    static func forgetTypeIcons() {
+        cache.removeAll()
+        NotificationCenter.default.post(name: typeIconsDidChange, object: nil)
+    }
+
+    private static var activationObserver: NSObjectProtocol?
+
+    /// Forget the type icons each time the app becomes active. Installed on first use rather than
+    /// at launch, so nothing here needs `NSApp` before it exists.
+    private static func observeActivationOnce() {
+        guard activationObserver == nil else { return }
+        activationObserver = NotificationCenter.default.addObserver(
+            forName: NSApplication.didBecomeActiveNotification,
+            object: nil,
+            queue: .main
+        ) { _ in
+            MainActor.assumeIsolated { FileIconProvider.forgetTypeIcons() }
+        }
+    }
+
     private static func typeIcon(_ type: UTType) -> NSImage {
+        observeActivationOnce()
         if let cached = cache[type.identifier] { return cached }
         let icon = NSWorkspace.shared.icon(for: type)
         cache[type.identifier] = icon
