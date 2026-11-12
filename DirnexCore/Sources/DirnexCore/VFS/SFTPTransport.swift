@@ -200,6 +200,21 @@ public protocol SFTPTransport: RemoteWriteTransport {
     /// double — inherits "there is no shortcut here" and the caller walks.
     func runCommand(_ command: String, isCancelled: () -> Bool) throws -> String?
 
+    /// Run one of ``SFTPDiskFree``'s batches in one `sftp` session and hand back its transcript,
+    /// standard error folded into standard output: what ``SFTPDiskFree`` reads for the space a saved
+    /// row shows.
+    ///
+    /// Raw rather than parsed, as a listing is, so the reading is the core's and tests against
+    /// captured bytes. Folded because the one sentence that tells a server without the extension
+    /// from a failed session is on standard error, while the tables and the listing are on standard
+    /// output, and only their order says which line answered which.
+    ///
+    /// **No default**, for the reason the WebDAV quota request has none: a default could only answer
+    /// "cannot say", and a transport that lacked the verb would then show every row as a server
+    /// without the extension, correct-looking and silent (docs/NOTES.md ▸ Design lessons, the
+    /// opt-in seams). A double that has no answer throws ``ServerSpaceUnsupported`` itself.
+    func diskFree(_ batch: String) throws -> String
+
     /// The same download, carrying the source's metadata as `plan` describes it.
     ///
     /// **One invocation, not two.** `sftp` reads one command per line, so `-p` rides the `get`

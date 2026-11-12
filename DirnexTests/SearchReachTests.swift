@@ -66,15 +66,25 @@ struct SearchReachTests {
         }
     }
 
-    /// The one place it is refused, and the refusal has to reach the *menu item* as well — a
-    /// validator carrying its own copy of the rule is how a command ends up gray where it works, or
-    /// armed where it does not.
-    @Test("an S3 account pane offers no search rather than searching this Mac")
-    func accountPaneRefuses() {
+    /// Refused until M38: its rows are buckets, and searching them needed a bound the user sees
+    /// first (PLAN.md §M38 Slice 5). The menu item has to agree with the gesture.
+    @Test("an S3 account pane offers a search of its buckets")
+    func accountPaneSearchesItsBuckets() {
         let pane = Self.pane(
             at: VFSPath(backend: .s3Account(Self.bucket.account), path: "/"),
             connect: { $0.connectS3Account(account: Self.bucket.account, secretAccessKey: "s") }
         )
+        #expect(pane.canFindFiles)
+        #expect(pane.validateMenuItem(Self.findItem()))
+    }
+
+    /// The one place it is refused, and the refusal has to reach the *menu item* as well — a
+    /// validator carrying its own copy of the rule is how a command ends up gray where it works, or
+    /// armed where it does not.
+    @Test("an SMB server's list of shares offers no search rather than searching this Mac")
+    func smbServerPaneRefuses() {
+        let server = SMBLocation(host: "nas.local", username: "tester")
+        let pane = Self.pane(at: VFSPath(backend: .smbServer(server), path: "/"))
         #expect(!pane.canFindFiles)
         #expect(!pane.validateMenuItem(Self.findItem()))
     }

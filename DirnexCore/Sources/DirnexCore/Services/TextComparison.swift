@@ -48,7 +48,8 @@ public struct TextComparison: Sendable {
                 SideEncoding(encoding: left.encoding, hasByteOrderMark: left.hasByteOrderMark),
                 SideEncoding(encoding: right.encoding, hasByteOrderMark: right.hasByteOrderMark)
             ),
-            options: options
+            options: options,
+            check: {}
         )
     }
 
@@ -65,7 +66,30 @@ public struct TextComparison: Sendable {
                 SideEncoding(encoding: left.encoding, hasByteOrderMark: left.hasByteOrderMark),
                 SideEncoding(encoding: right.encoding, hasByteOrderMark: right.hasByteOrderMark)
             ),
-            options: options
+            options: options,
+            check: {}
+        )
+    }
+
+    /// Compare two documents as they stand, stopping with `CancellationError` once `isCancelled`
+    /// says so (PLAN.md §M37 Slice 3).
+    public init(
+        _ left: ComparedDocument,
+        _ right: ComparedDocument,
+        options: LineDiffOptions = LineDiffOptions(),
+        isCancelled: () -> Bool
+    ) throws(CancellationError) {
+        try self.init(
+            left.lines,
+            right.lines,
+            encodings: (
+                SideEncoding(encoding: left.encoding, hasByteOrderMark: left.hasByteOrderMark),
+                SideEncoding(encoding: right.encoding, hasByteOrderMark: right.hasByteOrderMark)
+            ),
+            options: options,
+            check: { () throws(CancellationError) in
+                if isCancelled() { throw CancellationError() }
+            }
         )
     }
 
@@ -75,18 +99,26 @@ public struct TextComparison: Sendable {
         let hasByteOrderMark: Bool
     }
 
-    private init(
+    private init<Stop: Error>(
         _ leftLines: [TextLine],
         _ rightLines: [TextLine],
         encodings: (left: SideEncoding, right: SideEncoding),
-        options: LineDiffOptions
-    ) {
-        let diff = LineDiff.compare(leftLines, rightLines, options: options)
-        let layout = RowAlignment.layout(
+        options: LineDiffOptions,
+        check: () throws(Stop) -> Void
+    ) throws(Stop) {
+        let diff = try LineDiff.compare(
+            leftLines,
+            rightLines,
+            options: options,
+            placement: .readable,
+            check: check
+        )
+        let layout = try RowAlignment.layout(
             left: leftLines,
             right: rightLines,
             diff: diff,
-            options: options
+            options: options,
+            check: check
         )
         self.leftLines = leftLines
         self.rightLines = rightLines
@@ -94,12 +126,12 @@ public struct TextComparison: Sendable {
         self.diff = diff
         rows = layout.rows
         changeRows = layout.changeRows
-        unshownDifferences = Self.unshownDifferences(
-            encodings.left,
-            encodings.right,
+        unshownDifferences = try Self.unshownDifferences(
+            encodings,
             rows: layout.rows,
             lines: (leftLines, rightLines),
-            options: options
+            options: options,
+            check: check
         )
     }
 
@@ -124,14 +156,15 @@ public struct TextComparison: Sendable {
 
     // MARK: - What the rows do not show
 
-    private static func unshownDifferences(
-        _ left: SideEncoding,
-        _ right: SideEncoding,
+    private static func unshownDifferences<Stop: Error>(
+        _ encodings: (left: SideEncoding, right: SideEncoding),
         rows: [AlignedRow],
         lines: (left: [TextLine], right: [TextLine]),
-        options: LineDiffOptions
-    ) -> [UnshownDifference] {
+        options: LineDiffOptions,
+        check: () throws(Stop) -> Void
+    ) throws(Stop) -> [UnshownDifference] {
         var found: [UnshownDifference] = []
+        let (left, right) = encodings
         if left.encoding != right.encoding {
             found.append(.encoding(left: left.encoding, right: right.encoding))
         }
@@ -148,7 +181,8 @@ public struct TextComparison: Sendable {
             whitespace: options.whitespace,
             ignoresLineEndings: true
         )
-        for row in rows where row.kind == .same {
+        for (index, row) in rows.enumerated() where row.kind == .same {
+            if index % ComparisonStop.linesBetweenChecks == 0 { try check() }
             guard let leftIndex = row.left, let rightIndex = row.right else { continue }
             let leftLine = lines.left[leftIndex]
             let rightLine = lines.right[rightIndex]

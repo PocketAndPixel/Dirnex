@@ -368,6 +368,8 @@ struct MergeServerSaveTests {
         /// Whether a carry is running and held, and whether the test has let it go.
         var isHeld = false
         var released = false
+        /// What the carry answers: whether the result got where it was going.
+        var lands = false
     }
 
     private static let merged = "a\nY\nc\nd\nE\nf\nG\nh\nI\nK\nj\n"
@@ -390,6 +392,7 @@ struct MergeServerSaveTests {
             carried.unsaved.append(carried.controller?.hasUnsavedChoices ?? true)
             carried.saving.append(carried.controller?.isSaving ?? false)
             carried.windows.append(window)
+            return true
         })
         defer { rig.cleanup() }
         carried.controller = rig.controller
@@ -412,6 +415,35 @@ struct MergeServerSaveTests {
         #expect(carried.contents.last == "a\nY\nc\nd\nE\nf\nG\nh\nK\nj\n")
     }
 
+    @Test(
+        "a carry that did not land keeps Save, and the next Save carries again without writing the file"
+    )
+    func carryNotLanded() async throws {
+        let carried = Carried()
+        let undo = FileManager.default.temporaryDirectory
+            .appendingPathComponent("dirnex-merge-undo-\(UUID().uuidString)", isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: undo) }
+        let rig = try MergeRig(store: ArchiveUndoStore(root: undo), carry: { _ in
+            carried.times += 1
+            return carried.lands
+        })
+        defer { rig.cleanup() }
+        try await resolve(rig)
+
+        #expect(await rig.controller.saveResult() == false)
+        #expect(carried.times == 1)
+        #expect(rig.journal.records.count == 1, "the file was written once")
+        #expect((try? String(contentsOfFile: rig.path, encoding: .utf8)) == Self.merged)
+        #expect(rig.controller.canSave, "Save stays for another try")
+        #expect(!rig.controller.hasUnsavedChoices, "the file holds every choice")
+
+        carried.lands = true
+        #expect(await rig.controller.saveResult())
+        #expect(carried.times == 2)
+        #expect(rig.journal.records.count == 1, "the second Save only carried")
+        #expect(!rig.controller.canSave)
+    }
+
     @Test("while a save carries the result on, the window does not close; afterwards it does")
     func holdsWhileCarrying() async throws {
         let carried = Carried()
@@ -420,6 +452,7 @@ struct MergeServerSaveTests {
             while !carried.released {
                 try? await Task.sleep(for: .milliseconds(10))
             }
+            return true
         })
         defer { rig.cleanup() }
         try await resolve(rig)

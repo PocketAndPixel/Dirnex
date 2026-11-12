@@ -38,15 +38,32 @@ struct SearchFieldsTests {
         #expect(SearchRoute.forBackend(.archive(forArchiveAt: "/tmp/p.zip")) == .walk)
     }
 
-    /// The one remote backend that is browsable and not searchable. It is a member of
-    /// `isRemoteConnection`, so an ordering mistake in `forBackend` would silently make it walk —
-    /// listing every bucket in the account, which is a much more expensive question than the one
-    /// ⌥F7 asks.
-    @Test("an S3 account pane is not searchable")
-    func accountIsUnavailable() {
+    /// A member of `isRemoteConnection`, so an ordering mistake in `forBackend` would silently make
+    /// it walk — every bucket in the account under a server walk's budget, with no bound said first
+    /// (PLAN.md §M38 Slice 5).
+    @Test("an S3 account pane searches its buckets, not as a walk")
+    func accountSearchesBuckets() {
         let account = VFSBackendID.s3Account(S3Account(host: "h", region: "r", accessKeyID: "k"))
         #expect(account.isRemoteConnection)
-        #expect(SearchRoute.forBackend(account) == .unavailable)
+        #expect(SearchRoute.forBackend(account) == .buckets)
+    }
+
+    /// The bound is stated by the dialog, and a sidebar re-run has none.
+    @Test("only an account search cannot be saved")
+    func onlyBucketsAreUnsavable() {
+        #expect(!SearchRoute.buckets.isSavable)
+        for route in [SearchRoute.spotlight, .walk, .unavailable] {
+            #expect(route.isSavable, "\(route)")
+        }
+    }
+
+    @Test("an account place scopes to the account whichever option is chosen")
+    func accountPlaceScope() {
+        let account = VFSBackendID.s3Account(S3Account(host: "h", region: "r", accessKeyID: "k"))
+        let root = VFSPath(backend: account, path: "/")
+        #expect(SearchPlace(folder: root, everything: false).scope == root)
+        #expect(SearchPlace(folder: root, everything: true).scope == root)
+        #expect(SearchPlace(scope: root, origin: root, home: .local("/Users/t")).route == .buckets)
     }
 
     /// A virtual results container has no directory of its own; the app resolves such a pane's scope

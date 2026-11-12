@@ -22,7 +22,8 @@ enum TabOfflineReason: Equatable {
 enum ReconnectVerdict: Equatable {
     /// Nothing: a local path, an archive, or a server that is already connected.
     case listNow
-    /// Register this endpoint on the pane's backend first.
+    /// Register this endpoint on the pane's backend first, or, for an SMB share, mount it
+    /// (`PanelViewController+ShareRestore`).
     case connect(ServerEndpoint)
     /// Do not list; leave the pane saying why.
     case standDown(TabOfflineReason)
@@ -150,7 +151,7 @@ extension PanelViewController {
     /// draws the place it is supposed to be showing (the right crumbs, the right chip, no rows)
     /// rather than the previous tab's contents, and `hasLoaded` is deliberately left `false` so the
     /// next activation tries again.
-    private func standDown(_ tab: PanelTab, reason: TabOfflineReason) {
+    func standDown(_ tab: PanelTab, reason: TabOfflineReason) {
         // The pane is now showing this, so anything still in flight for it is answering a question
         // nobody is asking — the same invalidation `navigate` performs before its own load.
         loadToken += 1
@@ -191,9 +192,12 @@ extension PanelViewController {
         case let .webdav(location, _, _):
             return !location.hasCredentials || SecretKeychain.password(for: location) != nil
         // An SMB share is a `/Volumes/…` tree, so a pane on one is `.local` and never reaches here;
-        // `TabRestorePolicy` refuses an SMB endpoint against a remote path before this can be asked.
-        case .smb:
-            return false
+        // `TabRestorePolicy` refuses a share's endpoint against a remote path before this is asked.
+        // A server's list is a remote place (PLAN.md §M35): a guest needs nothing, an account its
+        // password, filed under the server's key.
+        case let .smb(location):
+            guard location.share == nil else { return false }
+            return location.username == nil || SecretKeychain.password(for: location) != nil
         }
     }
 
@@ -232,8 +236,12 @@ extension PanelViewController {
                 authentication: authentication ?? (location.hasCredentials ? .basic : nil),
                 trustedPublicKey: trustedPublicKey
             )
-        case .smb:
-            return
+        case let .smb(location):
+            guard location.share == nil else { return }
+            composite.connectSMBServer(
+                server: location,
+                password: location.username == nil ? nil : SecretKeychain.password(for: location)
+            )
         }
     }
 }

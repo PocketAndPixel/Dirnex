@@ -149,3 +149,48 @@ public extension SMBLocation {
         String(url.dropFirst(SMBLocation.scheme.count))
     }
 }
+
+// MARK: - A server, as a place (PLAN.md §M35)
+
+public extension SMBLocation {
+    /// The server this location is on: the same host, port and account, with no share.
+    var server: SMBLocation {
+        SMBLocation(host: host, share: nil, username: username, port: port)
+    }
+
+    /// This server's share called `name`, reached with the same account.
+    func share(named name: String) -> SMBLocation {
+        SMBLocation(host: host, share: name, username: username, port: port)
+    }
+
+    /// The backend id of the pane that lists this location's server's shares.
+    ///
+    /// Always the *server's*, whatever this location names: a share is a mount, browsed as `.local`,
+    /// so the only SMB place with a backend of its own is the list of shares (PLAN.md §M35). The id is
+    /// the server's ``url`` — `smb://[user@]host[:port]`, the default port left out — which is
+    /// already one spelling per server, and it round-trips through ``init(url:)``. The account is part
+    /// of it, because the list is the account's: a server can show two accounts different shares.
+    var serverBackendID: VFSBackendID { VFSBackendID(server.url) }
+
+    /// The server a backend id lists the shares of, or `nil` when the id is not an SMB server's.
+    ///
+    /// An `smb://` id that names a share is refused rather than trimmed to its server. Nothing makes
+    /// one, so meeting one means the id came from somewhere that did not mean a server.
+    init?(serverBackendID: VFSBackendID) {
+        guard let location = SMBLocation(url: serverBackendID.rawValue), location.share == nil else {
+            return nil
+        }
+        self = location
+    }
+}
+
+public extension VFSBackendID {
+    /// The backend id of the pane listing the shares of `location`'s server.
+    static func smbServer(_ location: SMBLocation) -> VFSBackendID { location.serverBackendID }
+
+    /// The SMB server this id lists the shares of, or `nil` when it is not an SMB server's id.
+    var smbServer: SMBLocation? { SMBLocation(serverBackendID: self) }
+
+    /// Whether this id is the list of an SMB server's shares.
+    var isSMBServer: Bool { smbServer != nil }
+}

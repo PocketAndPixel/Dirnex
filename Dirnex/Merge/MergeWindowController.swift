@@ -23,6 +23,13 @@ struct MergeInput: Sendable {
     let resultDetail: String
     /// The grammar the panes are colored by, or `nil` for none.
     let language: SyntaxLanguage?
+    /// A second local file that takes the same result, as it was when the versions were read: the
+    /// other side of a Synchronize row (PLAN.md §M37 Slice 8). `nil` where a save writes one file.
+    var secondTarget: ComparedFileSave.Target?
+    /// Whether the second file's old bytes go into the undo store. Not for a server side's copy,
+    /// which is carried up to the server once it is written, as the compare window's carried copy
+    /// keeps none (PLAN.md §M38 Slice 9).
+    var secondTargetKeepsUndo = true
 }
 
 /// What the merge window's save needs besides the file: the undo store, and whose journal records
@@ -33,9 +40,13 @@ struct MergeSaving {
     let journal: @MainActor (UndoRecord) -> Void
     /// Carries the result on once it is in the file, asking over the window given: the server
     /// entry's upload (PLAN.md §M34 Slice 4). `nil` where a save ends at the file, as a working-tree
-    /// file's does. The save counts as done before it runs, since the file it carries is the
-    /// editor's watched copy, whose next save is carried as F4's is.
-    var carry: (@MainActor (NSWindow?) async -> Void)?
+    /// file's does.
+    ///
+    /// Answers whether the result got where it was going. `false` leaves the save pending, so Save
+    /// stays enabled and the next one carries the result again (PLAN.md §M38 Slice 10). A carry
+    /// whose file is an editor's watched copy answers `true` whatever the upload did, since that
+    /// copy's next save is carried as F4's is; a Synchronize row's copy has no such watcher.
+    var carry: (@MainActor (NSWindow?) async -> Bool)?
     /// Called once the window has closed.
     var closed: @MainActor () -> Void = {}
 
@@ -70,8 +81,15 @@ final class MergeWindowController: NSWindowController, NSWindowDelegate {
     /// The file Save writes, as it was read or last saved: the witness the next save is checked
     /// against.
     var target: ComparedFileSave.Target
+    /// The second file Save writes, kept the same way, or `nil` for none.
+    var secondTarget: ComparedFileSave.Target?
+    /// Keeps the window visible over an app-modal window such as the Synchronize window.
+    let modalLevel = ModalLevelKeeper()
     /// The choices the file holds, `nil` until the result has been saved.
     var savedChoices: [TextMerge.Choice?]?
+    /// Whether the files hold the result and its carry did not take it on, as when an upload was
+    /// declined or failed.
+    var isCarryPending = false
     /// Whether a save is running.
     var isSaving = false {
         didSet { refreshControls() }
@@ -128,6 +146,7 @@ final class MergeWindowController: NSWindowController, NSWindowDelegate {
         open.append(controller)
         controller.place()
         controller.showWindow(nil)
+        controller.raiseAboveModalWindow()
         controller.start()
         return controller
     }
@@ -136,6 +155,7 @@ final class MergeWindowController: NSWindowController, NSWindowDelegate {
         self.input = input
         self.saving = saving
         target = input.target
+        secondTarget = input.secondTarget
         // Not deferred, so a save's sheets attach to a window a test builds and never shows
         // (docs/NOTES.md ▸ Testing).
         let window = CompareWindow(
@@ -229,11 +249,7 @@ final class MergeWindowController: NSWindowController, NSWindowDelegate {
         overview.rowCount = prepared.rowCount
         overview.changeRows = prepared.markRows
         overview.kinds = prepared.markKinds
-        banner.stringValue = Self.bannerText(
-            conflicts: prepared.conflictCount,
-            open: prepared.openConflictCount
-        ) ?? ""
-        banner.isHidden = banner.stringValue.isEmpty
+        refreshBanner()
         window?.contentView?.layoutSubtreeIfNeeded()
         refreshControls()
         if let conflict, prepared.conflictRows.indices.contains(conflict) {
@@ -255,7 +271,8 @@ final class MergeWindowController: NSWindowController, NSWindowDelegate {
         theirsPane.setTitle(Self.columnTitle(.theirs), detail: input.theirs.detail)
         let count = merge?.choices.count
         let current = currentConflict.flatMap { (count ?? 0) > $0 ? $0 : nil }
-        toolbar.showCounter(current: current, count: count)
+        toolbar.showCounter(current: current, count: count, whitespace: currentWhitespace)
+        refreshBanner()
         let mark = current.flatMap { conflict in
             shown.flatMap { $0.conflictMarks.indices.contains(conflict) ? $0.conflictMarks[conflict] : nil }
         }
@@ -326,8 +343,15 @@ final class MergeWindowController: NSWindowController, NSWindowDelegate {
         edits
     }
 
+    /// Put the window at the level of the app-modal window in front, if there is one above it.
+    func raiseAboveModalWindow() {
+        guard let window else { return }
+        modalLevel.raise(window)
+    }
+
     func windowWillClose(_ notification: Notification) {
         removeKeyMonitor()
+        modalLevel.stop()
         sync?.stop()
         edits.removeAllActions()
         Self.open.removeAll { $0 === self }

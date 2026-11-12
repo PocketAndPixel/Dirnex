@@ -142,14 +142,14 @@ extension PanelViewController {
         _ service: S3ServiceError,
         request: S3ConnectRequest
     ) async -> S3ConnectOutcome {
-        guard service.isRegionRedirect,
-              !request.hasCorrectedRegion,
-              let region = service.correctedRegion,
-              region != request.location.region else {
+        // The rule is the core's, shared with a search across an account's buckets, which meets
+        // the same redirect with no connect in sight (PLAN.md §M38 Slice 5).
+        guard !request.hasCorrectedRegion,
+              let moved = S3LocationCorrection.afterRefusal(service, at: request.location) else {
             return .failed(Self.s3RefusalDetail(service, location: request.location))
         }
         var retry = request
-        retry.location = Self.movingRegion(of: request.location, to: region)
+        retry.location = moved
         retry.hasCorrectedRegion = true
         return await establishS3Connection(retry)
     }
@@ -191,44 +191,24 @@ extension PanelViewController {
     /// Pure and `static` so its three conditions can be pinned by a test — the retry itself runs
     /// `curl`, and these are exactly the conditions that drift unnoticed: a mode other than
     /// virtual-host has nothing to correct, a failure other than exit 60 is not about the host name,
-    /// and a second correction inside one connect would be a loop.
+    /// and a second correction inside one connect would be a loop. The first two are the core's rule
+    /// (`S3LocationCorrection`), shared with a search across an account's buckets; the count is the
+    /// connect's own.
     static func addressingCorrection(
         for error: Error,
         request: S3ConnectRequest
     ) -> S3ConnectRequest? {
-        guard let responseError = error as? S3ResponseError,
-              case .transport(.certificateNotTrusted) = responseError,
-              request.location.addressing == .virtualHost,
-              !request.hasCorrectedAddressing
+        guard !request.hasCorrectedAddressing,
+              let readdressed = S3LocationCorrection.afterTransportFailure(
+                  error,
+                  at: request.location
+              )
         else { return nil }
         var retry = request
-        retry.location = request.location.addressed(.path)
+        retry.location = readdressed
         retry.hasCorrectedAddressing = true
         return retry
     }
-
-    /// The same connection signed for `region` — and, for an AWS endpoint, addressed at that
-    /// region's host too.
-    ///
-    /// Both halves are needed and only one is obvious. AWS's 301 is a complaint about the *host*:
-    /// re-signing for the right region while still addressing `s3.<wrong>.amazonaws.com` earns the
-    /// same redirect again. An S3-compatible endpoint is left exactly where the user put it, since
-    /// its host has no region in it to correct — rebuilding one from a region would point the
-    /// request at an Amazon host the user never named.
-    private static func movingRegion(of location: S3Location, to region: String) -> S3Location {
-        let wasDerived = location.host == awsHost(region: location.region)
-        return S3Location(
-            host: wasDerived ? awsHost(region: region) : location.host,
-            port: wasDerived ? nil : location.port,
-            bucket: location.bucket,
-            region: region,
-            accessKeyID: location.accessKeyID,
-            addressing: location.addressing,
-            usesTLS: wasDerived ? true : location.usesTLS
-        )
-    }
-
-    private static func awsHost(region: String) -> String { S3Location.awsHost(region: region) }
 
     // MARK: - Errors
 

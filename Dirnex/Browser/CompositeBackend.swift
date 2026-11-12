@@ -68,6 +68,9 @@ final class CompositeBackend: VFSBackend, @unchecked Sendable {
     /// same shape as the others (PLAN.md §M32). The root is part of the key, so two roots on one
     /// server are two connections, as they are two backend ids.
     var webDAVConnections: [String: WebDAVBackend] = [:]
+    /// Live SMB servers keyed by the server's URL, each listing its shares (PLAN.md §M35), with the
+    /// password it was opened with, which mounting a share needs (`CompositeBackend+SMBServer`).
+    var smbServerConnections: [String: SMBServerConnection] = [:]
     /// What each live connection was established *with*, keyed by the same descriptor its backend
     /// is — the coordinates and the auth method, never the secret.
     ///
@@ -157,6 +160,8 @@ final class CompositeBackend: VFSBackend, @unchecked Sendable {
         if path.backend.isS3Account {
             return s3AccountBackend(for: path.backend)?.capabilities ?? .read
         }
+        // A list of shares, read-only whether connected or not (`SMBServerBackend`).
+        if path.backend.isSMBServer { return .read }
         // Read-only whatever the grant says: M28 imports, deletes and edits nothing.
         if path.backend.isPhotos { return photos.capabilities }
         // The merged Trash listing is writable-but-Trash-less for the same reason, one level up:
@@ -290,6 +295,13 @@ final class CompositeBackend: VFSBackend, @unchecked Sendable {
         return owner.editableMetadata(at: path)
     }
 
+    /// Routed per path for the reason ``editableMetadata(at:)`` is, and with the same answer for a
+    /// path with no backend: nothing could be asked (PLAN.md §M38 Slice 2).
+    func accountIdentity(at path: VFSPath, isCancelled: () -> Bool) throws -> RemoteAccountIdentity? {
+        guard let owner = try? backend(for: path) else { return nil }
+        return try owner.accountIdentity(at: path, isCancelled: isCancelled)
+    }
+
     func applyMetadata(
         _ steps: [RemoteMetadataStep],
         at path: VFSPath
@@ -362,6 +374,7 @@ final class CompositeBackend: VFSBackend, @unchecked Sendable {
         if path.backend.isWebDAV { return try connectedWebDAV(for: path.backend) }
         if path.backend.isS3 { return try connectedS3(for: path.backend) }
         if path.backend.isS3Account { return try connectedS3Account(for: path.backend) }
+        if path.backend.isSMBServer { return try connectedSMBServer(for: path.backend) }
         if path.backend.isPhotos { return photos }
         throw VFSError.unsupported(.noBackendForPath(path: "\(path)"))
     }

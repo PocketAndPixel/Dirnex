@@ -2,8 +2,9 @@ import AppKit
 import DirnexCore
 
 /// Moving between conflicts and choosing for them (PLAN.md §M34 Slice 3): ⌥⌘↓ and ⌥⌘↑, the
-/// toolbar's arrows and a click in the overview strip; and the four takes, ⌥⌘→ Take Yours, ⌥⌘←
-/// Take Theirs, and with ⇧ both sides, the arrow's side first.
+/// toolbar's arrows and a click in the overview strip; and the takes, ⌥⌘→ Take Yours, ⌥⌘← Take
+/// Theirs, with ⇧ both sides, the arrow's side first, and ⌥⌘I the edit with the other side's
+/// whitespace where a conflict offers it (§M37 Slice 5).
 ///
 /// A take is a `TextMerge.Step` on the current conflict, and its inverse is registered with the
 /// window's undo manager, so Edit ▸ Undo names it ("Undo Take Yours") and opens the conflict again
@@ -54,12 +55,18 @@ extension MergeWindowController {
 
     // MARK: - Taking
 
-    /// Take `choice` for the current conflict, then go on to the next open one.
+    /// Take `choice` for the current conflict, then go on to the next open one. A take the conflict
+    /// does not offer beeps.
     func take(_ choice: TextMerge.Choice) {
-        guard let currentConflict, merge != nil else { return NSSound.beep() }
+        guard let currentConflict, let merge, merge.offers(choice, forConflict: currentConflict) else {
+            return NSSound.beep()
+        }
         apply(
             TextMerge.Step(conflict: currentConflict, choice: choice),
-            named: MergeToolbar.takeTitle(choice)
+            named: MergeToolbar.takeTitle(
+                choice,
+                editSide: merge.whitespace[currentConflict]?.editSide
+            )
         )
     }
 

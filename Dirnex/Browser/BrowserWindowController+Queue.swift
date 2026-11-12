@@ -25,6 +25,18 @@ extension BrowserWindowController {
         }
     }
 
+    func runToCompletion(
+        _ operations: [FileOperation],
+        conflictPolicy: ConflictPolicy,
+        onError: (@Sendable (OperationErrorContext) -> ErrorResolution)?
+    ) async {
+        let queue = queue
+        for operation in operations {
+            await queue.enqueue(operation, conflictPolicy: conflictPolicy, onError: onError)
+        }
+        await queue.waitUntilIdle()
+    }
+
     // MARK: - Observation
 
     /// Drain the queue's snapshot stream into the UI for the window's lifetime. The task is

@@ -19,7 +19,7 @@ closed simply reads differently — it is not explained here.
 |---|---|
 | **yes** | Fully done. Behaves as it does on the local disk. |
 | **yes, limited** | Fully done for what the technology allows. The remaining difference **cannot** be closed from our side — the protocol, the service or macOS does not expose it. |
-| **yes, partially** | Done, and the gap **could** be narrowed to look more local. What is left of the parity backlog is the short list at PLAN.md §4 ▸ *Still open*. |
+| **yes, partially** | Done, and the gap **could** be narrowed to look more local. What is left of the parity backlog is planned as M39–M40 at PLAN.md §4 ▸ *Next*, plus the short list at §4 ▸ *Still open*. |
 | **no** | Not implemented, and nothing structural prevents it — so it is backlog too, and its footnote names the milestone. A "no" with no route to a yes is written **n/a** instead. |
 | **n/a** | The concept does not exist there (a Trash inside the Trash, a checksum of a bucket list). |
 
@@ -27,7 +27,7 @@ closed simply reads differently — it is not explained here.
 
 | Column | What it covers |
 |---|---|
-| **Local** | Internal and external volumes, disk images, **mounted vaults**, and **SMB/NFS** shares — SMB rides the OS mounter, so a share is an ordinary `/Volumes/…` tree (PLAN.md §M5). |
+| **Local** | Internal and external volumes, disk images, **mounted vaults**, and **SMB/NFS** shares — SMB rides the OS mounter, so a share is an ordinary `/Volumes/…` tree (PLAN.md §M5). A server connected with no share named is a list of its shares (`smb://user@host`), depth 0 like an **S3 acct** pane but read-only, so nothing is created, deleted or copied there and it is not searched or synchronized: Return mounts a share and lands here, and `..` at that share's root goes back to the list (PLAN.md §M35). |
 | **Cloud mount** | iCloud Drive, Google Drive, OneDrive, Dropbox and Box under `~/Library/CloudStorage` / `~/Library/Mobile Documents`. These are **real local paths**, so they inherit the Local column except where noted.<sup>1</sup> |
 | **Archive** | A zip/tar/7z/… browsed as a folder tree (`archive:`), including nested archives.<sup>2</sup> |
 | **SFTP** | A connected SSH account. |
@@ -98,6 +98,14 @@ the server script starts when its image is on the Mac (PLAN.md §M32, 2026-10-24
 unchanged. Where it behaves differently, the cell says so: it stores names composed, it deletes a
 folder around a file another client has locked, it keeps the date an upload asks for
 (<sup>q</sup>), and its tag cannot see a second save inside one second (<sup>mm</sup>).
+**Signing in by NTLM and Negotiate** (PLAN.md §M38 Slice 6, 2026-11-10) runs the same suite against two
+stand-ins, and no real IIS or Active Directory: an NTLM proxy that verifies the NTLMv2 proof in front
+of the Apache above, offering Negotiate beside NTLM as IIS does, and a Kerberos realm with Debian's
+Apache and `mod_auth_gssapi` in a container. A named account signs in by Basic, Digest or NTLM; an
+account with no name signs in with the Mac's own Kerberos ticket. The Kerberos stand-in is also the
+suite's **stock Debian Apache**, whose `mod_dir` redirects any request naming a folder without its
+trailing slash. Dirnex names everything bare and, where the server redirects, asks again with the
+slash, so a folder there costs one request more per delete, move or stat (PLAN.md §M38, 2026-11-10).
 
 ---
 
@@ -121,6 +129,7 @@ folder around a file another client has locked, it keeps the date an upload asks
 | Folder size on `Space` / `⌥⇧⏎` | yes | yes | yes | yes, limited<sup>e</sup> | yes, limited<sup>e</sup> | yes, limited<sup>e</sup> | yes, limited<sup>e</sup> | n/a | yes<sup>hhh</sup> | yes | yes |
 | Size visualization bars (`⌃B`) | yes | yes | yes | yes<sup>nn</sup> | yes<sup>nn</sup> | yes<sup>nn</sup> | yes<sup>nn</sup> | yes<sup>nn</sup> | yes<sup>hhh</sup> | n/a<sup>nn</sup> | n/a<sup>nn</sup> |
 | Git status column, `.gitignore`-aware sizes | yes | yes | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a |
+| A folder's own icon, and a picture of an image, a movie or a PDF as its icon (View ▸ Show Icon Previews)<sup>aao</sup> | yes, partially<sup>aao</sup> | yes, limited<sup>aao</sup> | no<sup>aao</sup> | no<sup>aao</sup> | no<sup>aao</sup> | no<sup>aao</sup> | no<sup>aao</sup> | n/a | no<sup>aao</sup> | yes | yes |
 | Appears in Recents | yes | yes | n/a<sup>oo</sup> | n/a<sup>oo</sup> | n/a<sup>oo</sup> | n/a<sup>oo</sup> | n/a<sup>oo</sup> | n/a<sup>oo</sup> | n/a<sup>oo</sup> | n/a | n/a |
 | Reopens at launch / in a saved workspace | yes | yes | yes | yes, limited<sup>ww</sup> | yes, limited<sup>ww</sup> | yes, limited<sup>ww</sup> | yes, limited<sup>ww</sup> | yes, limited<sup>ww</sup> | yes | n/a<sup>aal</sup> | n/a<sup>aal</sup> |
 | Back / forward history survives a relaunch<sup>aag</sup> | yes | yes | yes, limited<sup>aag</sup> | yes, limited<sup>aag</sup> | yes, limited<sup>aag</sup> | yes, limited<sup>aag</sup> | yes, limited<sup>aag</sup> | yes, limited<sup>aag</sup> | yes | n/a | n/a |
@@ -286,6 +295,20 @@ same folder. A tab that opened on them, with `⌘`, has no folder under it and i
 Exercised live on a local volume over Recents (2026-10-31); workspaces and the server columns are
 pinned by tests and not exercised live.
 
+<sup>aao</sup> Since 2026-11-11 a folder is drawn with its own icon, so an application, a bundle, Home's
+special folders and a folder with a custom icon look as they do in Finder. With View ▸ Show Icon Previews,
+on by default, an image, a movie or a PDF is drawn as a Quick Look picture of its content, as Finder's list
+view draws it. Text and audio keep their type icons, which say more at row size. Both need the item's own
+bytes, so both are drawn only for an item on this Mac's storage with its bytes here (`RowIcon`). Every
+other row keeps its type icon, as every row did before. **Local** is partial because an SMB or NFS share
+is left out by choice: a read there is a network round trip, and a server that has gone away would hold
+it. **Cloud mount** is limited because an item that is not downloaded would be downloaded by the read.
+On a server and inside an archive each picture would be a transfer, so none is drawn, by choice; a
+package there keeps its type, so an application on a server is drawn as one rather than as a folder.
+**Photos** could draw PhotoKit's own thumbnails and does not yet. Exercised live on local folders, Home
+and `/Applications`, in the dark and the light appearance (2026-11-11); the other columns are pinned by
+tests (`RowIconTests`) and not exercised live.
+
 ## 2. File operations
 
 | Functionality | Local | Cloud mount | Archive | SFTP | FTP | WebDAV | S3 | S3 acct | Photos | Results | Trash |
@@ -296,13 +319,13 @@ pinned by tests and not exercised live.
 | Copy between two different accounts | yes | yes | — | yes | yes | yes | yes | — | yes | — | — |
 | Copy **inside one account**, without the bytes crossing this Mac | n/a | n/a | n/a | yes, limited<sup>bbb</sup> | **no**<sup>bbb</sup> | yes, limited<sup>bbb</sup> | yes | — | n/a | — | — |
 | Copy / paste `⌘C` `⌘V` | yes | yes | yes<sup>j</sup> | yes | yes | yes | yes | no<sup>h</sup> | yes, partially<sup>jjj</sup> | yes, partially<sup>k</sup> | yes, partially<sup>k</sup> |
-| Drag and drop, inside Dirnex | yes | yes | yes, partially<sup>j</sup> | yes | yes | yes | yes | no<sup>h</sup> | yes, partially<sup>jjj</sup> | yes, partially<sup>k</sup> | yes, partially<sup>k</sup> |
-| Drag **out** to Finder and other apps | yes | yes | **no**<sup>j</sup> | yes, partially<sup>k</sup> | yes, partially<sup>k</sup> | yes, partially<sup>k</sup> | yes, partially<sup>k</sup> | no<sup>h</sup> | yes, partially<sup>k</sup> | yes, partially<sup>k</sup> | yes |
-| Drag **in** from Finder and other apps | yes | yes | **no**<sup>j</sup> | yes | yes | yes | yes | no<sup>h</sup> | no<sup>jjj</sup> | no<sup>k</sup> | no<sup>k</sup> |
-| New Folder `F7` | yes | yes | no | yes | yes | yes | yes | yes, limited<sup>l</sup> | no<sup>jjj</sup> | no | no |
-| New / Edit File `⇧F4` | yes | yes | no | yes | yes | yes | yes | n/a | no<sup>jjj</sup> | no | no |
+| Drag and drop, inside Dirnex | yes | yes | yes, limited<sup>j</sup> | yes | yes | yes | yes | no<sup>h</sup> | yes, partially<sup>jjj</sup> | yes, partially<sup>k</sup> | yes, partially<sup>k</sup> |
+| Drag **out** to Finder and other apps | yes | yes | yes, partially<sup>j</sup> | yes, partially<sup>k</sup> | yes, partially<sup>k</sup> | yes, partially<sup>k</sup> | yes, partially<sup>k</sup> | no<sup>h</sup> | yes, partially<sup>k</sup> | yes, partially<sup>k</sup> | yes |
+| Drag **in** from Finder and other apps | yes | yes | yes, limited<sup>j</sup> | yes | yes | yes | yes | no<sup>h</sup> | no<sup>jjj</sup> | no<sup>k</sup> | no<sup>k</sup> |
+| New Folder `F7` | yes | yes | yes, limited<sup>yyy</sup> | yes | yes | yes | yes | yes, limited<sup>l</sup> | no<sup>jjj</sup> | no | no |
+| New / Edit File `⇧F4` | yes | yes | yes, limited<sup>yyy</sup> | yes | yes | yes | yes | n/a | no<sup>jjj</sup> | no | no |
 | Rename `F2` | yes | yes | yes, limited<sup>ccc</sup> | yes | yes | yes | yes, limited<sup>i</sup> | no | n/a<sup>kkk</sup> | yes | no<sup>m</sup> |
-| Multi-rename `⇧F2` | yes | yes | no<sup>ccc</sup> | yes | yes | yes | yes, limited<sup>i</sup> | no | n/a<sup>kkk</sup> | yes | no<sup>m</sup> |
+| Multi-rename `⇧F2` | yes | yes | yes, limited<sup>ccc</sup> | yes | yes | yes | yes, limited<sup>i</sup> | no | n/a<sup>kkk</sup> | yes | no<sup>m</sup> |
 | Delete `F8` → Trash | yes | yes, limited<sup>o</sup> | n/a | n/a | n/a | n/a | n/a | n/a | no<sup>jjj</sup> | yes<sup>aac</sup> | n/a |
 | Delete `F8` → permanent (confirmed) | yes | yes | yes, limited<sup>n</sup> | yes | yes | yes | yes | yes, limited<sup>l</sup> | n/a | yes<sup>aac</sup> | yes |
 | Put Back (restore from Trash, or a share's `#recycle`) | yes, limited<sup>iii</sup> | n/a | n/a | yes, limited<sup>iii</sup> | yes, limited<sup>iii</sup> | yes, limited<sup>iii</sup> | n/a | n/a | n/a | n/a | yes, limited<sup>o</sup> |
@@ -314,8 +337,9 @@ pinned by tests and not exercised live.
 | APFS clone fast path | yes | yes | n/a | n/a | n/a | n/a | n/a | n/a | yes | yes | yes |
 
 <sup>g</sup> `F5` **out of** an archive extracts the marked members into the other pane (which
-must be a real folder); `F5`/`F6` **into** a top-level archive adds files to it by repacking.
-Move-*out* does not exist — there is nothing to remove from a read-only container.
+must be a real folder); `F5`/`F6` **into** a top-level archive adds files to it by repacking,
+whatever the other pane is showing — this Mac, a server or another archive (<sup>j</sup>, since PLAN.md
+§M36). Move-*out* does not exist — there is nothing to remove from a read-only container.
 
 <sup>h</sup> An account has no verb for "put this file in the account" — its rows are buckets.
 Deliberate (`VFSBackendID.acceptsUploads`), not a gap.
@@ -329,20 +353,59 @@ directory and copy the real file on, through the same funnel `F5` copy-out uses
 (`ArchiveTransferSources`), so a mixed selection of archive, local and remote rows travels as one
 gesture. It is always a **copy** — a read-only container has nothing to remove afterwards, so ⌥⌘V
 drops such a row and a ⌘-forced drag falls back to copying (`TransferAdmission.allowsMove`), the
-same rule that makes `F6` move-out not exist. Two asymmetries: dragging a member **out** to another
-app is the one gesture still missing (a promise is fulfilled behind somebody else's drop, where an
-encrypted archive would have to raise a passphrase sheet with nothing on screen to answer it on —
-`F5` is the route); and `⌘V` **into** a top-level archive adds files by repacking while a *drop*
-into one does not, `⌥⌘V` into one being unsupported either way.
+same rule that makes `F6` move-out not exist. **Into** a top-level archive every gesture adds by
+repacking through one funnel (PLAN.md §M36, 2026-11-08): `⌘V`, `⌥⌘V`, a drop from Dirnex or from
+another app, and `F5`/`F6`. A row on a server is downloaded first, a folder as a queue job with a bar
+and Stop, as `⌥F5`'s are; a member of another archive is extracted first. A move adds and then removes
+the originals, to the Trash on this Mac and after the permanent-delete question on a server, which keeps
+no Trash. The archive itself, or a folder holding it, is refused, and a nested archive takes nothing,
+its mount being a temp copy of a member. A **file** inside an archive drags **out** to other apps
+since PLAN.md §M36 Slice 2 (2026-11-08), the way a server's file does: Finder is handed a promise and
+the member is extracted when it takes the drop, and any other app is handed the extracted file once
+the pointer is over it. A member of an encrypted archive goes out only once this session holds its
+passphrase, from a preview, ⏎ or `F5`; before that it drags inside Dirnex only and the status line
+says to open a file in the archive first, because asking would put a sheet behind somebody else's
+drop. A **folder** inside an archive does not drag out yet. A server's folder does since PLAN.md §M36
+Slice 3, and the probe it needed (Finder and a promised folder) answers for an archive's too, so what
+is left is the extraction of a subtree behind the promise.
 
 <sup>k</sup> What a drag can and cannot reach, in three parts. A row on a server is dragged **out**
-as an `NSFilePromiseProvider`: the board advertises the file and the bytes are fetched only if
-something accepts the drop, through the same funnel `⏎` and `F4` use — so a row already fetched for
+to Finder as an `NSFilePromiseProvider`: the board advertises the file and the bytes are fetched only
+if something accepts the drop, through the same funnel `⏎` and `F4` use — so a row already fetched for
 a preview drags out with no transfer at all. A marked set is one promise per row, and the drag
 session is started with all of them: widening it afterwards carried local files and dropped no
-remote ones at all (measured into Finder 2026-10-24, PLAN.md §M32). A **folder** is not promised (a promise is one file,
-and a recursive fetch behind a Finder drop has no progress surface and no way to stop it), so it
-travels inside Dirnex only. And a **virtual listing** — a results tab, the merged Trash — is a
+remote ones at all (measured into Finder 2026-10-24, PLAN.md §M32). **Every other app** gets a real
+file instead, because Teams, Slack, Chrome and the rest of Chromium refuse a promise outright
+(2026-11-03, `RemoteDragHandoff`): when the pointer enters another app's window the board becomes file
+URLs and the bytes start coming down. A file that arrives within three seconds drops as usual. One that
+takes longer shows its progress under the dragged row, and the app takes it once the pointer has left
+and come back. Letting go early refuses the drop and nothing is lost: a set up to the open/edit size
+finishes anyway so the next drag is immediate, and a larger one stops and leaves nothing behind. Two
+limits follow from a promise being gone once the board has been rewritten: a large file that crosses
+another app on its way to Finder has to arrive before Finder will take it, and an app that could have
+taken a promise is offered the file URL too (Mail took a 36.1 MB file from S3 this way, 2026-11-03). A
+**folder** goes to **Finder** since PLAN.md §M36 Slice 3 (2026-11-08): it is promised as a folder, and
+when Finder takes the drop, `F5`'s own queue job stages the tree in the temp root, with its bar and Stop
+in Dirnex, and moves it to the path Finder named once all of it is here. Finder draws nothing while it
+waits, so the queue bar is the only progress; Stop or a failure leaves nothing in Finder's folder, and a
+failure is reported by Dirnex, since Finder says nothing. Run live over SFTP, FTP, WebDAV and S3
+(2026-11-08). **Every other app is handed the folder itself** too (2026-11-09): a folder **on this
+disk** by its own URL, with nothing made, and a server's once the pointer is over the app, brought
+down whole into the temp root. **Entering an app with ⇧ held hands it `<folder>.zip` instead, Finder
+included**, because Gmail in Chrome answers "Attachment failed" for a dropped folder while VLC and
+Finder take one, and nothing tells a drag which an app wants. ⇧ counts **as the pointer enters**:
+Teams and Chrome drop what they read then, so in Oleg's logged drops a ⇧ pressed once over the app was
+read and ignored, while a drop with ⇧ held from before the entry took the zip (2026-11-09). The row's
+line says "Hold ⇧ and re-enter for a zip" over an app, "Now move out and back in" once ⇧ has changed
+over it, "Compressing…" while the zip is made and "As a zip" once it is. A local folder dragged to VLC
+landed as the folder with nothing made, and entered with ⇧ held it landed as `<folder>.zip` in Finder,
+Gmail and Teams (checked by Oleg, 2026-11-09). The zip is made in the temp root by ⌥F5's packer, is stopped if the drag ends
+first, and is removed at the drag's end unless an app took it, when it stays until the next launch
+for the upload that reads it; a server's staged tree is kept the same way only if the drop took the
+folder. The zip was checked by Oleg in Gmail and Teams, with a local folder and one off the NAS
+(2026-11-08), when every app but Finder got one. A
+bucket in an account pane and a share
+in a server pane are places rather than folders and stay inside Dirnex. And a **virtual listing** — a results tab, the merged Trash — is a
 source and never a destination: its rows carry their real paths and copy or drag out per row, while
 nothing can be pasted or dropped *into* a listing that has no directory of its own. The merged
 iCloud row is the exception, landing in the CloudDocs container underneath.
@@ -365,11 +428,14 @@ does (`DeleteRouting`), so a local hit goes to the Trash and a hit on a server i
 permanent delete. A set mixing the two is deleted for good, after the confirmation. A hit inside an
 archive is refused. A deleted or **moved** hit leaves every results tab showing it, in either
 pane — a move as soon as its job finishes, and only for the items that really moved — and ⌘Z puts
-a trashed or moved hit's row back with the file, for a hit on this Mac. A hit on a server is not
+a trashed or moved hit's row back with the file, for a hit on this Mac. Since 2026-11-05 the hits
+inside a deleted or moved folder leave and come back with it, whether or not the folder was a hit. A hit on a server is not
 followed — an undo that puts the file back leaves the row gone — because the check would cost a
-round trip per hit on every refresh. A rename that
-had to run as a job renames the row. Search hits and Recents only since 2026-10-14; the iCloud
-Drive row always could. Verified live on local hits; a server's hits by tests only.
+round trip per hit on every refresh. A rename, in place or as a job, renames the row in every
+results tab in either pane, and since 2026-11-05 a hit inside a renamed folder moves with it; ⌘Z
+and ⇧⌘Z of a rename follow it the same way, inside an archive too, where the undo record carries the
+member renames its container swap reverses. Search hits and Recents only since 2026-10-14; the iCloud Drive row always could.
+Verified live on local hits; a server's hits by tests only.
 
 <sup>o</sup> Two halves, and they meet on a cloud mount. **Put Back** works for anything Finder
 trashed to `~/.Trash`, a volume's `.Trashes`, or a Google Drive mount's `.Trash`, and — since M26
@@ -507,11 +573,29 @@ same member — by kind, size and folder, since a re-decode changes every name a
 listing — and re-opens the field there by itself, so F2 reads as one gesture that asked a question in
 the middle (▸ <sup>ddd</sup>).
 
-**⇧F2 is a plain no there, and deliberately so.** The multi-rename tool renames each target with the
-backend's own `moveItem`, which an archive answers `.unsupported` to — so it keeps the narrower gate
-rather than being pointed at F2's, which would have enabled it over a flow that fails once per item.
-Batching N renames into the one rewrite the container actually wants is its own slice; nothing about
-the rewrite is in the way of it (PLAN.md §4 ▸ *Still open*, 2026-09-10).
+**⇧F2 renames the whole marked set in one rewrite** (2026-11-05). Until then it was a plain no,
+because the multi-rename tool renamed each target with the backend's own `moveItem`, which an archive
+answers `.unsupported` to. Inside one writable archive the batch now goes to the container once:
+every member takes its new name or none does, a folder and a file inside it can both be in the set
+(the file moves first), and ⌘Z puts the container back. "Limited" for F2's reasons above, plus one of
+its own: a set that spans two archives, or an archive and a folder (a results tab can hold either),
+is refused, since one rewrite covers one archive and the backend loop cannot rename a member at all.
+A swap or a chain is refused by the tool's planner as anywhere else. The code-page question comes
+before the tool opens, as F2's does, and since answering it clears the marks the set is marked again
+afterwards.
+
+<sup>yyy</sup> F7 and ⇧F4 inside a browsed archive make the new member by F2's rewrite (2026-11-05):
+extract, make the folder or an empty file in the staged tree, repack, atomic swap. The staged `mkdir`
+and `O_EXCL` create refuse a name that is already there, a twin differing only in case included, so
+nothing in the archive is ever replaced by an empty one. Neither confirms, and ⌘Z puts the container
+back. ⇧F4 with a new name makes the empty member first and then opens it as F4 opens any member, so
+the row is under the cursor at once and the first save comes back through the write-back question,
+as a second rewrite. "Limited" for rename's reasons: each costs a full pass over the archive, a
+nested archive and a self-extractor gray both items out, and an archive in an undeclared code page
+offers the chooser, after which the key is pressed again (▸ <sup>ddd</sup>). An archive whose names
+are hidden shows only its wrapper, while every rewrite works on the payload, so a folder made at its
+root lands inside the payload and is not among the rows: the disagreement paste already has there
+(NOTES.md ▸ Archives and encryption).
 
 <sup>bbb</sup> A duplicate within one SFTP account is the **server's** work: OpenSSH's `copy-data`
 extension gives `sftp` a real `cp` — measured against a real `sshd`, 64 MiB in **0.09 s** for the
@@ -593,13 +677,15 @@ the agent and adds a last-opened date, and it names a Live Photo's movie `.mov` 
 | Open in the default app (`⏎`) | yes | yes | yes, limited<sup>t, ddd</sup> | yes, limited<sup>u</sup> | yes, limited<sup>u</sup> | yes, limited<sup>u</sup> | yes, limited<sup>u</sup> | n/a | yes, limited<sup>mmm</sup> | yes | yes |
 | Edit `F4`, with save written back | yes | yes | yes, limited<sup>v, ddd</sup> | yes | yes | yes | yes | n/a | no<sup>jjj</sup> | yes | yes |
 | Open With… / Share sheet | yes | yes | yes, limited<sup>yy</sup> | yes, limited<sup>yy</sup> | yes, limited<sup>yy</sup> | yes, limited<sup>yy</sup> | yes, limited<sup>yy</sup> | n/a | yes, limited<sup>yy</sup> | yes | yes |
+| Always open a type with an app (Open With ▸ Always Open … With)<sup>aap</sup> | yes | yes | yes | yes | yes | yes | yes | n/a | yes | yes | yes |
 | Show in Finder | yes | yes | n/a | n/a | n/a | n/a | n/a | n/a | n/a | yes | yes |
 | Send to a **Service** | yes | yes | **no**<sup>zz</sup> | **no**<sup>zz</sup> | **no**<sup>zz</sup> | **no**<sup>zz</sup> | **no**<sup>zz</sup> | n/a | **no**<sup>zz</sup> | yes | yes |
 | Compare By Contents (`⌥F3`) | yes | yes | yes, limited<sup>w</sup> | yes, limited<sup>w</sup> | yes, limited<sup>w</sup> | yes, limited<sup>w</sup> | yes, limited<sup>w</sup> | n/a | yes, limited<sup>w</sup> | yes | yes |
 | In the compare window: copy a change across (`⌥⌘←` `⌥⌘→`), save (`⌘S`), and edit a side in your own editor<sup>vvv</sup> | yes | yes | yes, limited<sup>v</sup> | yes | yes | yes | yes | n/a | no<sup>jjj</sup> | yes | yes |
-| Merge a file the server changed under an `F4` edit (Merge… in the save's question)<sup>www</sup> | n/a | n/a | no<sup>www</sup> | yes, limited<sup>www</sup> | yes, limited<sup>www</sup> | yes | yes | n/a | no<sup>jjj</sup> | yes | n/a |
-| Resolve a git conflict (Resolve Conflict… on a file badged U)<sup>xxx</sup> | yes | yes | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a |
+| Merge a file changed under an `F4` edit, on the server or in its archive (Merge… in the save's question)<sup>www</sup> | n/a | n/a | yes, limited<sup>zzz</sup> | yes, limited<sup>www</sup> | yes, limited<sup>www</sup> | yes | yes | n/a | no<sup>jjj</sup> | yes | n/a |
+| Resolve a git conflict (Resolve Conflict… on a file badged U, or as `git mergetool`'s tool)<sup>xxx</sup> | yes | yes | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a |
 | Synchronize Directories | yes | yes | **no**<sup>x</sup> | yes, limited<sup>x</sup> | yes, limited<sup>x</sup> | yes, limited<sup>x</sup> | yes, limited<sup>x</sup> | n/a | yes, limited<sup>x</sup> | n/a<sup>x</sup> | n/a<sup>x</sup> |
+| Keep synced versions of text files, and merge a file changed on both sides (Merge… on a Synchronize row)<sup>aam</sup> | yes | yes, limited<sup>aam</sup> | n/a | yes, limited<sup>aam</sup> | yes, limited<sup>aam</sup> | yes, limited<sup>aam</sup> | yes, limited<sup>aam</sup> | n/a | **no**<sup>aam</sup> | n/a | n/a |
 | Browse *into* an archive file | yes | yes | yes | read-only<sup>y</sup> | read-only<sup>y</sup> | read-only<sup>y</sup> | read-only<sup>y</sup> | n/a | n/a | yes | yes |
 
 <sup>r</sup> The member is extracted to a temp file first; only the **cursor's** member is ever
@@ -644,10 +730,13 @@ paste), which repacks them as UTF-8 and flagged — readable everywhere afterwar
 (PLAN.md §M24 Slice 4) — `ByteComparator` still only ever sees real local paths. Dirnex's own compare
 window (PLAN.md §M31) names each side where it lives, the server's or the archive's own path, and an
 external diff tool is handed the copies, which keep their real names. The limits are about what the
-pair *is*: a folder has no contents to compare, and Dirnex's window compares text files of up to
-64 MiB, refusing a binary or larger file by name (an external tool takes anything, and asks first past
-64 MiB). The Synchronize sheet's Compare Contents… brings its pair down the same way since M31
-Slice 4; it used to hand a server pair's own paths to the diff tool.
+pair *is*: a folder has no contents to compare. Dirnex's window compares text files of up to 1/32 of
+this Mac's memory and never under 64 MiB (PLAN.md §M37 Slice 3), and since Slice 2 a binary pair, a pair
+no encoding reads and a pair past that limit open
+in its byte view instead of being refused: hex side by side at the same offset, of any size, read a
+page at a time off the main thread. An external tool takes anything, and asks first past 64 MiB. The
+Synchronize sheet's Compare Contents… brings its pair down the same way since M31 Slice 4; it used to
+hand a server pair's own paths to the diff tool.
 
 <sup>vvv</sup> The window edits **lines**, never keystrokes (PLAN.md §M33): a copy replaces one change's
 lines on one side with the other side's, and ⌘Z walks every copy back. A side is saved as it was
@@ -680,7 +769,7 @@ first (PLAN.md §M34 Slice 4): the server's version comes down and opens in the 
 edit and the version the edit started from, kept when the edit began and replaced by the bytes each
 upload sends. The result is saved into the editor's copy and uploaded, checked against the version
 merged, so a write meanwhile asks again. It is offered for a save of one file whose three versions
-are text within 64 MiB, and not inside an archive, where no base is kept. **SFTP and FTP are
+are text within 64 MiB; inside an archive, see <sup>zzz</sup>. **SFTP and FTP are
 limited by the check, not the merge:** with no entity tag, the listing gives a size and a time,
 minute-resolution over SFTP and coarser over FTP without `MLSD`. Since 2026-10-27, when both agree,
 the save brings the server's file down and compares it with the base. So a same-size write in the
@@ -692,6 +781,20 @@ caught. WebDAV and S3 compare entity tags and condition the upload on one. Verif
 the same-size case included, and over WebDAV (Slice 6): there a server write made while the question
 was up was refused by the upload's `If-Match` with a 412, and the question offered Merge… again.
 
+<sup>zzz</sup> When a member is saved back and its archive has changed since the member was
+extracted, the member is read again and compared with the bytes the edit started from, kept when the
+edit's watch began (PLAN.md §M37 Slice 4). A change is named in the archive's question, which offers
+**Merge…** first for one member: the merge window opens on the archive's version, the edit and that
+base, and the result is saved into the editor's copy, then written back through the archive's own
+question and rewrite. A set with changed members is offered **Skip Changed Files**, and the members
+it skips ask again on their next save. "Limited": a member is checked only where a base was kept, so
+an edit opened before this, or a copy a gesture wrote before its watch began (a compare window's
+copy across), keeps the question it had; an encrypted archive nobody unlocked in this window reads
+as "couldn't be checked" rather than asking for its passphrase, which Merge… does ask for; a member
+taken out of the archive reads the same way, and Save Back puts it back; and a change to the same
+member between the check and the rewrite is replaced. An archive that has not moved costs one
+`stat`, and nothing is read.
+
 <sup>xxx</sup> A file git has badged U opens in the merge window on the versions git holds of it
 (PLAN.md §M34 Slice 5), each read as a checkout would write it, so the file's line endings and
 encoding survive the save. Save writes the working-tree file and nothing else: no git command Dirnex
@@ -700,7 +803,30 @@ against an empty base. A deletion on either side, a name only one side has (as a
 leaves), a link or a submodule, a binary file and a version over 64 MiB are each refused by name.
 Only a local working tree has a git status, so nothing on a server, in an archive or in a listing is
 badged U. Verified live on scratch repositories stopped in a merge and in a rebase: a take and a
-save, a deletion refused, both sides adding a file, and `.git` untouched throughout.
+save, a deletion refused, both sides adding a file, and `.git` untouched throughout. `git mergetool`
+reaches the same window through `Dirnex --git-merge`, once Settings ▸ Operations has set it up
+(PLAN.md §M37 Slice 6). git makes the three versions and waits for the window. Save writes `$MERGED`
+alone and keeps no undo copy. A saved window answers 0, which stages the file, and anything else
+answers 1. git itself handles a deletion or a link and never calls the tool for one; a binary file
+and a version over 64 MiB are refused as above.
+
+<sup>aam</sup> A box in the Synchronize window, off by default and per pair of folders (PLAN.md §M37
+Slices 7 and 8). After the sync, each text file of up to 64 MiB that both sides hold is kept once a
+byte comparison finds the two equal, under 5 GiB across every pair with the oldest dropped first, in
+a folder Spotlight and Time Machine skip. A later scan marks a file whose bytes moved on differently
+on each side. Both Directions leaves such a row unticked, a mirror keeps its copy, and Merge… on the
+row opens the merge window over the kept version. Save writes the result into both files, and it
+becomes the kept version. **A pair with one side on a server keeps only what its sync copied** (PLAN.md
+§M38 Slices 8 and 9), since a local pair's proof against both sides' bytes would download every text
+file on every sync. Beside each version goes the server row's size, date and tag, and the server's side
+counts as changed when that stamp moves, so nothing is downloaded to say so. Merge… brings the server's
+file down when pressed, and Save writes the local file and carries the result up as an edited server
+file's save is carried, with its check and its question. A same-size SFTP or FTP write inside the
+listing's resolution goes unseen, and a `touch` reads as a change. A pair of two servers has no record,
+nor does the Photos library, which takes no upload. Seen live over SFTP, FTP, WebDAV and S3, with the server in
+either pane (PLAN.md §M38 Slice 10). An upload declined or failed at Save leaves Save enabled, and the next one
+carries the result again. Nothing inside
+a vault is kept, and an evicted cloud placeholder is neither kept nor read to say what changed.
 
 <sup>x</sup> A side stopped having to be on this disk at PLAN.md §M25 Slice 5c, and what it gains is
 comparison by **size**, which is honest anywhere. Comparing by **timestamp** is withdrawn the moment
@@ -761,6 +887,14 @@ from; the list is otherwise identical, and it appears *before* the download, so 
 costs nothing. Share cannot do that — `NSSharingServicePicker` derives its services from the items —
 so Share fetches first and then presents.
 
+<sup>aap</sup> Since 2026-11-12 the foot of Open With makes an application the default for every file
+of the rows' type, Finder's Get Info ▸ Change All…. macOS keeps a default per type, so it is offered only
+for rows of one type, and never for a folder, a volume, an application or a type with no extension
+(`DefaultApplicationScope`). The submenu is drawn from names, as Open With's list is, so it costs nothing to
+open. macOS asks the user in a dialog of its own each time, and once the change is made the rows are opened
+in the application through Open With's own path, so a row that is not on this disk is brought down first
+(<sup>yy</sup>). Keeping the old application in that dialog opens nothing.
+
 <sup>zz</sup> Services fills a pasteboard **synchronously**, inside the call AppKit makes as the menu
 opens, and there is nowhere in it to put a download — blocking the main thread on one is the failure
 M24 exists to prevent. A limit rather than a gap: the Services menu simply does not offer this pane
@@ -807,19 +941,31 @@ values, with the JSON tree's rules.
 
 | Functionality | Local | Cloud mount | Archive | SFTP | FTP | WebDAV | S3 | S3 acct | Photos | Results | Trash |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| Search at all | yes | yes | yes | yes | yes | yes | yes | **no**<sup>z</sup> | yes | yes, limited<sup>aa</sup> | yes, limited<sup>aa</sup> |
-| by **name** | yes | yes | yes | yes | yes | yes | yes | n/a | yes | yes | yes |
-| by **kind / size / modified** | yes | yes | yes | yes | yes | yes | yes | n/a | yes | yes | yes |
-| by **file contents** | yes | yes | **n/a**<sup>bb</sup> | **n/a**<sup>bb</sup> | **n/a**<sup>bb</sup> | **n/a**<sup>bb</sup> | **n/a**<sup>bb</sup> | n/a | **n/a**<sup>bb</sup> | yes | yes |
+| Search at all | yes | yes | yes | yes | yes | yes | yes | yes, bounded<sup>z</sup> | yes | yes, limited<sup>aa</sup> | yes, limited<sup>aa</sup> |
+| by **name** | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes |
+| by **kind / size / modified** | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes |
+| by **file contents** | yes | yes | **n/a**<sup>bb</sup> | **n/a**<sup>bb</sup> | **n/a**<sup>bb</sup> | **n/a**<sup>bb</sup> | **n/a**<sup>bb</sup> | **n/a**<sup>bb</sup> | **n/a**<sup>bb</sup> | yes | yes |
 | by **Finder tag** | yes | yes | n/a | n/a | n/a | n/a | n/a | n/a | n/a | yes | yes |
-| Runs off an index (instant) | yes | yes | no<sup>cc</sup> | no<sup>cc</sup> | no<sup>cc</sup> | no<sup>cc</sup> | no<sup>cc</sup> | n/a | no<sup>cc</sup> | yes | yes |
-| Server-side walk (one request, not one per folder) | n/a | n/a | n/a | yes, limited<sup>dd</sup> | n/a<sup>ss</sup> | **no**<sup>aai</sup> | yes | n/a | no<sup>nnn</sup> | — | — |
-| Live progress + Stop | yes | yes | yes | yes | yes | yes | yes | n/a | yes | yes | yes |
-| Save the search to the sidebar, re-run later | yes | yes | yes | yes | yes | yes | yes | n/a | yes | yes | yes |
-| Edit the search's conditions and run it again in the same tab<sup>aab</sup> | yes | yes | yes | yes | yes | yes | yes | n/a | yes | yes | yes |
+| Runs off an index (instant) | yes | yes | no<sup>cc</sup> | no<sup>cc</sup> | no<sup>cc</sup> | no<sup>cc</sup> | no<sup>cc</sup> | no<sup>z</sup> | no<sup>cc</sup> | yes | yes |
+| Server-side walk (one request, not one per folder) | n/a | n/a | n/a | yes, limited<sup>dd</sup> | n/a<sup>ss</sup> | **no**<sup>aai</sup> | yes | yes, per bucket<sup>z</sup> | no<sup>nnn</sup> | — | — |
+| Live progress + Stop | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes |
+| Save the search to the sidebar, re-run later | yes | yes | yes | yes | yes | yes | yes | **no**<sup>z</sup> | yes | yes | yes |
+| Edit the search's conditions and run it again in the same tab<sup>aab</sup> | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes |
 
-<sup>z</sup> Deliberate: the rows are buckets, and "search every bucket" is a different and far
-more expensive question than the one ⌥F7 asks (PLAN.md §M22).
+<sup>z</sup> Every bucket the key can see, each searched up to its first **10,000 objects** in the order
+S3 lists keys, which Find Files states before the search starts (PLAN.md §M38 Slice 5). M22 refused
+this because "search every bucket" is a far more expensive question than the one ⌥F7 asks; the bound
+per bucket is the answer, rather than one allowance for the account, which a large bucket early in the
+alphabet could spend for every bucket after it. One request per 1000 objects, the first page doubling
+as the probe; a bucket in another region or one label too deep for the endpoint's certificate is
+re-aimed as entering it would be (`S3LocationCorrection`). A bucket the bound cut short, or one that
+refused, is named afterwards and the rest of the search goes on. The buckets a hit lives in are
+connected, so a hit opens, copies and previews. Not saved to the sidebar, since a re-run from there
+starts with no dialog to state the bound; editing the search in its tab reopens the dialog and works.
+Run live 2026-11-10 against a throwaway endpoint that checks every signature, through a real pane and
+`curl`: the bound, a refusal and a 301 behaved as described. The dialog, the progress sheet, Stop and the
+alert were seen on screen on 2026-11-11 against SeaweedFS's S3 gateway (PLAN.md §M38 Slice 10). Not yet on
+real AWS.
 
 <sup>aa</sup> A virtual listing has no directory, so the scope falls back to **Home** — the hits
 are real files, but the pane you were looking at is not the scope. The exception is a tab of
@@ -864,25 +1010,28 @@ level, in 0.27 s (PLAN.md §M32 Slice 5).
 
 <sup>nnn</sup> Not yet. One PhotoKit fetch could answer every capture date in the library at once,
 but names still cost ~1.1 ms an asset, so a search walks month by month like any backend without a
-shortcut (<sup>cc</sup>).
+shortcut (<sup>cc</sup>). Left undone at PLAN.md §M38, whose probe measured the saving at about 1 ms a
+month while a name cost 2.0 ms an asset through the public call, and found no fetch can filter by name.
 
 ## 5. Metadata and macOS integration
 
 | Functionality | Local | Cloud mount | Archive | SFTP | FTP | WebDAV | S3 | S3 acct | Photos | Results | Trash |
 |---|---|---|---|---|---|---|---|---|---|---|---|
 | Get Info: permissions, flags, dates | yes | yes | read-only<sup>tt</sup> | mode editable<sup>tt</sup> | mode + date editable<sup>tt</sup> | read-only<sup>tt</sup> | read-only<sup>tt</sup> | read-only<sup>tt</sup> | read-only<sup>tt</sup> | yes<sup>ee</sup> | yes<sup>ee</sup> |
+| Get Info: owner and group | yes | yes | read-only<sup>tt</sup> | editable with an exec channel<sup>tt</sup> | read-only<sup>tt</sup> | n/a | n/a | n/a | n/a | yes<sup>ee</sup> | yes<sup>ee</sup> |
 | Get Info: ACLs, extended attributes | yes | yes | n/a | n/a | n/a | n/a | n/a | n/a | n/a | yes<sup>ee</sup> | yes<sup>ee</sup> |
 | Privilege escalation for a root-only change | yes | yes | n/a | n/a | n/a | n/a | n/a | n/a | n/a | yes | yes |
 | Finder tags (`⌃T`, tag dots) | yes | yes | n/a | n/a | n/a | n/a | n/a | n/a | n/a | yes<sup>ee</sup> | yes<sup>ee</sup> |
 | Cloud sync badges | yes | yes | n/a | n/a | n/a | n/a | n/a | n/a | no<sup>ooo</sup> | yes | yes |
 | Download Now / Remove Download | n/a | yes, limited<sup>eee</sup> | n/a | n/a | n/a | n/a | n/a | n/a | no<sup>ooo</sup> | yes<sup>eee</sup> | yes<sup>eee</sup> |
 | Create / verify checksum files | yes | yes | verify only<sup>ff</sup> | yes, limited<sup>ff</sup> | yes, limited<sup>ff</sup> | yes, limited<sup>ff</sup> | yes, limited<sup>ff</sup> | n/a | n/a<sup>ppp</sup> | no<sup>xx</sup> | no<sup>xx</sup> |
-| Open in Terminal | yes | yes | n/a | **no**<sup>gg</sup> | n/a | n/a | n/a | n/a | n/a | no | no |
+| Open in Terminal | yes | yes | n/a | yes<sup>gg</sup> | n/a | n/a | n/a | n/a | n/a | no | no |
 | Run a user script | yes | yes | yes<sup>aaa</sup> | yes<sup>aaa</sup> | yes<sup>aaa</sup> | yes<sup>aaa</sup> | yes<sup>aaa</sup> | no<sup>aaa</sup> | yes, limited<sup>mmm</sup> | yes, limited<sup>aaa</sup> | yes, limited<sup>aaa</sup> |
 | Pack `⌥F5` (create an archive) | yes | yes | yes<sup>hh</sup> | yes<sup>hh</sup> | yes<sup>hh</sup> | yes<sup>hh</sup> | yes<sup>hh</sup> | n/a | yes<sup>hh</sup> | yes<sup>hh</sup> | yes |
 | Encrypted archives / hidden member names | yes | yes | yes | yes<sup>hh</sup> | yes<sup>hh</sup> | yes<sup>hh</sup> | yes<sup>hh</sup> | n/a | yes<sup>hh</sup> | yes<sup>hh</sup> | yes |
 | Create / unlock an encrypted vault | yes | yes | n/a | n/a<sup>uu</sup> | n/a<sup>uu</sup> | n/a<sup>uu</sup> | n/a<sup>uu</sup> | n/a | n/a<sup>uu</sup> | no | n/a |
 | Saved connection in the sidebar | n/a | n/a | n/a | yes | yes | yes | yes | yes | yes | n/a | n/a |
+| Space left, on the sidebar row | yes | no<sup>aan</sup> | n/a | yes, limited<sup>aan</sup> | n/a<sup>aan</sup> | yes, limited<sup>aan</sup> | n/a | n/a | n/a | n/a | n/a |
 | Pin to Favorites / Places menu | yes | yes | no | yes, partially<sup>ii</sup> | yes, partially<sup>ii</sup> | yes, partially<sup>ii</sup> | yes, partially<sup>ii</sup> | yes, partially | yes | no | n/a |
 
 <sup>ee</sup> Gated per **row**, not per pane. A trashed file is an ordinary local file, so it
@@ -919,8 +1068,11 @@ the walk *discovers* by descending into a marked folder is still subject to the 
 so an evicted placeholder found that way is reported as "not downloaded" rather than silently pulled
 down. A row whose transfer failed is reported the same way, never as a mismatch.
 
-<sup>gg</sup> A local shell cannot `cd` to a server. An `ssh` session to the SFTP account's own
-host is a different feature and is not built.
+<sup>gg</sup> A local shell cannot `cd` to a server, so on SFTP this is an `ssh` session to the
+account's own host, in the pane's folder, in the user's own terminal (PLAN.md §M38 Slice 3). A password
+reaches `ssh` through a one-shot named pipe, and is never in `argv` or on disk. An account that cannot
+run a command, which is what one limited to file transfer is, is refused by name before any window
+opens. Seen live in Terminal, iTerm and WezTerm, with a key and with a password (PLAN.md §M38 Slice 10).
 
 <sup>hh</sup> Neither end has to be on this Mac (PLAN.md §M24 Slice 6). The **sources** are brought
 down first — the marked-set fetch note <sup>rr</sup> describes — and each one then names its own
@@ -943,9 +1095,24 @@ is not ours: a **browsed archive cannot receive** an archive, because `ArchiveBa
 account again from any of the four surfaces that can pick one: the ⌘F popup, a sidebar row, that
 row's Open item, and Go ▸ Places. The credential rules are the restore's, because it is the restore's
 code: an account needing a password it no longer has comes back disconnected rather than prompting.
-What stays partial is the *gesture* — a remote folder is pinned from the menu, never by dragging it
-into the sidebar (PLAN.md §M8's deliberate omission) — and a pin made before the field existed, which
-carries no way back and fails as it always did, naming the account.
+A folder on a server can be pinned from the menu or, since PLAN.md §M38 Slice 4, by dragging its row
+into the sidebar, and the two make the same pin, seen live for SFTP, FTP, WebDAV and S3. What stays partial is a pin made before the field
+existed, which carries no way back and fails as it always did, naming the account; and a bucket row in
+an account pane or a share row in a server pane, which cannot be dragged in, because each is reached by
+connecting to it and its path does not list.
+
+A pin inside an **SMB share** is a local path, so it has no connection to read back, and it records the
+share instead (`PinnedShare`). Picking one while its volume is not mounted mounts the share with the password
+the app holds and goes in, under whatever mount point the share gets. A pin made before that record existed
+tries the saved SMB servers in sidebar order and keeps the one that mounted. It stays partial in two ways: a
+share Finder mounted is recorded only once Dirnex has connected to it, and an account with no saved password is
+passed over rather than prompted for.
+
+A **tab** inside a share is written down with the share the same way, and comes back even though Dirnex
+unmounted the share on quit. Its first navigation mounts the share by the rules a restored server tab
+reconnects by: the tab in front at launch mounts unless Settings ▸ Panels never contacts a server unasked, any
+gesture mounts, and an account with no saved password stands down on the status line. A tab written down
+before this, with no share recorded, is still dropped.
 
 <sup>tt</sup> Read-only since M24 Slice 7: a row that is not on this Mac opens
 `RemoteAttributesController`, which states **what the listing actually reported** and nothing else.
@@ -970,10 +1137,16 @@ offers the **mode** and no date, because `sftp`'s batch language has no verb tha
 FTP offers **both**, because `SITE CHMOD` carries a mode and `MFMT` writes an exact UTC-anchored
 modification time — the one place FTP is the richer protocol. WebDAV offers neither, since it has no
 mode and its one time property is read-only (<sup>q</sup>). An account that answers "no such
-command" has the control withdrawn for the rest of that connection. Owner and group are offered
-**nowhere**: `chown`/`chgrp` need a numeric id and `sftp`'s `ls -la` prints names, and a remote
-`chgrp` clears set-uid and set-gid as a side effect. A saved change is **read back**, and the panel
-redraws from what the item carries rather than from what was sent — `sftp`'s `chmod` reports success
+command" has the control withdrawn for the rest of that connection. **Owner and group are SFTP's
+alone, and only for an account that can run a command** (PLAN.md §M38 Slice 2): they go by name over
+the exec channel, because `sftp`'s own `chown` and `chgrp` take a number and no listing supplies one.
+Root gets a field for each, since nothing lists a server's users. Any other account gets a popup of
+its own groups, on items it owns, and no owner, which is all a server lets it do. An account with no
+exec channel keeps the read-only rows and says why. A group change clears set-uid and set-gid as a
+side effect, so the mode is sent again after it, and its undo does the same, seen live with a real root
+login. A saved change is
+**read back**, and the panel redraws from what the item carries rather than from what was sent —
+`sftp`'s `chmod` reports success
 for a mode the server did not store, measured (docs/NOTES.md ▸ sftp / ssh). It has been **undoable
 since 2026-09-01**, and ⌘Z there is a *second write* rather than a rewind: the previous values go
 back through the same `applyMetadata` Save used, are read back and weighed the same way, and a
@@ -1023,6 +1196,23 @@ files it covers, which here would be an import (<sup>jjj</sup>), and verifying r
 sits among the files, where the library holds only photographs and videos. So Create greys out on
 `.write` and Verify never finds a manifest under the cursor. Copy the originals out with `F5` and
 checksum the copies.
+
+<sup>aan</sup> A volume's tooltip says how much of it is free. A saved WebDAV server's says, under its
+address, the space the server reports left to the account: RFC 4331's `quota-available-bytes`, asked
+after a listing there and at most every five minutes (PLAN.md §M38 Slice 7). Of the servers measured
+only Nextcloud reports it. Apache's `mod_dav`, the NAS's included, answers it 404, and so does an
+account without a quota on Nextcloud in effect (`-3`); the tooltip is then the address alone. There is
+no total, since what a server reports as used is the folder's and not the account's. A saved SFTP
+server's tooltip says the space left "of" a total, as a volume's does: OpenSSH's `statvfs` extension
+(`df` in `sftp`) for the filesystem holding the login directory, on the same schedule (2026-11-11). It
+is the filesystem's space, not the account's, so an account under a per-user quota is shown the
+volume's: measured on the NAS, a 1 GB DSM quota on `homes` left `df` answering the 15 TB volume. A login
+directory that holds nothing but folders, as DSM's SFTP root `/` does (its own filesystem is 8 GB), is
+answered by the volume its folders are on, in a second session, and by nothing when they are on several
+volumes. A server without the extension (`sftp-server -P statvfs`, or one that is not OpenSSH) shows
+the address alone and is not asked again until relaunch. FTP has no standard verb for it. A cloud
+folder sits on the startup disk, whose own row shows its space, and a provider's account quota is not
+read.
 
 ## 6. Transfer behaviour
 
@@ -1145,8 +1335,8 @@ download ends within 1 ms of the cancel, without one it runs to the end (docs/NO
 The two milestones this list was written for have closed: **M24** (every local-only feature, on a
 file that is not local) on 2026-08-28 and **M25** (what a remote write carries, and what a remote
 delete costs) on 2026-08-29, both archived in [HISTORY.md](HISTORY.md). What is left of the **"no"**
-and **"yes, partially"** cells that are *ours* to close is the short list at [PLAN.md](../PLAN.md)
-§4 ▸ *Still open* — the cells that were too small to be a slice of either. This file is the status;
+and **"yes, partially"** cells that are *ours* to close is planned as M39–M40 at
+[PLAN.md](../PLAN.md) §4 ▸ *Next*, plus the short list at §4 ▸ *Still open* — the cells that were too small to be a slice of either. This file is the status;
 the plan is the work. Nothing that has already shipped is argued here — a closed gap is simply a
 changed cell, and why it changed is in [HISTORY.md](HISTORY.md).
 

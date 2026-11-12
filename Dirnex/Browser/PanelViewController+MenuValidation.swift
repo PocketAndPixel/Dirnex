@@ -88,9 +88,9 @@ extension PanelViewController: NSMenuItemValidation {
             // stealing it to open the history popup.
             return !(view.window?.firstResponder is NSText)
         case #selector(openInTerminal(_:)):
-            // Needs a real directory on disk (never an archive, an SFTP server, or a results tab)
-            // and a terminal to open it in — Terminal.app ships with macOS, so in practice this
-            // only turns on the first half.
+            // Needs a real directory on disk or a connected SFTP folder (never an archive or a
+            // results tab) and a terminal to open it in — Terminal.app ships with macOS, so in
+            // practice this only turns on the first half.
             return canOpenInTerminal
         default:
             return nil
@@ -105,7 +105,8 @@ extension PanelViewController: NSMenuItemValidation {
     private func validateMutatingItem(_ menuItem: NSMenuItem) -> Bool? {
         switch menuItem.action {
         case #selector(newFolder(_:)):
-            return canWriteHere
+            // Or inside a writable archive, where F7 is a rewrite rather than a `.write` primitive.
+            return canWriteHere || archiveCreationDirectory != nil
         case #selector(moveSelectionToTrash(_:)), #selector(deleteSelectionPermanently(_:)):
             // Inside a top-level archive, delete rewrites it to drop the members (no Trash, not
             // undoable) — enabled on a non-empty selection. Elsewhere it is the key's own answer,
@@ -126,18 +127,18 @@ extension PanelViewController: NSMenuItemValidation {
             return (canReceiveFiles || isWritableArchive) && clipboardHasFiles()
         case #selector(pasteAndMoveFromClipboard(_:)):
             // ⌥⌘V has no standard selector, so it reaches the pane even mid text-edit — step it
-            // aside for a field editor, else gate it like Paste.
-            return canReceiveFiles && clipboardHasFiles()
+            // aside for a field editor, else gate it like Paste: since M36 that includes adding
+            // into a writable archive, which moves by adding and then removing the originals.
+            return (canReceiveFiles || isWritableArchive) && clipboardHasFiles()
                 && !(view.window?.firstResponder is NSText)
         case #selector(renameSelection(_:)):
             // Rename is single-item on the cursor (not the marked set) and never `..`.
             return canRenameCursorRow && !cursorOnParentRow && panel.currentEntry != nil
         case #selector(multiRenameSelection(_:)):
-            // The batch tool operates on the marked set (else the cursor entry), and deliberately
-            // keeps the narrower `canRenameHere`: it renames each target with `backend.moveItem`,
-            // which an archive refuses, so it is gray inside one until that loop becomes the single
-            // rewrite the container wants (see `renameRoute`).
-            return canRenameHere && !selectionTargets().isEmpty
+            // The batch tool operates on the marked set (else the cursor entry). Inside one
+            // writable archive the batch is a single rewrite; see `multiRenameRoute(for:)`.
+            let targets = selectionTargets()
+            return multiRenameRoute(for: targets) != .unavailable && !targets.isEmpty
         case #selector(synchronizeDirectories(_:)):
             // Compares the two panes' folders — needs two distinct real local directories.
             return canSynchronize
@@ -256,8 +257,9 @@ extension PanelViewController: NSMenuItemValidation {
     /// `com~apple~Pages` container underneath it. A gate that asked only the route would rename the
     /// wrong thing there; one that asked only the name would still refuse every archive member.
     ///
-    /// It is deliberately **wider** than `canRenameHere`, which ⇧F2 keeps — see `renameRoute(for:)`
-    /// for why the multi-rename tool is not simply pointed at this.
+    /// It is deliberately **wider** than `canRenameHere`: an archive member renames by rewriting the
+    /// container. ⇧F2 asks `multiRenameRoute(for:)`, which takes the same archive route for a
+    /// marked set inside one archive.
     var canRenameCursorRow: Bool {
         cursorRowCarriesItsOwnName && renameRoute(for: renameRow) != .unavailable
     }
@@ -322,6 +324,11 @@ extension PanelViewController: NSMenuItemValidation {
             // same reasoning as tags: an archive suppresses the badge because nothing in one can be
             // a cloud item, and unchecking the box would blame the user's setting for it.
             menuItem.state = AppPreferences.shared.showSyncStatus ? .on : .off
+            return true
+        case #selector(toggleShowIconPreviews(_:)):
+            // "Show Icon Previews" checkmark tracks the app-wide state, though a server's rows draw
+            // none either way: the setting is the user's, and what a row can show is `RowIcon`'s.
+            menuItem.state = AppPreferences.shared.showIconPreviews ? .on : .off
             return true
         case #selector(toggleFunctionBar(_:)):
             // "Show Function Key Bar" checkmark tracks the app-wide state.

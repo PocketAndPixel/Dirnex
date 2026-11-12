@@ -64,13 +64,37 @@ public extension UndoRecord {
             redoTime = asked
         }
 
+        let undoOwner = movedPrincipal(
+            asked: change.owner,
+            was: previous.ownerName,
+            refused: verdict.refused.contains(.owner)
+        )
+        let undoGroup = movedPrincipal(
+            asked: change.group,
+            was: previous.groupName,
+            refused: verdict.refused.contains(.group)
+        )
+        // Putting a group back is itself a group change, and clears set-uid and set-gid again. A
+        // Save that re-sent an unchanged mode to keep them has no mode move to record, so the bits
+        // come from here or the undo loses them in silence.
+        if undoPermissions == nil, undoOwner != nil || undoGroup != nil,
+           let before = previous.permissions,
+           POSIXPermissions(rawValue: before).carriesSetID {
+            undoPermissions = POSIXPermissions(rawValue: before)
+            redoPermissions = POSIXPermissions(rawValue: verdict.landed.permissions ?? before)
+        }
+
         let undo = RemoteAttributeChange(
             permissions: undoPermissions,
-            modificationTime: undoTime
+            modificationTime: undoTime,
+            owner: undoOwner,
+            group: undoGroup
         )
         let redo = RemoteAttributeChange(
             permissions: redoPermissions,
-            modificationTime: redoTime
+            modificationTime: redoTime,
+            owner: undoOwner == nil ? nil : change.owner,
+            group: undoGroup == nil ? nil : change.group
         )
         guard !undo.isEmpty else { return nil }
         return UndoRecord(
@@ -78,6 +102,16 @@ public extension UndoRecord {
             date: date,
             steps: [.restoreRemoteAttributes(path: previous.path, apply: undo, reverse: redo)]
         )
+    }
+
+    /// The value to put back for an owner or group the Save really moved, or `nil` when it did not.
+    private static func movedPrincipal(
+        asked: RemotePrincipal?,
+        was listed: String?,
+        refused: Bool
+    ) -> RemotePrincipal? {
+        guard let asked, !refused, let listed, !asked.matches(listed) else { return nil }
+        return RemotePrincipal(name: listed)
     }
 }
 

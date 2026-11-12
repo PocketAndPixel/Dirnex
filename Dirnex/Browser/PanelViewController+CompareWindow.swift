@@ -41,8 +41,7 @@ extension PanelViewController {
             },
             openInEditor: { url, done in ExternalTextEditorLauncher.edit(url, completion: done) },
             watchCopy: { [weak self] edit in
-                self?.compareBrowserWindow?.editedFiles.watch(edit)
-                self?.compareBrowserWindow?.remoteFileCache.keepBase(for: edit)
+                self?.compareBrowserWindow?.watchEdit(edit)
             }
         )
     }
@@ -69,19 +68,6 @@ extension PanelViewController {
         let path = copyPathText(for: origin)
         guard origin.backend.isRemoteConnection, let server = origin.backendRootTitle else { return path }
         return "\(server):\(path)"
-    }
-
-    /// A pair too large for the window, refused before anything is read. The window reads a file
-    /// whole or not at all, and its limit is the pre-scan's, so there is nothing to ask.
-    func refuseOversizedCompare(byteSize: Int64) {
-        clearTransientStatus()
-        presentCompareFailure(
-            message: String(
-                localized: "These files are large (\(FileFormatting.byteString(byteSize))).",
-                comment: "Oversized-compare warning title; %@ is a formatted byte size."
-            ),
-            detail: CompareOpener.limitDetail(ByteComparator.prescanByteLimit)
-        )
     }
 
     /// A compare alert, on whatever is in front of the pane: the Synchronize window compares too,

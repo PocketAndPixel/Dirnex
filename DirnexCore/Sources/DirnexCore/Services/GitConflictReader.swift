@@ -109,9 +109,10 @@ public enum GitConflictReader {
         )
     }
 
-    /// What is in progress, or `.other` when the git directory could not be had: it only words the
-    /// panes, and the versions are what a merge needs.
-    private static func operationInProgress(
+    /// What is in progress in the repository holding the folder `repositoryRoot`, or `.other` when
+    /// the git directory could not be had: it only words the panes, and the versions are what a
+    /// merge needs.
+    public static func operationInProgress(
         at repositoryRoot: String,
         transport: some GitTransport,
         exists: (String) -> Bool

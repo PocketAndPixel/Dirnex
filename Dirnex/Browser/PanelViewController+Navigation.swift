@@ -31,20 +31,13 @@ extension PanelViewController {
         // Also before the directory branch, and for the same shape of reason: a bucket row *is* a
         // directory, and the path it points at is one this backend deliberately refuses to list
         // (`S3AccountBackend` is depth 0 — everything below a bucket is reached by connecting to
-        // it). Walking in is a backend crossing, so it is a connect (PLAN.md §M21 Slice 9).
+        // it). Walking in is a backend crossing, so it is a connect (PLAN.md §M21 Slice 9). A share
+        // on an SMB server's list is the same, and is entered by mounting it (§M35).
         //
         // Asked of the **row**, not of the pane: a tree rooted on an account draws each expanded
         // bucket's contents beneath it on the `s3://` backend, and those are ordinary folders that
         // navigate (`VFSPath.isS3BucketRow`).
-        if let bucket = s3BucketToEnter(for: entry) {
-            // The other pane connects, so the bucket lands there. The focus stays in this pane.
-            if inOtherPane {
-                otherPane.enterS3Bucket(at: bucket, inNewTab: true, focusing: false)
-            } else {
-                enterS3Bucket(at: bucket)
-            }
-            return
-        }
+        if enterConnectionRow(entry, inOtherPane: inOtherPane) { return }
         if let target = panel.openTarget(for: entry) {
             // A folder opened from a results tab must not replace the results in place — route it
             // elsewhere so the listing survives (PLAN.md §M4 search, §M8 Recents and Trash).
@@ -211,6 +204,12 @@ extension PanelViewController {
             leaveBucketForItsAccount()
             return
         }
+        // The same at a share's root, where the place above is the server's list, not `/Volumes`
+        // (`PanelViewController+SMBServer`). `canGoToParent` needs no twin: `/Volumes` is a parent.
+        if leavesShareForItsServer {
+            leaveShareForItsServer()
+            return
+        }
         guard canGoToParent else { return }
         let current = panel.path
         // Up out of iCloud Drive is the merged listing, not the container machinery that holds it:
@@ -224,6 +223,33 @@ extension PanelViewController {
         }
         guard let parent = panel.parentPath else { return }
         navigate(to: parent, focus: current)
+    }
+
+    /// Enter a row that is another connection rather than a folder — a bucket on an S3 account's
+    /// list, or a share on an SMB server's — and answer whether it was one.
+    ///
+    /// Both lists answer for themselves and nothing deeper (`S3AccountBackend`, `SMBServerBackend`):
+    /// a bucket is entered by connecting to it (PLAN.md §M21 Slice 9) and a share by mounting it
+    /// (§M35). Asked of the **row**, not of the pane, for the reason `VFSPath.isS3BucketRow` gives. In
+    /// the other pane, the connection lands in a new tab there and the focus stays here.
+    private func enterConnectionRow(_ entry: FileEntry, inOtherPane: Bool) -> Bool {
+        if let bucket = s3BucketToEnter(for: entry) {
+            if inOtherPane {
+                otherPane.enterS3Bucket(at: bucket, inNewTab: true, focusing: false)
+            } else {
+                enterS3Bucket(at: bucket)
+            }
+            return true
+        }
+        if let share = smbShareToEnter(for: entry) {
+            if inOtherPane {
+                otherPane.enterSMBShare(at: share, inNewTab: true, focusing: false)
+            } else {
+                enterSMBShare(at: share)
+            }
+            return true
+        }
+        return false
     }
 
     /// Double-click: go up on the `..` row, otherwise open the clicked entry.
@@ -265,6 +291,16 @@ extension PanelViewController {
         recordHistory: Bool = true,
         unasked: Bool = false
     ) {
+        // A restored tab inside a share that is not mounted mounts it first, and navigates again
+        // once it has (`PanelViewController+ShareRestore`).
+        if mountsAwaitedShareFirst(
+            to: path,
+            focus: child,
+            recordHistory: recordHistory,
+            unasked: unasked
+        ) {
+            return
+        }
         // A refusal here has already rendered the pane and invalidated whatever was in flight, so
         // there is nothing left for this navigation to do.
         guard canListAfterReconnecting(to: path, unasked: unasked) else {

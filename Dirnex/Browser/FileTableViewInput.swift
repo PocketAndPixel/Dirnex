@@ -97,4 +97,8 @@ protocol FileTableViewInput: AnyObject {
         _ tableView: FileTableView,
         dragWritersFromRow row: Int
     ) -> [any NSPasteboardWriting]?
+    /// A drag session started on `row`.
+    func fileTable(_ tableView: FileTableView, didBegin session: NSDraggingSession, fromRow row: Int)
+    /// The pointer moved during a drag this table started.
+    func fileTableDraggingSessionMoved(_ tableView: FileTableView)
 }

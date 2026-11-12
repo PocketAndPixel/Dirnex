@@ -2,7 +2,8 @@ import AppKit
 import DirnexCore
 
 /// Drag-and-drop for the sidebar's **user-ordered** sections (PLAN.md §M8): reordering their rows by
-/// dragging them, and — Favorites alone — pinning a folder by dragging it in from a pane. The
+/// dragging them, and — Favorites alone — pinning a folder by dragging it in, from a pane (a folder
+/// on a server included, since PLAN.md §M38) or from Finder. The
 /// ordering rules live in the core value types (`Favorites`, `SavedSearches`, `ServerConnections`),
 /// each with a tested `move(from:to:)`; what lives here is the mapping between `NSTableView`'s row
 /// indices and each list's own.
@@ -30,10 +31,11 @@ extension SidebarViewController {
     /// encodes).
     static let reorderRowType = NSPasteboard.PasteboardType("app.dirnex.sidebar.reorder-row")
 
-    /// Called from `loadView`. Accepts our own rows (reorder) and file URLs (a folder dragged into
-    /// Favorites from a pane, or from Finder).
+    /// Called from `loadView`. Accepts our own rows (reorder), a pane's rows (a folder dragged into
+    /// Favorites, which is the only way a folder on a server can arrive, having no file URL) and
+    /// file URLs (a folder dragged in from Finder).
     func registerSidebarDragTypes() {
-        tableView.registerForDraggedTypes([Self.reorderRowType, .fileURL])
+        tableView.registerForDraggedTypes([Self.reorderRowType] + PanelPasteboard.acceptedDragTypes)
         tableView.setDraggingSourceOperationMask(.move, forLocal: true)
         // Nothing is offered to other applications: dragging a row out of the sidebar is a reorder
         // gesture, and letting a favorite also read as "copy this folder to Finder" would make an
@@ -105,7 +107,7 @@ extension SidebarViewController {
             return .move
         }
         // A folder dragged in from a pane or Finder pins into Favorites.
-        guard !droppedDirectories(from: info).isEmpty, let range = dropRange(for: .favorites) else {
+        guard !droppedPins(from: info).isEmpty, let range = dropRange(for: .favorites) else {
             return []
         }
         tableView.setDropRow(clamp(row, to: range), dropOperation: .above)
@@ -121,7 +123,7 @@ extension SidebarViewController {
         if let (section, sourceRow) = reorderPayload(from: info) {
             return reorder(section: section, fromRow: sourceRow, toProposedRow: row)
         }
-        return pinDroppedDirectories(from: info, atProposedRow: row)
+        return pinDroppedFolders(from: info, atProposedRow: row)
     }
 
     // MARK: - Reorder
@@ -177,15 +179,14 @@ extension SidebarViewController {
 
     // MARK: - Pin (Favorites only)
 
-    private func pinDroppedDirectories(from info: any NSDraggingInfo, atProposedRow row: Int) -> Bool {
-        let directories = droppedDirectories(from: info)
-        guard !directories.isEmpty, let range = dropRange(for: .favorites) else { return false }
+    private func pinDroppedFolders(from info: any NSDraggingInfo, atProposedRow row: Int) -> Bool {
+        let pins = droppedPins(from: info)
+        guard !pins.isEmpty, let range = dropRange(for: .favorites) else { return false }
         let index = clamp(row, to: range) - range.lowerBound
         var favorites = FavoritesStore.load()
         var changed = false
-        for (offset, url) in directories.enumerated() {
-            let entry = FavoriteEntry(path: .local(url.path))
-            changed = favorites.insert(entry, at: index + offset) || changed
+        for (offset, pin) in pins.enumerated() {
+            changed = favorites.insert(pin, at: index + offset) || changed
         }
         guard changed else { return false }
         FavoritesStore.save(favorites)
@@ -214,18 +215,36 @@ extension SidebarViewController {
         min(max(row, range.lowerBound), range.upperBound)
     }
 
-    /// The directories among the dragged file URLs. Files are dropped silently rather than pinned:
-    /// a favorites entry navigates a pane to a folder, so a pinned file would be a row that cannot do
-    /// the one thing a row does.
-    private func droppedDirectories(from info: any NSDraggingInfo) -> [URL] {
-        let options: [NSPasteboard.ReadingOptionKey: Any] = [.urlReadingFileURLsOnly: true]
-        let objects = info.draggingPasteboard.readObjects(
-            forClasses: [NSURL.self],
-            options: options
-        )
-        guard let urls = objects as? [URL] else { return [] }
-        return urls.filter {
-            (try? $0.resourceValues(forKeys: [.isDirectoryKey]))?.isDirectory == true
+    /// The pins a drag would make, in the drag's own order. Rows that cannot be one are left out, so
+    /// a selection of folders and files pins the folders. A file is no pin because a favorites entry
+    /// navigates a pane to a folder, so it would be a row that cannot do the one thing a row does.
+    ///
+    /// Our own payload first, for the reason `PanelPasteboard.sources` gives: a local row carries a
+    /// file URL as well, and a selection's URL list silently omits every row on a server.
+    ///
+    /// Internal so a test can ask what a drop would pin without making one: `acceptDrop` writes
+    /// `FavoritesStore`, which in a target that runs inside the app is the real sidebar.
+    func droppedPins(from info: any NSDraggingInfo) -> [FavoriteEntry] {
+        switch PanelPasteboard.sources(in: info.draggingPasteboard) {
+        case let .locations(rows):
+            return rows.compactMap { row in
+                FavoriteEntry(
+                    draggedRow: row,
+                    endpoint: delegate?.sidebar(self, reconnectEndpointFor: row.path)
+                )
+            }
+        case let .fileURLs(urls):
+            return urls
+                .filter { (try? $0.resourceValues(forKeys: [.isDirectoryKey]))?.isDirectory == true }
+                .map { url in
+                    let path = VFSPath.local(url.path)
+                    return FavoriteEntry(
+                        path: path,
+                        endpoint: SMBMounter.shared.shareEndpoint(containing: path)
+                    )
+                }
+        case nil:
+            return []
         }
     }
 }

@@ -77,8 +77,24 @@ extension PanelViewController {
     /// a results tab holds hits from anywhere and a tree draws several connections at once, which is
     /// the per-row rule `AttributesRoute` already settled for the read half. Asking the pane instead
     /// would offer a control from the wrong account, or withhold one from the right account.
+    ///
+    /// Who the account is gets asked before the panel opens (PLAN.md §M38 Slice 2), so its owner and
+    /// group controls are there from the first frame and a tick already made is never rebuilt away.
+    /// One `ssh` the first time on a connection, off the main thread, and remembered after that.
     private func showRemoteAttributes(_ entry: FileEntry) {
-        presentAsMovableWindow(remoteAttributesController(for: entry))
+        // The first answer can take a second, and a second press in it would open a second panel.
+        guard !isAskingAccountIdentity else { return }
+        isAskingAccountIdentity = true
+        let backend = backend
+        let path = entry.path
+        Task { [weak self] in
+            let identity = await BlockingWork.run { () -> RemoteAccountIdentity? in
+                try? backend.accountIdentity(at: path, isCancelled: { false })
+            }
+            guard let self else { return }
+            isAskingAccountIdentity = false
+            presentAsMovableWindow(remoteAttributesController(for: entry, identity: identity))
+        }
     }
 
     /// The panel over `entry`, wired to this pane and this window.
@@ -92,11 +108,15 @@ extension PanelViewController {
     ///
     /// The same two hooks the local panel gets, and for the same reasons: journaling a commit is the
     /// window's job (⌘Z spans both panes), re-listing after one lands is this pane's.
-    func remoteAttributesController(for entry: FileEntry) -> RemoteAttributesController {
+    func remoteAttributesController(
+        for entry: FileEntry,
+        identity: RemoteAccountIdentity? = nil
+    ) -> RemoteAttributesController {
         let controller = RemoteAttributesController(
             entry: entry,
             backend: backend,
-            editability: remoteEditability(for: entry)
+            editability: remoteEditability(for: entry, identity: identity),
+            identity: identity
         )
         controller.recordUndo = { [weak self] record in
             self?.host?.recordUndoableAction(record)
@@ -112,10 +132,14 @@ extension PanelViewController {
     /// host makes it do real pane work and destabilizes its neighbours (docs/NOTES.md ▸ Testing). It
     /// is also the one line a regression would fail silently — a pane that always answered
     /// `.readOnly` would show every remote panel exactly as M24 shipped it, with nothing to see.
-    func remoteEditability(for entry: FileEntry) -> RemoteAttributeEditability {
+    func remoteEditability(
+        for entry: FileEntry,
+        identity: RemoteAccountIdentity? = nil
+    ) -> RemoteAttributeEditability {
         RemoteAttributeEditability.decide(
             for: entry,
-            capabilities: backend.editableMetadata(at: entry.path)
+            capabilities: backend.editableMetadata(at: entry.path),
+            identity: identity
         )
     }
 

@@ -28,37 +28,204 @@ struct CompareReadFailure: Error, Equatable {
 
 /// Opens Dirnex's compare window on two local files (PLAN.md §M31 Slice 4): both are read whole off
 /// the main thread, then the window opens, or the caller is handed what its alert should say. ⌥F3,
-/// the Synchronize sheet and the conflict dialog all open the window through here.
+/// the Synchronize sheet and the conflict dialog all open the window through here. A pair past what
+/// reads in a moment opens the window first and reads with it on screen (PLAN.md §M37 Slice 3).
 @MainActor
 enum CompareOpener {
-    /// Read the pair and open the window on it, or hand `failed` the alert's detail.
+    /// Opens the byte view: the real window, or a test's record of what it would have shown.
+    typealias ByteWindowPresenter = @MainActor (
+        BinaryCompareSide,
+        BinaryCompareSide,
+        BinaryFilePair,
+        BinaryCompareReason
+    ) -> Void
+
+    /// Opens the text window before its files are read: the real window, or a test's.
+    typealias ReadingWindowPresenter = @MainActor (
+        CompareSource,
+        CompareSource,
+        Bool,
+        CompareSaving,
+        CompareReading
+    ) -> Void
+
+    static func presentReadingWindow(
+        _ left: CompareSource,
+        _ right: CompareSource,
+        allowsCopies: Bool,
+        saving: CompareSaving,
+        reading: CompareReading
+    ) {
+        CompareWindowController.presentReading(
+            left: left,
+            right: right,
+            allowsCopies: allowsCopies,
+            saving: saving,
+            reading: reading
+        )
+    }
+
+    static func presentByteWindow(
+        _ left: BinaryCompareSide,
+        _ right: BinaryCompareSide,
+        pair: BinaryFilePair,
+        reason: BinaryCompareReason
+    ) {
+        BinaryCompareWindowController.present(left: left, right: right, pair: pair, reason: reason)
+    }
+
+    /// Read the pair and open the window on it, or the byte view on a pair that cannot be read as
+    /// text, or hand `failed` the alert's detail.
     ///
     /// `leftDetail` and `rightDetail` are what each pane's header says under the file's name: where
     /// the file is, as the user knows it. `saving` is where the window's saves keep their undo
     /// (PLAN.md §M33 Slice 3); without it the window changes neither file, as the conflict dialog's
-    /// must, whose right-hand file is a copy waiting on that dialog.
+    /// must, whose right-hand file is a copy waiting on that dialog. `byteLimit` is the largest side
+    /// read as text, which is a share of this Mac's memory.
     static func openWindow(
         _ left: CompareFile,
         detail leftDetail: String,
         _ right: CompareFile,
         detail rightDetail: String,
         saving: CompareSaving? = nil,
+        byteLimit: Int64 = ComparedText.windowByteLimit(),
+        presentBytes: @escaping ByteWindowPresenter = presentByteWindow,
+        presentReading: @escaping ReadingWindowPresenter = presentReadingWindow,
+        failed: @escaping @MainActor (String) -> Void
+    ) {
+        let refused: @MainActor (CompareReadFailure) -> Void = { failure in
+            guard let reason = BinaryCompareReason(failure) else {
+                return failed(failureDetail(failure))
+            }
+            openByteWindow(
+                BinaryCompareSide(
+                    name: left.origin.lastComponent,
+                    detail: leftDetail,
+                    path: left.path
+                ),
+                BinaryCompareSide(
+                    name: right.origin.lastComponent,
+                    detail: rightDetail,
+                    path: right.path
+                ),
+                reason: reason,
+                presentBytes: presentBytes,
+                failed: failed
+            )
+        }
+        Task {
+            switch await BlockingWork.run({ Self.route(left, right, byteLimit: byteLimit) }) {
+            case let .refused(failure):
+                refused(failure)
+            case .readFirst:
+                let sources = await BlockingWork.run {
+                    Self.sources(
+                        left,
+                        detail: leftDetail,
+                        right,
+                        detail: rightDetail,
+                        byteLimit: byteLimit
+                    )
+                }
+                switch sources {
+                case let .success((leftSource, rightSource)):
+                    CompareWindowController.present(
+                        left: leftSource,
+                        right: rightSource,
+                        allowsCopies: saving != nil,
+                        saving: saving ?? .none
+                    )
+                case let .failure(failure):
+                    refused(failure)
+                }
+            case .windowFirst:
+                presentReading(
+                    standIn(left, detail: leftDetail),
+                    standIn(right, detail: rightDetail),
+                    saving != nil,
+                    saving ?? .none,
+                    CompareReading(
+                        read: { isCancelled in
+                            sources(
+                                left,
+                                detail: leftDetail,
+                                right,
+                                detail: rightDetail,
+                                byteLimit: byteLimit,
+                                isCancelled: isCancelled
+                            )
+                        },
+                        failed: refused
+                    )
+                )
+            }
+        }
+    }
+
+    /// How a pair gets to a window, from what can be told without reading it whole.
+    enum Route: Sendable {
+        /// Read in a moment, so the window opens on the finished read.
+        case readFirst
+        /// Long enough to read that the window opens first.
+        case windowFirst
+        /// One of the files can already be told not to be readable as text.
+        case refused(CompareReadFailure)
+    }
+
+    /// Which way this pair goes. Reads a few KiB of each file, which keeps a binary of gigabytes from
+    /// being read whole under a limit that now lets it through. Blocking.
+    nonisolated static func route(
+        _ left: CompareFile,
+        _ right: CompareFile,
+        byteLimit: Int64
+    ) -> Route {
+        var largest: Int64 = 0
+        for file in [left, right] {
+            do {
+                let size = try ComparedText.precheck(
+                    contentsOf: URL(fileURLWithPath: file.path.path),
+                    byteLimit: byteLimit
+                )
+                largest = max(largest, size)
+            } catch {
+                return .refused(CompareReadFailure(name: file.origin.lastComponent, reason: error))
+            }
+        }
+        return largest > ByteComparator.prescanByteLimit ? .windowFirst : .readFirst
+    }
+
+    /// One side as a window shows it before the file has been read: its name and no lines.
+    nonisolated static func standIn(_ file: CompareFile, detail: String) -> CompareSource {
+        CompareSource(
+            name: file.origin.lastComponent,
+            detail: detail,
+            origin: file.origin,
+            document: .empty,
+            language: nil,
+            target: nil,
+            writeBack: file.writeBack
+        )
+    }
+
+    /// Open the byte view on a pair the text window cannot read (PLAN.md §M37 Slice 2): a binary
+    /// file, one no encoding reads, or one too large to hold. Only a file that cannot be opened at
+    /// all still ends in `failed`.
+    private static func openByteWindow(
+        _ left: BinaryCompareSide,
+        _ right: BinaryCompareSide,
+        reason: BinaryCompareReason,
+        presentBytes: @escaping ByteWindowPresenter,
         failed: @escaping @MainActor (String) -> Void
     ) {
         Task {
-            let sources = await BlockingWork.run {
-                Self.sources(left, detail: leftDetail, right, detail: rightDetail)
+            let opened = await BlockingWork.run {
+                Result { try BinaryFilePair(left: left.path, right: right.path) }
             }
-            switch sources {
-            case let .success((leftSource, rightSource)):
-                CompareWindowController.present(
-                    left: leftSource,
-                    right: rightSource,
-                    allowsCopies: saving != nil,
-                    saving: saving ?? .none
-                )
-            case let .failure(failure):
-                failed(failureDetail(failure))
+            switch opened {
+            case let .success(pair):
+                presentBytes(left, right, pair, reason)
+            case let .failure(error):
+                failed(VFSErrorText.sentence(for: error))
             }
         }
     }
@@ -69,12 +236,14 @@ enum CompareOpener {
         _ left: CompareFile,
         detail leftDetail: String,
         _ right: CompareFile,
-        detail rightDetail: String
+        detail rightDetail: String,
+        byteLimit: Int64 = ComparedText.windowByteLimit(),
+        isCancelled: @Sendable () -> Bool = { false }
     ) -> Result<(CompareSource, CompareSource), CompareReadFailure> {
         do {
             return try .success((
-                source(left, detail: leftDetail),
-                source(right, detail: rightDetail)
+                source(left, detail: leftDetail, byteLimit: byteLimit, isCancelled: isCancelled),
+                source(right, detail: rightDetail, byteLimit: byteLimit, isCancelled: isCancelled)
             ))
         } catch {
             return .failure(error)
@@ -89,14 +258,18 @@ enum CompareOpener {
     /// just before the read, for the save to be checked against.
     nonisolated static func source(
         _ file: CompareFile,
-        detail: String
+        detail: String,
+        byteLimit: Int64 = ComparedText.windowByteLimit(),
+        isCancelled: @Sendable () -> Bool = { false }
     ) throws(CompareReadFailure) -> CompareSource {
         let name = file.origin.lastComponent
         let saveable = file.isSavedInPlace || file.writeBack != nil
         let target = saveable ? ComparedFileSave.Target.reading(file.path.path) : nil
         do {
             let document = try ComparedDocument.read(
-                contentsOf: URL(fileURLWithPath: file.path.path)
+                contentsOf: URL(fileURLWithPath: file.path.path),
+                byteLimit: byteLimit,
+                isCancelled: isCancelled
             )
             return CompareSource(
                 name: name,
@@ -123,7 +296,10 @@ enum CompareOpener {
         var reread = source
         reread.target = .reading(path)
         do {
-            reread.document = try ComparedDocument.read(contentsOf: URL(fileURLWithPath: path))
+            reread.document = try ComparedDocument.read(
+                contentsOf: URL(fileURLWithPath: path),
+                byteLimit: ComparedText.windowByteLimit()
+            )
         } catch {
             return .failure(CompareReadFailure(name: source.name, reason: error))
         }
@@ -139,7 +315,10 @@ enum CompareOpener {
         let opening = document.text(ofFirstLines: SyntaxLanguage.contentsLineLimit)
         return SyntaxLanguage.forFile(named: name, text: opening)
     }
+}
 
+/// What the opener's alerts say.
+extension CompareOpener {
     /// What an alert says about a file the window could not read.
     static func failureDetail(_ failure: CompareReadFailure) -> String {
         let name = failure.name
@@ -156,7 +335,7 @@ enum CompareOpener {
                 localized: "“\(name)” isn’t text in any encoding Dirnex can read.",
                 comment: "Compare failure detail; %@ is a file name."
             )
-        case .unreadable:
+        case .unreadable, .stopped:
             return String(
                 localized: "“\(name)” couldn’t be read.",
                 comment: "Compare failure detail; %@ is a file name."

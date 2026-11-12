@@ -119,7 +119,7 @@ public enum FTPQuoteCommand {
             switch step {
             case let .setMode(mode): return try changeMode(remotePath, to: mode)
             case let .setModificationTime(date): return try setModificationTime(remotePath, to: date)
-            case .preserveDuringTransfer: return nil // no such flag on this wire
+            case .preserveDuringTransfer, .setOwnership: return nil // no such verb on this wire
             }
         }
     }

@@ -40,7 +40,7 @@ struct CompareCopyTests {
             allowsCopies: allowsCopies,
             saving: .none
         )
-        controller.show(CompareWindowController.prepare(
+        try controller.show(CompareWindowController.prepare(
             left: leftSource,
             right: rightSource,
             options: LineDiffOptions(),

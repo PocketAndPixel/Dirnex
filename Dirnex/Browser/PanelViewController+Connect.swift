@@ -17,7 +17,8 @@ import DirnexCore
 /// - **WebDAV** is the same over HTTP (§M32); its connect lives in
 ///   `PanelViewController+ConnectWebDAV` and borrows FTPS's trust prompt.
 /// - **SMB** rides the OS mounter: `SMBMounter` mounts the share into `/Volumes/…` and the pane
-///   navigates onto the resulting local path, so every M2 op works unchanged.
+///   navigates onto the resulting local path, so every M2 op works unchanged. With no share named,
+///   the server's shares are listed instead (`PanelViewController+SMBServer`, PLAN.md §M35).
 ///
 /// One connect *attempt* is an `async` function returning `ConnectServerPrompt.Attempt`. The
 /// Connect-to-Server sheet stays open across it and shows a failure inline (so a typo doesn't discard
@@ -303,7 +304,8 @@ extension PanelViewController {
 
     // MARK: - SMB
 
-    /// Everything one SMB mount needs, bundled like `SFTPConnectRequest`.
+    /// Everything one SMB mount needs, bundled like `SFTPConnectRequest`. With no share in the
+    /// location it is a connect to the **server**, which lists its shares (PLAN.md §M35).
     struct SMBConnectRequest {
         let location: SMBLocation
         let password: String?
@@ -311,9 +313,16 @@ extension PanelViewController {
         let activityName: String?
         /// As `SFTPConnectRequest.inNewTab`.
         var inNewTab = false
+        /// Whether a password that mounted the share is filed under the share's own Keychain key.
+        /// Not for a share entered from its server's list, whose server item already holds it.
+        var filesPassword = true
     }
 
-    private func mountSMB(_ request: SMBConnectRequest) async -> ConnectServerPrompt.Attempt {
+    /// `internal` because a share row's Return mounts through it, one file over
+    /// (`PanelViewController+SMBServer`).
+    func mountSMB(_ request: SMBConnectRequest) async -> ConnectServerPrompt.Attempt {
+        // No share named: list the server's shares rather than let NetFS pick one (PLAN.md §M35).
+        guard request.location.share != nil else { return await connectSMBServer(request) }
         let location = request.location
         let password = request.password
         let activityName = request.activityName
@@ -331,7 +340,7 @@ extension PanelViewController {
             guard token == loadToken else { return .succeeded } // the pane moved on while we mounted
             // Persist the password only once the mount succeeded, and only for an authenticated
             // share — a guest mount has no secret to keep.
-            if location.username != nil, let password {
+            if request.filesPassword, location.username != nil, let password {
                 SecretKeychain.store(password: password, for: location)
             }
             if let saveName = request.saveName {
@@ -341,9 +350,26 @@ extension PanelViewController {
             return .succeeded
         } catch {
             guard token == loadToken else { return .succeeded }
-            let detail = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+            let detail = await shareMountFailure(error, mounting: location, password: password)
+            guard token == loadToken else { return .succeeded }
             return .failed(detail)
         }
+    }
+
+    /// The sentence for a mount that failed. A share that is not there and one this account may not
+    /// use are one status; the server's list tells them apart (PLAN.md §M35).
+    func shareMountFailure(
+        _ error: Error,
+        mounting location: SMBLocation,
+        password: String?
+    ) async -> String {
+        guard var refusal = error as? SMBMountError else {
+            return (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+        }
+        if refusal.status == ENOENT || refusal.status == ENODEV {
+            refusal.absence = await smbShareAbsence(of: location, password: password)
+        }
+        return refusal.errorDescription ?? Self.genericConnectError
     }
 
     // MARK: - Shared

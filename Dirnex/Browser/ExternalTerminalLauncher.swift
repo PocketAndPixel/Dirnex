@@ -7,9 +7,10 @@ import Foundation
 ///
 /// `ExternalDiffLauncher`'s shape verbatim, over the pure `DirnexCore.ExternalTerminal`: the model
 /// decides which terminal and how to invoke it, and this only supplies the filesystem probe and
-/// spawns the result. The directory travels as an *argument vector*, never as shell text, so
+/// spawns the result. A local directory travels as an *argument vector*, never as shell text, so
 /// nothing here quotes anything — the drawer's `ShellCommandLine` exists precisely because typing
-/// at a shell is the case where that isn't true.
+/// at a shell is the case where that isn't true. An `ssh` session does go through a shell, and
+/// `SSHTerminalSession` in the core is what quotes it.
 enum ExternalTerminalLauncher {
     /// Why an open-in-terminal request couldn't be fulfilled.
     enum Failure: Error {
@@ -44,22 +45,70 @@ enum ExternalTerminalLauncher {
                   pathExists: pathExists
               ) else { return }
         Task {
-            let launched = await Task.detached(priority: .userInitiated) { () -> Bool in
-                let process = Process()
-                process.executableURL = URL(fileURLWithPath: invocation.executablePath)
-                process.arguments = invocation.arguments
-                // Nothing reads the launcher's streams; discard both so a chatty one can't stall
-                // on a full pipe or spam the console.
-                process.standardOutput = FileHandle.nullDevice
-                process.standardError = FileHandle.nullDevice
-                do {
-                    try process.run() // launch and detach — the terminal outlives this task
-                    return true
-                } catch {
-                    return false
-                }
-            }.value
+            let launched = await BlockingWork.run { spawn(invocation) }
             completion(launched ? .success(terminal) : .failure(.launchFailed(terminal: terminal)))
+        }
+    }
+
+    /// Open an `ssh` session in the preferred installed terminal, off the main thread.
+    ///
+    /// The launch returns as soon as the terminal has been told, and the stage is left to wait for
+    /// it on its own thread, for as long as a person might take to answer iTerm's "OK to run?".
+    @MainActor
+    static func open(
+        session: SSHTerminalSession,
+        secret: String?,
+        completion: @escaping (Result<ExternalTerminal, Failure>) -> Void
+    ) {
+        guard let terminal = preferredTerminal() else { return }
+        let closePrompt = String(
+            localized: "Press Return to close.",
+            comment: "Printed in the user's terminal after ssh could not connect or sign in."
+        )
+        Task {
+            let launched = await BlockingWork.run {
+                launch(session, secret: secret, closePrompt: closePrompt, in: terminal)
+            }
+            completion(launched ? .success(terminal) : .failure(.launchFailed(terminal: terminal)))
+        }
+    }
+
+    private static func launch(
+        _ session: SSHTerminalSession,
+        secret: String?,
+        closePrompt: String,
+        in terminal: ExternalTerminal
+    ) -> Bool {
+        guard let stage = try? SSHTerminalStage(
+            session: session,
+            secret: secret,
+            closePrompt: closePrompt
+        ) else { return false }
+        guard let invocation = terminal.invocation(
+            runningScript: stage.scriptPath,
+            pathExists: pathExists
+        ), spawn(invocation) else {
+            stage.discard()
+            return false
+        }
+        DispatchQueue.global(qos: .utility).async { stage.finish() }
+        return true
+    }
+
+    /// Launch and detach: the terminal outlives this task.
+    private static func spawn(_ invocation: ExternalTerminalInvocation) -> Bool {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: invocation.executablePath)
+        process.arguments = invocation.arguments
+        // Nothing reads the launcher's streams; discard both so a chatty one can't stall on a full
+        // pipe or spam the console.
+        process.standardOutput = FileHandle.nullDevice
+        process.standardError = FileHandle.nullDevice
+        do {
+            try process.run()
+            return true
+        } catch {
+            return false
         }
     }
 }

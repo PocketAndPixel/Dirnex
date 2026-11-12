@@ -63,7 +63,10 @@ struct GitScratchRepository {
     /// Run `/usr/bin/git`, with its standard output and error going to files rather than pipes:
     /// many processes launched with pipes from several threads failed with `EBADF`
     /// (docs/NOTES.md ▸ Fixtures and shared state).
-    static func launch(_ arguments: [String]) throws -> GitRun {
+    ///
+    /// `globalConfig` is the file git takes as the user's global config, which is none unless a
+    /// test is about that file.
+    static func launch(_ arguments: [String], globalConfig: String = "/dev/null") throws -> GitRun {
         let scratch = FileManager.default.temporaryDirectory
             .appendingPathComponent("dirnex-git-\(UUID().uuidString)", isDirectory: true)
         try FileManager.default.createDirectory(at: scratch, withIntermediateDirectories: true)
@@ -83,8 +86,10 @@ struct GitScratchRepository {
         process.arguments = arguments
         var environment = ProcessInfo.processInfo.environment
         environment["GIT_CONFIG_NOSYSTEM"] = "1"
-        environment["GIT_CONFIG_GLOBAL"] = "/dev/null"
+        environment["GIT_CONFIG_GLOBAL"] = globalConfig
         process.environment = environment
+        // `git mergetool` asks whether to go on after a failed merge, on this.
+        process.standardInput = FileHandle.nullDevice
         process.standardOutput = output
         process.standardError = errors
         try process.run()

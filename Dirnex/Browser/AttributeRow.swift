@@ -56,6 +56,18 @@ enum AttributeRow {
         return row([caption, view], alignment: .top)
     }
 
+    /// A row whose value is one control with a baseline of its own, such as a popup, so its text
+    /// lines up with the caption the way a plain value's does. Top alignment left it 4 pt low.
+    static func make(label: String, control: NSView) -> NSView {
+        let caption = NSTextField(labelWithString: label)
+        caption.alignment = .right
+        caption.textColor = .secondaryLabelColor
+        caption.widthAnchor.constraint(equalToConstant: labelWidth).isActive = true
+        caption.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+        caption.lineBreakMode = .byTruncatingTail
+        return row([caption, control])
+    }
+
     /// A wrapping explanatory paragraph. Always width-constrained — a wrapping `NSTextField` with no
     /// width takes its *single-line* intrinsic width and overruns instead of wrapping.
     static func note(_ text: String, isWarning: Bool = false) -> NSView {

@@ -63,6 +63,17 @@ extension BrowserWindowController: SidebarViewControllerDelegate {
         (activePanel ?? leftPanel).jumpToFavorite(entry, inNewTab: inNewTab)
     }
 
+    /// Asked of the active pane whichever pane the drag came from: both share this window's
+    /// `CompositeBackend`, and that is what answers for a row someone could just drag.
+    func sidebar(
+        _ sidebar: SidebarViewController,
+        reconnectEndpointFor path: VFSPath
+    ) -> ServerEndpoint? {
+        let pane = activePanel ?? leftPanel
+        return pane.reconnectEndpoint(for: pane.tabs[pane.activeTabIndex], at: path)
+            ?? SMBMounter.shared.shareEndpoint(containing: path)
+    }
+
     /// A saved search re-runs its query in the active pane, its hits replacing what the active tab
     /// shows (or, with ⌘, in a new tab), then hands focus back so browsing the results continues
     /// without a mouse.

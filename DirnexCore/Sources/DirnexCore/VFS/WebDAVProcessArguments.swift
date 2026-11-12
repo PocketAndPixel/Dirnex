@@ -11,6 +11,45 @@ public enum WebDAVAuthScheme: String, Sendable, Hashable, Codable, CaseIterable 
     /// requests in its log for every one asked for. What it buys is a password that never crosses
     /// the wire, which matters only over plain HTTP.
     case digest
+    /// MS-NLMP's NTLM, the scheme an IIS or Windows share offers beside Negotiate (PLAN.md §M38).
+    /// A user name of `DOMAIN\user` sends the domain, as Windows spells it.
+    ///
+    /// It authenticates the **connection**, not the request, which is what sets it apart from the
+    /// two above. Measured 2026-11-10 with `curl` 8.7.1 against `Tooling/fake-ntlm-proxy.py`, which
+    /// checks the real NTLMv2 proof:
+    ///
+    /// - A `curl` costs one handshake, two requests in the server's log: a Type 1 answered 401 with
+    ///   the Type 2 challenge, then the request itself with the Type 3 proof.
+    /// - Every later section of a batched run goes out on that connection with **no** header at all,
+    ///   so a 200-folder listing is one handshake, where Digest pays a 401 per folder. A connection
+    ///   the server closes part-way is signed in again by `curl` itself, on the next section.
+    /// - A body goes once. The Type 1 request carries `Content-Length: 0`, and the body follows the
+    ///   Type 3 proof; above 1 MiB that request asks `Expect: 100-continue`, so a wrong password
+    ///   costs no body.
+    /// - `--fail` does not stop on the challenge, only on the answer to the proof: a batch's
+    ///   first-section guard and a download's `--fail` keep their meaning.
+    /// - A wrong password is one failed login per connection, exactly as Basic's is per request:
+    ///   a `curl` with N parallel sections is N.
+    case ntlm
+    /// SPNEGO, signed in with **this Mac's own Kerberos ticket** and never with a typed password
+    /// (`curl --negotiate -u :`), so it is the scheme of an account with no user name (decided
+    /// 2026-11-09, PLAN.md §M38). The ticket is whatever the Mac holds for the server's realm: from
+    /// an Active Directory login, the Kerberos SSO extension, Ticket Viewer or `kinit`. An account
+    /// with a user name signs in as that user, in one of the schemes above.
+    case negotiate
+
+    /// Whether the scheme sends the account's password. Every one does but ``negotiate``.
+    public var usesPassword: Bool { self != .negotiate }
+
+    /// Whether the scheme can sign `location` in: a password scheme needs a user name to send, and
+    /// a ticket is used only for an account that has none.
+    public func fits(_ location: WebDAVLocation) -> Bool {
+        usesPassword == location.hasCredentials
+    }
+
+    /// The `curl` option naming the scheme, without its dashes — `--ntlm` on the command line,
+    /// `ntlm` in a config section. Each case's raw value is its option's name.
+    var curlOption: String { rawValue }
 }
 
 /// Everything a WebDAV invocation needs that isn't the operation itself — the account, the dialed
@@ -49,10 +88,16 @@ public struct WebDAVSession: Sendable, Hashable {
         self.maxTime = maxTime
     }
 
-    /// Whether this session's requests carry the account's credentials: a scheme to send them
-    /// with, and an account to send. The transport reads the same answer to decide whether to
-    /// write the password to `curl`'s stdin, so the two cannot disagree.
-    public var sendsCredentials: Bool { authentication != nil && location.hasCredentials }
+    /// Whether this session's requests carry the account's password: a scheme that sends one, and
+    /// an account to send. The transport reads the same answer to decide whether to write the
+    /// password to `curl`'s stdin, so the two cannot disagree. A Negotiate session sends no password
+    /// and so reads `false`: its proof is the Mac's ticket (``signsInWithTicket``).
+    public var sendsCredentials: Bool {
+        authentication?.usesPassword == true && location.hasCredentials
+    }
+
+    /// Whether this session's requests are signed in with the Mac's Kerberos ticket.
+    public var signsInWithTicket: Bool { authentication == .negotiate }
 
     /// The same session with a different time budget — how a transfer is armed without loosening
     /// the metadata calls.
@@ -100,6 +145,10 @@ public enum WebDAVProcessArguments {
     /// Read the credential from stdin, as FTP and S3 do (NOTES.md ▸ curl).
     static let configFromStandardInput = ["-K", "-"]
 
+    /// Sign in with the Mac's Kerberos ticket: Negotiate, and the empty account `curl` needs before
+    /// it will run the authentication code at all (``WebDAVAuthScheme/negotiate``).
+    static let ticketArguments = ["--negotiate", "-u", ":"]
+
     /// The named properties every PROPFIND asks for: what a row needs and nothing else. Named
     /// rather than `<allprop/>` because allprop also returns every dead property a client ever
     /// stored on the file — the NAS keeps Windows' `Win32LastModifiedTime` that way — and a lock
@@ -109,6 +158,19 @@ public enum WebDAVProcessArguments {
         #"<D:propfind xmlns:D="DAV:"><D:prop>"#,
         "<D:resourcetype/><D:getcontentlength/><D:getlastmodified/>",
         "<D:creationdate/><D:getetag/><D:getcontenttype/>",
+        "</D:prop></D:propfind>"
+    ].joined()
+
+    /// The one property a quota request names: RFC 4331's `quota-available-bytes`, the space left.
+    /// Its partner `quota-used-bytes` is left out because nothing could show it honestly. On
+    /// Nextcloud it is the size of the folder asked about rather than of the account (measured
+    /// 2026-11-10: 3 000 000 for a subfolder holding one 3 MB file, beside 6 000 000 at the account
+    /// root), so used and available add up to the account's quota only at its root, and a root a
+    /// user saved deeper would read as a much smaller account (PLAN.md §M38 Slice 7).
+    static let quotaPropfindBody = [
+        #"<?xml version="1.0" encoding="utf-8"?>"#,
+        #"<D:propfind xmlns:D="DAV:"><D:prop>"#,
+        "<D:quota-available-bytes/>",
         "</D:prop></D:propfind>"
     ].joined()
 
@@ -124,8 +186,11 @@ public enum WebDAVProcessArguments {
     /// - **No `--fail`** except on a download, for S3's reason: a refusal's body is part of the
     ///   classification (a 207 or 424 names its members), and only a byte copy is better off with
     ///   nothing written (``download(session:backendPath:localPath:resume:)``).
-    /// - **The scheme is spelled out** — `--basic` or `--digest` — rather than left to `curl`'s
-    ///   default, so a scheme the probe chose is the scheme that is sent.
+    /// - **The scheme is spelled out** — `--basic`, `--digest`, `--ntlm` or `--negotiate` — rather
+    ///   than left to `curl`'s default, so a scheme the probe chose is the scheme that is sent.
+    /// - **Negotiate's `-u :` is in `argv`**, since it is no secret: an empty user and password is
+    ///   `curl`'s way of switching the authentication code on, and the ticket comes from the
+    ///   credential cache. Nothing goes to stdin for it.
     public static func common(session: WebDAVSession, showingProgress: Bool = false) -> [String] {
         var arguments = [
             "-q",
@@ -135,8 +200,10 @@ public enum WebDAVProcessArguments {
         ]
         if session.dial.restrictsToIPv4 { arguments.append("-4") }
         if session.sendsCredentials, let scheme = session.authentication {
-            arguments.append(scheme == .digest ? "--digest" : "--basic")
+            arguments.append("--" + scheme.curlOption)
             arguments += configFromStandardInput
+        } else if session.signsInWithTicket {
+            arguments += ticketArguments
         }
         arguments += trustArguments(session: session)
         return arguments + ["--write-out", WebDAVWriteOut.format]
@@ -161,10 +228,38 @@ public enum WebDAVProcessArguments {
         depth: WebDAVDepth,
         isCollection: Bool
     ) -> [String] {
+        propfind(
+            session: session,
+            backendPath: backendPath,
+            depth: depth,
+            isCollection: isCollection,
+            body: propfindBody
+        )
+    }
+
+    /// One `Depth: 0` PROPFIND of a folder for its quota alone (``quotaPropfindBody``), named as a
+    /// collection since only a folder has one.
+    public static func quotaPropfind(session: WebDAVSession, backendPath: String) -> [String] {
+        propfind(
+            session: session,
+            backendPath: backendPath,
+            depth: .zero,
+            isCollection: true,
+            body: quotaPropfindBody
+        )
+    }
+
+    private static func propfind(
+        session: WebDAVSession,
+        backendPath: String,
+        depth: WebDAVDepth,
+        isCollection: Bool,
+        body: String
+    ) -> [String] {
         common(session: session)
             + ["-X", "PROPFIND", "-H", "Depth: \(depth.rawValue)"]
             + ["-H", #"Content-Type: application/xml; charset="utf-8""#]
-            + ["--data-binary", propfindBody]
+            + ["--data-binary", body]
             + [url(session, backendPath, isCollection: isCollection)]
     }
 

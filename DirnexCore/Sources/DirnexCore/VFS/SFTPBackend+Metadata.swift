@@ -76,15 +76,24 @@ public extension SFTPBackend {
         return metadata.capabilities.intersection(.changeMode)
     }
 
-    /// Write one item's mode. One batch, one connection, and the refusal is answered rather than
-    /// thrown — a server that will not keep a mode has not broken anything.
+    /// Write one item's owner, group and mode: the ownership over the exec channel and then the
+    /// mode as one batch, so whatever a group change clears is put back after it. A refusal is
+    /// answered rather than thrown — a server that will not keep a mode has not broken anything.
     func applyMetadata(
         _ steps: [RemoteMetadataStep],
         at path: VFSPath
     ) throws -> [RemoteMetadataRefusal] {
         try requireOwnBackend(path)
         guard !steps.isEmpty else { return [] }
-        return try mapErrors(path) { try transport.applyMetadata(steps, to: path.path) }
+        return try mapErrors(path) {
+            let refusals = try applyOwnership(steps, to: path.path)
+            let others = steps.filter {
+                if case .setOwnership = $0 { return false }
+                return true
+            }
+            guard !others.isEmpty else { return refusals }
+            return try refusals + transport.applyMetadata(others, to: path.path)
+        }
     }
 }
 

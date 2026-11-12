@@ -51,16 +51,39 @@ public struct ComparisonPaneText: Sendable {
         self.init(
             lines: side == .left ? comparison.leftLines : comparison.rightLines,
             lineOfRow: comparison.rows.map { side == .left ? $0.left : $0.right },
-            side: side
+            side: side,
+            check: {}
+        )
+    }
+
+    /// One side of `comparison`, stopping with `CancellationError` once `isCancelled` says so
+    /// (PLAN.md §M37 Slice 3).
+    public init(
+        _ comparison: TextComparison,
+        side: Side,
+        isCancelled: () -> Bool
+    ) throws(CancellationError) {
+        try self.init(
+            lines: side == .left ? comparison.leftLines : comparison.rightLines,
+            lineOfRow: comparison.rows.map { side == .left ? $0.left : $0.right },
+            side: side,
+            check: { () throws(CancellationError) in
+                if isCancelled() { throw CancellationError() }
+            }
         )
     }
 
     /// A pane showing `lines` on shared rows: `rows[n]` is the line row `n` shows, `nil` for a gap.
     public init(lines: [TextLine], rows: [Int?]) {
-        self.init(lines: lines, lineOfRow: rows, side: nil)
+        self.init(lines: lines, lineOfRow: rows, side: nil, check: {})
     }
 
-    private init(lines: [TextLine], lineOfRow: [Int?], side: Side?) {
+    private init<Stop: Error>(
+        lines: [TextLine],
+        lineOfRow: [Int?],
+        side: Side?,
+        check: () throws(Stop) -> Void
+    ) throws(Stop) {
         self.side = side
         self.lines = lines
         self.lineOfRow = lineOfRow
@@ -69,7 +92,8 @@ public struct ComparisonPaneText: Sendable {
         starts.reserveCapacity(lineOfRow.count)
         var offset = 0
         var widest = 0
-        for index in lineOfRow {
+        for (row, index) in lineOfRow.enumerated() {
+            if row % ComparisonStop.linesBetweenChecks == 0 { try check() }
             starts.append(offset)
             if let index {
                 let shown = Self.shown(lines[index].content)
@@ -165,7 +189,35 @@ public struct ComparisonPaneText: Sendable {
     }
 
     /// How many columns `text` takes in a monospaced pane.
+    ///
+    /// Walking `Character`s took 11.2 s of the 11.7 s a 256 MiB pane cost (measured 2026-11-08), to
+    /// learn what a byte already says in the usual case: an ASCII character is one column, or for a
+    /// tab up to four. The walk stays for everything else.
     static func columns(of text: String) -> Int {
+        asciiColumns(of: text) ?? graphemeColumns(of: text)
+    }
+
+    /// `text`'s columns when every byte of it is ASCII, else `nil`, and `nil` too for text not stored
+    /// as contiguous UTF-8. A carriage return gives `nil` as well: with a line feed after it, it is
+    /// the one ASCII `Character` made of two bytes.
+    private static func asciiColumns(of text: String) -> Int? {
+        text.utf8.withContiguousStorageIfAvailable { (bytes: UnsafeBufferPointer<UInt8>) -> Int? in
+            var columns = 0
+            for byte in bytes {
+                if byte == UInt8(ascii: "\t") {
+                    columns += 4 - columns % 4
+                } else if byte >= 0x80 || byte == UInt8(ascii: "\r") {
+                    return nil
+                } else {
+                    columns += 1
+                }
+            }
+            return columns
+        }.flatMap(\.self)
+    }
+
+    /// `columns(of:)`, one `Character` at a time.
+    static func graphemeColumns(of text: String) -> Int {
         var columns = 0
         for character in text {
             if character == "\t" {

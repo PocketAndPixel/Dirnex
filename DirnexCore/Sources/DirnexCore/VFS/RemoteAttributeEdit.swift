@@ -1,22 +1,16 @@
 import Foundation
 
-/// One fact about a remote item that Get Info can change (PLAN.md §M25 Slice 5).
+/// One fact about a remote item that Get Info can change (PLAN.md §M25 Slice 5, §M38 Slice 1).
 ///
-/// Two, and the shortness of the list is the finding rather than a first pass. A remote listing
-/// carries no access-control list, no extended attributes, no BSD flags, no access time and no birth
-/// time, so the four-tab local panel has nothing to offer here — and the two fields that *are* on
-/// the wire are not equally trustworthy once written, which is what ``RemoteAttributeVerdict`` is
-/// for.
+/// A remote listing carries no access-control list, no extended attributes, no BSD flags, no access
+/// time and no birth time, so the four-tab local panel has nothing to offer here. And the fields
+/// that *are* on the wire are not equally trustworthy once written, which is what
+/// ``RemoteAttributeVerdict`` is for.
 ///
-/// **Owner and group are deliberately absent, and it took a probe to say so.** `sftp` has `chown`
-/// and `chgrp` and both work — but they take a **numeric id**, and `sftp`'s own `ls -la` prints
-/// *names* (`oleg staff`), so a panel built on a listing has nothing to send. Worse, a remote
-/// `chgrp` clears set-uid **and** set-gid as a side effect, exactly as the local `chown(2)` does
-/// (measured 2026-08-28: `106755` became `100755` on a successful `chgrp`, exit 0, nothing printed)
-/// — so offering it would need both an id the panel does not have and the ordering rule
-/// ``AttributeChangePlan`` already encodes locally. Refusing to offer it is the honest end of that,
-/// and it is what the milestone means by leaving the old behaviour standing where a capability
-/// cannot be established.
+/// **Owner and group need more than a listing.** `sftp`'s `chown` and `chgrp` take a number, and a
+/// listing prints names, so they go by name over the exec channel instead (``SSHOwnershipCommand``).
+/// An account without one has neither control, and that is the old behaviour left standing where
+/// a capability cannot be established.
 public enum RemoteAttributeField: Sendable, Hashable, CaseIterable {
     /// The twelve mode bits, special ones included — `chmod` over the wire really does carry
     /// set-uid and the sticky bit, which the transfer flag silently drops.
@@ -25,6 +19,10 @@ public enum RemoteAttributeField: Sendable, Hashable, CaseIterable {
     /// batch language has no verb that sets a time at all, so this is editable on one protocol and
     /// not the other.
     case modificationTime
+    /// The owning user. Only root can change it, on every server measured.
+    case owner
+    /// The owning group. An account can give an item it owns to a group it belongs to.
+    case group
 }
 
 /// Which of a remote row's fields this connection can actually change.
@@ -57,9 +55,13 @@ public struct RemoteAttributeEditability: Sendable, Equatable {
     public var isReadOnly: Bool { editable.isEmpty }
 
     /// What `entry` can be asked to change on a connection offering `capabilities`.
+    ///
+    /// - Parameter identity: who the account is, or `nil` when that could not be asked, in which
+    ///   case owner and group are not offered.
     public static func decide(
         for entry: FileEntry,
-        capabilities: RemoteMetadataCapabilities
+        capabilities: RemoteMetadataCapabilities,
+        identity: RemoteAccountIdentity? = nil
     ) -> RemoteAttributeEditability {
         var editable: Set<RemoteAttributeField> = []
         if entry.permissions != nil, capabilities.contains(.changeMode) {
@@ -68,7 +70,29 @@ public struct RemoteAttributeEditability: Sendable, Equatable {
         if entry.hasModificationDate, capabilities.contains(.setModificationTime) {
             editable.insert(.modificationTime)
         }
+        if let identity { editable.formUnion(ownershipFields(of: entry, for: identity)) }
         return RemoteAttributeEditability(editable: editable)
+    }
+
+    /// What `identity` can change about who holds `entry`.
+    ///
+    /// A field the listing did not report is not offered, the presence rule the others follow. A
+    /// group is offered only with somewhere to go: an account with one group, already the item's,
+    /// has no choice to make.
+    private static func ownershipFields(
+        of entry: FileEntry,
+        for identity: RemoteAccountIdentity
+    ) -> Set<RemoteAttributeField> {
+        var fields: Set<RemoteAttributeField> = []
+        if identity.isSuperuser {
+            if entry.ownerName != nil { fields.insert(.owner) }
+            if entry.groupName != nil { fields.insert(.group) }
+        } else if identity.user.matches(entry.ownerName),
+                  entry.groupName != nil,
+                  identity.groups.contains(where: { !$0.matches(entry.groupName) }) {
+            fields.insert(.group)
+        }
+        return fields
     }
 }
 
@@ -87,19 +111,34 @@ public struct RemoteAttributeChange: Sendable, Equatable, Codable {
     public let permissions: POSIXPermissions?
     /// The modification time to store, or `nil` to leave it alone.
     public let modificationTime: Date?
+    /// The owner to give it, or `nil` to leave it alone.
+    public let owner: RemotePrincipal?
+    /// The group to give it, or `nil` to leave it alone.
+    public let group: RemotePrincipal?
 
-    public init(permissions: POSIXPermissions? = nil, modificationTime: Date? = nil) {
+    public init(
+        permissions: POSIXPermissions? = nil,
+        modificationTime: Date? = nil,
+        owner: RemotePrincipal? = nil,
+        group: RemotePrincipal? = nil
+    ) {
         self.permissions = permissions
         self.modificationTime = modificationTime
+        self.owner = owner
+        self.group = group
     }
 
-    public var isEmpty: Bool { permissions == nil && modificationTime == nil }
+    public var isEmpty: Bool {
+        permissions == nil && modificationTime == nil && owner == nil && group == nil
+    }
 
     /// The fields this change sets.
     public var fields: Set<RemoteAttributeField> {
         var fields: Set<RemoteAttributeField> = []
         if permissions != nil { fields.insert(.permissions) }
         if modificationTime != nil { fields.insert(.modificationTime) }
+        if owner != nil { fields.insert(.owner) }
+        if group != nil { fields.insert(.group) }
         return fields
     }
 
@@ -109,8 +148,13 @@ public struct RemoteAttributeChange: Sendable, Equatable, Codable {
     /// `SITE CHMOD` builder, one `chmod` batch line, one classifier for what a refusal means. A
     /// panel with its own steps would be a second definition of what a remote metadata write is,
     /// which this project has paid for before.
+    ///
+    /// **Ownership goes first**, for the rule ``AttributeChangePlan`` states locally.
     public var steps: [RemoteMetadataStep] {
         var steps: [RemoteMetadataStep] = []
+        if owner != nil || group != nil {
+            steps.append(.setOwnership(owner: owner?.name, group: group?.name))
+        }
         if let permissions { steps.append(.setMode(permissions)) }
         if let modificationTime { steps.append(.setModificationTime(modificationTime)) }
         return steps
@@ -128,11 +172,15 @@ public struct RemoteAttributeChange: Sendable, Equatable, Codable {
     ///     fraction of a second, and a control that resolves time more coarsely would otherwise send
     ///     a date nobody edited along with every mode change (docs/NOTES.md ▸ ACLs and file
     ///     attributes).
+    ///   - owner: what the owner control holds now, or `nil` when there is none.
+    ///   - group: what the group control holds now, or `nil` when there is none.
     public static func between(
         current: FileEntry,
         permissions: POSIXPermissions?,
         modificationTime: Date?,
         shownModificationTime: Date?,
+        owner: RemotePrincipal? = nil,
+        group: RemotePrincipal? = nil,
         editable: RemoteAttributeEditability
     ) -> RemoteAttributeChange {
         var mode: POSIXPermissions?
@@ -148,6 +196,30 @@ public struct RemoteAttributeChange: Sendable, Equatable, Codable {
            modificationTime != shownModificationTime {
             time = modificationTime
         }
-        return RemoteAttributeChange(permissions: mode, modificationTime: time)
+        let newOwner = moved(owner, from: current.ownerName, editable: editable.allows(.owner))
+        let newGroup = moved(group, from: current.groupName, editable: editable.allows(.group))
+        // **Any group change clears set-uid and set-gid**, the same group included, measured on
+        // macOS, GNU and busybox: `chown :admin` turned `6755` into `755`, exit 0, nothing printed.
+        // Sending the mode after it is the only repair, and the read-back then says if it held.
+        if mode == nil, newOwner != nil || newGroup != nil, editable.allows(.permissions),
+           let now = current.permissions, POSIXPermissions(rawValue: now).carriesSetID {
+            mode = POSIXPermissions(rawValue: now)
+        }
+        return RemoteAttributeChange(
+            permissions: mode,
+            modificationTime: time,
+            owner: newOwner,
+            group: newGroup
+        )
+    }
+
+    /// `asked`, when it can be sent and is not what the item already has.
+    private static func moved(
+        _ asked: RemotePrincipal?,
+        from listed: String?,
+        editable: Bool
+    ) -> RemotePrincipal? {
+        guard editable, let asked, !asked.matches(listed) else { return nil }
+        return asked
     }
 }

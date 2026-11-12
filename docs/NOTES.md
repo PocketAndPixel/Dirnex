@@ -161,6 +161,16 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
     cooperative pool exists to run. The two external launchers are the other exception — they call
     `process.run()` and return without waiting, so they block on nothing.
 
+- **A pipeline that can be stopped, without making every caller handle a throw: a generic typed-throws
+  `check`.** M37 Slice 3 had to stop a comparison inside five stages that the merge and the tests
+  call as plain non-throwing functions. Each stage takes `check: () throws(Stop) -> Void` with
+  `Stop: Error` and is itself `throws(Stop)`. The stoppable caller passes a closure that throws
+  `CancellationError`, and everyone else passes `{}`, whose error type is inferred as `Never`, so the
+  call needs no `try` (`ComparisonStop`). Two things it costs. A closure
+  passed to `map` infers plain `throws` rather than `throws(Stop)`, so the loops are `for` loops. And a
+  non-escaping `isCancelled` cannot go through an `@escaping` helper that builds the check, so each
+  public entry spells the three-line closure out.
+
 ## Testing
 
 ### Swift Testing and `xcodebuild`
@@ -458,6 +468,57 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
 
 ### Waits, run loops and timing
 
+- **A wait over several async stages adds their scheduling delays together.** Measured
+  2026-11-11 in `CompareReadingTests.lateNulGoesToBytes`: alone, the test took 0.38 s and the
+  read took 9 ms. In a full run, its reading-window callback arrived at 27.09 s, the read ran
+  from 31.832 to 31.842 s, its failure landed at 33.78 s, and the byte view arrived at 37.49 s.
+  The polling loop's largest gap was 16.17 s. This follows an earlier full-run timeout at 60 s
+  and a pass at 54 s. The test now requires the reading window first, then waits for the byte
+  view, each with the existing 60 s bound. It also cancels any remaining comparison on exit.
+  With temporary 2 s bounds and a 1.5 s delay in each stage, the old wait failed and the split
+  waits passed. Disabling the byte-view callback still failed the fixed test on its final wait
+  and expected reason. All delays, shorter bounds and product changes were then removed.
+  Two final full app runs passed, with the local live servers off and then on; this test took
+  38.76 s and 41.37 s. All 71 saved preference keys stayed unchanged by content.
+
+- **Closing a socket in the parent is not yet EOF at its peer during a concurrent `posix_spawn`.**
+  Measured 2026-11-10 while fixing `GitMergeSocketEdgeTests.answerToNobody`: two full app runs
+  reproduced a successful send after `connection.close()`, despite `FD_CLOEXEC`. A standalone
+  socket-pair probe got 580 successful sends out of 100,000 closes with concurrent `Process`
+  launches, and zero with no launches. Holding a spawn at a FIFO open let `proc_pidfdinfo` name
+  both holders of the same kernel socket: the parent and its child **before exec**. After exec,
+  the socket was absent from the child while the child was still alive. This was a temporary
+  reference, not a descriptor leaking into the running program. XNU copies the file table before
+  spawn's file actions and closes marked descriptors later in
+  [`fdt_exec`](https://github.com/apple-oss-distributions/xnu/blob/main/bsd/kern/kern_descrip.c).
+  - The test now reads bounded EOF off the cooperative pool before asserting `.closed` on a
+    write. Two immediate sends could both succeed while the child still held the peer. A retained
+    duplicate lasting 250 ms made the old test fail and the fixed test pass.
+  - `GitMergeSocketInheritanceTests` also starts a real child suspended **after exec**, without
+    `POSIX_SPAWN_CLOEXEC_DEFAULT`, and checks that its socket descriptor is absent. The default
+    close-all spawn flag would hide a missing `FD_CLOEXEC` in the code being tested. Removing the
+    socket's flag failed this test on `!inherited`.
+  - A fifth full run then found the same assumption in `stale`: the child could still hold its
+    closed listener. If a connection succeeds, that test now waits for the connection to end
+    before checking `.notListening`. A 250 ms duplicate made the old check fail and the fixed
+    one pass in 262 ms. Polling `connect` was a false fix: it passed in 13 ms with that duplicate
+    still held, because a full listen backlog can also return `ECONNREFUSED`.
+- **A correct vanished-folder refresh can finish after the shared 30 s wait.** Measured
+  2026-11-10 in a full live app run: `VanishedFolderTests.operationRefresh` reached the parent in
+  30.19 s, with only seven polls and a largest poll gap of 10.39 s. The failed listing, refuge
+  lookup and navigation all ran with the right token and window; main-actor turns between them
+  took seconds. Its first listing also shares that queue. The suite's waiting-for budgets now use
+  60 s, while the two 1.5 s negative holds stay fixed. A temporary 35 s pause before the refuge
+  lookup passed with the new wait and failed the old wait on the original path assertion. The
+  control kept the window and fixture alive until the late work finished, so cleanup could not
+  turn the expected failure into a modal alert. Dropping the call to `leaveVanishedFolder` still
+  failed the fixed operation test at 60 s, so the longer wait does not hide a missing refresh.
+  - After both fixes and the `stale` fix, five consecutive full app runs passed (91.35–93.96 s).
+    All 21 live suites executed with SFTP, FTP and Apache WebDAV up. S3 had no config and Docker
+    was stopped, so S3 and Nextcloud were unavailable. The 5,155 core tests and both CI-pinned
+    linters passed too. One earlier run timed out in the unchanged `EditFileRouteTests` first
+    `createCount` wait; it passed in all five final runs. That separate flake is not fixed here.
+
 - **Spinning the run loop is not the same as awaiting, and a view-shaped test cannot tell.**
   `RunLoop.current.run(until:)` drives layout, so a helper built on it produces a view with real
   frames — enough for every assertion about *structure*, which is why Quick View's hit-test suite
@@ -501,6 +562,22 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
     blocking SFTP verbs directly. With the S3 suites running too, full runs failed in unrelated
     size-provider tests. Move the whole body through `offCooperativePool` before trusting the
     remaining failures.
+- **A pane flow still running when its test ends finishes against a freed host or a deleted fixture,
+  and its failure alert can then stop the whole run.** Measured 2026-11-08 with
+  `ArchiveAddReachTests` in a parallel run of the full app suite, after the suite had passed alone
+  in 0.15 s. The add's first main-actor hop waited 26 s, so every bounded wait expired and the tests
+  returned, freeing their hosts. The late extraction then found no host (it is `weak`), reported a
+  short set, and with no window `presentOperationFailure` fell back to `runModal()`: an app-modal
+  alert in front of the test host that stalled every suite behind it until a person clicked OK. It
+  happened twice before the cause was found, and a lifetime pin on the host was the wrong first
+  guess.
+  - **To see it, make the window-less alert a log line for one run.** The run then completes, and
+    logs at the flow's steps say which continuation arrived late and what it found.
+  - **Two fixes, both in the suite.** The fixture's `bsdtar` runs through `BlockingWork`: it had
+    called `Process.waitUntilExit()` on the main actor, which spins a nested run loop that drains
+    none of the main actor's work (the stack in the log showed it). And a wait that gives up keeps
+    the pane, the host and the fixtures alive for the rest of the run, so the late work ends quietly
+    instead of failing somewhere nobody is looking.
 - **A wait on a value the code under test sets *before* doing the work is a wait on nothing, and it
   makes a control read as inert.** The Synchronize sheet assigns its comparison synchronously on the
   way in and only then derives the rows, so `settleUntil { sheet.comparison == .content }` is
@@ -923,6 +1000,13 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
   left stale the second save raised "changed since this window read it" and waited on it for ten
   minutes. Two windows, one save each, turn that into a failure. Where a second save in one window
   is the subject, wait for either outcome and end any sheet that came up, then assert.
+- **A control that removes a branch can send its input down a neighbour's failure path, and that
+  path may raise an alert.** Seen 2026-11-08 controlling M36 Slice 3: taking out the folder branch of
+  `fulfillPromise` sent a server folder into the *file* fetch, which failed against the test's stub
+  backend and called `presentOperationFailure`. With no window that is `runModal`, so the test host
+  put "Couldn’t copy this item from the server" on Oleg's screen and the run waited on it. Before
+  running a control, follow where the rerouted input goes; control the step *inside* the branch
+  instead (answer without queuing, say), which fails the same tests and reaches no alert.
 - **A decision that reads live global state *inside itself* cannot be varied by a test, and the tell
   is a negative control that fails nothing.** `PanelViewController+Drop.resolvedKind` asked
   `NSEvent.modifierFlags` directly, so a rule keyed on ⌘ or ⌥ had exactly one reachable value — the
@@ -988,6 +1072,14 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
     or more — three for the create sheet, whose accessory carries a popup — which is a structural
     discriminator and, unlike matching the title text, survives the app test target inheriting the
     developer's own `AppleLanguages` pin (▸ Localization). `sheetButtonCount(in:)` is the helper.
+  - **When the branch it falls through to is also a refusal, compare the detail sentence.** Met
+    2026-11-05 on ⇧F4 and ⇧F2 inside an archive: before the archive route existed, the same call
+    reached the archive backend, which refuses as unsupported, under the very same "Can't create" or
+    "Couldn't rename" title with one OK. One button and the name in the title were true of both. What
+    only the new route could say was its reason, so the test builds the expected detail with the
+    pane's own `describe(_:)` (language-independent for the same reason the count is) and looks for
+    it in `sheetText(in:)`. With the route switched off, that check failed. The count alone could not
+    have, since both branches show one OK; that was read from the code, not run.
   - The general shape is worth more than the sheet: **a control has to change the observable, not
     merely the code path**, and an observable shared by the branch under test and the branch it falls
     through to is not one. Ask what the *other* branch does before believing a negative wait or a
@@ -1183,8 +1275,18 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
     disk, so a test that put the file back straight after was answered by *that* read, and passed
     with the tab-switch hook it was written for deleted. `holdOutTheDeletePasses()` after the gesture
     lets it finish first. Without reverting each hook in turn, both tests would have looked fine.
+- **A wait for "a sheet is up" after a search can catch the progress sheet instead of the answer.**
+  `SearchProgressSheet` appears 400 ms into any walk or account search, and fifteen requests to a server
+  on this Mac took longer than that (measured 2026-11-10, M38 Slice 5's live run). The wait for
+  `window.attachedSheet` returned on "Searching…", no results tab existed yet, and the next step acted
+  on the pane's previous rows. Wait first for what only the finished search leaves (a tab on the
+  `.search` backend), then for a sheet whose text is not the progress title.
 
 ### Fixtures and shared state
+
+- **`JSONEncoder` output is not stable between two encodes of one value unless `.sortedKeys` is set.**
+  Seen 2026-11-09 in `GitMergeWireTests`: a test comparing a sent frame with a second `frame(request)`
+  passed three runs and failed the fourth. Anything compared as bytes needs the option.
 
 - **Thousands of `Process` runs with a `Pipe`, from several threads at once, can fail with
   `EBADF`.** Seen 2026-10-26 in M34's history harness: 14 `concurrentPerform` workers ran about
@@ -1381,6 +1483,13 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
     unmodified run, which is the only reason it had not already been noticed. Reach for `.serialized`
     on the merits (shared mutable state) as the entry below says — and read a control's *whole*
     failure list, not just whether the test you aimed at went red.
+
+- **`NSBitmapImageRep.setColor(_:atX:y:)` with an sRGB `NSColor` on a device-RGB bitmap writes
+  nothing, and the fixture comes out transparent.** Seen 2026-11-11 making a red PNG for
+  `RowIconLoaderTests`: each call logged "Unrecognized colorspace number -1", the file read back as
+  `0 0 0 0` everywhere, and Quick Look faithfully returned a transparent thumbnail, so the test failed on
+  the loader. Fill a `CGContext` in sRGB instead, and check a drawn fixture's pixels before the code under
+  test sees it, so a bad fixture fails as itself.
 
 ### Live suites
 
@@ -1633,6 +1742,13 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
 
 ### Windows
 
+- **`NSApp.activate(ignoringOtherApps: true)` does nothing from a background app while another app is
+  in front.** Measured 2026-11-09 on macOS 26 for M37 Slice 6 with `lsappinfo front`: Dirnex running
+  behind Claude, a request over a socket opened the merge window and called it, and the front app stayed
+  Claude. The window was up and nobody could see it. `/usr/bin/open <the app>`, run by the process that
+  wants it in front, brought the running copy forward, with no second process. So a command that opens
+  a window in the app does the bringing forward itself (`GitMergeClient`).
+
 - **`applicationShouldTerminateAfterLastWindowClosed` is asked from a run-loop *timer*, not at the
   moment a window closes — so a bare `true` lets the app quit itself during its own launch.** AppKit
   defers the check (`_scheduleCheckForTerminateAfterLastWindowClosed`) and asks whenever the main run
@@ -1794,6 +1910,12 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
     window got the click either. A synthetic click on a window that is not key only makes it key, and
     the view never sees it unless it answers `acceptsFirstMouse`. Run the no-session control first;
     the comparison means something only once that one passes.
+  - **A sheet on such a window needs it too, since a sheet is a window of its own.** Seen 2026-11-11 with
+    real clicks: an `NSAlert` begun as a sheet on the merge window while the Synchronize window was modal
+    drew, and dropped every click, so the question could not be answered and the app was stopped by its
+    PID. An alert's window is an `NSPanel` whose `worksWhenModal` is `false` and settable, and
+    `NSAlert.beginSheet(on:)` sets it from the host. Only a real click shows this: the sheet looks
+    perfectly normal.
 
 ### Alerts, sheets and dialogs
 
@@ -1980,7 +2102,11 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
     attached, centered on its host (probed). Hence `NSAlert.sheetHost(over:)` —
     `NSApp.modalWindow ?? window?.attachedSheet ?? window`, the same ordering
     `PanelViewController+Compare` had already derived for its own case, `modalWindow` first because
-    some dialogs are app-modal *windows* rather than sheets. Verify the nested case specifically: the
+    some dialogs are app-modal *windows* rather than sheets.
+    - **Except for a window that works while another is modal**, which hosts its own alerts since
+      2026-11-11. Hung on the modal window, a merge window's question brought the Synchronize window
+      over the merge window it was about, and it stayed there. Such an alert needs the host's
+      `worksWhenModal` on its own panel too (▸ Windows, the `worksWhenModal` entry). Verify the nested case specifically: the
     plain one passes whether or not the host lookup is right, so it proves nothing about the bug.
   - Converting a synchronous prompt costs an `async` cascade, and it stops at the `@objc` action —
     each of the six here had exactly one caller, whose body moves into a `Task { @MainActor in … }`.
@@ -2679,6 +2805,34 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
     switch, and a draw override is the kind of thing that can cost a table responsive scrolling.
   - In a test, the view exists only in a window that is **on screen** (`orderFront`) and only after
     the table's **second** layout pass: the first one makes the rows.
+- **The row view pushes `backgroundStyle` onto a cell *after* `viewFor` returns, so a look set there
+  on top of the cell's own styling does not last.** F2's field was styled in `viewFor`, after
+  `applyStyle`. The push then ran `applyStyle` again from `backgroundStyle`'s `didSet`, and it
+  repainted the open field in the cursor's ink. In the light appearance that drew the name white on
+  the field's white (reported 2026-11-11). It had also put back a hidden file's dim and a marked
+  one's bold inside the box. Dark mode hid it, since the field's background is dark there. So the
+  override lives inside `applyStyle`, keyed on the cell's own state (`FileCellView.isEditingName`).
+  - **An emphasized cell does not whiten `.labelColor` in the field editor**, though it does in a
+    plain label (above). Probed on a cell in a window: with `.emphasized` and `.labelColor`, the
+    editor took `.labelColor` and the darkest ink was 0.15. With the cursor's ink, the editor took
+    `alternateSelectedControlTextColor` and nothing in the box was darker than white. So resetting
+    the cell's style to `.normal` is not needed.
+  - A recycled cell that held the field then needs its row look put back when the field closes,
+    because the render path styles the cell before it closes the field.
+
+- **On macOS 26 a file's own icon is its type's, while a folder's often is not.** Measured 2026-11-11 on
+  this Mac: `NSWorkspace.icon(forFile:)` matched `icon(for: UTType)` pixel for pixel on 47 of 47 files in
+  Downloads, its default application making no difference, and differed from the generic folder on all 92
+  packages and on Home's special folders. An application's icon also has a dark variant: Xcode and Preview
+  drew differently under `darkAqua` and `aqua` (`performAsCurrentDrawingAppearance`), folders did not.
+  - **The cost is the first draw, not the call**: Home's 26 folders took 40 ms in `icon(forFile:)` and
+    199 ms more to draw in a fresh process, 77 ms of it Music. Calling it and drawing it into a
+    `CGContext` on a background thread gave the main thread's bytes exactly (15 of 15, with the
+    appearance set), which is what `RowIconLoader` does. Quick Look's `.icon` representation is no
+    substitute: 308 ms against 56 for the same items, and three applications drawn differently.
+  - **Quick Look's picture of text says less than the type icon at row size**: at 16 pt a `.js`, `.json`,
+    `.txt` or `.md` is a white square with grey lines, and audio is a note on a blank page. Images, movies
+    and PDFs are the ones worth a thumbnail (`RowIcon.isPreviewed`).
 
 #### Reloading and the row model
 
@@ -2711,6 +2865,35 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
   the folder where the truth is a claim about the question. Drop such rows from the projection
   entirely, including from any pending-work set, or a row with no total is pending forever and
   gets re-queued on every render.
+
+#### A table of billions of rows
+
+Measured 2026-11-08 for M37's byte view, whose table has a row for every 16 bytes of a file.
+
+- **`NSTableView` itself is exact up to 2^44 points.** At 2^36 rows (1 TiB of file) `rect(ofRow:)`,
+  `rows(in:)`, `scrollRowToVisible` and the drawn cells all landed on the right row. Past 2^44 the
+  clip view stops and the end of the table cannot be reached.
+- **Auto Layout cuts it at 10^10 points, on the first pass after a size change.** A layout constant
+  over that is "substituted", as the log says once: *a constant that exceeds internal limits*. A
+  table's intrinsic height is its rows times its row height, so past about 9 GiB of file the table
+  came back 10 000 000 668 points tall. Nothing fails: the rows up to there are right and the scroller
+  just stops short. A window with no Auto Layout at all hides it, as a first probe did, and so does
+  never resizing. Override `intrinsicContentSize` with `noIntrinsicMetric` **and** turn
+  `translatesAutoresizingMaskIntoConstraints` off, since either alone leaves a constraint on the
+  height. Pin it with a resize.
+- **A table's accessibility children are every row, and a large one crashes the app when read.**
+  `-[NSTableView _accessibilityChildrenInRange:]` asks for one array of the whole row count, and at
+  1.3 billion rows Core Foundation aborts with "size unreasonably big". Anything that reads the tree
+  sets it off: VoiceOver, and a computer-use screenshot, which is how it was found. No unit test
+  reads the tree the way a client does. Override `accessibilityChildren()` and `accessibilityRows()`
+  to cover what is on screen.
+  - **The elements have to be AppKit's `NSTableRow` proxies.** A row view answers `false` to
+    `isAccessibilityElement`, so handing out row views left an external client with no table at all,
+    while the same array looked complete in-process (124 elements against the client's 11). Each row
+    view's `accessibilityParent()` is its proxy. Only a client can show this, so check it with one.
+  - **`accessibilityVisibleRows()` is typed `[any NSAccessibilityRow]` and its elements do not
+    conform.** Passing the array along works, and reading one element traps with "NSArray element
+    failed to match the Swift Array Element type". The Swift signature is not to be believed here.
 
 #### Outline views and the tree
 
@@ -2855,7 +3038,14 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
     lossy answers; take the rest. It is what TextEdit shows, and doing better means shipping a
     charset detector.
   - **It is also slow on a large file:** 6 s for 7.7 MB of Windows-1251 (measured 2026-10-25),
-    where 58 MiB of UTF-8 decodes in 0.35 s. The compare window pays it when it opens such a file.
+    where 58 MiB of UTF-8 decodes in 0.35 s, and 65 s at 64 MiB. It costs about a second per MiB, so
+    past 4 MiB the detector is shown a sample and the whole file is decoded by its answer. **The sample
+    has to be the lines holding a non-ASCII byte.** Over 235 legacy-encoded files of 2 to 8 MiB in 25
+    encodings, the file's first 256 KiB gave the whole-file answer's text on 185, because a file that
+    opens in English reads as ASCII; 256 KiB of non-ASCII lines did on 233, and the other two were
+    KOI8-R, which the detector gets wrong on the whole file as well. 64 KiB lost one file to Big5
+    HKSCS, and 1 MiB gained nothing at four times the cost. A 64 MiB Windows-1251 read went from 65 s to
+    2.9 s (`TextPreview.detectionSample`).
   - **Decoding and encoding back are exact inverses everywhere but two places**, so anything that
     saves has to check the round trip rather than trust it (`ComparedDocument.isSavable`). Probed
     2026-10-25 for M33: `String(data:encoding: .utf8)` drops a *leading* U+FEFF, so a file with
@@ -2896,6 +3086,15 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
     find yellow came out white on yellow and could not be read, while `findHighlightColor` and
     `systemOrange` came through unchanged. A named dynamic color (`NSColor(name:dynamicProvider:)`,
     type `.catalog`) is left alone like them.
+- **Replacing a text storage's contents is quadratic in the attribute runs of the new text; set it
+  empty first.** Measured 2026-11-08 on a real TextKit 2 view with 256 MiB and 1.9 million runs (a
+  dense compare pane's marked words). `setAttributedString` into an empty storage took 0.13 s. The
+  same call over text already there was still going after four minutes, all of it in
+  `-[NSMutableRLEArray insertObject:range:]` → `memmove`, on the main thread: every new run is
+  inserted singly into the run array, which already holds the runs of the text it is about to drop.
+  Setting an empty string first took 0.02 s, and the set after it 0.12 s (`ComparePaneView.show`). A
+  document with a run per paragraph is unaffected, which is why M31's 64 MiB case never showed it: the
+  cost arrives with marks per changed word, on a re-compare rather than the first open.
 - **Under TextKit 2, where a range far into a large document lies is an estimate that moves after it is
   scrolled to, so no single scroll lands on it.** Measured 2026-09-17 in the running app on a 4 MB
   text preview, jumping from the first match to the last: `scrollRangeToVisible` returned in **1 ms**
@@ -3620,6 +3819,12 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
     run loop turned. The page under the view's top and bottom edges
     (`page(for:nearest:)`) agreed with it wherever it had caught up and is answered at once, so the
     find now reads that.
+  - **It is wrong, not just empty, straight after a document is laid out.** Measured 2026-11-12: a
+    three-page document in a 500 × 400 view, `autoScales` on, read `[1, 2]` while page 0 filled the
+    top and `currentPage` said 0, 40 times of 40, and `[0, 1]` after one 50 ms run-loop turn. The
+    find's starting point still read `visiblePages.first`, so a search begun in that gap started on
+    page two: one CI failure in the full suite, and none in three runs of the suite alone. It reads
+    the top edge's page now too (`findAnchorOffset`).
   - The document view is **not flipped**: toward the end of the document is down the y axis, and a
     scroll written for a flipped text or table view goes the wrong way.
 - **`PDFDocument.string` is exactly the pages' strings joined by one `\n`, it is cached after the
@@ -4038,6 +4243,105 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
     `-skip-testing:<Suite>/<oneTest>` over four runs, against a baseline of the unchanged tree, which
     is also what stops "it was green before" being read as evidence about the code rather than about
     the machine.
+- **Teams, Slack, Chrome and VS Code refuse a file promise, and a promise and a file URL cannot share
+  a drag.** Measured 2026-11-03 against real Teams (WebView2, so Chromium) and Finder with a throwaway
+  drag source, which is why M23's "Finder, Mail or Teams" comment had been wrong since it was written:
+  Teams refused every promised row with operation 0 and no callback. Chromium reads the board once, in
+  `draggingEntered:` (`PopulateDropDataFromPasteboard`), takes only `public.file-url`, and never looks
+  again until the pointer leaves and comes back. `RemoteDragHandoff` holds the design this forced, and
+  each of these ruled out a shorter one:
+  - **Finder prefers a URL over a promise on one item**, read 13 ms after the pointer arrives. So a
+    promise with a URL beside it never fulfils. Answered empty, Finder does not fall back: it refuses.
+  - **A promise wrapped in another `NSPasteboardWriting` is refused**, though every type forwards and
+    the board reads the same. That wrapper is otherwise the one documented way to make a promise's
+    extra type lazy, since subclassing `NSFilePromiseProvider` and returning `.promised` is simply
+    never asked: the class answers through its private `_dataProviderForType:` instead.
+  - **A promise cannot come back once the board has been rewritten.** Written back as its bytes, Finder
+    reports operation 1 and delivers nothing, the worst of the outcomes. Written back as the same object
+    it refuses with operation 0. So the rewrite is one way.
+  - **Rewriting the board mid-session works**, unlike a promise: an app that enters afterwards sees the
+    new contents, and the rewrite takes about 6 ms. `draggingSession(_:movedTo:)` arrives before the app
+    the pointer just entered reads the board, 6 ms ahead in Teams, so the rewrite wins that race.
+    `enumerateDraggingItems` still reaches the items afterwards, so the drag image can change too.
+  - **`NSPasteboardItem` with `setDataProvider` answers a lazy `public.file-url` to a sandboxed app**:
+    Teams read the file out of `$TMPDIR` through it without any sandbox extension of ours.
+  - **A lazy type is answered once, and "nothing" is an answer.** A second read returns the cached empty
+    without asking. Only replacing the board asks again.
+  - **Nothing times a lazy read out**, at least to 45 s. But holding one freezes both ends: the reader is
+    blocked, and the drag image stops following the pointer whether the provider blocks or spins the run
+    loop, because tracking does not run during the callback. A release during the hold comes out as
+    operation 0 once it ends.
+  - **Do not wait in a provider by spinning the run loop for something on the main actor.** A run loop
+    nested inside a main-queue job does not drain the main queue (`_dispatch_main_queue_callback_4CF`
+    guards against re-entry), so the wait can run out on work that has finished. Run the transfer off
+    the main actor, and have the wait poll something a lock protects.
+  - **`NSEvent.mouseLocation` and `NSWindow.windowNumber(at:belowWindowWithWindowNumber:)` stay live with
+    the main thread blocked**, which is what lets a held read notice the pointer leaving. The second
+    skips the drag image, and about 0.3 ms with `CGWindowListCopyWindowInfo` is cheap enough for every
+    move. The desktop answers as Finder's own window at a large negative layer.
+- **Finder takes a promised *folder*, asks for it at its final path, and then waits for it in
+  silence.** Measured 2026-11-08 (PLAN.md §M36 probe P1) with a throwaway drag source promising
+  `public.folder` into a Finder window, full-screen computer use doing the drags:
+  - **The URL is the drop folder's own path, and nothing is there yet** when
+    `writePromiseTo` is called, every time. On a name clash Finder asks for `Name 2` itself, so the
+    collision is never the source's to settle. A file's promise is the older code's worry
+    (`placePromisedFile` replaces a placeholder); a folder found at its URL later arrived while it was
+    coming down and is somebody else's.
+  - **The drag session ends at once, with operation 1, whatever the answer.** The session's `endedAt`
+    cannot tell a delivered folder from a refused one, so it is no signal of success.
+  - **Finder draws nothing while it waits**: no placeholder, no progress, nothing in the list until the
+    folder is there. It stays responsive (AppleEvents round-tripped in the usual ~140 ms) and took a
+    folder answered **100 s** after the drop, so there is no timeout to race at that scale.
+  - **An error answer shows nothing and leaves nothing.** Finder says nothing about it, so the source
+    has to.
+  - A folder staged in `$TMPDIR` and moved onto the URL just before answering is taken like one
+    written there.
+  - **A press on an inactive window only activated it.** The probe's view did not take the first
+    mouse, so the first drag of a run logged no `mouseDown` and no session; a click on the window
+    first fixed it. Read the source's own log before reading a missing drop as a refusal.
+- **Gmail in Chrome fails on a dropped folder, and a board rewritten back for Finder drops the folder
+  itself.** Seen 2026-11-08 by Oleg: a local folder dropped from Dirnex into a Gmail draft gave
+  "Attachment failed", because Chrome hands the page the folder as a file. So since then every app but
+  Finder is handed `<folder>.zip` (`DragOutZip`). The worry was Finder after a crossing, since a
+  rewritten board serves whoever reads it next. A throwaway drag source measured it: a plain folder
+  URL, rewritten to a lazy zip URL as the pointer entered another app (read 9 ms later) and back to
+  the plain folder URL as it entered Finder, dropped the **folder** into Finder with operation 1.
+  - **`bsdtar` zips a folder fast enough to sit inside the 3 s hold.** Measured the same day: 3 MB of
+    docs in 0.13 s, 551 files and 11 MB of source in 0.29 s, 200 MB of random bytes in 2.66 s.
+  - **And VLC takes the folder, so the zip is behind ⇧ since 2026-11-09.** Seen by Oleg: a season
+    dragged off the SMB share to VLC started compressing, a 141 GB folder read over the network for a
+    zip VLC had no use for. No app says which it wants, so the folder goes as itself and entering any
+    app with ⇧ held, Finder included, asks for the zip (`RemoteDragHandoff.Form`). The apps' own `Info.plist` was
+    looked at first and dropped: VLC, VS Code, Terminal, Preview, Notes, Mail and Claude declare a folder
+    type and Chrome, Teams and Safari do not, but Gmail and Google Drive are one app, and a list keyed
+    by app would still need adapting app by app.
+- **A drag tells its source nothing when only a modifier changes, so ⇧ has to be polled.** Measured
+  2026-11-09 with a throwaway drag source: two ⇧ presses with the pointer at rest brought no
+  `draggingSession(_:movedTo:)` call, the source's `sourceOperationMaskFor` was not asked again, and a
+  local `.flagsChanged` monitor that saw both presses outside a drag saw nothing during one. A 10 ms
+  `Timer` in `.common` read `NSEvent.modifierFlags` changing each time (`DragShiftWatch`). ⇧ is the
+  one modifier a drag leaves free: ⌥ copies, ⌘ moves, ⌃ makes an alias.
+  - **A ⇧ press makes an app already holding the drag read the board again, and the drop ignores
+    it.** With the pointer still over Teams, a board rewritten on the press was read 4 ms later, which
+    looked like the press working; the probe's drop that day was only taken after a re-entry. Oleg's
+    own drops, logged on 2026-11-09, settled it: six times ⇧ went down over Teams or Chrome, the board
+    became the zip and was read again within 30 ms, and the drop took the folder read on entry
+    (Teams attached the folder's files, Gmail failed on `drag (1K)`). With ⇧ held from before the
+    entry the same drop took the zip. So **Chromium drops what it read on entry**, and Dirnex counts
+    ⇧ only then; a change over the app says "Now move out and back in" (`DragShiftWatch`). A release
+    timing theory came first and was wrong: the log showed ⇧ still held at every one of those drops.
+  - **A board that began as plain URLs needs no handoff at all until ⇧.** A folder on this disk drags
+    out on its own URL, which VLC added to its playlist first time (operation 4), so nothing is
+    rewritten or made for it unless ⇧ asks for the zip.
+- **Mail takes a promised folder, and a lazy file URL naming one.** Measured 2026-11-08 (PLAN.md §M36
+  probe P2, Mail half) into a compose window: Dirnex's folder promise was fulfilled into Mail's
+  `~/Library/Containers/com.apple.mail/Data/tmp/WebKitDropDestination-*/`, and a throwaway source's
+  `NSPasteboardItem` whose `public.file-url` was lazy and named a folder in `$TMPDIR` was read 0.22 s
+  into the drag, as the pointer entered the draft, and attached as a folder.
+  - **A compose window's header strip takes a promise and refuses a file URL.** In a draft sized to
+    278 points there was no body to drop on, and four file-URL drops, a plain file among them, came
+    back operation 0 with the lazy URL never read, while a promise dropped on the same spot was taken.
+    Run a file control at the same point before reading a refusal as being about folders.
 - **LaunchServices is keyed by *type* and `NSSharingServicePicker` by *items*, so only one of the two
   hand-off gestures can show its list before the files exist.** Open With's list is
   `urlsForApplications(toOpen: UTType)` — already measured to answer identically to the per-URL
@@ -4058,6 +4362,59 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
     the app list depend on what some earlier preview happened to download. It also quietly retires
     an existing rule: a *local* file deleted between the listing and the right-click has no type and
     must go on offering nothing, where an extension guess would offer applications that then fail.
+- **Changing a type's default application puts a question of macOS's own on the user's screen, every
+  time.** Measured 2026-11-12 on macOS 26 from a shell probe: each of six
+  `NSWorkspace.setDefaultApplication(at:toOpen:)` calls raised `CoreServicesUIAgent`'s "Do you want
+  all documents with the extension “.m4v” to open with “VLC”, or to keep using “TV”?", for Apple's
+  apps and VLC alike and for an extension nothing declares. The completion arrives once it is
+  answered, and setting the default an application already has asks nothing (3 ms). That is why
+  Open With ▸ Always Open … With asks no question of its own (`PanelViewController+AlwaysOpenWith`).
+  - **The probe raised them on Oleg's screen, and its timings read as LaunchServices being slow.**
+    7.7 s and 9.8 s for a change were his reading and clicking, and a probe that flipped a default
+    and put it back cost him two dialogs. Five to ten of them arrived before anyone said so. The
+    window shows in `CGWindowListCopyWindowInfo` at layer 8, owned by `CoreServicesUIAgent`. Tell
+    him before a probe that changes a default.
+  - **The `async` spelling did not wait.** `try await setDefaultApplication(at:toOpen:)` compiled
+    with a warning that nothing in the `do` throws, returned at once, and the change landed when the
+    dialog was answered later. The callback overload inside `withCheckedContinuation` waits.
+  - **Keeping the old application is an error, and not a cancel by its outer code.** Keep “VLC”
+    answered `NSCocoaErrorDomain` 256, "The file couldn’t be opened.", with `NSOSStatusErrorDomain`
+    -128 (`userCanceledErr`) as its `NSUnderlyingErrorKey`, and the default unchanged. A check for
+    `NSUserCancelledError` alone missed it, and the first live run put that sentence up as an alert.
+    Look down the underlying chain (`PanelViewController.isDeclined`).
+  - **Computer use cannot answer the dialog.** `request_access` for `com.apple.coreservices.uiagent`
+    answers that no such application is installed, a full-screen screenshot leaves the window out, and
+    a click on it is refused as landing on an application not granted. Everything up to the dialog is
+    drivable (the right-click, the submenu, the choice); the answer is Oleg's click.
+  - **`NSWorkspace.icon(for:)` follows the default application, late, and registering it again
+    makes it follow at once.** `.m4v` drew CoreTypes' page with a video glyph and the word M4V while
+    TV was its default, since TV's claim names no icon, and VLC's cone once VLC was. After a change
+    the old icon stayed in every process for 13 s to 9½ minutes, each time catching up just after
+    some bundle was registered. `LSRegisterURL` on the new application (VLC) brought the cone to the
+    next fresh process and to the calling process at once. In the other direction it does nothing:
+    set to TV, `.m4v` kept VLC's cone for the 11 minutes TV stayed the default, with TV, VLC and
+    CoreTypes all registered again. `.mp4` set to QuickTime kept VLC's cone for the 35 s watched.
+    Dirnex shipped the re-registration for an evening and took it out (Oleg's call, 2026-11-12):
+    it fixed one direction only, and Finder's own change has the same lag.
+  - **An icon read once is kept by the process that read it.** Oleg relaunched Dirnex four minutes
+    after a change, before macOS had caught up, and the stale cone stayed for that whole session,
+    since `FileIconProvider` cached it per type. It now asks again after a change and whenever the
+    app comes to the front.
+  - **Finder and Quick Look's `.icon` do not follow the default application for `.m4v`.** They
+    agreed with each other in every check, and drew `.m4v` as the page with TV and with VLC alike,
+    at 00:27, 00:59 and 01:10, and for 15 minutes watched after VLC became the default, a brand-new
+    file included, so it is not a per-file cache. `.mp4` and `.mkv` drew VLC's cone there. So
+    "match Finder" was tried, and dropped the same evening (Oleg's call): `QLThumbnailGenerator`
+    with `.icon` on an empty sample file per type was pixel-identical to `NSWorkspace` on 36 of 38
+    types at the row's size, at 6 to 15 ms a request, but it would have kept a VLC `.m4v` drawn as
+    TV's page, which is the very thing the feature was asked for. Two details from that attempt, in
+    case it comes back. A type's sample file must type back as itself: `public.mpeg-4-audio`'s
+    preferred extension is `.mp4`, which types as a movie. And a picture scaled from another size
+    differs by a few levels per channel, so it has to be asked for at the size it is drawn.
+  - **Finder's own change does not redraw either, so this is macOS's to fix.** Oleg's check,
+    2026-11-12: Finder's Open With ▸ Other… with Always Open With ticked changed the default and
+    refreshed neither Finder's icon nor Dirnex's. Do not chase it further from Dirnex's side.
+  - `lsregister -dump` shows each claim's `iconFiles`.
 
 ### Delegates in Swift 6
 
@@ -4377,6 +4734,11 @@ and hands its English over as data. `LocalizedCatalog` is the join, `L10n` its o
   shell. Also: `NSButtonCell.titleRect(forBounds:)` is not a usable measure for a borderless button
   — it returns the bounds unchanged (no reserved padding) and returns **zero width** on an early
   layout pass.
+- **Two rows can line up in English by luck, and a test that measures them passes.** Seen 2026-11-10 on
+  Get Info's special bits, a row of their own under the mode grid: "Set-UID" and "Execute" are both
+  73 pt wide, so Set-GID stood exactly under Group, and a position check passed on the layout it was
+  written to reject. In Russian "Выполнение" is 103 pt and the same row is about 30 pt off by the
+  third column. Put the two in one stack and ask whether they share it, which holds in any language.
 - **A fixed-width label column clips a longer translation.** The pack sheet laid its `Name:` /
   `Format:` captions in a hardcoded 48 pt right-aligned column that the English fit and Russian
   «Формат:» did not — the "т:" was simply cut, invisible in an English screenshot and at build time.
@@ -5055,8 +5417,9 @@ do not share a resolver, and neither half of that is obvious from either call si
   simply lacked access went hunting for a typo (reported 2026-09-04). `SMBMountError` now names both
   readings and names the **account**, which is the half the reporter was missing.
   - **The picker flow cannot name the folder, and that is NetFS's doing rather than a shortcut.**
-    With the Share field blank, Dirnex lets NetFS's own UI through (`kNAUIOptionAllowUI` — macOS's
-    share picker is the only way to browse shares today), and a failed pick comes back as a status
+    *(Historical since M35, 2026-11-04: a blank Share field now lists the server itself and NetFS's UI
+    is never let through.)* With the Share field blank, Dirnex let NetFS's own UI through
+    (`kNAUIOptionAllowUI`, macOS's share picker), and a failed pick comes back as a status
     with **no share** in it: `mountpoints` is empty and the location still holds `share == nil`. So
     that sentence leaves the folder unnamed rather than naming it wrongly — and the user sees
     *two* dialogs, NetAuthAgent's generic "There was a problem connecting to the server" first and
@@ -5077,6 +5440,28 @@ do not share a resolver, and neither half of that is obvious from either call si
     it is `nil` and the first call traps. And `kNetFSGetAccessRightsKey` is **not honoured** by the
     SMB plugin — no `AccessRights` comes back for any share — so the rights cannot be read directly
     and the listing's own membership is the whole signal.
+  - **A listing runs as whoever the session is, and a session that failed to open still lists, as
+    somebody else.** Measured 2026-11-04 against the NAS, which has guest access off. A guest
+    `OpenSession` answered **-5999** (`ENETFSACCOUNTRESTRICTED`, although `GetServerInfo` had said
+    `SupportsGuest = 1`), and `EnumerateShares` on the same session then answered **0** with the
+    `home` share's comment reading *"Home directory of olegasd"*: an account nobody had named, most
+    likely one macOS had saved for that server. With no `OpenSession` at all it did the same. As
+    `dirnex-test` the session answered `MountedByUser = dirnex-test` and the comment named
+    `dirnex-test`. So `SMBShareEnumerator` throws on any `OpenSession` status but 0 and never asks
+    for the list after one. The guest refusal is the negative control: the shipped enumerator, run
+    from a scratch package, threw -5999 three times out of three where the probe had listed.
+  - **`CreateURL` builds the session URL from parts and escapes them.** `UserName` and `Password` in
+    the dictionary, with a password holding an `@`: the URL came back with `%40`, `CFURLCopyHostName`
+    read `nas`, and the password round-tripped. Check that with a dry run before the first login on
+    a lockout-prone account, since a mangled URL would spend an attempt. `AlternatePort` takes a
+    string (`"445"` listed the same three shares).
+  - **What a listing costs and carries.** One session each: about 2.3 s by the NetBIOS name `nas`
+    (`OpenSession` with its connect, then `EnumerateShares` at about 1 s), and over 8 s by
+    `nas.local`, which is the mDNS stall in *Resolving a host name* above. Each share is a dictionary
+    of `NetShareTypeStr` (`Disk`), `NetCommentStr` (an empty one is `""`), `AlreadyMounted` and
+    `HasPassword`. `IsHidden` and `PrinterShare` are in the header and did not appear, and no `IPC$`
+    came back. Release both references after a call, the instance's and the one `QueryInterface`
+    added (through the table's own `Release`): three sessions in one process ran clean.
   - **`smbutil` is not the way to do it in the product**, for the reason this file gives for
     `curl -u`: its only credential route is `//user:pass@host`, i.e. `argv`, readable by any `ps`.
     It is fine as a probe, where one more trap costs a wrong diagnosis: an **unescaped `@` in the
@@ -5608,6 +5993,12 @@ do not share a resolver, and neither half of that is obvious from either call si
     race the clock: `FileManager.setAttributes` on the server's own file for SFTP, `MFMT` through
     `applyMetadata` for FTP. Then neither a minute nor a second can tell them apart, and the run
     does not depend on where the minute boundary falls (`RemoteWriteBackContentLiveTests`).
+- **`sftp`'s `ls -ln` prints names on a current server, so no listing supplies a number.** Measured
+  2026-11-09 with OpenSSH 10.3 at both ends: `ls -ln` printed `oleg staff`, because the client asks the
+  server to resolve the ids through its `users-groups-by-id` request. With that one request withheld
+  (`sftp-server -P users-groups-by-id`, spelled as `-Q requests` lists it, and not with `@openssh.com`)
+  the same command printed `501 20`. `sftp`'s own `chown` and `chgrp` take only a number, so on an
+  SFTP-only connection there is nothing to send them (`SSHOwnershipCommand`).
 
 #### Writing a file: `put`, exclusive creates and offsets
 
@@ -5953,6 +6344,158 @@ works, which makes this whole family probeable on any Mac).
     no fixture has 50 000 rows. The cap had to become settable before the branch could be tested at
     all. Worth generalizing: a constant chosen to be *never hit in practice* makes its own rule
     untestable, so either the constant is injectable or the rule is unwatched.
+
+- **Owner and group go over the exec channel by name, and `--` goes before the owner operand.** Measured
+  2026-11-09 on a real `sshd` (macOS), GNU coreutils and busybox. `chown -h -- :admin '<path>'` changes
+  the group by the name a listing printed, and `-h` changes a symlink itself where `sftp`'s `chgrp`
+  changes its target. BSD's `chgrp -h admin -- path` took `--` for a file and exited 1, having already
+  changed the link. Each `chown` words a refusal differently (`illegal group name`, `invalid group:
+  ':x'`, `unknown group x`), so success is a token printed after it and the refusal's text is only shown.
+  - **Any group change clears set-uid and set-gid**, and the same group counts. `6755` became `755`
+    with exit 0 and nothing printed, on all three. A directory's set-gid was cleared on macOS and kept
+    on GNU and busybox. `chown` then `chmod 6755` kept both bits, and `chmod` then `chown` lost them. So
+    Save re-sends a set-id item's mode after the group, and the undo does too, since putting the group
+    back clears them again.
+  - **`id` is the one question worth asking.** `uid=501(oleg) gid=20(staff) groups=20(staff),12(…)` on
+    all three, one line, with the number alone for an id with no name. `getent` does not exist on
+    macOS. `LC_ALL=C` because GNU translates the labels.
+  - **`chflags uchg` on a fixture makes a real `chown` refuse, and everything sent beside it.** Seen
+    2026-11-10 in a live Get Info: `chown` printed `Operation not permitted` and the `chmod` re-sent
+    behind it was refused as well, while the mode read back exactly as asked. So beside a `chown` the
+    mode is judged by the read-back alone, or the alert reports a loss on a mode nobody touched
+    (`RemoteAttributeVerdict.weigh`).
+  - **A `ForceCommand` wrapper draws a root account on an ordinary `sshd`.** A script that answers
+    `*"LC_ALL=C id")` with `uid=0(root) gid=0(root) groups=0(root)` and `exec /bin/sh -c
+    "$SSH_ORIGINAL_COMMAND"` otherwise gives the panel its root layout, while every `chown` still runs
+    as the real account, so what is refused is really refused. The `sftp` subsystem goes through the
+    same wrapper and needs nothing more. It cannot show a change only root may make land.
+
+#### A session in the user's own terminal (M38's Open in Terminal)
+
+- **A terminal is handed a file, so nothing of Dirnex's reaches that `ssh` except what the file says.**
+  Every other `ssh` here is a child whose environment and stdin Dirnex sets. This one is the terminal's
+  child, so a password cannot ride either. `SSH_ASKPASS` names a helper that `cat`s a named pipe, and
+  Dirnex writes to the pipe. Measured 2026-11-10 against a real `sshd`: after a sign-in the script and the
+  pipe were gone, and a zero-size name was all the pipe had ever been on disk.
+- **A FIFO's wait can only be bounded with `O_NONBLOCK`.** A plain `open` for writing blocks until a reader
+  arrives, with no way to give up. `O_WRONLY | O_NONBLOCK` answers `ENXIO` until then, so it can be polled
+  against a deadline. A reader blocked in its own `open` counts as a reader. Remove the pipe whatever
+  happens, since a `cat` of a pipe nobody will write to waits forever.
+- **`F_SETNOSIGPIPE` on the descriptor, or a reader leaving between the open and the write ends the whole
+  app.** The negative control did exactly that to the test process, and it showed as a run with no failing
+  test named at all.
+- **iTerm asks "OK to run?" before it runs a file it is handed, but only when it is already running.**
+  Read from its `application:openFile:` on 2026-11-10, and measured 2026-11-11 with iTerm 3.7.7: an `open -a`
+  that started iTerm typed the `.command` into a login shell at once, and the next one, with iTerm up, raised
+  the question, with a box to suppress it for good. So the secret waits two minutes rather than a couple of
+  seconds. iTerm also ends the session when the script ends, which is why a status of 255, `ssh`'s own
+  failure, waits for a Return: otherwise the reason is on screen for a frame. Any other status came from the
+  session. A local `kill` of `ssh` is 255 too, so the script waits after one as well.
+  - **WezTerm 20240203 ran `wezterm start -- <script>` at once, every time**, a window of its own each, and
+    its `wezterm-gui` is the launching app's child, so it inherits that app's environment whole (▸
+    LIVE-VERIFICATION.md, the probe that hands a secret through a file).
+- **A key's wrong passphrase is asked three times, and the second ask finds the stage gone.** The output
+  reads `ssh_askpass: exec(…/askpass): No such file or directory`, then `Permission denied`. That is the
+  stage's one-shot rule working, not a bug. A password account sends `NumberOfPasswordPrompts=1`, so it
+  never gets a second ask.
+- **A Synology NAS refuses the check past the sign-in, and two refusals in a row do not mean a bug.** Seen
+  2026-11-10 on two password accounts: the exec channel answered `Permission denied, please try again.` with
+  status 1, where a wrong password is status 255 and `user@host: Permission denied (publickey,password).` The
+  status is what separates a server's rule from a failed sign-in.
+- **`;` and not `&&` after the `cd`**, so a folder deleted since the listing still gives a shell, under the
+  server's own error. `-l` because a command channel starts no login shell by itself. `$SHELL` is the
+  server's, since the whole remote command is single-quoted on this side.
+
+#### Space left: `df` and the `statvfs@openssh.com` extension
+
+Probed 2026-11-11 for a saved SFTP row's tooltip, the SFTP twin of M38 Slice 7's WebDAV quota. Four
+servers: the throwaway macOS `sshd` (OpenSSH 10.3, APFS), the same with the extension withheld, the same
+behind `ForceCommand internal-sftp`, and an Alpine container (OpenSSH 10.3p1) with a 64 MiB `tmpfs` on
+`/data` and a second account chrooted to it.
+
+- **The table is drawn by this Mac's `sftp`, so its format never varies with the server.** The server
+  sends the raw `statvfs` fields and the client prints them. Plain `df` prints a header line and one line
+  of four integers and a percentage, in **KiB** (`f_frsize × count / 1024`):
+  `Size` is `f_blocks`, `Used` is `f_blocks − f_bfree`, `Avail` is `f_bavail`, `(root)` is `f_bfree`.
+  The 64 MiB `tmpfs` read `65536 0 65536 65536 0%`, and a 10 MiB `put` then read `Used 10240`,
+  `Avail 55296`, with no delay: the answer is live, unlike Nextcloud's five-minute cache.
+  The fields are separated by at least one space at any width (`%12llu %12llu …`), so split on
+  whitespace. The password route's interactive transcript has the same lines, with `Connected to …` on
+  stderr.
+- **`Avail` is the number to show, and it is the filesystem's, not the account's.** On the container's
+  ext4-backed overlay, `Avail` was 13436008 and `(root)` 16577332: the 5 % reserve only root may write.
+  `Avail` matched GNU `df`'s Available to the KiB. On APFS the two are equal, and `Size` and `Avail`
+  matched the Mac's own `df -k`. A **chrooted** account's `df /` reads its chroot's filesystem (the
+  `tmpfs`, 65536). A per-user quota is not in `statvfs` on Linux, so a NAS account with one would see
+  the volume's space. That last part is from the API, not measured: linuxkit's kernel has no `tmpfs`
+  quota support (`mount -o usrquota` answers `Invalid argument`).
+- **`%Capacity` is not `df`'s `Use%`.** `sftp` computes `(blocks − bfree) / blocks`, which counts the
+  reserve as used: 72 % where GNU `df` said 77 %. A pseudo-filesystem answers all zeros and `ERR` in that
+  column (`df /proc`), so a zero `Size` means "nothing to say", not a full disk. Ignore the column.
+- **`df -h` is lossy and slightly broken.** `fmt_scaled` gives binary multiples with SI-looking suffixes
+  (`507GB` for 531619604 KiB), and an empty `Used` printed as `0BB`. Parse plain `df`.
+- **`df -i` says nothing useful.** On a macOS server the inode counts come through Darwin's 32-bit
+  `fsfilcnt_t` and wrap: the Data volume read 1025930412 inodes where the Mac's own `df -i` gives
+  5320893272, 2³² less. APFS allocates inodes dynamically anyway.
+- **A withheld extension is one stderr line, and a failed path is none.** `Server does not support
+  statvfs@openssh.com extension` ends in `\r\n`. Under `-b` it ends the batch with exit 1; with the `-`
+  prefix, or on the password route, the exit is 0. `df /nonexistent` printed **nothing at all**, on
+  either stream, and aborted a `-b` batch with exit 1. So the absence of the table is the only signal,
+  and a reader keys on the table, never on the exit status.
+- **`sftp-server -P` takes the short names from `sftp-server -Q requests`.** `-P statvfs,fstatvfs`
+  withdraws the extension: the server stops advertising it and the client refuses as above. `-P
+  statvfs@openssh.com` withdraws **nothing**, and `df` answers as usual. A probe spelled the second way
+  "shows" that withholding the extension changes nothing.
+- **`ForceCommand internal-sftp` keeps it.** It is the same `sftp-server` code, in-process, so an
+  account confined to the subsystem, with no exec channel for the search shortcut, still answers `df`.
+- **`df` with no path asks the login directory** (`pwd` read `/Users/oleg` and `/root`, and `/probe` for
+  the chrooted account). That is where a saved SFTP row opens, since its endpoint has no root of its
+  own, so the app asks with no path (`SFTPBatchCommand.diskFree`). A folder on another volume, a NAS
+  share say, would answer differently, which is why the tooltip belongs to the row and not the pane.
+- **On a Synology NAS the login directory is the wrong place to ask.** Measured 2026-11-11 on DSM's
+  SFTP as `dirnex-test`: `pwd` is `/`, a chroot whose listing is the shares (`home`, `media`, `share`),
+  and `df /` answered `8028096 1360328 6507560 6667768 16%`. That is an 8 GB ext4 filesystem with its
+  reserve, which looks like DSM's system partition. Each share answered the data volume instead,
+  `14989737984 4144995788 10844742196 10844742196 27%`, about 11 of 15 TB free. So asking the login
+  directory alone, the row would read "6,66 GB available of 8,22 GB" for a 15 TB NAS. A root that only
+  holds mount points is not a filesystem anyone writes to, and `df` cannot tell it from one that is.
+  - **So the first session also lists, and a login directory holding nothing but folders gets a
+    second** (`SFTPDiskFree`, Oleg's call). One folder on the login directory's own filesystem keeps
+    its answer; otherwise the folders' shared filesystem is the answer, and none when they are spread
+    over several volumes. `sftp` does not print the `f_fsid` the extension sends, so two answers are
+    one filesystem when their totals match and their space left is within 1 %. DSM lists its root
+    with no `.` and `..` and with real link counts, and the reader takes both.
+  - **A DSM-shaped root can be stood up in a throwaway container.** Alpine, `--privileged`, two
+    `tmpfs` volumes, and chroots whose only entries are `mount --bind`s of folders on them, behind
+    `ForceCommand internal-sftp -d /`. One with both folders on one volume and one spread over two
+    gave the two branches real transcripts, and the live rows read "50,3 MB available of 50,3 MB"
+    (the 48 MiB volume, not the 62.7 GB overlay the root sits on) and the address alone.
+  - **On the NAS itself** the saved "SFTP DT" row in Oleg's Debug build then read "11,11 TB available
+    of 15,35 TB", the data volume, from the listing of a tab restored onto the account. The 1 GB quota
+    on it still does not show.
+- **A capture of the login directory on the throwaway macOS `sshd` lists your own home.** It logs in as
+  you, so `ls -la` printed every dotfile, and two Google Drive folders named after email addresses,
+  into what was about to be a checked-in fixture. Pin the server's start folder to a scratch folder
+  of known content instead: `Subsystem sftp internal-sftp -d <folder>`.
+- **DSM's user quota is not in `statvfs` either, measured.** With Oleg's 1 GB user quota on `homes` for
+  `dirnex-test` (3.97 MB used, btrfs), `df "/home"` still answered the whole volume, 10844742188 KiB
+  available, the same as `/share`, which has no quota. So over SFTP an account under a quota is told it
+  has terabytes. Nothing in OpenSSH's protocol asks for a quota, and these accounts have no exec channel.
+- **OpenSSH 10 prints three lines of warning before `Connected to` on a server without a post-quantum key
+  exchange.** `** WARNING: connection is not using a post-quantum key exchange algorithm.`, then two
+  lines about "store now, decrypt later" and `https://openssh.com/pq.html`, each ending `\r\n`, on stderr,
+  on every session to the NAS. None of them matches `SFTPTransportError.detect`, and a reader that keys on
+  its own table or echo is unaffected; one that took the transcript's first line as the answer would not
+  be.
+- **Read the transcript with both streams folded** (`run(transcript:)`), as the batched listing does: the
+  table is on stdout and the refusal sentence on stderr, and only together do they tell "cannot say" from
+  "no answer" (a refused login, a closed port), which the sidebar treats differently.
+- **To see each `df` arrive, give the server `internal-sftp -l INFO`.** Its requests go to syslog, not
+  to `sshd -E`'s file, and on macOS `log show --predicate 'process == "sshd-session"'` lists
+  `opendir "…"` and `statvfs "…"` with their times. A refused `df` sends nothing, so a server without the
+  extension shows the attempt only as a session with no request in it. A chrooted account logs nothing
+  at all: its chroot has no `/dev/log`. **Read them within a few minutes**: Info lines are kept in memory
+  only, and a query at 01:49 for lines since 01:42 started at 01:46.
 
 ### curl (FTP and FTPS)
 
@@ -7162,6 +7705,18 @@ what made the milestone affordable and the rest inverted rules borrowed from the
 
 #### Endpoints that are not AWS
 
+- **MinIO publishes no free image any more, and SeaweedFS's S3 gateway stands in for a local endpoint that
+  checks signatures.** Seen 2026-11-11: `docker pull minio/minio` answered that the repository does not
+  exist, and `quay.io/minio/minio` asked for a login. `chrislusf/seaweedfs` run as `server -s3
+  -s3.config=<file>`, with one identity in the file, refused a wrong secret with `SignatureDoesNotMatch`,
+  listed V2 in pages of 1000, path-style, and took `curl --aws-sigv4` as it is. Two things to know:
+  - **Each bucket is a collection with volumes of its own**, and the default eight volume slots ran out at
+    the fourth bucket, as a 500 `InternalError` on a PUT, "No writable volumes". `-volume.max=300
+    -master.volumeSizeLimitMB=16 -master.volumePreallocate=false` held 26 buckets.
+  - **A bucket of 10,000 objects is seeded from inside in seconds**: write the files into the container, then
+    `weed filer.copy -collection=<bucket> <dir> http://localhost:8888/buckets/<bucket>/`, which lands the
+    folder as a prefix. One signed PUT each would take minutes. It has one region, so no 301 can be had.
+
 - **Three more things a real S3-compatible endpoint does that AWS does not**, all measured on the
   same account, and each of them retires a probe you would otherwise write against AWS and believe:
   - **The region is fiction and is not validated.** `us-east-1`, `lax`, `default` and `us-west-1`
@@ -7373,6 +7928,90 @@ whoever drives `curl` over HTTP next. Most of them apply to the S3 backend as mu
     folder, since a PUT creates what it names (`WebDAVServiceError`).
   - **`creationdate` is `1970-01-01T00:00:00+00:00` on every row** a client uploaded. Read as a date,
     Get Info would show each file as made in 1970, so the epoch reads as no date.
+  - **The quota (RFC 4331) is answered on every folder as the account's, and held for five
+    minutes.** Measured 2026-11-10 on 34.0.5 (PLAN.md §M38 Slice 7): `quota-available-bytes` in a
+    subfolder equals the account root's, while `quota-used-bytes` is the folder's own size (3 000 000
+    in `sub` beside 6 000 000 at the root), so used plus available is the quota only at the account
+    root. An account with no quota answers **`-3`**, sabre's "unlimited", and one at or past its quota
+    `0`, never a negative (6 MB stored under 5 MB); a PUT there answers 507. A file answers both as
+    empty elements in a 200 `propstat`. The answer is cached in APCu for five minutes: a changed quota
+    and two uploads read exactly as before until then, at the root and in `sub` alike. `docker
+    restart` clears it, which is how the fixtures were captured. "100 MB" in `occ user:setting … quota`
+    is 104 857 600 bytes.
+  - **A new account's very first request answers 500**, `Call to a member function getMetadata() on
+    null`, a quota request as much as any other, and the next one is fine. The live script's lone
+    first request (`scripts/live_test_servers.sh`) is what absorbs it.
+- **Apache's `mod_dav` has no quota at all.** Asked for `quota-available-bytes`, macOS's 2.4.67 and the
+  Kerberos stand-in's Debian 2.4.68 both answered it 404 inside their 207, as the NAS did in M32, and
+  neither `mod_dav.so` nor `mod_dav_fs.so` contains the property's name (2026-11-10).
+- **Finder's own WebDAV client never asks for a quota.** A Nextcloud folder mounted with `mount_webdav`
+  (WebDAVFS/3.0.0 on this macOS) sent sixteen PROPFINDs naming the same five properties and none of
+  them a quota, and `df` read the volume as 0 bytes of 0, though the server answers a number when
+  asked. So there is no precedent on the Mac for showing one. Two ways in that worked, both 2026-11-10:
+  `mount_webdav -i -S <url> <folder>` under `script -q /dev/null` with the user name and password fed
+  to its stdin a second apart mounts without a dialog or the Keychain (`umount` the folder after), and
+  a forty-line Python proxy in front of the server logs every request body, which Apache's and
+  Nextcloud's access logs never show.
+- **`curl --ntlm` signs the connection in, once, and a batch's later sections ride it.** Measured
+  2026-11-10 with `curl` 8.7.1 against `Tooling/fake-ntlm-proxy.py`, which verifies the NTLMv2 proof as
+  a domain controller does (PLAN.md §M38): each `curl` sends its Type 1 straight away, with no bare
+  request first, so a request costs two lines in the server's log. Every later section of a `next`
+  batch went out on the same connection with **no** `Authorization` header, and when the server closed
+  the connection after three requests, `curl` signed the next one in by itself. `--fail` (and a first
+  section's `fail`) is not tripped by the Type 2 challenge, only by the answer to the proof, so a wrong
+  password is one failed login per connection and the batch guard still holds. `-Z` sections are
+  separate connections, each with its own handshake.
+  - **The body goes once, as Digest's does.** The Type 1 request carries `Content-Length: 0` whatever
+    the method, and the body follows the proof. A 5 MB PUT with a wrong password sent none of it: the
+    proof's request asked `Expect: 100-continue`, and the refusal came first.
+  - **`DOMAIN\user` sends the domain, and `user@domain` sends a user principal name with none.** `curl`
+    splits at the first backslash. In a `-K -` config the backslash is doubled inside the quotes, which
+    `FTPConfigFile.quote` does; a shell `printf '%s'` that doubles it again sends `\user`.
+  - **The stand-in reads the whole body before asking Apache**, so a 412 there arrives after a large
+    body, where Apache alone refuses before it. Nothing in the live suite counts uploaded bytes on a
+    refusal, so it measures nothing it is not built for.
+- **`curl --negotiate -u :` sends its token on the first request, and on every one.** Measured the same
+  day against MIT Kerberos and Debian's Apache with `mod_auth_gssapi` in `Tooling/negotiate-standin`:
+  one line per request, each carrying a fresh ~1.4 KB token, in a batch too, and no 401 at all, so
+  Negotiate costs one round trip where NTLM costs two. `GssapiConnectionBound On` changed nothing on the
+  wire: `curl` still sent a token per request. A 5 MB PUT logged once, body and all.
+  - **`-u :` is the switch, and the password is never read.** The ticket comes from the credential
+    cache (`KRB5CCNAME`, and `KRB5_CONFIG` for the realm). A ticket for another principal of the realm
+    signed in as that principal, so the account Negotiate signs in as is whoever holds the Mac's
+    ticket, which is why Dirnex uses it only for an account with no name.
+  - **With no ticket, macOS's SPNEGO offers an NTLM token instead.** The request carried `Negotiate
+    YEgGBisGAQUFAqA+…`, an NTLM Type 1 inside SPNEGO, which a Kerberos-only server answered with the
+    reject `Negotiate oQcwBaADCgEC`; `curl` logged `gss_init_sec_context() failed` and exited 0 with the
+    401. One anonymous request, no failed login.
+  - **The host has to be the name the server's key was made for.** With a valid ticket, `localhost`
+    signed in and `127.0.0.1` was refused, since the service principal is `HTTP/localhost`. A server
+    reached by its IP address, or by the `.local` name `HostNameFallback` adds, needs a key under that
+    name, which no administrator makes.
+- **A stock Debian or Ubuntu Apache answers 301 to a folder named without its slash, for any method.**
+  Seen 2026-11-10 when the Kerberos stand-in joined the live suite: `mod_dir`'s `DirectorySlash` is on
+  by default there, so a DELETE, MOVE or PUT of `/folder` was redirected to `/folder/`, and three tests
+  failed: two as an I/O error, and one where a PUT onto a folder was not read as a taken name. Finder's
+  user agent is spared, since Debian marks `WebDAVFS/1.0` "redirect-carefully" (a DELETE with that
+  agent answered 204). macOS's Apache in `scripts/live_test_servers.sh` loads no `mod_dir`, and M32
+  moved and deleted folders on the NAS without a redirect, which is why it was never seen.
+  - **PROPFIND is redirected too, so a `stat` of any folder failed there**, not only the three writes:
+    `Depth: 0` of `/folder` answered 301 with `Location: …/folder/`. The live suite missed it because
+    every listing names its folder with the slash already. Probed on Apache 2.4.68 with a script that
+    sends each verb both ways, the same day.
+  - **A `Destination` naming an existing folder bare is redirected with no `Location` at all.** A MOVE
+    or COPY of a file onto `/folder` answered 301 and nothing else: `mod_dav` looks the destination up
+    as a request of its own, and that lookup's redirect is what comes back. Named `/folder/`, the same
+    request answered 412, as macOS's Apache answers it bare. A folder moved onto a folder took three
+    answers: the source's redirect, the destination's, then the 412.
+  - **The slash cannot be added on a guess**, since a file named with one answered 400 to DELETE, MOVE
+    and PROPFIND alike. So every request still starts bare, and `WebDAVFolderRedirect` sends it once
+    more naming the end the redirect was about: a `Location` equal to the URL plus `/` is the source,
+    and none at all is the destination. Each end is named with its slash at most once. A PUT is never
+    sent again: a redirect there says a folder holds the name, which is "already exists". A folder on
+    such a server costs one request more per DELETE, MOVE or `stat`; a file, and every other server,
+    costs what it did.
+  - **A slash on a new destination is harmless.** MOVE of a file to `new.txt/` answered 201, and the
+    file landed as `new.txt`.
 
 ### The Trash
 
@@ -8260,6 +8899,11 @@ during the session. This is the ground the Photos backend stands on (PLAN.md §M
   - At the public rate a 30 000-asset flat listing is about 35 s of names, while a year/month
     structure keeps each directory to the hundreds. Whether the per-call cost *grows* with library
     size is **unmeasured** — 25 assets cannot say.
+  - **No fetch can filter by name, and asking one kills the process.** Measured 2026-11-09: a
+    `filename CONTAINS[c]` predicate raised `NSInvalidArgumentException` ("Unsupported predicate in
+    fetch options"). So the walk's names cannot be pushed into a fetch. With 33 assets over 12 months
+    one fetch per month cost 14 ms in all and one fetch for every date 3.9 ms, about 1 ms saved a month
+    against 2.0 ms a name, so a single date fetch would not change what a search costs (PLAN.md §M38).
 
 - **Exporting an original is an APFS clone, and it refuses an existing destination.**
   `PHAssetResourceManager.writeData(for:toFile:options:)` wrote the 2.66 GB video in **0.70 ms**, and
@@ -8535,6 +9179,21 @@ against a second APFS volume from `hdiutil`.
     `NSUserCancelledError` (3072) and never ran the accessor. The writer gives up after 10 s.
   - **Coordination matches across `/var` and `/private/var`.** A presenter registered at the
     `/var/folders/…` path heard a write coordinated on the `realpath` under `/private/var`.
+- **One gesture that writes two files has to ask the undo store twice.** `ArchiveUndoBudget.plan`
+  evicts any snapshot the journal does not name, so a second capture given the `live` list taken
+  before the first would remove the first file's copy, and its ⌘Z would then have nothing to restore
+  (PLAN.md §M37 Slice 8). Journal the first save, then ask for `live` again.
+- **A clone keeps a locked file's flag, and then nothing can remove it.** Probed 2026-11-09 with
+  `clonefile` on one fixture per case. A file with `uchg` (Finder's Locked box) gave a clone with
+  `uchg`, and `rm` answered "Operation not permitted", so a store that takes such a clone can never
+  evict it. Mode 0444 came across and removed fine, a `deny delete` ACL did not come across, a
+  quarantine attribute did, and mode 000 refused with `EACCES`. `SyncRecordStore` clears the flags and
+  sets 0600 on every kept clone. Neither call breaks the sharing of blocks, since only metadata moves.
+- **Spotlight indexes a copy under Application Support unless a folder above it ends in `.noindex`.**
+  Probed 2026-11-09 with a token in each of three files, each passed to `mdimport`. `notes.txt` and a
+  file named only with a UUID were both found within two seconds, the second despite its `public.data`
+  type. `store.noindex/notes.txt` was not found at all. A store of the user's old text wants that
+  suffix, or the old words go on turning up in Find Files and Recents after the file has lost them.
 
 ### shasum, md5sum and the checksum-file formats
 
@@ -9435,6 +10094,15 @@ ships a third-party binary. All measured 2026-09-20 against two HERO7 files befo
   byte in `--diff3` and `--zdiff3` alike (M34 Slice 1). `--no-indent-heuristic` does take effect
   with `--no-index`; check it on a case where the lowest slot is not the readable one, since most
   blocks have only one candidate either way.
+- **`git merge-file` takes no whitespace option; ask `merge-tree -X` instead.** Its `-h` (git 2.54)
+  lists the styles, `--ours`/`--theirs`/`--union`, the algorithm and the marker size, and nothing
+  like `-Xignore-space-change`. What a merge under `-Xignore-space-change` or `-Xignore-all-space`
+  writes comes from `git merge-tree --write-tree -X<option> yours theirs` over two branches of a
+  scratch repository, then `git cat-file -p <tree>:<file>`; it needs no worktree checkout of the
+  result. Both options settled a re-indent, a stripped trailing space and a CRLF conversion against
+  an edit by taking the edit and dropping the whitespace, without a conflict (M37 Slice 5,
+  `ConflictWhitespaceGitTests`). `merge-file --marker-size=40` makes markers no `=======` line of a
+  Markdown document can pass for, when a test reads conflicts back out of git's output.
 - **`--zdiff3` can print a conflict with nothing on either side.** When both sides end up with the
   same lines in a conflict, say each deleted a different one of two equal lines, the trimming takes
   every line and git still writes the markers around the base. Seen in 5 of 9 114 history triples.
@@ -9468,6 +10136,23 @@ ships a third-party binary. All measured 2026-09-20 against two HERO7 files befo
     stage 2 is the branch being rebased onto and stage 3 the commit being replayed.
   - **`ls-files`, `cat-file` and `rev-parse` write nothing with or without `--no-optional-locks`**,
     since none refreshes the index. Removing the flag failed only the test that pins the argv.
+- **`git mergetool` runs its tool with git's own environment.** Probed 2026-11-09 on git 2.54:
+  `GIT_EXEC_PATH`, `GIT_EDITOR=true`, `GIT_PREFIX`, `GIT_INTERNAL_GETTEXT_SH_SCHEME`, and `GIT_DIR` when
+  the user set it, plus git-core at the front of `PATH`. `open` passes all of it to an app it starts,
+  so a long-lived app launched from a tool keeps pointing its own `git` and terminal drawer at that one
+  run. `GitMergeClient.launchEnvironment` hands `open` a Dock launch's environment instead. Read a
+  child's environment with `ps eww`, and pick the app by its command line: the tool itself is the
+  other process named `Dirnex`.
+- **`mergetool.<tool>.cmd` goes through `eval`.** Single-quote the program's path and leave `"$LOCAL"`
+  and friends for that shell. A path holding a space, a quote and a dollar sign ran through a real
+  `git mergetool` this way, and `git config` stores the backslashes and quotes itself.
+- **After a failed merge `git mergetool` asks "Continue merging other unresolved paths [y/n]?" on
+  stdin**, so a probe or a test with more than one conflicted file sits there forever unless stdin is
+  closed, even with `--no-prompt`. Seen 2026-11-09 as a shell that never came back. It is `git
+  mergetool`'s failure line that names the file, on standard error.
+- **`git config`'s statuses** (git 2.54): `--get` of an unset key is 1 and prints nothing; `--unset` of
+  one is 5; `--remove-section` of a missing section is 128; `--type=bool --get` of a value that is
+  not one is 128. So "unset" and "broken" need telling apart by status.
 
 ## Release pipeline
 
@@ -10024,6 +10709,17 @@ overturned the obvious implementation.
     JSON blob, so one element that refuses to decode takes **every tab beside it** — the day a new
     protocol ships, a build that has it and a build that has not would empty each other's sessions.
     `StoredServerEndpoint` decodes to `nil` rather than throwing.
+  - **Where an older build's housekeeping removes what it cannot name, a new kind of record has to
+    read as one of its own.** M38 Slice 8 gave the sync's record a server side. Its folder is named
+    for a hash of the pair's two strings, and every launch purges a folder whose record decodes to
+    another name (`SyncRecordStore.purge`). A `server` field of its own would decode in an M37 build,
+    which ignores unknown keys, to a pair whose hash names some other folder, so the release in
+    `/Applications` would have removed every server record at each launch. Spelling the server into
+    `second` (its account's id and its path, joined by a NUL no path holds) keeps the hash the same
+    function of the same strings, so that build finds the folder named for its record and leaves it.
+    A test decodes the record through M37's own shapes and hashes it by M37's formula. What the older
+    build loses is only a field it rewrites: its budget pass drops a version's server stamp, and that
+    version then reads as none.
   - **Refuse what cannot come back on the way *down*, where the fact is still known.** A tab inside a
     **nested** archive is mounted from a temp extraction of a member of the enclosing one, and the
     registry that knows where it came from is session-scoped — so at restore time the only evidence
@@ -10111,6 +10807,25 @@ overturned the obvious implementation.
   would have passed live and stayed wrong for any path that registers without an event. Group
   explicitly (`groupsByEvent = false`, a `beginUndoGrouping` around each registration outside an
   undo or a redo, which the manager groups itself).
+- **The inverse of a sequence of steps runs them backwards, and a journal that runs them forwards
+  only shows it once one step's path depends on another's.** Found 2026-11-05 fixing ⇧F2 over a tree
+  selection holding a folder and a file inside it. Renaming them deepest first is the one order that
+  works, so the undo record holds the file's rename and then the folder's, each with the paths that
+  were true when it ran. `UndoJournal.revert` applies steps in order and `UndoRecord.inverted` (what
+  redo runs) kept their order, so undo looked for the file in a folder not yet renamed back, and redo
+  renamed the folder before the file. Every other multi-step record had been order-independent
+  (top-level moves and copies, one path's attributes), which is why forward order had held since M2.
+  The batch record now lists its steps last rename first, and `inverted` reverses its steps, which
+  for those other records changes nothing. `MultiRenameOrderTests` runs rename, undo, redo and undo
+  again on disk, and each of the two halves alone fails it.
+- **A whole-object undo says nothing about what changed inside the object, so whatever has to
+  follow the change must be told in the record.** Found 2026-11-05 on archive renames: the undo is a
+  swap of two containers (`.restoreArchive`), which is exact and needs no diff, and so it gave a
+  results tab nothing to follow. The panes that browse the archive re-list, but a snapshot cannot.
+  The step now carries the member renames as an optional rider that plays no part in the swap: its
+  inverse reverses and flips them, a failed swap reports none, and a journal from before it decodes
+  with `nil`. The same holds for any operation that goes through a container swap: what the swap
+  changed has to be journaled beside it, because it cannot be read off the swap afterwards.
 
 ### Transfers and batches
 
@@ -10532,11 +11247,31 @@ overturned the obvious implementation.
     it rather than degraded into. Two tests, and both halves are needed — the shipped transport says
     `true`, and a minimal conformer says `false`, or the first is reading a constant nobody
     consults.
+  - **The fourth time, the default was "no feature at all", and the app's own transport took it.**
+    M38 Slice 7 gave `WebDAVTransport` a quota request, `propfindQuota`, with S3's default: forward to
+    the plain stat. That request names no quota, so its answer carries none, and the backend reads that
+    as a server that reports none. Never wrong, as the rule asks, and also never right: the app's own
+    `WebDAVCurlTransport` was written without the verb, every core and app test passed over fakes that
+    had it, and the first live run answered `nil` on Nextcloud. A logging proxy in front of the server
+    showed every root PROPFIND carrying the listing's body. A default earns its place when it gets the
+    **same result** more slowly, as a one-stream download does; when the only default available gets
+    no result, there should be none, so the compiler names every conformer that lacks the verb. The
+    requirement now has none. What caught it was a live claim set on the endpoint in advance
+    (`quotaBytes`), the same lesson as the tally's: the test needs an answer the default cannot give.
 - **To browse a second VFS backend without touching every `self.backend` site**, wrap them in a
   `CompositeBackend` that dispatches on `path.backend`. A per-tab backend field is a much larger
   refactor.
 
 ### Gestures, confirmations and preconditions
+
+- **A save may count as done before it carries the file on only where something else will carry it
+  later.** The merge window marked its result saved, then handed it to an upload, on M34's reasoning: the
+  file it carries is an editor's watched copy, whose next save is carried as F4's is. M38 Slice 9 reused the
+  window for a Synchronize row, whose server copy nothing watches, and the live run found the gap at once.
+  Somebody else wrote the server's file, the user answered the upload's question with Keep Editing, and the
+  window then disabled Save with the merge on this disk alone and no way to send it. The fix made the carry
+  answer whether it landed, so the window keeps Save until it has. The question to ask of a reused
+  "counts as done" is who carries the bytes when the user says not now.
 
 - **A confirmation raised by a *watcher* over a gesture the user already made is a confirmation of an
   intent already stated — and the test of whether it earns its modal is not "is this irreversible" but

@@ -35,10 +35,14 @@ public extension WebDAVBackend {
     /// missing parent folder to RFC 4918, and a folder already at this name to Apache ("Cannot PUT
     /// to a collection", measured 2026-10-23). The second is `alreadyExists`, and only the server
     /// can say which it was.
+    ///
+    /// A Debian Apache answers the PUT onto a folder with a redirect to the folder's spelling
+    /// instead, which says the same thing without the `stat` (``WebDAVFolderRedirect``).
     func createFile(at path: VFSPath) throws {
         try requireOwnBackend(path)
         guard !path.isRoot else { throw VFSError.alreadyExists(path) }
         let response = try mapping(path) { try transport.putEmpty(path.path, condition: .ifAbsent) }
+        if asksForCollection(response, at: path) { throw VFSError.alreadyExists(path) }
         guard let refusal = Self.refusal(response, method: .put) else { return }
         if refusal.refusal(for: .ifAbsent) == .alreadyThere { throw VFSError.alreadyExists(path) }
         if refusal.status == 409, (try? stat(at: path)) != nil { throw VFSError.alreadyExists(path) }
@@ -68,13 +72,18 @@ public extension WebDAVBackend {
     /// read as an I/O error. So a 500 is followed by one stat of that folder, and only the server
     /// saying it is gone turns it into `notFound`. That is the answer Put Back waits for before it
     /// rebuilds a folder deleted since the item went into a share's `#recycle`.
+    ///
+    /// A Debian Apache redirects a folder named without its slash, at either end, and the MOVE is
+    /// sent again naming that end with it (``WebDAVFolderRedirect``).
     func moveItem(at source: VFSPath, to destination: VFSPath) throws {
         try requireOwnBackend(source)
         guard destination.backend == id else { throw VFSError.io(path: source, code: EXDEV) }
         guard !source.isRoot, !destination.isRoot else {
             throw VFSError.unsupported(.deleteConnectionRoot)
         }
-        let response = try mapping(source) { try transport.move(source.path, to: destination.path) }
+        let response = try transferNamingFolders(source, to: destination) { collections in
+            try transport.move(source.path, to: destination.path, collections: collections)
+        }
         guard let refusal = Self.refusal(response, method: .move) else { return }
         if refusal.status == 500, let folder = destination.parent, isGone(folder) {
             throw VFSError.notFound(folder)
@@ -86,11 +95,17 @@ public extension WebDAVBackend {
     /// Trash. (The NAS keeps one of its own: a delete there lands in the share's `#recycle`.)
     ///
     /// The **body** is read, since a folder holding a locked file answers 424 and names it, and
-    /// nothing was deleted (measured on the NAS).
+    /// nothing was deleted (measured on the NAS). A folder a Debian Apache redirects to its slash is
+    /// deleted by the second request (``WebDAVFolderRedirect``).
     func removeItem(at path: VFSPath) throws {
         try requireOwnBackend(path)
         guard !path.isRoot else { throw VFSError.unsupported(.deleteConnectionRoot) }
-        try write(path, method: .delete) { try transport.delete(path.path) }
+        let response = try namingFolderIfAsked(path) { isCollection in
+            try transport.delete(path.path, isCollection: isCollection)
+        }
+        if let refusal = Self.refusal(response, method: .delete) {
+            throw refusal.vfsError(for: path)
+        }
     }
 
     // MARK: - The save-back
@@ -125,6 +140,9 @@ public extension WebDAVBackend {
             progress: progress,
             isCancelled: isCancelled
         )
+        if asksForCollection(response, at: destination) {
+            throw folderInTheWay(of: destination, condition: condition)
+        }
         if let refusal = Self.refusal(response, method: .put) {
             throw conditionalError(refusal, condition: condition, at: destination)
         }
@@ -201,10 +219,21 @@ extension WebDAVBackend {
             progress: progress,
             isCancelled: isCancelled
         )
+        if asksForCollection(response, at: destination) {
+            throw folderInTheWay(of: destination, condition: .unconditional)
+        }
         if let refusal = Self.refusal(response, method: .put) {
             throw refusal.vfsError(for: destination)
         }
         if !WebDAVModificationTime.wasKept(by: response) { recordDateNotKept(metadata) }
+    }
+
+    /// What a PUT that met a folder at its name is (``WebDAVFolderRedirect``): the name is taken,
+    /// and for a save-back the file it was guarding has been replaced, which is the sentence a
+    /// changed file gets.
+    func folderInTheWay(of path: VFSPath, condition: S3WriteCondition) -> VFSError {
+        guard case .ifMatches = condition else { return .alreadyExists(path) }
+        return .unsupported(.remoteFileChangedSinceFetch(name: path.lastComponent))
     }
 
     /// Count `source`'s date as not kept, when it had one.
@@ -262,7 +291,9 @@ extension WebDAVBackend {
     /// not worth a `stat` per copied file to tell.
     func duplicate(_ source: VFSPath, to destination: VFSPath, hint: CopySourceHint) throws -> Int64 {
         guard !serverSideCopy.isRefused else { throw VFSError.unsupported(.remoteToRemoteCopy) }
-        let response = try mapping(source) { try transport.copy(source.path, to: destination.path) }
+        let response = try transferNamingFolders(source, to: destination) { collections in
+            try transport.copy(source.path, to: destination.path, collections: collections)
+        }
         if let refusal = Self.refusal(response, method: .copy) {
             if refusal.status == 501 || refusal.status == 405 {
                 serverSideCopy.recordUnsupported()

@@ -38,22 +38,25 @@ struct GitMergeOracle {
     }
 
     /// git's merge of `yours` and `theirs` against `base`, as the bytes it prints.
-    /// With `favor`, every conflict is settled that way and nothing is marked.
+    /// With `favor`, every conflict is settled that way and nothing is marked. `markerSize` makes
+    /// the markers longer than git's seven, so no line of a document can pass for one.
     func merged(
         base: String,
         yours: String,
         theirs: String,
         style: Style,
-        favor: Favor? = nil
+        favor: Favor? = nil,
+        markerSize: Int? = nil
     ) throws -> [UInt8] {
         let (status, output) = try git([
             "merge-file", "-p", "--\(style.rawValue)", "--diff-algorithm=minimal"
-        ] + (favor.map { ["--\($0.rawValue)"] } ?? []) + [
-            "-L", "O", "-L", "B", "-L", "T",
-            tree.writeFile("yours", contents: yours),
-            tree.writeFile("base", contents: base),
-            tree.writeFile("theirs", contents: theirs)
-        ])
+        ] + (favor.map { ["--\($0.rawValue)"] } ?? [])
+            + (markerSize.map { ["--marker-size=\($0)"] } ?? []) + [
+                "-L", "O", "-L", "B", "-L", "T",
+                tree.writeFile("yours", contents: yours),
+                tree.writeFile("base", contents: base),
+                tree.writeFile("theirs", contents: theirs)
+            ])
         // The status is the number of conflicts, capped at 127; a failure is negative, so 255.
         try #require(status < 128, "git merge-file exited \(status)")
         return output
@@ -138,10 +141,25 @@ struct GitMergeOracle {
         return parts.count > 1 && parts[1] == "0" ? start : start - 1
     }
 
+    /// Whether `git diff -w` finds nothing between two runs of lines: the same lines but for
+    /// whitespace, line endings included (PLAN.md §M37 Slice 5).
+    func sameButForWhitespace(_ lines: [UInt8], _ others: [UInt8]) throws -> Bool {
+        let left = tree.path("whitespace-left")
+        let right = tree.path("whitespace-right")
+        try Data(lines).write(to: URL(fileURLWithPath: left))
+        try Data(others).write(to: URL(fileURLWithPath: right))
+        let (status, _) = try git([
+            "diff", "--no-index", "--no-renames", "--no-textconv", "--no-ext-diff", "-w", "--quiet",
+            "--", left, right
+        ])
+        try #require(status <= 1, "git diff exited \(status)")
+        return status == 0
+    }
+
     /// Run git with its output going to a file in the tree rather than a pipe. Many oracles run at
     /// once, and launching thousands of processes with pipes from several threads failed with
     /// `EBADF` in a throwaway run of this suite's harness.
-    private func git(_ arguments: [String]) throws -> (status: Int32, output: [UInt8]) {
+    func git(_ arguments: [String]) throws -> (status: Int32, output: [UInt8]) {
         let outputPath = tree.path("git-output")
         try Data().write(to: URL(fileURLWithPath: outputPath))
         let output = try FileHandle(forWritingTo: URL(fileURLWithPath: outputPath))

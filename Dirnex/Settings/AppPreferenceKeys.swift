@@ -13,6 +13,7 @@ extension AppPreferences {
         static let showHidden = "Dirnex.pref.showHidden"
         static let showTags = "Dirnex.pref.showTags"
         static let showSyncStatus = "Dirnex.pref.showSyncStatus"
+        static let showIconPreviews = "Dirnex.pref.showIconPreviews"
         static let showFunctionBar = "Dirnex.pref.showFunctionBar"
         static let rowDensity = "Dirnex.pref.rowDensity"
         static let sizeVizDisplayMode = "Dirnex.pref.sizeVizDisplayMode"

@@ -39,43 +39,57 @@ extension BrowserWindowController {
         return everyOne
     }
 
-    /// Ask about one archive's members, then write them all back in one rewrite. `true` once the
-    /// rewrite landed.
+    /// Read the members again where the archive moved, ask about the archive's members, then do
+    /// what the answer says: one rewrite with all of them, one with the clean ones, or a merge.
+    /// `true` once every member was written back.
     private func runArchiveWriteBack(_ group: ArchiveWriteBackGroup, over host: NSWindow?) async -> Bool {
-        guard await confirmArchiveWriteBack(group, over: host) else { return false }
-        return await writeArchiveMembersBack(group, over: host)
+        let verdicts = await checkArchiveMembers(group)
+        let mergeBase = await archiveMergeBase(group, verdicts: verdicts)
+        let answer = await confirmArchiveWriteBack(
+            group, verdicts: verdicts, offersMerge: mergeBase != nil, over: host
+        )
+        switch answer {
+        case .all:
+            return await writeArchiveMembersBack(group, over: host)
+        case .clean:
+            let clean = ArchiveWriteBackPlan.uncontested(group, verdicts: verdicts)
+            if !clean.items.isEmpty { await writeArchiveMembersBack(clean, over: host) }
+            return false
+        case .merge:
+            if let item = group.items.first { await mergeArchiveMember(item, over: host) }
+            return false
+        case .none:
+            return false
+        }
     }
 
-    /// The one question for this archive.
+    /// The one question for this archive, saying what the check found.
     private func confirmArchiveWriteBack(
         _ group: ArchiveWriteBackGroup,
+        verdicts: [ArchiveMemberVerdict],
+        offersMerge: Bool,
         over host: NSWindow?
-    ) async -> Bool {
+    ) async -> WriteBackAnswer {
+        let answers = Self.archivePromptAnswers(verdicts: verdicts, offersMerge: offersMerge)
         let alert = NSAlert()
         alert.messageText = Self.archiveWriteBackTitle(group)
         alert.informativeText = Self.archiveWriteBackBody(
             group,
-            undoable: ArchiveUndoStorage.willBeUndoable(archiveAt: group.archivePath)
+            verdicts: verdicts,
+            undoable: ArchiveUndoStorage.willBeUndoable(archiveAt: group.archivePath),
+            offersMerge: offersMerge
         )
-        alert.addButton(withTitle: String(
-            localized: "Save Back",
-            comment: "Button that writes an edited member back into its archive."
-        ))
-        alert.addButton(withTitle: String(
-            localized: "Keep Editing",
-            comment: """
-            Button that declines writing an edited member back, leaving the editor open so the \
-            user can save again later.
-            """
-        ))
-        // `NSAlert` binds Escape by matching the byte string "Cancel", which neither button is —
-        // so the response, not the title, is what says which one ⎋ means (docs/NOTES.md).
-        alert.enableEscapeToCancel(safe: .alertSecondButtonReturn)
+        for answer in answers {
+            alert.addButton(withTitle: Self.archiveButtonTitle(for: answer))
+        }
+        // `NSAlert` binds Escape by matching the byte string "Cancel", which none of these is — so
+        // the response, not the title, is what says which one ⎋ means (docs/NOTES.md).
+        alert.enableEscapeToCancel(safe: Self.response(for: .none, in: answers))
         // The watcher raised this, not the user, so a window that has gone away has nobody to ask —
         // and the answer to a question nobody was put is to write nothing back, which leaves every
         // copy watched and asks again on the next save.
         let response = await alert.sheetAnswer(over: host ?? window, whenUnasked: .cancel)
-        return response == .alertFirstButtonReturn
+        return Self.answer(for: response, among: answers)
     }
 
     /// Add every member of the group back in one rewrite. `true` once it landed; a failure and a
@@ -84,6 +98,7 @@ extension BrowserWindowController {
     /// One `ArchiveWriter.add` over ``ArchiveMutation/Addition`` pairs, so members that came from
     /// *different folders* inside the archive still travel in a single pass — which is the whole
     /// difference between this and calling the old single-file spelling in a loop.
+    @discardableResult
     private func writeArchiveMembersBack(
         _ group: ArchiveWriteBackGroup,
         over host: NSWindow?
@@ -134,8 +149,11 @@ extension BrowserWindowController {
         pane.journalArchiveRewrite(snapshot)
         // Stop watching the copies that have now been absorbed: the archive is a new file, and the
         // next open re-extracts. Leaving a watcher would offer the same edit again on the editor's
-        // next autosave, against an archive that already has it.
-        for copy in copies { editedFiles.stopWatching(copy) }
+        // next autosave, against an archive that already has it. Their bases go with them.
+        for copy in copies {
+            editedFiles.stopWatching(copy)
+            archivePreviewCache.dropBase(ofCopy: copy)
+        }
         // Any pane showing this archive is now listing a stale mount.
         refreshPanesShowingArchive(at: group.archivePath)
     }

@@ -98,6 +98,15 @@ struct WebDAVCurlTransport: WebDAVTransport {
         )
     }
 
+    /// A folder's quota alone (PLAN.md §M38 Slice 7), on a listing's time budget.
+    func propfindQuota(_ backendPath: String) throws -> WebDAVHTTPResponse {
+        let session = session(maxTime: metadataTimeout)
+        return try perform(
+            WebDAVProcessArguments.quotaPropfind(session: session, backendPath: backendPath),
+            session: session
+        )
+    }
+
     /// Progress comes from the destination file, as for FTP and S3: it is a local file that grows,
     /// so its size is exact and free. The exact total is the write-out's, which the backend settles
     /// the bar on.
@@ -170,34 +179,48 @@ struct WebDAVCurlTransport: WebDAVTransport {
         )
     }
 
-    func move(_ backendPath: String, to destinationPath: String) throws -> WebDAVHTTPResponse {
+    func move(
+        _ backendPath: String,
+        to destinationPath: String,
+        collections: WebDAVCollectionEnds
+    ) throws -> WebDAVHTTPResponse {
         let session = session(maxTime: serverOperationTimeout)
         return try perform(
             WebDAVProcessArguments.move(
                 session: session,
                 backendPath: backendPath,
-                to: destinationPath
+                to: destinationPath,
+                collections: collections
             ),
             session: session
         )
     }
 
-    func copy(_ backendPath: String, to destinationPath: String) throws -> WebDAVHTTPResponse {
+    func copy(
+        _ backendPath: String,
+        to destinationPath: String,
+        collections: WebDAVCollectionEnds
+    ) throws -> WebDAVHTTPResponse {
         let session = session(maxTime: serverOperationTimeout)
         return try perform(
             WebDAVProcessArguments.copy(
                 session: session,
                 backendPath: backendPath,
-                to: destinationPath
+                to: destinationPath,
+                collections: collections
             ),
             session: session
         )
     }
 
-    func delete(_ backendPath: String) throws -> WebDAVHTTPResponse {
+    func delete(_ backendPath: String, isCollection: Bool) throws -> WebDAVHTTPResponse {
         let session = session(maxTime: serverOperationTimeout)
         return try perform(
-            WebDAVProcessArguments.delete(session: session, backendPath: backendPath),
+            WebDAVProcessArguments.delete(
+                session: session,
+                backendPath: backendPath,
+                isCollection: isCollection
+            ),
             session: session
         )
     }

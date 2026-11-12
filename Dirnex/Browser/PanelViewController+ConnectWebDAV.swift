@@ -194,9 +194,13 @@ extension PanelViewController {
                 localized: "This server only accepts sign-in methods Dirnex doesn’t support: \(names).",
                 comment: """
                 WebDAV connect failure detail. %@ lists the HTTP authentication schemes the server \
-                offered, such as “NTLM and Negotiate”; Dirnex speaks only Basic and Digest.
+                offered, such as “Bearer”; Dirnex speaks Basic, Digest, NTLM and Negotiate.
                 """
             )
+        case .kerberosOnly:
+            return kerberosOnlyDetail
+        case .kerberosTicketRefused:
+            return kerberosTicketRefusedDetail
         case let .notWebDAV(status):
             return String(
                 localized: """
@@ -239,6 +243,40 @@ extension PanelViewController {
                 comment: "WebDAV connect failure detail; %lld is the HTTP status code."
             )
         }
+    }
+
+    /// A named account on a server that takes only the Mac's Kerberos ticket (PLAN.md §M38): the way
+    /// in is to leave the name out, which is not what a wrong password asks for.
+    private static var kerberosOnlyDetail: String {
+        String(
+            localized: """
+            This server signs in only with Kerberos, using this Mac’s ticket. Leave the user \
+            name and password empty to connect with it.
+            """,
+            comment: """
+            WebDAV connect failure detail: the server accepts only Negotiate (Kerberos), which \
+            signs in with the Kerberos ticket this Mac already holds rather than a typed account, \
+            and the user typed a user name. “Kerberos” is a name and is not translated.
+            """
+        )
+    }
+
+    /// The Mac's ticket, sent for an account with no name, refused by the server: no ticket for its
+    /// realm, or an address where the server's key names a host.
+    private static var kerberosTicketRefusedDetail: String {
+        String(
+            localized: """
+            This server signs in with Kerberos and didn’t accept this Mac’s ticket. Get a ticket \
+            in Ticket Viewer, and connect by the server’s name rather than its address.
+            """,
+            comment: """
+            WebDAV connect failure detail: the account has no user name, so Dirnex signed in with \
+            the Mac's own Kerberos ticket, and the server refused it — there is no ticket, or the \
+            server was reached by an IP address its Kerberos key was not made for. “Ticket \
+            Viewer” is the macOS app in /System/Library/CoreServices/Applications; use its name \
+            as macOS shows it in your language.
+            """
+        )
     }
 
     /// An authentication scheme as its specification spells it. The challenge reader lowercases

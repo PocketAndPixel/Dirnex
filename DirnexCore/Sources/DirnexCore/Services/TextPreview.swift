@@ -180,7 +180,70 @@ public struct TextPreview: Sendable, Equatable {
     /// A *lossy* conversion is refused: probed on MacRoman, the detector answers "Japanese
     /// (Windows, DOS)" and hands back `Caf<?> na夫e` — text on screen that the file does not say,
     /// which is worse than falling back to Quick Look.
+    ///
+    /// **Past `byteLimit` it looks at a sample and decodes the whole file by the answer.** The
+    /// detector costs about a second per MiB, so 65 s for a 64 MiB Windows-1251 file (measured
+    /// 2026-11-08). The sample is the file's lines that hold a non-ASCII byte, up to
+    /// `detectionSampleLength`: those are the only lines that say anything, and a plain first
+    /// stretch of a file that opens in English answers ASCII and then fails on the rest. Over 235
+    /// legacy-encoded files from 2 to 8 MiB in 25 encodings, a sample of the file's start gave the
+    /// whole file's text on 185, and this sample on 233; the other two are KOI8-R, which the detector
+    /// gets wrong on the whole file as well. It also agreed on all five non-UTF-8 text files over
+    /// 256 KiB on the development Mac. Up to `byteLimit`, which is all Quick View ever reads, nothing
+    /// changes.
+    ///
+    /// A whole file the sample's encoding cannot decode is refused, like any other undecodable file.
     private static func decodeByDetection(_ data: Data) -> (text: String, encoding: String.Encoding)? {
+        guard data.count > byteLimit else { return detect(data) }
+        guard let encoding = detect(detectionSample(of: data))?.encoding else { return nil }
+        return String(data: data, encoding: encoding).map { ($0, encoding) }
+    }
+
+    /// How much of a large file the encoding detector looks at. Fixed from the corpus above: 64 KiB
+    /// answered wrongly on one file 256 KiB got right, and 1 MiB did no better at four times the
+    /// cost, which at this length is about 0.23 s.
+    static let detectionSampleLength = 256 * 1024
+
+    /// The file's lines holding a non-ASCII byte, each with its line break, as many as fit in
+    /// `detectionSampleLength` bytes.
+    ///
+    /// A line break is safe to cut at in every encoding that gets this far: UTF-16 and UTF-32 have
+    /// been decoded by their mark or refused for their NULs, and no double-byte legacy encoding uses
+    /// those two bytes inside a character. A first line longer than the whole sample is taken from
+    /// its first non-ASCII byte, where a character starts, and cut after its last ASCII byte in
+    /// reach, which ends a character in those encodings too.
+    static func detectionSample(of data: Data) -> Data {
+        data.withUnsafeBytes { (bytes: UnsafeRawBufferPointer) in
+            var sample = Data()
+            var lineStart = 0
+            var firstHighByte: Int?
+            for index in bytes.indices {
+                let byte = bytes[index]
+                if byte >= 0x80, firstHighByte == nil { firstHighByte = index }
+                let end = index + 1
+                let endsLine = byte == UInt8(ascii: "\n") || byte == UInt8(ascii: "\r")
+                if !endsLine, end < bytes.count {
+                    guard sample.isEmpty, let first = firstHighByte,
+                          end - first == detectionSampleLength else { continue }
+                    let reach = bytes[first..<end]
+                    let cut = reach.lastIndex { $0 < 0x80 }.map { reach[...$0] } ?? reach
+                    return Data(cut)
+                }
+                if let first = firstHighByte {
+                    let line = bytes[lineStart..<end]
+                    guard line.count <= detectionSampleLength - sample.count else {
+                        return sample.isEmpty ? Data(bytes[first..<end]) : sample
+                    }
+                    sample.append(contentsOf: line)
+                }
+                lineStart = end
+                firstHighByte = nil
+            }
+            return sample
+        }
+    }
+
+    private static func detect(_ data: Data) -> (text: String, encoding: String.Encoding)? {
         var converted: NSString?
         var lossy: ObjCBool = false
         let encoding = NSString.stringEncoding(

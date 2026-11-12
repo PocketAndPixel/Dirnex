@@ -65,6 +65,42 @@ so a trap goes here only if it can bite any live run; one tied to an area goes u
     `run operation "file.trash"` over the `.sdef` verbs runs the whole shipped path per item. Read
     the preference before assuming a delete is unreachable; ⇧F8 and every *permanent* delete do
     confirm, and are not drivable this way.
+- **A copy built under a bundle id of its own leaves a running Debug build and the shared defaults
+  alone, and there is one such copy: `app.dirnex.Dirnex.live`, built in `build/live-copy`.** Done
+  2026-11-10 with Oleg's Debug build up: `xcodebuild build -derivedDataPath build/live-copy
+  PRODUCT_BUNDLE_IDENTIFIER=app.dirnex.Dirnex.live CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual
+  DEVELOPMENT_TEAM= ENABLE_HARDENED_RUNTIME=NO`. Nobody has to quit, nothing lands in
+  `app.dirnex.Dirnex`, and computer use and AppleEvents reach it by its own id. Seed
+  `Dirnex.pref.hasSeenFirstRunTour` and `Dirnex.pref.hasSeenFullDiskAccessOnboarding` true, or the
+  first-run flow covers the window. Afterwards `defaults delete app.dirnex.Dirnex.live`, so the next run
+  starts empty, and **keep `build/live-copy`**. Stop it by a PID read back with `ps`: `pkill -x Dirnex`
+  takes the other copy too.
+  - **Never a new id or a new folder per check.** Oleg's rule, 2026-11-11. Eight checks had each picked a
+    name (`.m38check`, `.m38s3`, `.m38s6`, `.pindrag`, `.quota`, `.s3search`, `.sftpspace`,
+    `.nasshares`), and macOS keeps a record of every one, among them Local Network rows that macOS 26
+    cannot remove (below). A Debug launcher's UUID follows its build folder and stays the same across
+    rebuilds, so one id in one kept folder is one app to macOS. Two checks that need a copy at once run
+    one after the other. A check on the LAN does not use the copy at all: it runs in `build/debug-dd`.
+  - **It does not leave Application Support alone.** Found 2026-11-10: `~/Library/Application
+    Support/Dirnex` is the same folder for every bundle id, and every launch prunes its `ArchiveUndo`
+    store against *its own* journal (`ArchiveUndoStorage.purgeUnreferenced`). A copy's journal is
+    empty, so its launch deletes every snapshot the real build's undo stack names. That day the store
+    was already empty (its folder unchanged since the day before), so nothing was lost. Before
+    launching a copy, list the store, and copy its files aside if there are any. A copy stopped with
+    `kill` also leaves its `gm-<id>.sock` there; `lsof` says which socket nobody holds.
+  - **Its first launch asks macOS about every cloud provider, on Oleg's screen.** Seen 2026-11-10: the
+    copy showed no window, its main thread sat in `open` under `CloudStorageMounts.entryDirectory`, and
+    he got "“Dirnex.app” wants to access files managed by “Box”", one per provider, which screenshots
+    leave out. A new bundle id has none of the grants the real one holds. For a run that needs no cloud
+    row, add a temporary env-gated `return []` at the top of `SidebarViewController.cloudPlaces()` and
+    launch with `open --env`, then take it out. For a run that does need them, tell him first.
+- **A measurement at scale needs a Release build, and an ad-hoc signed one needs the hardened runtime
+  off.** A Debug `DirnexCore` is `-Onone`, far too slow to say anything about a 256 MiB comparison.
+  Seen 2026-11-08: `xcodebuild -configuration Release CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual
+  DEVELOPMENT_TEAM=` builds, `open` answers 0, and the app is simply not there: under the hardened
+  runtime library validation refuses the ad-hoc Sparkle, and the only trace is
+  `dyld: Library not loaded: @rpath/Sparkle.framework` from the binary run in a shell, and a crash
+  report per try. Add `ENABLE_HARDENED_RUNTIME=NO`, into `build/release-dd`, and launch by path.
 - **A second copy of the app with the same bundle id is the stale-binary trap wearing different
   clothes, and it fails as a *confident false negative*.** Measured 2026-09-10: with the DerivedData
   build correctly quit and rebuilt, launching by **name** (`open -a Dirnex`, or a computer-use
@@ -97,6 +133,9 @@ so a trap goes here only if it can bite any live run; one tied to an area goes u
   - **computer-use's `request_access` for "Dirnex" can grant the old id.** Seen 2026-11-02: the name
     resolved to `com.dirnex.Dirnex`, which is still registered and was not running, while the build
     up was `app.dirnex.Dirnex`. Ask for the bundle id, and `list_apps` says which one is running.
+  - **A `Dirnex --git-merge` command is a second process named `Dirnex`.** Seen 2026-11-09: `pgrep -x
+    Dirnex | head -1` picked the command, and its environment, full of `GIT_*`, read as the app's. The
+    app is the one with no `--git-merge` in its command line, and its parent is `launchd`.
   - **In a wait loop, `pgrep -f` also matches the shell running the loop.** Seen 2026-10-21: the
     agent's shell runs each command as `bash -c '<command>'`, so the pattern is in that shell's own
     command line. The loop waiting for the app to quit never saw it gone, and a `pkill -f` on the
@@ -153,6 +192,11 @@ so a trap goes here only if it can bite any live run; one tied to an area goes u
   iCloud-only clip it was there to test. The same button clicked by window coordinate went through as
   an `AXPress` on "Cancel all". Click anything that is updating by coordinate, and read the tool's own
   report of what it pressed before trusting the result.
+  - **A window's title-bar buttons are not at fixed indexes.** Seen 2026-11-09: the zoom control is
+    listed `AXZoomButton` on one capture and `AXFullScreenButton` on the next, after Close, at a number
+    that moves when Show Base adds a pane's elements. A click on the index read from an earlier capture
+    took a merge window full screen on Oleg's display. `app_menu` with Window ▸ Close Window closes the
+    key window with no index at all.
 - **Fully quit a running Dirnex before relaunching.** `open` re-focuses the stale process, so
   new menu items and behavior silently don't appear. A Debug build's code lives in
   `Dirnex.debug.dylib`, not the thin executable — grep the dylib to confirm new code actually
@@ -163,6 +207,15 @@ so a trap goes here only if it can bite any live run; one tied to an area goes u
     `Cloud` after the type's own and `strings`/`nm` counted **0** for `iCloudContainer` in a build
     that contained it (2026-09-16). `nm <dylib> | xcrun swift-demangle | command grep <name>` finds
     it. Grep for a string literal the change added, or demangle, before concluding a build is stale.
+  - **A grep of the dylib on disk says nothing about the process that is running.** A rebuild
+    replaces the file, and the process keeps the one it mapped at launch. Seen 2026-11-11: a fix
+    "still failed" in a Debug build launched at 10:44 and rebuilt at 18:16. `lsof -p <pid>` named
+    inode 104513963 for `Dirnex.debug.dylib` and `ls -i` gave 105175733 for the file. When the two
+    differ, the process is running the old code.
+- **A check in the light appearance needs no change to the system.** Seen 2026-11-09: `open <app> --args
+  -NSRequiresAquaSystemAppearance YES` drew the whole app light with the Mac still dark, and
+  `-AppleLanguages '(de)'` beside it set the language for that launch.
+
 - **A `reveal` sent straight after `run operation "file.newTab"` can be lost.** Measured 2026-10-15
   building three tabs for the tab-move check: reveal, new tab, reveal, new tab, reveal came out as
   [one, one, three], because the second reveal raced the new tab's own first listing. The pane looked
@@ -180,6 +233,11 @@ so a trap goes here only if it can bite any live run; one tied to an area goes u
   passphrase check, `bsdtar`, the `stat` back into local entries, the queue. It landed `one.txt`
   with the right bytes, left the sibling in the archive, and left a temp extraction holding exactly
   one file.
+  - **Both halves of "unreachable" have since moved** (seen 2026-11-08). A tab left inside a local
+    zip came back inside it after a relaunch, and a background `app_click` with `count: 2` on the
+    zip's row enters it. And computer use refuses Edit ▸ Paste and Move Items Here outright ("would
+    touch the system clipboard"), so run those as `run operation "edit.paste"` and
+    `"edit.pasteMove"`, which skip menu validation: the item's enabled state stays unchecked.
   - **The payload has to be minted by hand, not copied from the app**, which is the half that makes
     it evidence: what is being tested is the *reader*, so handing it something the writer produced
     would prove the two agree rather than that either is right (▸ the same rule NOTES.md states for
@@ -246,7 +304,16 @@ so a trap goes here only if it can bite any live run; one tied to an area goes u
     app reconnects at launch since session restore learned to (NOTES.md ▸ Design lessons). Back the domain up
     with `defaults export` first, and `ssh-keyscan` the throwaway host key into `known_hosts` or the
     connect raises a trust dialog that wedges a headless run; put both back afterwards.
-    - **`ssh-keyscan … >> ~/.ssh/known_hosts` also appends comment lines, and `down` leaves them.**
+    - **A throwaway port can carry a stale pin, and the failure can look like the feature under test.**
+    Seen 2026-11-10: an `sftp`-only `sshd` on 2223, a port an earlier run had left pinned to another key.
+    Every connection closed before authentication, the pane listed nothing, `accountIdentity` answered
+    `nil`, and Open in Terminal raised the very refusal being checked. The tells were the pane's empty list
+    and a server log with `Connection closed … [preauth]` and no `Accepted`. Run `ssh-keygen -F
+    '[127.0.0.1]:<port>'` before choosing a port, and copy `known_hosts` aside first.
+  - **Where a remote shell really is can be read from the server's side.** The log's `Starting session:
+    command on ttysNNN` names its terminal, `ps -t ttysNNN` finds the shell, and `lsof -a -p <pid> -d cwd`
+    says where it is. That needs no grant on Terminal, which computer use only offers at the "click" tier.
+  - **`ssh-keyscan … >> ~/.ssh/known_hosts` also appends comment lines, and `down` leaves them.**
       Seen 2026-10-27: it printed `# 127.0.0.1:2222 SSH-2.0-OpenSSH_10.3` on stdout five times
       beside the key, `ssh-keygen -R` removed the key and kept the five, and two more from an earlier
       run were already there. Copy the file aside first and put the copy back, or append only
@@ -336,6 +403,18 @@ so a trap goes here only if it can bite any live run; one tied to an area goes u
   headers are keyboard stops, so count them or zoom on the sidebar after each key. And a vault row
   passed on the way opens if ⌘Return lands on it, which reads its passphrase from the Keychain. A
   plain Return proves nothing about ⌘, so run a case whose result only ⌘ can produce first.
+- **A saved server row opens from the background with Focus Sidebar and Return, and one with no password
+  on file files whatever password its sheet connects with.** Seen 2026-11-10: `app_click` on a Servers
+  row only selected it. View ▸ Focus Sidebar put the selection on the section's first row, `down` moved
+  it, and `return` opened it. A named row whose password was not in the Keychain opened the Connect sheet
+  as Edit…, whose Connect saves the record and the password before connecting
+  (`PanelViewController+EditServer`), so a refused connect left a throwaway Keychain item and the next
+  pick of the row skipped the sheet. Give such a row a user name of its own, check for the item with
+  `security find-generic-password -s <service> -a <account>` (attributes only, no prompt), and delete it
+  with `security delete-generic-password` afterwards, which asked nothing.
+  - **A Favorites pin opens the same way.** Seen 2026-11-11: `app_click` on a pinned server folder only
+    selected it. Focus Sidebar put the selection in the section of the pane's own location, Volumes, so it
+    took `up` past the section header, which is a stop, and then `return`.
 - **Background computer-use cannot move a window.** Seen 2026-10-22 checking that the compare window
   remembers where it was dragged: an `app_drag` on the title bar reported success, and
   `CGWindowListCopyWindowInfo` read back the same frame. Dirnex's dictionary has no window `bounds`,
@@ -350,6 +429,52 @@ so a trap goes here only if it can bite any live run; one tied to an area goes u
   target has to sit **beside** it rather than under it: narrow the Dirnex window by its corner first.
   The frame lands in the defaults domain, and the run's import puts it back. Each drag that worked
   had clicked its row first.
+  - **Stepping a drag does work when the moves stay inside the source first.** Seen 2026-11-03:
+    `left_mouse_down`, three or four `mouse_move`s a few points apart, the jump to the target, a wait,
+    one more move, `left_mouse_up`. That is the way to hover: `left_click_drag` lets go about half a
+    second in, which is a different test. A move is what makes the target notice, so end on one.
+  - **A screenshot leaves out every app that is not granted, and they are still there.** Seen
+    2026-11-03: Finder windows placed by `osascript` sat under Claude's own floating panel (layer 3), so
+    three drops went into Claude, which took them, and the screenshot showed the drag over an empty
+    Finder window. It read as Finder delivering nothing. List the windows at every layer
+    (`CGWindowListCopyWindowInfo` for the owner, or walk `NSWindow.windowNumber(at:below…)`) before
+    believing a drop target.
+  - **Finder's preview column is not a drop target.** Seen 2026-11-03: Finder opens it in a narrow
+    window as soon as one file is selected, so the point that took the first drop refused the second
+    with operation 0. Release on the file list, and check it is still under the point.
+  - **Teams brings itself to the front a few seconds into a hover.** Seen 2026-11-03: so a point chosen
+    to be "outside Teams" may no longer be, and the pointer never left. Leave for the wallpaper.
+  - **`mouse_move` fails if the front app is not answering.** Seen 2026-11-03 during a held pasteboard
+    read: "Could not verify which document this window is editing", and the batch stops. Wait the hold
+    out before the next move. The check is on the front app, so a hung background app does not stop it.
+  - **The Teams drops upload.** A dropped file goes to the account's `Microsoft Teams Chat Files` as soon
+    as it attaches, and removing the draft leaves it there. Keep fixtures small and say so afterwards.
+  - **A throttled `sftp-server` only throttles the subsystem.** Seen 2026-11-03: 70 MB arrived in 0.68 s
+    through a `Subsystem sftp` wrapper at 30 KB/s, because a large download goes over the exec channel.
+    `ForceCommand` running the same wrapper catches both.
+- **computer use cannot hold a modifier through a pointer move or a release.** Measured 2026-11-09
+  with a throwaway drag source logging `NSEvent.modifierFlags`: `hold_key shift` is a real press,
+  seen by a local `.flagsChanged` monitor and by the flags, but it holds the batch for its whole
+  duration, so nothing moves while it is down. `"shift"` given to `left_mouse_up` or to
+  `left_click_drag` only marks those events: the source read ⇧ up throughout both drags and at the
+  drop. So a drop made with a modifier held needs Oleg's hands; a press with the pointer still is the
+  part computer use can do.
+  - **A file the app polls can stand in for the held key.** A temporary probe made Shift count as
+    held while a file named in `DIRNEX_FAKE_SHIFT_FILE` existed, and logged every move, read and drop
+    to `DIRNEX_DRAG_LOG`, launched with `open --env`. That drove a drop "with ⇧ held" into Teams, and
+    the same log, on while Oleg dropped with the real key, is what showed his ⇧ going down only after
+    the pointer had entered.
+- **A browser is no drop target for computer use, so a Chromium check needs another app.** Seen
+  2026-11-08: Chrome is granted only at the "read" tier, and the grant says to send it no input by any
+  means, which a drop is. Teams is Chromium but uploads what is dropped (above). TextEdit is a regular
+  app, so a drag over it takes `RemoteDragHandoff`'s path, and its document shows an attachment when a
+  file arrives. Cancel TextEdit's "Convert to RTFD?" question to leave the document unchanged. It does
+  not show whether the file came through the hand-off's lazy URL or through the promise, which Cocoa
+  can take; only Chromium refuses a promise.
+- **Screenshot coordinates are not screen points on a scaled display.** Seen 2026-11-08: the full-screen
+  frame was 1372×887 while `CGWindowListCopyWindowInfo` reported a 1728×1117 screen. Clicks go in the
+  screenshot's frame, and a window list's bounds are in points, so convert before matching a click
+  point against a window.
 - **A background `app_drag` starts a drag session it cannot finish.** Logged 2026-11-02 on a tab chip:
   `mouseDown`, `beginDraggingSession`, then the session's end with operation 0 and no
   `draggingEntered` anywhere, because the whole path is delivered in well under a second. So it shows
@@ -362,9 +487,37 @@ so a trap goes here only if it can bite any live run; one tied to an area goes u
   double-click ran, so the window zoomed. On a tab's × it came back "AXPress", and the button fired
   once. So it cannot produce a double-click that starts on a control and ends somewhere else. Read which
   of the two the tool reports before counting the run as a test of the second click.
+- **A background `app_click` on a row of the inactive pane selects it and leaves the other pane
+  active.** Seen 2026-11-08: the click reported `set AXSelected=true` on the right pane's row, and the
+  function bar's F5 then copied the *left* pane's cursor row the other way, a server's `#recycle` down
+  into the scratch folder. Switch panes with `app_key tab`, zoom on the tab strip to see which one is
+  blue, and only then press F5 or F6.
+- **Restoring a minimized window brings it back in front, at its old frame.** Seen 2026-11-08: Mail's
+  viewer, un-minimized after a drag test, came back over Dirnex, and the next click meant for a pane
+  row landed on a selected mailbox and opened its name for editing. List the windows at the click point
+  after any `osascript` that moves, raises or restores a window.
 - **Two clicks on a row with only key presses between them make a double-click.** Seen 2026-10-24:
   click, Space, Space, click on a zip, all inside the double-click interval, opened the archive. Wait
   a second between clicks, or move the cursor with the arrow keys.
+- **`lsappinfo front` says which app is in front, and needs no permission.** `lsappinfo info -only name
+  "$(lsappinfo front)"` found that a window had opened behind another app (2026-11-09), which no
+  background screenshot can show, since it captures a window wherever it is. Put the app you were in
+  back afterwards with `open -b <its bundle id>`.
+  - **An app put in front takes whatever Oleg is typing.** Seen 2026-11-11: a copy brought forward
+    with `open -b` to make its cursor row emphasized had a rename field open, and "old" appeared in
+    it. Keep a copy in front only for the screenshot that needs it, put his app back at once, and
+    tell him first when the check will hold the front for longer.
+- **Find Files on this Mac runs off the Spotlight index, so a fixture in a temp folder finds nothing.**
+  Seen 2026-11-05: a saved search scoped to the session scratchpad under `/private/tmp` opened an
+  empty results tab, because `SpotlightSearchRunner` asks `mdfind` and `/private/tmp` is not
+  indexed. The same files under the repository's git-ignored `build/` were found within a second.
+  Check with `mdfind -onlyin <folder> 'kMDItemFSName == "*name*"c'` before launching.
+  - **A saved search is opened from the background with a double-click on its sidebar row.** A single
+    `app_click` only selects the row, a Return goes to the file list (it opened the folder under the
+    cursor), and Go ▸ Places lists nothing until the menu is really opened. The double-click ran the
+    search twice and left two results tabs, which was handy for checking a change reaches every tab.
+    Open a new tab first, since the search replaces the active tab's listing. The seed is
+    `Dirnex.savedSearches`, `{"searches": […]}`, written with `-data` while the app is quit.
 - **`plutil -extract` cannot read a Dirnex key**, because its key path splits at the dot in
   `Dirnex.serverConnections` and answers "No value at that key path". Read an export with Python's
   `plistlib` instead.
@@ -386,12 +539,27 @@ so a trap goes here only if it can bite any live run; one tied to an area goes u
   two exports. A second variable that turned the fix off gave the negative control from the same
   build. **`app_click` with `count: 2` on a sidebar row is a real double-click**: the row's action
   ran twice, 113–122 ms apart, which reproduced the reported bug first time.
+  - **Hand the probe its secrets in a file it reads once and deletes, not in the variable itself.** Done
+    2026-11-11 for four throwaway accounts: a JSON map keyed by `keychainAccount`, matched by prefix so an S3
+    bucket's account finds its account's key. The app passes its environment to every process it starts.
+    WezTerm is spawned with `Process` and inherits it whole, and a terminal `open` starts gets it too, so a
+    secret in the variable would have sat in the very terminal whose "no secret in `argv` or on disk" was
+    under test. The variable holds a path, and the file is gone after the first read.
 - **computer-use refuses a key aimed at a point inside a text view, saying it "belongs to a different
   process".** Seen 2026-10-08 on both of Report a Bug…'s text boxes: `app_key tab` at the box's center
   was refused twice, before and after a fix to the boxes' accessibility tree, while the app's own
   accessibility hit test at those points answers its `AXTextArea` (pinned in `MultiLineFieldTests`).
   Typing by `element_index` and `app_click` by `element_index` both worked. Neither moved the window's
   first responder, though, so a focus ring that should follow the click can't be checked this way.
+  - **A plain text field can answer the same, so the second field of a form is out of reach.** Seen
+    2026-11-10 on Get Info's root layout: `app_key tab` on the Group field was refused, `app_click` left
+    the focus in Owner, and `app_type` with `target: focused` typed into Owner. Plan a run around the
+    field that holds the focus when the window opens.
+- **Background computer-use refuses to open a pop-up button, and `performActionForItem(at:)` chooses
+  an item the way a click does.** Seen 2026-11-10: `app_click` answered that a menu control cannot be
+  clicked in the background. A temporary env-gated line calling `popup.menu?.performActionForItem(at:)`
+  a second after the panel was built moved the selection and fired the popup's action, so Save lit and
+  everything after it ran the shipped path. Only the menu's own drawing and tracking stay unseen.
 - **A background `app_click` on a text field or text view is an accessibility write, not a click,
   and leaves the keyboard focus where it was.** Measured 2026-10-24 in Report a Bug…: the tool
   reported `set AXSelectedTextRange={loc:0,len:0}` on Steps, then on the email field, and a letter
@@ -459,3 +627,40 @@ so a trap goes here only if it can bite any live run; one tied to an area goes u
 - **A transparent overlay from another app can gate every mouse click.** LanguageTool for
   Desktop did this for four passes; keyboard input still reached Dirnex, which masked it.
   Quitting the overlay app restored mouse verification.
+- **A Debug build from the default DerivedData folder cannot reach the LAN on this Mac, and the alert
+  blames the address.** Measured 2026-11-04 with the NAS up: one saved row, clicked in each build, gave
+  "The server couldn't be reached" from `Dirnex-hdhfpw…/Build/Products/Debug` and the server's "asks for
+  a user name and password" from `build/debug-dd`. A Debug executable is a thin launcher whose UUID
+  differs by build path and stayed the same across rebuilds, and
+  `/Library/Preferences/com.apple.networkextension.uuidcache.plist` still files this one (`2B31C782…`)
+  under `com.dirnex.Dirnex`, the id from before the 10-30 rename. On each attempt the log read
+  `found bundle id app.dirnex.Dirnex by PID`, then `found bundle id com.dirnex.Dirnex by UUID`.
+  Internet hosts still connected, and the shell reached the NAS, so nothing else looks wrong. The
+  README's commands now build into `build/debug-dd`. Not checked: `xcodebuild test`, whose host app
+  still builds in the default folder.
+  - **To test LAN access, click a saved WebDAV row whose `username` is `""`.** It reads no Keychain
+    item and sends no password, so it raises no prompt and risks no lockout, and the two alerts above
+    tell the results apart. Seed it with `-data` with the app quit, and `defaults import` the backup
+    afterwards. `WebDAVLocation.username` is required: a row without the key loses every saved server,
+    and the sidebar's Servers section vanishes with no error.
+  - **Don't test this with a probe launched under the real bundle id.** Seen 2026-11-03: a test app
+    using `app.dirnex.Dirnex` replaced that id's UUID list, and the list was empty once the app had
+    been deleted. The stable and Debug builds both connected with it empty, so an empty list is not
+    evidence of a block.
+  - **A copy built under its own bundle id cannot reach the NAS either, so a LAN check runs in
+    `build/debug-dd`.** Seen 2026-11-11, twice, with Local Network switched on for every Dirnex entry in
+    System Settings: copies under `app.dirnex.Dirnex.sftpspace` and `.nasshares`, each in a folder of
+    its own, got `ssh: connect to host nas.local port 22: No route to host`, while the shell reached the
+    NAS. `build/debug-dd`'s launcher UUID (`DBA76CEE…`) is the one the cache files under
+    `app.dirnex.Dirnex`, and it reached the NAS first time. The fixed copy in `build/live-copy` is no
+    exception, having a folder of its own. So for a LAN run, ask Oleg, quit his Debug
+    build, export the domain, rebuild `build/debug-dd` with any env-gated probe, use his saved rows
+    (they hold the NAS accounts), then rebuild without the probe, `defaults import` the export and
+    relaunch it. That run moved `Dirnex.frecency`, `Dirnex.tabs.left` and `SULastCheckTime`.
+  - **Every copy that tries the LAN leaves a row in Local Network that macOS 26 cannot remove.** The
+    pane has toggles and no remove button, and switching a row off keeps it. By 2026-11-11 the list
+    held seven "Dirnex.app" rows from copies long deleted. Apple's forums put remove buttons in macOS
+    27.2. One more reason to make a LAN run in `build/debug-dd`, which has its row already.
+  - **A probe in a sidebar cell's factory logs only the rows on screen.** The cell is built when its row
+    is drawn, and a redraw reloads only the visible ones, so a saved row below the fold logged nothing
+    until the sidebar was scrolled to it.

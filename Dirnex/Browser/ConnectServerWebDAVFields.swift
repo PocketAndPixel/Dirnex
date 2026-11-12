@@ -15,7 +15,10 @@ import DirnexCore
 /// refused, because the NAS's own default WebDAV port is plain HTTP.
 ///
 /// **The user may be left blank** for a public share, which is a location without credentials
-/// (``WebDAVLocation/hasCredentials``), and the password is then not asked for.
+/// (``WebDAVLocation/hasCredentials``), and the password is then not asked for. A blank user is also
+/// how a server that asks for Negotiate is signed in to with this Mac's Kerberos ticket (PLAN.md
+/// §M38); the placeholder still names only the public share, and the connect's refusal says the rest
+/// when a named account meets a Kerberos-only server.
 @MainActor
 final class ConnectServerWebDAVFields: NSObject, NSTextFieldDelegate {
     let host = ConnectFormFactory.textField(placeholder: "https://nas.local:5006")
@@ -198,8 +201,9 @@ final class ConnectServerWebDAVFields: NSObject, NSTextFieldDelegate {
     /// certificate is presented and which challenge is sent. The user and the root are free to
     /// change: neither moves the server.
     ///
-    /// The scheme is dropped with an account that no longer sends credentials, because `nil` is
-    /// what a public share's endpoint says.
+    /// The scheme is dropped when it no longer fits the account (``WebDAVAuthScheme/fits(_:)``): a
+    /// password scheme once the name is cleared, since `nil` is what a public share's endpoint says,
+    /// and Negotiate once a name is typed, since a named account signs in as itself (PLAN.md §M38).
     private func settledValues(for location: WebDAVLocation) -> (
         scheme: WebDAVAuthScheme?,
         publicKey: String?
@@ -209,6 +213,6 @@ final class ConnectServerWebDAVFields: NSObject, NSTextFieldDelegate {
               settled.location.port == location.port,
               settled.location.usesTLS == location.usesTLS
         else { return (nil, nil) }
-        return (location.hasCredentials ? settled.scheme : nil, settled.publicKey)
+        return (settled.scheme.flatMap { $0.fits(location) ? $0 : nil }, settled.publicKey)
     }
 }

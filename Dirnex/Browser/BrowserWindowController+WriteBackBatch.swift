@@ -320,13 +320,7 @@ extension BrowserWindowController {
                 comment: "Button that uploads every edited file in a batch, contested ones included."
             )
         case .clean:
-            String(
-                localized: "Skip Changed Files",
-                comment: """
-                Button that uploads only the edited files nobody else has touched, leaving the rest \
-                for the user to look at.
-                """
-            )
+            skipChangedFilesTitle
         case .none:
             String(
                 localized: "Keep Editing",

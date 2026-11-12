@@ -48,10 +48,10 @@ final class CompareWindow: NSWindow {
 /// the changes marked, and the keyboard going from one change to the next.
 ///
 /// Everything it shows is `TextComparison`'s, computed off the main thread together with each pane's
-/// text and syntax colors; the main thread only sets the text. Changing an option computes it all
-/// again and keeps the same line of the left file at the top. So does a copy across (`+Copy`, PLAN.md
-/// §M33), which changes one side's lines and compares the two again, and a file that changed on
-/// disk (`+Watch`), which is read again.
+/// text and syntax colors; the main thread only sets the text (`+Comparing`). Changing an option
+/// computes it all again and keeps the same line of the left file at the top. So does a copy across
+/// (`+Copy`, PLAN.md §M33), which changes one side's lines and compares the two again, and a file
+/// that changed on disk (`+Watch`), which is read again.
 @MainActor
 final class CompareWindowController: NSWindowController, NSWindowDelegate {
     /// Windows on screen. A controller holds itself here until its window closes.
@@ -87,9 +87,9 @@ final class CompareWindowController: NSWindowController, NSWindowDelegate {
     /// Bumped whenever what either side holds changes, by a copy, an undo or Swap Sides. A copy acts
     /// only on a comparison of the sides as they stand, which `comparedRevision` says this is.
     var sidesRevision = 0
-    private(set) var comparedRevision = 0
-    private(set) var comparison: TextComparison?
-    private(set) var changeKinds: [CompareChangeKind] = []
+    var comparedRevision = 0
+    var comparison: TextComparison?
+    var changeKinds: [CompareChangeKind] = []
     /// The change the band marks and the counter names, or `nil` for none (`+Changes`).
     var currentChange: Int?
 
@@ -108,9 +108,17 @@ final class CompareWindowController: NSWindowController, NSWindowDelegate {
     var sync: CompareScrollSync?
     var keyMonitor: Any?
     /// Watches for the end of the modal window this one was raised over (`+Modal`).
-    var modalLevelObserver: (any NSObjectProtocol)?
+    let modalLevel = ModalLevelKeeper()
     /// Bumped by every computation, so a slow earlier one cannot land over a newer one.
-    private var generation = 0
+    var generation = 0
+    /// What asks the running read or comparison to stop, or `nil` when none is running.
+    var runningStop: CancellationFlag?
+    /// How to read the two files, while the sides are still stand-ins (`+Comparing`).
+    var reading: CompareReading?
+    /// What turns the two sides into what the window shows: the real comparison, or a test's.
+    let preparer: Preparer
+    /// How long a comparison runs before the toolbar says so. A test lengthens it.
+    var comparingDelay = CompareWindowController.usualComparingDelay
 
     /// Open a window comparing `left` with `right`.
     @discardableResult
@@ -135,16 +143,44 @@ final class CompareWindowController: NSWindowController, NSWindowDelegate {
         return controller
     }
 
+    /// Open a window on two stand-ins and read the files with it on screen (`+Comparing`).
+    @discardableResult
+    static func presentReading(
+        left: CompareSource,
+        right: CompareSource,
+        allowsCopies: Bool,
+        saving: CompareSaving,
+        reading: CompareReading
+    ) -> CompareWindowController {
+        let controller = CompareWindowController(
+            left: left,
+            right: right,
+            allowsCopies: allowsCopies,
+            saving: saving,
+            reading: reading
+        )
+        open.append(controller)
+        controller.place()
+        controller.raiseAboveModalWindow()
+        controller.showWindow(nil)
+        controller.startReading()
+        return controller
+    }
+
     init(
         left: CompareSource,
         right: CompareSource,
         allowsCopies: Bool = true,
-        saving: CompareSaving
+        saving: CompareSaving,
+        reading: CompareReading? = nil,
+        preparer: @escaping Preparer = CompareWindowController.livePreparer
     ) {
         self.left = left
         self.right = right
         self.allowsCopies = allowsCopies
         self.saving = saving
+        self.reading = reading
+        self.preparer = preparer
         // Not deferred, so a save's sheets attach to a window a test builds and never shows. Probed
         // 2026-10-25: a deferred one took no sheet at all.
         let window = CompareWindow(
@@ -172,90 +208,6 @@ final class CompareWindowController: NSWindowController, NSWindowDelegate {
         guard let window else { return }
         let browser = (NSApp.delegate as? AppDelegate)?.activeBrowserWindowController?.window
         DialogWindowPlacement.place(window, key: "CompareWindow", centeredOver: browser)
-    }
-
-    // MARK: - Computing
-
-    /// Compare again under `options`, keeping the left file's line at the top where it was.
-    func compute(options: LineDiffOptions) {
-        let kept = topLine(on: .left).map { KeptLine(side: .left, line: $0) }
-        compute(options: options, keeping: kept)
-    }
-
-    /// Compare the sides as they stand under `options`. Once that lands, the change `select` picks
-    /// is the current one, or failing that `kept` is at the top.
-    func compute(
-        options: LineDiffOptions,
-        keeping kept: KeptLine?,
-        selecting select: (@MainActor (TextComparison) -> Int?)? = nil
-    ) {
-        generation += 1
-        let generation = generation
-        let revision = sidesRevision
-        let saves = savesLanded
-        let left = left
-        let right = right
-        let limit = CompareTextStyle.syntaxColoringLimit
-        Task { [weak self] in
-            let prepared = await BlockingWork.run {
-                Self.prepare(left: left, right: right, options: options, coloringLimit: limit)
-            }
-            guard let self, generation == self.generation else { return }
-            comparedRevision = revision
-            show(prepared, keeping: kept, selecting: select)
-            if saves != savesLanded { refreshEditedMarks() }
-        }
-    }
-
-    /// Put a computed comparison on screen.
-    func show(
-        _ prepared: Prepared,
-        keeping kept: KeptLine? = nil,
-        selecting select: (@MainActor (TextComparison) -> Int?)? = nil
-    ) {
-        let comparison = prepared.comparison
-        let isFirst = self.comparison == nil
-        self.comparison = comparison
-        // Only the newest computation is shown, and it read the sides as they stand now, so a swap
-        // renames the panes together with their text rather than ahead of it.
-        showTitles(edited: (prepared.leftEdited, prepared.rightEdited))
-        changeKinds = CompareTextStyle.changeKinds(comparison)
-        currentChange = nil
-        let endingDiffers = comparison.rows.map(\.lineEndingsDiffer)
-        for (side, pane) in panes {
-            let text = side == .left ? prepared.left : prepared.right
-            pane.show(
-                text,
-                document: CompareTextStyle.document(
-                    for: text,
-                    rows: comparison.rows,
-                    tokens: side == .left ? prepared.leftTokens : prepared.rightTokens
-                ),
-                fills: CompareTextStyle.fills(for: side, rows: comparison.rows),
-                endingDiffers: endingDiffers,
-                lineCount: side == .left ? comparison.leftLines.count : comparison.rightLines.count
-            )
-        }
-        band.changeRows = comparison.changeRows
-        band.kinds = changeKinds
-        band.current = nil
-        overview.rowCount = comparison.rows.count
-        overview.changeRows = comparison.changeRows
-        overview.kinds = changeKinds
-        banner.stringValue = Self.bannerText(for: comparison, readOnly: readOnlySides) ?? ""
-        banner.isHidden = banner.stringValue.isEmpty
-        toolbar.showCounter(current: nil, count: comparison.changeRows.count)
-        window?.contentView?.layoutSubtreeIfNeeded()
-        let selected = isFirst ? (comparison.changeRows.isEmpty ? nil : 0) : select?(comparison)
-        if let selected {
-            goToChange(selected)
-        } else if let kept, let row = comparison.rows.firstIndex(
-            where: { ((kept.side == .left ? $0.left : $0.right) ?? -1) >= kept.line }
-        ) {
-            leftPane.textView.scroll(toRow: row, offset: 0, x: 0)
-        }
-        refreshCopyControls()
-        refreshScrolledViews()
     }
 
     /// One file's line at the top of the panes, or the nearest one above it.
@@ -289,6 +241,7 @@ final class CompareWindowController: NSWindowController, NSWindowDelegate {
     /// and the line at the top stays at the top, now in the left pane. Each file takes its copies
     /// with it, and so does its undo, which finds the file by its `id`.
     func swapSides() {
+        guard reading == nil else { return NSSound.beep() }
         let keptLine = topLine(on: .right)
         (left, right) = (right, left)
         sidesRevision += 1
@@ -307,57 +260,12 @@ final class CompareWindowController: NSWindowController, NSWindowDelegate {
     // MARK: - Window
 
     func windowWillClose(_ notification: Notification) {
+        abandonComparing()
         stopWatchingModalWindow()
         stopWatchingFiles()
         removeKeyMonitor()
         sync?.stop()
         edits.removeAllActions()
         Self.open.removeAll { $0 === self }
-    }
-}
-
-/// Preparing a comparison for the screen, which runs off the main thread and reads nothing of the
-/// controller's.
-extension CompareWindowController {
-    /// Everything one comparison shows, built off the main thread.
-    struct Prepared: Sendable {
-        let comparison: TextComparison
-        let left: ComparisonPaneText
-        let right: ComparisonPaneText
-        let leftTokens: [SyntaxToken]
-        let rightTokens: [SyntaxToken]
-        /// Whether each side's lines differ from its file as read, which takes a pass over both.
-        let leftEdited: Bool
-        let rightEdited: Bool
-    }
-
-    /// A file's line to keep at the top when a comparison lands, on the side it will be on then.
-    struct KeptLine {
-        let side: ComparisonPaneText.Side
-        let line: Int
-    }
-
-    nonisolated static func prepare(
-        left: CompareSource,
-        right: CompareSource,
-        options: LineDiffOptions,
-        coloringLimit: Int
-    ) -> Prepared {
-        let comparison = TextComparison(left.document, right.document, options: options)
-        let leftPane = ComparisonPaneText(comparison, side: .left)
-        let rightPane = ComparisonPaneText(comparison, side: .right)
-        func tokens(_ pane: ComparisonPaneText, _ language: SyntaxLanguage?) -> [SyntaxToken] {
-            guard let language, pane.text.utf16.count <= coloringLimit else { return [] }
-            return SyntaxHighlighter.tokens(in: pane.text, language: language)
-        }
-        return Prepared(
-            comparison: comparison,
-            left: leftPane,
-            right: rightPane,
-            leftTokens: tokens(leftPane, left.language),
-            rightTokens: tokens(rightPane, right.language),
-            leftEdited: left.document.isEdited,
-            rightEdited: right.document.isEdited
-        )
     }
 }

@@ -28,6 +28,31 @@ extension PanelViewController {
         admitting admits: @escaping @Sendable (VFSPath) -> Bool = { _ in true },
         then continuation: @escaping @MainActor ([FileEntry]) -> Void
     ) {
+        readOfferedSources(offered, admitting: admits) { entries in
+            let split = ArchiveTransferSources(entries)
+            guard split.needsExtraction else {
+                continuation(split.direct)
+                return
+            }
+            // The archive members become real files first, through the funnel F5 copy-out uses —
+            // so the passphrase question, its retry and the temp directory are all the shipped
+            // ones, and a paste cannot become a second way out of an archive.
+            self.extractArchiveSources(split.groups) { extracted in
+                continuation(split.direct + extracted)
+            }
+        }
+    }
+
+    /// The rows `offered` names, as entries, with nothing fetched or extracted — the half of
+    /// ``resolveTransferSources(_:admitting:then:)`` an add into an archive shares (PLAN.md §M36).
+    ///
+    /// That add stages its sources through `materialize`, after its Replace question, so a member
+    /// extracted here would be extracted before the user had agreed to anything and then again.
+    func readOfferedSources(
+        _ offered: PanelPasteboard.Sources,
+        admitting admits: @escaping @Sendable (VFSPath) -> Bool = { _ in true },
+        then continuation: @escaping @MainActor ([FileEntry]) -> Void
+    ) {
         let backend = backend
         Task {
             let entries = await BlockingWork.run { () -> [FileEntry] in
@@ -45,17 +70,7 @@ extension PanelViewController {
                     }
                 }
             }
-            let split = ArchiveTransferSources(entries)
-            guard split.needsExtraction else {
-                continuation(split.direct)
-                return
-            }
-            // The archive members become real files first, through the funnel F5 copy-out uses —
-            // so the passphrase question, its retry and the temp directory are all the shipped
-            // ones, and a paste cannot become a second way out of an archive.
-            extractArchiveSources(split.groups) { extracted in
-                continuation(split.direct + extracted)
-            }
+            continuation(entries)
         }
     }
 }

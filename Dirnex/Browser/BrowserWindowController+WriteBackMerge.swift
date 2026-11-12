@@ -213,7 +213,7 @@ extension BrowserWindowController {
             undo: { .none },
             journal: { _ in },
             carry: { [weak self] window in
-                guard let self else { return }
+                guard let self else { return true }
                 // Once, at the first save: the copy holds a merge with the server's version from
                 // then on, whatever happens to the upload.
                 if let base = pending.take() {
@@ -221,6 +221,8 @@ extension BrowserWindowController {
                     remoteFileCache.rebase(copy: edit.temporaryURL, onto: revision)
                 }
                 _ = await writeBack(edit, askingOver: window)
+                // The copy is the editor's watched one, whose next save is carried as F4's is.
+                return true
             },
             closed: { [weak self] in
                 guard let base = pending.take() else { return }
@@ -230,14 +232,14 @@ extension BrowserWindowController {
         MergeWindowController.present(input, saving: saving)
     }
 
-    private func presentMergeFailure(_ name: String, detail: String, over host: NSWindow?) {
-        presentWriteBackFailure(
-            message: String(
-                localized: "Couldn’t merge “\(name)”",
-                comment: "Alert title when the merge of a server file with its edit can't open; %@ is the name."
-            ),
-            detail: detail,
-            over: host
+    func presentMergeFailure(_ name: String, detail: String, over host: NSWindow?) {
+        presentWriteBackFailure(message: Self.mergeFailureTitle(name), detail: detail, over: host)
+    }
+
+    static func mergeFailureTitle(_ name: String) -> String {
+        String(
+            localized: "Couldn’t merge “\(name)”",
+            comment: "Alert title when the merge of a server file with its edit can't open; %@ is the name."
         )
     }
 

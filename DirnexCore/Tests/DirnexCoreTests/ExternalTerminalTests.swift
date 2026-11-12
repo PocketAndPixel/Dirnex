@@ -44,6 +44,38 @@ struct ExternalTerminalTests {
         #expect(invocation?.arguments.last == hostile)
     }
 
+    @Test("an app bundle is handed a script through open(1)")
+    func bundleRunsScript() {
+        let invocation = ExternalTerminal.iTerm.invocation(
+            runningScript: "/tmp/stage/session.command",
+            pathExists: probe(installed: ["/Applications/iTerm.app"])
+        )
+        #expect(invocation?.executablePath == "/usr/bin/open")
+        #expect(
+            invocation?.arguments == ["-a", "/Applications/iTerm.app", "/tmp/stage/session.command"]
+        )
+    }
+
+    @Test("a CLI terminal takes the script after --, not after --cwd")
+    func executableRunsScript() {
+        let invocation = ExternalTerminal.wezTerm.invocation(
+            runningScript: "/tmp/stage/session.command",
+            pathExists: probe(installed: ["/opt/homebrew/bin/wezterm"])
+        )
+        #expect(invocation?.executablePath == "/opt/homebrew/bin/wezterm")
+        #expect(invocation?.arguments == ["start", "--", "/tmp/stage/session.command"])
+    }
+
+    @Test("a terminal that is not installed runs no script")
+    func uninstalledRunsNoScript() {
+        #expect(
+            ExternalTerminal.terminal.invocation(
+                runningScript: "/tmp/x.command",
+                pathExists: probe(installed: [])
+            ) == nil
+        )
+    }
+
     @Test("a terminal that is not installed yields no invocation")
     func uninstalledIsNil() {
         #expect(

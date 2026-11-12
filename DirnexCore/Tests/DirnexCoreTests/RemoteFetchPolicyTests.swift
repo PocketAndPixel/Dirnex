@@ -28,7 +28,7 @@ struct RemoteFetchPolicyTests {
     /// here rather than read from the code under test: borrowing `isAutomatic` would prove the two
     /// agree, not that either is right.
     private func expectedRefusal(for purpose: RemoteFetchPurpose) -> RemoteFetchDecision {
-        [.cursorPreview, .writeBackCheck].contains(purpose) ? .decline : .confirm
+        [.cursorPreview, .writeBackCheck, .dragOut].contains(purpose) ? .decline : .confirm
     }
 
     // MARK: - The size rows
@@ -141,15 +141,32 @@ struct RemoteFetchPolicyTests {
         }
     }
 
-    /// Exactly two purposes are automatic: the preview following the cursor, and a save's content
-    /// check, which nobody pressed a key to download. Pinned because `isAutomatic` is what turns
-    /// every refusal above into a silent one, so a third case answering `true` by accident would make
-    /// a key-pressed gesture stop asking — a fetch the user is waiting for that quietly never starts.
-    @Test("only the cursor-following preview and a save's content check are automatic")
-    func onlyTheCursorPreviewAndTheWriteBackCheckAreAutomatic() {
+    /// Exactly three purposes are automatic: the preview following the cursor, a save's content
+    /// check, which nobody pressed a key to download, and a drag that is already over. Pinned because
+    /// `isAutomatic` is what turns every refusal above into a silent one, so a fourth case answering
+    /// `true` by accident would make a key-pressed gesture stop asking — a fetch the user is waiting
+    /// for that quietly never starts.
+    @Test(
+        "only the cursor-following preview, a save's content check and a finished drag are automatic"
+    )
+    func onlyThePurposesNobodyIsWaitingOnAreAutomatic() {
         let automatic = RemoteFetchPurpose.allCases.filter(\.isAutomatic)
 
-        #expect(automatic == [.cursorPreview, .writeBackCheck])
+        #expect(automatic == [.cursorPreview, .writeBackCheck, .dragOut])
+    }
+
+    /// Bytes into an archive is one act whether ⌥F5 makes the archive or an add rewrites one, so the
+    /// two weigh a set the same and both ask rather than decline: somebody pressed the key, or let
+    /// go of the drag, over this archive (PLAN.md §M36).
+    @Test("an add into an archive weighs its sources the way a pack does")
+    func addToArchiveWeighsLikeAPack() {
+        for limit in Self.limits {
+            #expect(
+                RemoteFetchPolicy.threshold(for: .addToArchive, previewLimit: limit)
+                    == RemoteFetchPolicy.threshold(for: .pack, previewLimit: limit)
+            )
+        }
+        #expect(!RemoteFetchPurpose.addToArchive.isAutomatic)
     }
 
     // MARK: - A save's content check

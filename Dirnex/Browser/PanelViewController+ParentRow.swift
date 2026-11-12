@@ -84,6 +84,9 @@ extension PanelViewController {
         case .sizeBar:
             cell.textField?.stringValue = ""
         }
+        // The same pool again: a name cell that held a rename field is still an editable box until
+        // something closes it, and `applyStyle` would keep the field's look on the way out.
+        cell.endNameEditing()
         cell.applyStyle()
         return cell
     }

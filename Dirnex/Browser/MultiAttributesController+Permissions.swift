@@ -37,13 +37,6 @@ extension MultiAttributesController {
                 ),
                 view: makePermissionGrid()
             ),
-            AttributeRow.make(
-                label: String(
-                    localized: "Special:",
-                    comment: "Info panel field label: set-uid, set-gid and the sticky bit."
-                ),
-                view: makeSpecialBitsRow()
-            ),
             AttributeRow.separator(),
             AttributeRow.make(
                 label: String(
@@ -120,10 +113,13 @@ extension MultiAttributesController {
             for access in POSIXPermissions.Access.allCases {
                 views.append(accessCheckbox(cls, access))
             }
+            let lastAccess = views.last
+            views.append(makeSpecialBox(under: cls))
             let column = NSStackView(views: views)
             column.orientation = .vertical
             column.alignment = .leading
             column.spacing = 2
+            if let lastAccess { column.setCustomSpacing(8, after: lastAccess) }
             return column
         }
         let grid = NSStackView(views: columns)
@@ -180,23 +176,22 @@ extension MultiAttributesController {
 
     // MARK: - Special bits
 
-    private func makeSpecialBitsRow() -> NSView {
-        let boxes = [
+    /// The special bit that closes `cls`'s column, so the three line up in any language.
+    private func makeSpecialBox(under cls: POSIXPermissions.Class) -> NSButton {
+        switch cls {
+        case .owner:
             specialCheckbox(.setUserID, title: String(
                 localized: "Set-UID", comment: "Mode special bit 4000, as a checkbox label."
-            ), predicate: \.setUserID),
+            ), predicate: \.setUserID)
+        case .group:
             specialCheckbox(.setGroupID, title: String(
                 localized: "Set-GID", comment: "Mode special bit 2000, as a checkbox label."
-            ), predicate: \.setGroupID),
+            ), predicate: \.setGroupID)
+        case .other:
             specialCheckbox(.sticky, title: String(
                 localized: "Sticky", comment: "Mode special bit 1000, as a checkbox label."
             ), predicate: \.sticky)
-        ]
-        let row = NSStackView(views: boxes)
-        row.orientation = .horizontal
-        row.alignment = .centerY
-        row.spacing = 20
-        return row
+        }
     }
 
     private func specialCheckbox(

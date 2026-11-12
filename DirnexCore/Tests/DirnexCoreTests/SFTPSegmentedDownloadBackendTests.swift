@@ -295,6 +295,8 @@ struct SFTPSegmentedDownloadBackendTests {
 private final class SingleStreamSFTPTransport: SFTPTransport, @unchecked Sendable {
     private(set) var downloaded: [String] = []
 
+    func diskFree(_: String) throws -> String { throw ServerSpaceUnsupported() }
+
     func download(
         _ remotePath: String,
         to localPath: String,

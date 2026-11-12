@@ -66,9 +66,20 @@ public struct LineDiff: Sendable, Equatable {
         options: LineDiffOptions,
         placement: ChangeSliding.Placement
     ) -> LineDiff {
+        compare(left, right, options: options, placement: placement, check: {})
+    }
+
+    /// `compare`, asking `check` often enough that a large comparison can be stopped.
+    static func compare<Stop: Error>(
+        _ left: [TextLine],
+        _ right: [TextLine],
+        options: LineDiffOptions,
+        placement: ChangeSliding.Placement,
+        check: () throws(Stop) -> Void
+    ) throws(Stop) -> LineDiff {
         var identities = LineIdentities(options: options)
-        let leftIDs = left.map { identities.identity(of: $0) }
-        let rightIDs = right.map { identities.identity(of: $0) }
+        let leftIDs = try identities.identities(of: left, check: check)
+        let rightIDs = try identities.identities(of: right, check: check)
 
         let onLeft = identities.occurrences(in: leftIDs)
         let onRight = identities.occurrences(in: rightIDs)
@@ -78,11 +89,13 @@ public struct LineDiff: Sendable, Equatable {
         let costLimit = options.isMinimal
             ? Int.max
             : MyersDiff.defaultCostLimit(leftCount: leftKept.count, rightCount: rightKept.count)
-        let kept = MyersDiff.changes(
+        let kept = try MyersDiff.changes(
             leftKept.map { leftIDs[$0] },
             rightKept.map { rightIDs[$0] },
-            costLimit: costLimit
+            costLimit: costLimit,
+            check: check
         )
+        try check()
         var leftSide = ChangeSliding.Side(
             ids: leftIDs,
             changed: Array(repeating: true, count: left.count),
@@ -99,6 +112,7 @@ public struct LineDiff: Sendable, Equatable {
         for (position, index) in rightKept.enumerated() {
             rightSide.changed[index] = kept.right[position]
         }
+        try check()
         ChangeSliding.slide(&leftSide, &rightSide, placement: placement)
         return LineDiff(
             changes: blocks(leftSide.changed, rightSide.changed),
@@ -160,6 +174,20 @@ private struct LineIdentities {
         let identity = Int32(table.count)
         table[key] = identity
         return identity
+    }
+
+    /// The identity of each of `lines`, in order.
+    mutating func identities<Stop: Error>(
+        of lines: [TextLine],
+        check: () throws(Stop) -> Void
+    ) throws(Stop) -> [Int32] {
+        var ids: [Int32] = []
+        ids.reserveCapacity(lines.count)
+        for (index, line) in lines.enumerated() {
+            if index % ComparisonStop.linesBetweenChecks == 0 { try check() }
+            ids.append(identity(of: line))
+        }
+        return ids
     }
 
     /// Which identities appear at least once in `ids`.

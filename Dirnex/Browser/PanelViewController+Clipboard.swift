@@ -28,7 +28,7 @@ import DirnexCore
 /// In a **tree** the destination is the folder the cursor's row lives in, not the tree's root —
 /// `creationDirectory`, the same rule F7 New Folder and ⇧F4 Edit File follow. That is what makes
 /// pasting *into* a source's own subtree reachable at all (put the cursor inside a folder you just
-/// copied), which `pasteAdmits` was already written to refuse.
+/// copied), which `TransferAdmission.pasteAdmits` was already written to refuse.
 extension PanelViewController {
     // MARK: - Menu / key actions (dispatched to the focused pane via the responder chain)
 
@@ -110,11 +110,11 @@ extension PanelViewController {
     /// Either kind drops a source that would recurse into its own subtree (pasting a folder
     /// inside itself), mirroring the drop guard.
     private func performPaste(kind: FileOperation.Kind) {
-        // ⌘V into a browsed archive adds the pasteboard files into it (PLAN.md §M4). Copy only:
-        // ⌥⌘V move-paste into an archive isn't supported this pass (gated in `validateMenuItem`).
-        // A nested archive is read-only (`isWritableArchive`), so it falls through to the no-op.
+        // ⌘V and ⌥⌘V into a browsed archive add the board's rows into it by repacking (PLAN.md §M4,
+        // and §M36 for the move). A nested archive is read-only (`isWritableArchive`), so it falls
+        // through to the no-op below: `pasteDestination` has no directory to offer for one.
         if isWritableArchive {
-            if kind == .copy { pasteIntoArchive() }
+            pasteIntoArchive(kind: kind)
             return
         }
         // The cursor decides the destination in a tree, and the table's selection is the live cursor
@@ -132,7 +132,7 @@ extension PanelViewController {
         // drop, so the two gestures cannot end up reading one board two ways.
         resolveTransferSources(
             offered,
-            admitting: { pasteAdmits($0, into: destination, kind: kind) },
+            admitting: { TransferAdmission.pasteAdmits($0, into: destination, kind: kind) },
             then: { [weak self] sources in
                 guard let self, !sources.isEmpty else { return }
                 submitTransfer(kind: kind, sources: sources, destination: destination)
@@ -143,35 +143,4 @@ extension PanelViewController {
             }
         )
     }
-}
-
-/// Whether `source` may be pasted into `destination` at all.
-///
-/// Free function so the `@Sendable` off-main closure can call it without capturing the view
-/// controller. Two rules, and they are not the same rule:
-///
-/// - A **recursion** — the destination is the folder itself or lives inside its subtree — is refused
-///   for either kind. `TransferAdmission.recurses` rather than the string comparison this file used
-///   to carry: that one had no backend in it, so a local `/tmp` read as an ancestor of an SFTP
-///   `/tmp/x` and an ordinary cross-backend paste was silently refused (PLAN.md §M23).
-/// - A **same-folder move** is dropped, because moving a file onto itself is nothing. A same-folder
-///   *copy* is kept on purpose: that is the duplicate gesture, and `submit` renames it "<name> copy"
-///   without a prompt, matching Finder.
-/// - An **archive member** is dropped from a *move*, and only from a move: there is nothing to
-///   remove from a read-only container afterwards, which is why F6 out of an archive does not exist
-///   either (`TransferAdmission.allowsMove`). ⌘V takes it and extracts, exactly as F5 does.
-///
-/// Per source rather than per set, unlike a drop — a paste's kind is chosen by the *key*, so
-/// dropping the items it cannot apply to is already what the same-folder rule above does, where a
-/// drag has one kind for the whole gesture and has to resolve it once.
-private func pasteAdmits(
-    _ source: VFSPath,
-    into destination: VFSPath,
-    kind: FileOperation.Kind
-) -> Bool {
-    if kind == .move {
-        guard TransferAdmission.allowsMove(from: [source]) else { return false }
-        if source.parent == destination { return false }
-    }
-    return !TransferAdmission.recurses(source: source, into: destination)
 }

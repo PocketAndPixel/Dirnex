@@ -70,9 +70,24 @@ public enum SearchRoute: Sendable, Equatable {
     /// A recursive walk of the backend's own listings, matching each entry as it arrives. What a
     /// connected server and an archive get.
     case walk
-    /// Not searchable. An **S3 account** pane is the case that matters: its rows are buckets, and
-    /// "search every bucket" is a different and far more expensive question than the one ⌥F7 asks.
+    /// Every bucket of an **S3 account**, each searched up to a bound the Find Files dialog states
+    /// before it starts (``S3AccountSearch``, PLAN.md §M38 Slice 5). Its own route rather than a
+    /// walk, because the rows are buckets and each one is a connection of its own: "search every
+    /// bucket" is a far more expensive question than the one ⌥F7 asks anywhere else, so it is asked
+    /// differently, and only where the bound can be shown first.
+    case buckets
+    /// Not searchable. An SMB server's list of shares is the case that matters: its rows are shares,
+    /// reached by mounting them, so there is nothing below them to walk (PLAN.md §M35).
     case unavailable
+
+    /// Whether a search on this route may be **saved** and re-run from the sidebar.
+    ///
+    /// A sidebar re-run starts at once, with no dialog, and the dialog is the only place an account
+    /// search states its bound — so a saved one would run that cost without saying it. Editing such
+    /// a search in its tab still works, because that reopens the dialog (Oleg's call, 2026-11-10).
+    public var isSavable: Bool {
+        self != .buckets
+    }
 
     /// The route **re-running a saved search** takes (PLAN.md §M22 Slice 5).
     ///
@@ -93,9 +108,12 @@ public enum SearchRoute: Sendable, Equatable {
     /// The route a search scoped inside `backend` takes.
     public static func forBackend(_ backend: VFSBackendID) -> SearchRoute {
         if backend == .local { return .spotlight }
-        // Ahead of `isRemoteConnection`, which an account is a member of — this is the one remote
-        // backend that is browsable and not searchable, the same asymmetry `acceptsUploads` records.
-        if backend.isS3Account { return .unavailable }
+        // Both ahead of `isRemoteConnection`, which each is a member of. An account would otherwise
+        // walk, listing every bucket under a server walk's budget with nothing said first. An SMB
+        // server's list of shares is browsable and not searchable: its rows are shares, reached by
+        // mounting them, so a walk from it has nowhere to go (PLAN.md §M35).
+        if backend.isS3Account { return .buckets }
+        if backend.isSMBServer { return .unavailable }
         if backend.isRemoteConnection || backend.isArchive { return .walk }
         return .unavailable
     }

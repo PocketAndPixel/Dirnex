@@ -337,6 +337,10 @@ private struct UnsplittingTransport: WebDAVTransport {
         try base.propfindBatch(backendPaths, isCancelled: isCancelled)
     }
 
+    func propfindQuota(_ backendPath: String) throws -> WebDAVHTTPResponse {
+        try base.propfindQuota(backendPath)
+    }
+
     func download(
         _ backendPath: String,
         to localPath: String,
@@ -377,15 +381,23 @@ private struct UnsplittingTransport: WebDAVTransport {
         try base.putEmpty(backendPath, condition: condition)
     }
 
-    func move(_ backendPath: String, to destinationPath: String) throws -> WebDAVHTTPResponse {
-        try base.move(backendPath, to: destinationPath)
+    func move(
+        _ backendPath: String,
+        to destinationPath: String,
+        collections: WebDAVCollectionEnds
+    ) throws -> WebDAVHTTPResponse {
+        try base.move(backendPath, to: destinationPath, collections: collections)
     }
 
-    func copy(_ backendPath: String, to destinationPath: String) throws -> WebDAVHTTPResponse {
-        try base.copy(backendPath, to: destinationPath)
+    func copy(
+        _ backendPath: String,
+        to destinationPath: String,
+        collections: WebDAVCollectionEnds
+    ) throws -> WebDAVHTTPResponse {
+        try base.copy(backendPath, to: destinationPath, collections: collections)
     }
 
-    func delete(_ backendPath: String) throws -> WebDAVHTTPResponse {
-        try base.delete(backendPath)
+    func delete(_ backendPath: String, isCollection: Bool) throws -> WebDAVHTTPResponse {
+        try base.delete(backendPath, isCollection: isCollection)
     }
 }

@@ -18,13 +18,14 @@ import Testing
 @Suite("Merge pane subtitle widths")
 @MainActor
 struct MergeSubtitleWidthTests {
-    /// The lines `BrowserWindowController+WriteBackMerge` and `PanelViewController+ResolveConflictWords`
-    /// put under a pane's title, keyed by their English text.
+    /// The lines `BrowserWindowController+WriteBackMerge`, `PanelViewController+ResolveConflictWords`
+    /// and `PanelViewController+SyncRecord` put under a pane's title, keyed by their English text.
     nonisolated static let keys = [
         "Where your edit started",
         "Your edit",
         "On the server now",
         "Saved to the working tree; git add marks it resolved",
+        "Save, then close this window to go back to git",
         "HEAD, the branch you’re on",
         "HEAD, the branch being rebased onto",
         "The branch being merged in",
@@ -34,7 +35,10 @@ struct MergeSubtitleWidthTests {
         "The patch being applied",
         "The changes being merged in",
         "The common ancestor",
-        "None: both sides added the file"
+        "None: both sides added the file",
+        "In the archive now",
+        "As of the last sync",
+        "Saved to both folders"
     ]
 
     /// A merge window at its opening size with the base shown, laid out. The rig's window is never

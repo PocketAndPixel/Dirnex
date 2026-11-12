@@ -21,7 +21,8 @@ extension SidebarViewController {
             name: SidebarPlacePresentation.title(for: .favorite(entry)),
             image: Self.favoriteIcon(for: entry),
             canEject: false,
-            tooltip: entry.path.path
+            tooltip: entry.path.path,
+            isBusy: SidebarRowActivity.shared.isWorking(entry.path.path)
         )
         cell.onEject = nil
         return cell

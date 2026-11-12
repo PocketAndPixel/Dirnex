@@ -49,19 +49,39 @@ public struct ComparedDocument: Sendable {
         readLines = lines
     }
 
+    /// A document with no lines, which a window shows before its file has been read.
+    public static let empty = ComparedDocument(
+        lines: [],
+        encoding: .utf8,
+        hasByteOrderMark: false,
+        isSavable: false
+    )
+
     /// Read a whole local file, refusing what `ComparedText.read` refuses. Blocking; call it off
     /// the main thread.
+    ///
+    /// `isCancelled` is asked between the steps of the read, which ends in `.stopped` once it says
+    /// so. A single step can run for some seconds on a file of gigabytes, and none of them can be
+    /// interrupted.
     public static func read(
         contentsOf url: URL,
-        byteLimit: Int64 = ByteComparator.prescanByteLimit
+        byteLimit: Int64 = ByteComparator.prescanByteLimit,
+        isCancelled: () -> Bool = { false }
     ) throws(ComparedText.Failure) -> ComparedDocument {
-        try decode(ComparedText.contents(of: url, byteLimit: byteLimit))
+        let data = try ComparedText.contents(of: url, byteLimit: byteLimit)
+        guard !isCancelled() else { throw .stopped }
+        return try decode(data, isCancelled: isCancelled)
     }
 
     /// Decode a whole file's bytes as `ComparedText` does, and check they come back unchanged.
-    public static func decode(_ data: Data) throws(ComparedText.Failure) -> ComparedDocument {
+    public static func decode(
+        _ data: Data,
+        isCancelled: () -> Bool = { false }
+    ) throws(ComparedText.Failure) -> ComparedDocument {
         let text = try ComparedText.decode(data)
+        guard !isCancelled() else { throw .stopped }
         let lines = TextLines.split(text.text)
+        guard !isCancelled() else { throw .stopped }
         let written = try? encode(
             lines,
             encoding: text.encoding,
@@ -89,6 +109,9 @@ public struct ComparedDocument: Sendable {
     /// edit undone, or copied back by hand, leaves the document unedited.
     public var isEdited: Bool {
         guard lines.count == readLines.count else { return true }
+        // Lines nothing has touched are still the array that was read, which answers at once what
+        // a walk over a file of gigabytes would take seconds to say.
+        guard !isSameStorage(lines, readLines) else { return false }
         return zip(lines, readLines).contains { !Self.sameBytes($0, $1) }
     }
 
@@ -177,6 +200,12 @@ public struct ComparedDocument: Sendable {
     }
 
     // MARK: - Lines
+
+    private func isSameStorage(_ first: [TextLine], _ second: [TextLine]) -> Bool {
+        first.withUnsafeBufferPointer { firstBuffer in
+            second.withUnsafeBufferPointer { firstBuffer.baseAddress == $0.baseAddress }
+        }
+    }
 
     private static func sameBytes(_ first: TextLine, _ second: TextLine) -> Bool {
         first.terminator == second.terminator

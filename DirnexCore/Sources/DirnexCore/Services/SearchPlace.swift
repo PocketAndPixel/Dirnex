@@ -73,12 +73,15 @@ public struct SearchPlace: Sendable, Equatable {
     /// else has one, because a walk needs a root to start at. An unsearchable folder answers itself:
     /// it never runs, and inventing an everywhere for it would be the widening ``SearchRoute`` exists
     /// to refuse.
+    ///
+    /// An S3 account has one place and no choice: its root is the account, and the dialog offers no
+    /// "everything" there, so either answer is that root.
     public var scope: VFSPath? {
         guard everything else { return folder }
         switch route {
         case .spotlight:
             return nil
-        case .walk:
+        case .walk, .buckets:
             return VFSPath(backend: folder.backend, path: "/")
         case .unavailable:
             return folder

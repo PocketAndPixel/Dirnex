@@ -31,8 +31,8 @@ public enum LocalMetadataWriter {
                 if !setModificationTime(date, on: localPath) {
                     refusals.append(.itemRefused(String(cString: strerror(errno))))
                 }
-            case .preserveDuringTransfer:
-                continue // the transfer's own flag; nothing left to do here
+            case .preserveDuringTransfer, .setOwnership:
+                continue // the transfer's own flag, or Get Info's step, which no carry builds
             }
         }
         return refusals
@@ -71,6 +71,7 @@ extension RemoteMetadataPlan {
             case .preserveDuringTransfer: aspects.formUnion([.mode, .modificationTime])
             case .setMode: aspects.formUnion([.mode, .specialModeBits])
             case .setModificationTime: aspects.insert(.modificationTime)
+            case .setOwnership: break // Get Info's step: no transfer carries or reports it
             }
         }
         return aspects

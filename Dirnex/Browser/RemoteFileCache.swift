@@ -56,8 +56,9 @@ final class RemoteFileCache {
     /// allowance and none can leak one into another.
     var previewAllowance = RemotePreviewAllowance()
 
-    /// The shared temp root every remote fetch writes beneath.
-    static var temporaryRoot: URL {
+    /// The shared temp root every remote fetch writes beneath. Nonisolated, being a path and no
+    /// state, so a staged folder can be settled off the main actor (`RemoteFolderPromise`).
+    nonisolated static var temporaryRoot: URL {
         FileManager.default.temporaryDirectory
             .appendingPathComponent("DirnexRemote", isDirectory: true)
     }

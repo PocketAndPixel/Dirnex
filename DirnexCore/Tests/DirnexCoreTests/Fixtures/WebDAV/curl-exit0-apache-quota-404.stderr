@@ -1,0 +1,8 @@
+dav-status=207
+dav-size=290
+dav-up=121
+dav-headers={"date":["Tue, 10 Nov 2026 20:56:08 GMT"],
+"server":["Apache/2.4.67 (Unix) LibreSSL/3.3.6"],
+"content-length":["290"],
+"content-type":["text/xml; charset=\"utf-8\""]
+}

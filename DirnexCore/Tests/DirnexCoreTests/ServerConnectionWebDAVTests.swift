@@ -56,6 +56,20 @@ struct ServerConnectionWebDAVTests {
         #expect(try JSONDecoder().decode(ServerConnection.self, from: data) == original)
     }
 
+    /// PLAN.md §M38: an IIS account keeps NTLM, and an account with no name keeps the ticket, so a
+    /// restored tab signs in the way the connect did without asking the server again.
+    @Test("NTLM and Negotiate are kept by name in the stored endpoint", arguments: [
+        (WebDAVAuthScheme.ntlm, WebDAVLocation(host: "iis", username: #"CORP\me"#), "ntlm"),
+        (.negotiate, WebDAVLocation(host: "files.corp.example", username: ""), "negotiate")
+    ])
+    func newSchemesRoundTrip(_ scheme: WebDAVAuthScheme, _ location: WebDAVLocation, _ name: String) throws {
+        let original = webdav("Corp", location: location, authentication: scheme)
+        let data = try JSONEncoder().encode(original)
+        let json = try #require(String(bytes: data, encoding: .utf8))
+        #expect(json.contains(#""authentication":"\#(name)""#))
+        #expect(try JSONDecoder().decode(ServerConnection.self, from: data) == original)
+    }
+
     /// A record written before a connect settled anything has neither key, and a restored tab of a
     /// public share has no scheme: both must decode, as FTP's time zone does.
     @Test("a stored endpoint with no scheme and no pin decodes with both nil")

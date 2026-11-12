@@ -210,34 +210,56 @@ extension PanelViewController {
         host?.panelDidNavigate(self)
     }
 
-    /// Put one hit back under the name the app just gave it.
+    /// Tell every results tab in the window what a rename did: this pane's, and the other pane's,
+    /// which may be showing the same hits (`applySearchHitRenames`). Every rename the app carries out
+    /// ends here — F2, ⇧F2, either one inside an archive — as every delete and move ends in
+    /// `noteSearchHitsDeleted` and `applySearchHitChanges`.
+    ///
+    /// `landing` is where the gesture wants this pane's cursor, in the tab it ran in; every other
+    /// tab's cursor follows its own row.
+    func noteSearchHitsRenamed(_ renames: [SearchSnapshot.Renamed], landing: VFSPath? = nil) {
+        applySearchHitRenames(renames, landing: landing)
+        host?.panelCounterpart(of: self)?.applySearchHitRenames(renames, landing: nil)
+    }
+
+    /// Put every hit a rename reached where it now is, in every results tab of this pane.
     ///
     /// A search snapshot is the one listing here that can neither re-list nor re-gather itself —
     /// `refreshCurrentDirectory` returns without touching it, and `refreshTree` deliberately skips a
     /// results root, both saying the same thing: it keeps the hits it was given. That is right for
-    /// the world changing underneath it, and wrong for a change *this pane* made, which would
+    /// the world changing underneath it, and wrong for a change *the app* made, which would
     /// otherwise leave the row showing a name that is no longer on disk — the tell the S3 rename bug
     /// was first reported by.
     ///
-    /// A substitution rather than a re-`stat`: a rename changes nothing but the name, and the hit
+    /// **A hit inside a renamed folder moves with it** (2026-11-05). Until then only the renamed row
+    /// itself was put back, so a hit below it went on showing the folder's old name in its path,
+    /// which addresses nothing; and only in the tab the rename ran in. `SearchSnapshot` folds the
+    /// renames in the order they ran (``SearchSnapshot/renaming(_:after:)``).
+    ///
+    /// A substitution rather than a re-`stat`: a rename changes nothing but the path, and the hit
     /// may be on a server, where confirming what we just did would be a round trip. Nothing else in
     /// the snapshot moves, so a search that found a hundred files still shows a hundred.
     ///
     /// The merged Trash and iCloud listings need none of this — both re-gather on refresh. A rename
     /// that had to run as a **job** (an S3 prefix, `EXDEV`) lands through `applySearchHitChanges`
     /// instead, once the window hears the job finish: it is a move that stayed in its own folder.
-    func substituteSearchHit(_ source: VFSPath, renamedTo newName: String) {
-        guard panel.path.backend == .search else { return }
-        let entries = panel.model.listing.entries
-        guard entries.contains(where: { $0.path == source }) else { return }
-        panel.setListing(DirectoryListing(
-            path: panel.path,
-            entries: entries.map { $0.path == source ? $0.renamed(to: newName) : $0 }
-        ))
-        if let index = panel.displayedIndex(ofID: source.parent?.appending(newName) ?? source) {
-            panel.moveCursor(to: index)
+    /// An undo or a redo of a rename lands here too, from the window (`+Undo`).
+    func applySearchHitRenames(_ renames: [SearchSnapshot.Renamed], landing: VFSPath?) {
+        guard !renames.isEmpty else { return }
+        for tab in tabs where tab.panel.path.backend == .search {
+            let cursor = tab.panel.currentEntry?.path
+            guard let entries = SearchSnapshot.renaming(
+                tab.panel.model.listing.entries,
+                after: renames
+            )
+            else { continue }
+            // A renamed row re-sorts under its new name; the cursor goes with its own row, as it does
+            // after an in-place rename, unless the gesture said where it should land.
+            let isGestureTab = tab === tabs[activeTabIndex]
+            let target = (isGestureTab ? landing : nil)
+                ?? cursor.map { SearchSnapshot.path($0, after: renames) }
+            installSearchHits(entries, in: tab, cursorOn: target)
         }
-        reloadEverything()
     }
 
     /// Apply what a delete or a move did to search hits, in every results tab of this pane that
@@ -248,8 +270,9 @@ extension PanelViewController {
     /// Every results tab rather than the one the gesture started in, because the question is about
     /// the *file*. A move reaches the window only when its job finishes, with no tab attached, and a
     /// delete over a server takes long enough to switch tabs under; any tab showing the hit is
-    /// showing a file that is not there. Rows inside an expanded folder are not hits, and are left
-    /// to the tree's re-list of that folder.
+    /// showing a file that is not there. A hit inside a folder that was deleted or moved away leaves
+    /// with it, and is remembered the same way (2026-11-05). Rows inside an expanded folder are not
+    /// hits, and are left to the tree's re-list of that folder.
     ///
     /// A hit that can come back is remembered (`PanelTab.departedSearchHits`), so ⌘Z restores its
     /// row: when `canReturn` — a Trash pass or a move, never a permanent delete — and only on this

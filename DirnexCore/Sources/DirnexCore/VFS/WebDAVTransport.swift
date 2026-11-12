@@ -55,6 +55,25 @@ public struct WebDAVPutHeaders: Sendable, Equatable {
     }
 }
 
+/// Which URLs of a MOVE or COPY name a **collection**, with its trailing slash: the request's own,
+/// the `Destination`, both or neither.
+///
+/// Neither is the spelling every request starts with, since the backend is not told whether it is
+/// moving a file or a folder. A server that wants a folder's slash says so with a redirect, and the
+/// request is sent again with the end it named (``WebDAVFolderRedirect``, PLAN.md §M38).
+public struct WebDAVCollectionEnds: OptionSet, Sendable, Hashable {
+    public let rawValue: Int
+
+    public init(rawValue: Int) {
+        self.rawValue = rawValue
+    }
+
+    /// The resource the request names.
+    public static let source = WebDAVCollectionEnds(rawValue: 1 << 0)
+    /// The `Destination` header's.
+    public static let destination = WebDAVCollectionEnds(rawValue: 1 << 1)
+}
+
 /// The non-hermetic boundary beneath a ``WebDAVBackend``: it sends one HTTP request per call and
 /// hands back the raw answer. Everything above it — the URL rules, the multistatus parser, the
 /// listing split, the stat rule, the resume decision, the error mapping and the connect probe — is
@@ -86,6 +105,16 @@ public protocol WebDAVTransport: Sendable {
     /// `CancellationError` when `isCancelled` answered `true`.
     func propfindBatch(_ backendPaths: [String], isCancelled: () -> Bool) throws
         -> [WebDAVBatchAnswer]
+
+    /// One `Depth: 0` PROPFIND of a folder for its quota alone
+    /// (``WebDAVProcessArguments/quotaPropfind(session:backendPath:)``, PLAN.md §M38 Slice 7).
+    ///
+    /// **No default**, unlike ``downloadSegments(_:of:to:progress:isCancelled:)``. S3's rule for an
+    /// additive verb is a default that gets the same result more slowly, and the only default this
+    /// verb could have, the plain stat, names no quota, so it gets no result at all and says
+    /// nothing. That is how the app's own transport was first written without it: every server read
+    /// as one that reports none, and only the live suite noticed (2026-11-10).
+    func propfindQuota(_ backendPath: String) throws -> WebDAVHTTPResponse
 
     /// Download one file to a local path, resuming from the local file's length when `resume`.
     ///
@@ -144,14 +173,23 @@ public protocol WebDAVTransport: Sendable {
     /// One PUT with an empty body, carrying `condition` as a header.
     func putEmpty(_ backendPath: String, condition: S3WriteCondition) throws -> WebDAVHTTPResponse
 
-    /// One MOVE with `Overwrite: F`.
-    func move(_ backendPath: String, to destinationPath: String) throws -> WebDAVHTTPResponse
+    /// One MOVE with `Overwrite: F`, naming the ends in `collections` with their trailing slash.
+    func move(
+        _ backendPath: String,
+        to destinationPath: String,
+        collections: WebDAVCollectionEnds
+    ) throws -> WebDAVHTTPResponse
 
-    /// One COPY of a file with `Overwrite: F`.
-    func copy(_ backendPath: String, to destinationPath: String) throws -> WebDAVHTTPResponse
+    /// One COPY of a file with `Overwrite: F`, naming the ends in `collections` with their trailing
+    /// slash (only ever the `Destination`, since what is copied is a file).
+    func copy(
+        _ backendPath: String,
+        to destinationPath: String,
+        collections: WebDAVCollectionEnds
+    ) throws -> WebDAVHTTPResponse
 
-    /// One DELETE.
-    func delete(_ backendPath: String) throws -> WebDAVHTTPResponse
+    /// One DELETE, naming the path as a collection when `isCollection`.
+    func delete(_ backendPath: String, isCollection: Bool) throws -> WebDAVHTTPResponse
 }
 
 public extension WebDAVTransport {

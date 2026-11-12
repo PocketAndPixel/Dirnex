@@ -53,6 +53,14 @@ public enum RemoteFetchPurpose: Sendable, Equatable, CaseIterable {
     /// ⌥F5 Pack, where the *sources* are not on this disk and have to be staged before `bsdtar`
     /// can see them.
     case pack
+    /// An add into a browsed archive — F5, F6, ⌘V, ⌥⌘V or a drop — where a source is not on this
+    /// disk (PLAN.md §M36).
+    ///
+    /// The archive is rewritten from files on this disk, so a row on a server or inside another
+    /// archive is staged first, exactly as ``pack``'s are. Its own case rather than ``pack``'s for
+    /// the reason this enum gives every gesture one: the two share a row today because they are the
+    /// same act (bytes into an archive), and the next visit to either should have to say so again.
+    case addToArchive
     /// Entering an archive that lives on a server: `ArchiveBackend` needs a real path, so browsing
     /// one is fetch-the-whole-file-then-mount.
     ///
@@ -69,6 +77,13 @@ public enum RemoteFetchPurpose: Sendable, Equatable, CaseIterable {
     /// large for this row is not asked about: the check stands down and the save rests on the size
     /// and time, as it did before this row existed.
     case writeBackCheck
+    /// A drag of remote rows let go somewhere that did not take it, with the bytes still coming down
+    /// (``RemoteDragHandoff``): whether the transfer may finish, so that a second try is immediate.
+    ///
+    /// The third automatic purpose. The drag is over and nobody is there to ask, so a set too large
+    /// for this row is not asked about: the transfer stops, and a file that has to be that large can
+    /// be waited for during the drag.
+    case dragOut
 
     /// Whether this fetch happens without anybody having pressed a key for the file in question.
     ///
@@ -77,9 +92,9 @@ public enum RemoteFetchPurpose: Sendable, Equatable, CaseIterable {
     /// gesture, ``writeBackCheck``, inherited that answer here rather than at its call site.
     public var isAutomatic: Bool {
         switch self {
-        case .cursorPreview, .writeBackCheck: true
+        case .cursorPreview, .writeBackCheck, .dragOut: true
         case .preview, .open, .edit, .handOff, .compare, .syncContents, .checksum, .userScript,
-             .pack, .browseArchive: false
+             .pack, .addToArchive, .browseArchive: false
         }
     }
 }
@@ -197,7 +212,8 @@ public enum RemoteFetchPolicy {
         // the smaller question too, and confirming an *open* they would not be asked about for a
         // mere look is the ordering this table exists to keep straight.
         case .open, .edit,
-             .handOff, .compare, .syncContents, .checksum, .userScript, .pack, .browseArchive:
+             .handOff, .compare, .syncContents, .checksum, .userScript, .pack, .addToArchive,
+             .browseArchive, .dragOut:
             max(64 * 1024 * 1024, limit)
         }
     }

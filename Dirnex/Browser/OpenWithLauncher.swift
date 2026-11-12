@@ -70,6 +70,41 @@ enum OpenWithLauncher {
         }
     }
 
+    // MARK: - Always Open With
+
+    /// The files a change of default application would reach for `entries`, typed the way Open
+    /// With's list types them; `nil` when there is no single document type to change.
+    static func defaultApplicationScope(for entries: [FileEntry]) -> DefaultApplicationScope? {
+        DefaultApplicationScope.of(entries, typeOf: contentTypeIdentifier(of:))
+    }
+
+    /// Make `application` the one macOS opens every file of `typeIdentifier` with, answering the
+    /// error when it did not happen.
+    ///
+    /// **macOS asks the user first, in a dialog of its own**, measured 2026-11-12 on every change of
+    /// a default on macOS 26: "Do you want all documents with the extension “.m4v” to open with
+    /// “VLC”, or to keep using “TV”?", raised by `CoreServicesUIAgent` and not attached to any
+    /// window. Six changes in the probes raised six of them. The completion waits for the answer,
+    /// which came 2 to 10 s later there, so this is awaited rather than blocked on. Setting the
+    /// default an application already has asks nothing and answered in 3 ms.
+    ///
+    /// The callback overload wrapped in a continuation, not the `async` spelling: in the probe that
+    /// spelling returned at once, before the dialog had been answered.
+    ///
+    /// Nothing here redraws the type's icon: macOS keeps drawing the old one for minutes after a
+    /// change, Finder's own change included (docs/NOTES.md ▸ Drag and drop). Registering the
+    /// applications again with `LSRegisterURL` helped only a change to an application with an icon
+    /// of its own, and was taken out the same day (Oleg's call).
+    static func makeDefault(_ application: ApplicationRef, forType typeIdentifier: String) async -> Error? {
+        guard let type = UTType(typeIdentifier) else { return CocoaError(.featureUnsupported) }
+        let bundleURL = URL(fileURLWithPath: application.bundlePath)
+        return await withCheckedContinuation { continuation in
+            NSWorkspace.shared.setDefaultApplication(at: bundleURL, toOpen: type) { error in
+                continuation.resume(returning: error)
+            }
+        }
+    }
+
     /// A menu-sized icon for an application.
     static func icon(for application: ApplicationRef) -> NSImage {
         let image = NSWorkspace.shared.icon(forFile: application.bundlePath)

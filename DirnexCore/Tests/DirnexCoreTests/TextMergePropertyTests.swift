@@ -57,6 +57,7 @@ struct TextMergePropertyTests {
                 lines += theirs
             case .conflict:
                 let choice = merge.choices[conflict]
+                let combined = merge.whitespace[conflict]?.combined
                 conflict += 1
                 let parts: [[TextLine]] = switch choice {
                 case nil: []
@@ -64,6 +65,7 @@ struct TextMergePropertyTests {
                 case .theirs: [theirs]
                 case .yoursThenTheirs: [yours, theirs]
                 case .theirsThenYours: [theirs, yours]
+                case .editWithWhitespace: [combined ?? []]
                 }
                 var first = parts.first ?? []
                 if parts.count == 2, !parts[1].isEmpty, let last = first.last, last.terminator == .none {
@@ -77,7 +79,7 @@ struct TextMergePropertyTests {
     }
 
     /// Every check that does not depend on how the merge got here.
-    private static func check(_ merge: TextMerge, _ context: String) {
+    static func check(_ merge: TextMerge, _ context: String) {
         #expect(merge.result.lines.map(bytes) == expectedResult(merge), "\(context)")
         #expect(merge.result.lines.dropLast().allSatisfy { $0.terminator != .none }, "\(context)")
         let counts: [MergeRow.Column: Int] = [
@@ -106,14 +108,17 @@ struct TextMergePropertyTests {
         }
         // A result line sits on the row of the line it came from.
         var conflict = 0
+        let spacing = LineDiffOptions(whitespace: .ignoreAll)
         for (index, region) in merge.merge.regions.enumerated() {
             let rows = merge.rows.filter { $0.region == index }
             let choice: TextMerge.Choice? = region.kind == .conflict ? merge.choices[conflict] : nil
+            let editSide = region.kind == .conflict ? merge.whitespace[conflict]?.editSide : nil
             if region.kind == .conflict {
                 conflict += 1
             }
             let source: MergeRow.Column? = switch (region.kind, choice) {
             case (.theirs, _), (.conflict, .theirs?), (.conflict, .theirsThenYours?): .theirs
+            case (.conflict, .editWithWhitespace?): editSide
             case (.conflict, nil): nil
             default: .yours
             }
@@ -124,10 +129,18 @@ struct TextMergePropertyTests {
             let lines = source == .yours ? merge.yours.lines : merge.theirs.lines
             let firstPart = rows.filter { $0.line(in: source) != nil }
             for row in firstPart {
-                // The content: taking both may have given the line a break it did not have.
-                let shown = row.result.map { merge.result.lines[$0].content }
-                let from = row.line(in: source).map { lines[$0].content }
-                #expect(shown != nil && shown == from, "\(context)")
+                // The content: taking both may have given the line a break it did not have, and the
+                // edit with the other side's whitespace differs from its side in whitespace alone.
+                let shown = row.result.map { merge.result.lines[$0] }
+                let from = row.line(in: source).map { lines[$0] }
+                if choice == .editWithWhitespace {
+                    #expect(
+                        shown.map(spacing.key) == from.map(spacing.key) && shown != nil,
+                        "\(context)"
+                    )
+                } else {
+                    #expect(shown != nil && shown?.content == from?.content, "\(context)")
+                }
             }
             // Both sides taken: the second side's lines come after the first's, never beside them.
             if choice == .yoursThenTheirs || choice == .theirsThenYours,
@@ -161,9 +174,13 @@ struct TextMergePropertyTests {
             var undo: [TextMerge.Step] = []
             for _ in 0..<Int.random(in: 1...8, using: &rng) {
                 // An open choice now and then, so a conflict is reopened as well as chosen again.
-                let choice = Int.random(in: 0..<5, using: &rng) == 0
-                    ? nil : TextMerge.Choice.allCases.randomElement(using: &rng)
                 let conflict = Int.random(in: 0..<merge.choices.count, using: &rng)
+                let offered = TextMerge.Choice.allCases.filter { merge.offers(
+                    $0,
+                    forConflict: conflict
+                ) }
+                let choice = Int.random(in: 0..<5, using: &rng) == 0
+                    ? nil : offered.randomElement(using: &rng)
                 let step = TextMerge.Step(conflict: conflict, choice: choice)
                 undo.append(merge.apply(step))
                 Self.check(merge, "\(context) after \(step)")

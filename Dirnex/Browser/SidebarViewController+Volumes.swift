@@ -28,9 +28,19 @@ extension SidebarViewController {
         guard let volume, let total = volume.totalCapacity, let available = volume.availableCapacity else {
             return volume?.name
         }
-        return String(
+        return Self.capacityLine(available: available, total: total)
+    }
+
+    /// "123 GB available of 456 GB": a volume's whole tooltip, and the second line of a saved SFTP
+    /// server's, whose numbers are the same `statvfs` fields (``SFTPDiskFree``). One call site for
+    /// the string, so its one comment covers both (docs/NOTES.md ▸ Localization).
+    static func capacityLine(available: Int64, total: Int64) -> String {
+        String(
             localized: "\(FileFormatting.byteString(available)) available of \(FileFormatting.byteString(total))",
-            comment: "Volume capacity tooltip; %1$@ is free space, %2$@ is total capacity."
+            comment: """
+            Free space of a disk: a volume's sidebar tooltip, and the line under a saved SFTP server's \
+            address. %1$@ is free space, %2$@ is total capacity.
+            """
         )
     }
 

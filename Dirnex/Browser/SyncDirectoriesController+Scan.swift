@@ -190,7 +190,7 @@ extension SyncDirectoriesController {
         case let .success(entries):
             scanError = nil
             rows = entries.map { entry in
-                let action = DirectorySync.defaultAction(for: entry.status, direction: direction)
+                let action = defaultAction(for: entry)
                 return Row(entry: entry, action: action, included: isActionable(action))
             }
         case let .failure(error):
@@ -199,6 +199,7 @@ extension SyncDirectoriesController {
         }
         tableView.reloadData()
         updateChrome()
+        readChanges()
     }
 
     /// Put the picker back on the comparison that is actually applied — after a declined content
@@ -245,13 +246,14 @@ extension SyncDirectoriesController {
                 localized: "The folders are already in sync.",
                 comment: "Sync status: no differences were found."
             ), isError: false)
-            syncButton.isEnabled = false
+            syncButton.isEnabled = boxDiffersFromRecord
             return
         }
         let checked = rows.filter { $0.included && isActionable($0.action) }
         let copies = checked.count { isCopy($0.action) }
         let deletes = checked.count - copies
-        let conflicts = rows.count { $0.action == .conflict }
+        let changedOnBoth = rows.count { isChangedOnBoth($0.entry) }
+        let conflicts = rows.count { $0.action == .conflict && !isChangedOnBoth($0.entry) }
         var text = String(
             localized: "\(copies) to copy, \(deletes) to delete",
             comment: "Sync status summary; %1$lld files to copy, %2$lld to delete."
@@ -262,8 +264,14 @@ extension SyncDirectoriesController {
                 comment: "Sync status suffix; %lld conflicting items left unchanged. Plural."
             )
         }
+        if changedOnBoth > 0 {
+            text += " · " + String(
+                localized: "\(changedOnBoth) changed on both sides",
+                comment: "Sync status suffix; %lld files changed in both folders since the last sync. Plural."
+            )
+        }
         setStatus(text, isError: false)
-        syncButton.isEnabled = !checked.isEmpty
+        syncButton.isEnabled = !checked.isEmpty || boxDiffersFromRecord
     }
 
     /// Set the footer's line, and hand it its own text as a tooltip.

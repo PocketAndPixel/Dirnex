@@ -9,20 +9,67 @@ import DirnexCore
 extension SidebarViewController {
     // MARK: - Rendering
 
-    /// Build (or reuse) a saved-server cell: the protocol glyph, the address as a tooltip, and a
-    /// spinner while this connection is being established. Removal is a right-click-menu action, not
-    /// a per-row button.
+    /// Build (or reuse) a saved-server cell: the protocol glyph, the address and any space left as a
+    /// tooltip, and a spinner while this connection is being established. Removal is a
+    /// right-click-menu action, not a per-row button.
     func serverCell(for connection: ServerConnection) -> NSView {
         let cell = reuse(SidebarCellView.identifier) as? SidebarCellView ?? SidebarCellView()
         cell.configure(
             name: SidebarPlacePresentation.title(for: .server(connection)),
             image: Self.serverIcon(for: connection),
             canEject: false,
-            tooltip: connection.address,
+            tooltip: Self.serverTooltip(for: connection),
             isBusy: SidebarRowActivity.shared.isWorking(connection.name)
         )
         cell.onEject = nil
         return cell
+    }
+
+    /// The server's address, and under it the space it last said it has left, when it has said
+    /// (PLAN.md §M38 Slice 7). Only WebDAV and SFTP servers are asked (``ServerQuotaBook``).
+    ///
+    /// A WebDAV server's line is "available" with no total, the reason being
+    /// ``WebDAVProcessArguments/quotaPropfindBody``'s; of those measured only Nextcloud reports one
+    /// (``WebDAVQuota``). An SFTP server's says "of" its filesystem's total, as a volume's does, since
+    /// it is the same `statvfs` (``SFTPDiskFree``). Both choices were Oleg's, 2026-11-10 and 11-11.
+    static func serverTooltip(
+        for connection: ServerConnection,
+        quotas: ServerQuotaBook = .shared
+    ) -> String {
+        guard let server = ServerQuotaBook.Server(connection.endpoint),
+              let space = quotas.space(for: server)
+        else { return connection.address }
+        guard let total = space.totalBytes else {
+            let available = String(
+                localized: "\(FileFormatting.byteString(space.availableBytes)) available",
+                comment: """
+                Second line of a saved server's sidebar tooltip, under its address: the space the \
+                server says is left to the account. %@ is a size such as “98.9 MB”.
+                """
+            )
+            return connection.address + "\n" + available
+        }
+        return connection.address + "\n" + capacityLine(
+            available: space.availableBytes,
+            total: total
+        )
+    }
+
+    /// Redraw the server rows' tooltips when a server's answer about its space changes, the way a
+    /// spinner is redrawn: in place, the rows themselves unchanged.
+    func observeServerQuota() {
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(serverQuotaChanged),
+            name: ServerQuotaBook.didChangeNotification,
+            object: ServerQuotaBook.shared
+        )
+    }
+
+    @objc private func serverQuotaChanged() {
+        let servers = rows.indices.filter { rows[$0].server != nil }
+        guard !servers.isEmpty else { return }
+        tableView.reloadData(forRowIndexes: IndexSet(servers), columnIndexes: IndexSet(integer: 0))
     }
 
     /// A per-protocol SF Symbol so a saved server reads as remote at a glance: a globe-ish network

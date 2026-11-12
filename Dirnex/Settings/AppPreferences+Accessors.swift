@@ -7,8 +7,9 @@ import Foundation
 /// cheaper because this is the seam that already existed: everything below is *derived* — a toggle
 /// several surfaces share so they cannot drift, a unit conversion the Settings field edits in, or a
 /// read taken from somewhere the main actor is not. Nothing here is stored, and nothing here is a
-/// preference of its own; the values, their `UserDefaults` writes and their change notifications
-/// stay together in `AppPreferences.swift`, where the argument for each default is written down.
+/// preference of its own; the values and their `UserDefaults` writes stay together in
+/// `AppPreferences.swift`, where the argument for each default is written down, and the change
+/// notifications they post are in `AppPreferences+Notifications.swift`.
 extension AppPreferences {
     /// Flip the app-wide show-hidden state. The shared entry point for the header button, the
     /// ⇧⌘. shortcut, and the palette/menu command — all of which want the same one-line effect.
@@ -27,6 +28,12 @@ extension AppPreferences {
     /// palette command, which own this toggle; Settings deliberately does not restate it.
     func toggleShowSyncStatus() {
         showSyncStatus.toggle()
+    }
+
+    /// Flip the app-wide icon-preview state — the shared entry point for the View menu item and the
+    /// palette command, which own this toggle; Settings deliberately does not restate it.
+    func toggleShowIconPreviews() {
+        showIconPreviews.toggle()
     }
 
     /// Flip the app-wide function-bar state — the shared entry point for the View menu item and the

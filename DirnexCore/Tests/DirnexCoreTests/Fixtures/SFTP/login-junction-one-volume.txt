@@ -1,0 +1,10 @@
+sftp> -df
+        Size         Used        Avail       (root)    %Capacity
+    61202244     46518744     11542176     14683500          76%
+sftp> -ls -la
+drwxr-xr-x    ? 0        0            4096 Nov 11 02:22 .
+drwxr-xr-x    ? 0        0            4096 Nov 11 02:22 ..
+drwxrwxrwx    ? 0        0              40 Nov 11 02:22 home
+drwxrwxrwx    ? 0        0              40 Nov 11 02:22 media
+sftp> pwd
+Remote working directory: /

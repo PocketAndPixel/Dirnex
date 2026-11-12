@@ -49,8 +49,9 @@ extension PanelViewController {
         // `creationDirectory` is `nil` wherever there is no real directory to create into — and, for
         // the merged iCloud listing, the CloudDocs container the merge is built on (PLAN.md §M9). In
         // a tree it is the folder the cursor's row lives in, so the new folder appears as a sibling
-        // right where the cursor is rather than back at the root.
-        guard let target = creationDirectory else { return }
+        // right where the cursor is rather than back at the root. Inside a writable archive it is the
+        // folder the cursor is in there (`archiveCreationDirectory`), and the create is a rewrite.
+        guard let target = createTarget else { return }
         // An S3 account pane's rows are **buckets**, so F7 there creates one (PLAN.md §M21
         // Slice 9). Not a naming quibble: an account has no folders to make, and a bucket's name
         // has to keep rules a folder's does not — which is why the prefilled default goes away
@@ -141,6 +142,10 @@ extension PanelViewController {
         }
 
         let target = directory.appending(name)
+        if target.backend.isArchive {
+            createArchiveMember(.folder, at: target)
+            return
+        }
         let backend = backend
         Task {
             do {
