@@ -20,12 +20,13 @@ extension PanelViewController {
         style: QuickViewRenderStyle,
         caption: QuickViewCaption?,
         placeholder: RemotePreviewPlaceholder? = nil,
-        actions: RemotePreviewActions? = nil
+        actions: RemotePreviewActions? = nil,
+        location: VFSPath? = nil
     ) {
         let preview = ensureQuickViewPreview()
         preview.isHidden = false
         preview.placeholderActions = actions
-        preview.show(url, style: style, placeholder: placeholder)
+        preview.show(url, style: style, placeholder: placeholder, location: location)
         preview.setCaption(caption)
     }
 
@@ -116,6 +117,9 @@ extension PanelViewController {
         )
         preview.onClose = { [weak self] in self?.host?.closeQuickView() }
         preview.onPickStyle = { [weak self] in self?.host?.setQuickViewRenderStyle($0) }
+        preview.links.follow = { [weak self] link, location, surface in
+            self?.host?.followQuickViewLink(link, from: location, on: surface)
+        }
         view.addSubview(preview)
         NSLayoutConstraint.activate([
             preview.leadingAnchor.constraint(equalTo: scrollView.leadingAnchor),

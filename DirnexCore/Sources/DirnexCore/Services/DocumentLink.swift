@@ -24,9 +24,10 @@ import Foundation
 /// with `loadHTMLString` and synthetic clicks: every click reached `decidePolicyFor` as such a URL,
 /// `#anchor` arrived against the document and scrolled the page, `""` was the document and `.` its
 /// folder, a name holding a space, `é` or `#` round-tripped, `file:///…` stayed a `file:` URL, and
-/// `//host/x` arrived with `host` as the host. The same page with the `file://` folder the preview
-/// uses today resolved `""`, `.` and `#anchor` all to the folder, and the clicks never reached the
-/// delegate at all.
+/// `//host/x` arrived with `host` as the host. The same page under the `file://` folder the preview
+/// used before resolved `""`, `.` and `#anchor` all to the folder; and on a `file:` page WebKit asks
+/// about a link only when it names a file that exists inside the page's read access (measured
+/// 2026-11-13), which a link from a server's document, rendered here from a copy, never does.
 ///
 /// So ``resolve(_:from:)`` reads either form, the reference as written or the URL WebKit made of it,
 /// and gives the same answer for both (pinned against WebKit's own answers in the tests).

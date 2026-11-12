@@ -1,4 +1,5 @@
 import AppKit
+import DirnexCore
 import PDFKit
 import Quartz
 import UniformTypeIdentifiers
@@ -132,6 +133,9 @@ final class QuickViewPreviewView: NSView {
     /// Set once the first `show` has run, so `show(nil)` on a fresh view still blanks the backends
     /// rather than being mistaken for "already showing nil".
     private var hasLoaded = false
+    /// Where the file on screen is on its own backend, a heading a followed link is waiting to scroll
+    /// to, and what a click on a link does (`QuickViewPreviewView+Links`, PLAN.md §M39).
+    var links = QuickViewLinks()
 
     /// Where `content` starts below the top edge under a `.floating` header, `nil` under any other.
     /// Moved by `QuickViewPreviewView+TopStrip`, which owns every rule about it.
@@ -206,10 +210,15 @@ final class QuickViewPreviewView: NSView {
     /// The style is part of what is being shown, not a setting beside it: the guard below skips a
     /// re-drive of the file already on screen, and pressing `2` on the file you are looking at is
     /// exactly that call with a different answer expected (PLAN.md §M16).
+    ///
+    /// `location` is where `url` is on its own backend — the server's file or the archive member a
+    /// local copy stands for — which a rendered page's links lead from (§M39). `nil` is the file
+    /// itself, on this disk.
     func show(
         _ url: URL?,
         style: QuickViewRenderStyle,
-        placeholder: RemotePreviewPlaceholder? = nil
+        placeholder: RemotePreviewPlaceholder? = nil,
+        location: VFSPath? = nil
     ) {
         guard url != loadedURL || style != loadedStyle || placeholder != loadedPlaceholder
             || !hasLoaded else { return }
@@ -217,6 +226,7 @@ final class QuickViewPreviewView: NSView {
         loadedStyle = style
         loadedPlaceholder = placeholder
         hasLoaded = true
+        links.location = location
         showsPicture = url.map(Self.isImage) == true
         // The table and the tree are put away here rather than by every other backend, for the reason
         // the card below is: a sixth hand-written list is six chances to forget one. Each stays up while
@@ -284,6 +294,7 @@ final class QuickViewPreviewView: NSView {
         loadedStyle = .default
         loadedPlaceholder = nil
         hasLoaded = false
+        links.pendingFragment = nil
         standDownPlaceholder()
         cancelDocumentConversion()
         previewView?.previewItem = nil

@@ -4004,9 +4004,8 @@ Measured 2026-11-08 for M37's byte view, whose table has a row for every 16 byte
   path, `#anchor` came against the document and scrolled the page, `""` was the document and `.` its
   folder, a name holding a space, `é` or `#` round-tripped, `file:///…` stayed `file:`, `//host/x`
   arrived with `host` as the host, and `..` stopped at the root. A non-special scheme keeps `\` as
-  written, where `file:` turns it into `/`. Under the `file://` *folder* the preview loads with,
-  `""`, `.` and `#anchor` all resolved to the folder, and none of the synthetic clicks reached the
-  delegate, which M18's real clicks did; that difference was not chased, since the base is changing.
+  written, where `file:` turns it into `/`. Under the `file://` *folder* the preview used to load
+  with, `""`, `.` and `#anchor` all resolved to the folder.
   - **`URL(string:)` re-encodes every `%` in a string once it meets one invalid character.**
     `x-dirnex-document:///My%20Docs/100%.md` parsed as `My%2520Docs/100%25.md`, and a `\` or a
     space did the same, `https://e.com/My%20Docs/a b` included, so a valid escape beside one bad
@@ -4014,6 +4013,29 @@ Measured 2026-11-08 for M37's byte view, whose table has a row for every 16 byte
     Foundation also leaves dot segments in an already-absolute URL unfolded, where WHATWG folds them,
     `%2E%2E` included. `DocumentLink` therefore splits and merges paths by RFC 3986 §5.2 by hand and
     encodes only a web link's invalid characters before a strict parse.
+  - **`standardizedFileURL` decomposes a name.** Measured 2026-11-13: `…/caf%C3%A9.html` came back
+    as `cafe%CC%81.html`, `e` and U+0301, while `path` kept U+00E9. Swift compares and hashes strings
+    by canonical equivalence and APFS looks names up the same way, so on this disk nothing shows; a
+    server's names are bytes, so a decomposed one is a file that is not there. Never build a path
+    for a server out of a standardized local URL.
+- **On a `file:` page WebKit asks the navigation delegate about a link only when it names a file
+  that exists inside the page's read access.** Measured 2026-11-13 with `loadFileURL(_:allowingReadAccessTo:)`
+  on the page's folder and a synthetic `click()` on each link: an existing sibling, a file in a
+  subfolder, a web link and an `#anchor` all reached `decidePolicyFor`. A missing sibling and a
+  missing file in a subfolder reached nothing, and an existing `../top.md` failed the page's own
+  load path with "Ignoring request to load this main resource because it is outside the sandbox",
+  again without asking. The page stays as it was in every case, so it reads as a dead link.
+  - **It looked like a base-URL problem twice before it was understood.** The M39 Slice 4 probe and
+    Slice 5's negative control both put a `file://` folder under a generated page and saw clicks go
+    nowhere. A `loadHTMLString` page has no read access at all (the entry below), so every `file:`
+    link on one is outside it, and both folders lacked the named files besides.
+  - **What it cost**: a server's HTML file is rendered from a local copy alone in a temp folder, so
+    every link to a sibling was dropped, and the live run was the first place that showed it, since
+    the tests had only clicked links on generated pages. Such a page is now loaded from its bytes
+    under `DocumentLink.baseURL(for:)` like a Markdown page (`QuickViewWebView.Page.copied`), which
+    costs nothing, as the copy's folder held none of the page's stylesheets or images either. A
+    local HTML file still loads from disk, for its siblings, and its links to a missing file or out
+    of its folder stay silent.
 - **`loadHTMLString(_:baseURL:)` grants the page no file access at all, and a probe put next to its
   own test data will tell you it does.** M18 needed a *generated* document to reach the sibling image
   a `.md` refers to. The first probe measured six candidates and reported the obvious one working —

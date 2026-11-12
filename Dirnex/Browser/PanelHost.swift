@@ -89,6 +89,16 @@ protocol PanelHost: ClosedTabHost {
     /// ⌃Q surface, which sits in the covered pane while the window owns the preference.
     func setQuickViewRenderStyle(_ style: QuickViewRenderStyle)
 
+    /// Follow a link clicked on a page `surface` is rendering, from the document at `location`: move
+    /// the active pane's cursor to the file it names, open it in the browser, or say why neither
+    /// (PLAN.md §M39). The window's, because the ⌃Q surface sits in the covered pane while the link
+    /// moves the active one.
+    func followQuickViewLink(
+        _ link: DocumentLink,
+        from location: VFSPath,
+        on surface: QuickViewPreviewView
+    )
+
     /// Move a full-size Quick View on by `steps` files, animated like the two-finger swipe (← / →).
     /// The window owns it because the preview surface being turned is the window's, not the pane's.
     func flipQuickView(steps: Int)

@@ -146,6 +146,17 @@ final class StubPanelHost: PanelHost {
         quickViewStylePicks.append(style)
     }
 
+    /// Every link a pane's preview handed on, with the document it was clicked in (PLAN.md §M39): in
+    /// ⌃Q the click lands in the covered pane's surface, which has to pass it to the window.
+    private(set) var quickViewLinks: [(link: DocumentLink, location: VFSPath)] = []
+    func followQuickViewLink(
+        _ link: DocumentLink,
+        from location: VFSPath,
+        on surface: QuickViewPreviewView
+    ) {
+        quickViewLinks.append((link, location))
+    }
+
     /// Every flip a pane asked for, and every scroll. Recorded since the ⇧-arrows learned to scroll
     /// the preview (2026-10-18): at full size the same arrow key flips or scrolls depending on ⇧, and
     /// which of the two calls a key made is the table's whole answer.

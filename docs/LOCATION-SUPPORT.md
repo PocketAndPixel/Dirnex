@@ -675,6 +675,7 @@ the agent and adds a last-opened date, and it names a Live Photo's movie `.mov` 
 | JSON as a zoomable, filterable tree in preview, a list of records (JSON Lines, an array of objects) as the table above, with the selected value's path and text in a resizable strip<sup>ttt</sup> | yes | yes | yes | yes | yes | yes | yes | n/a | n/a | yes | yes |
 | XML and property lists as the same tree, attributes as `@` rows and a plist as its keys and values, a root of like elements as the table above<sup>uuu</sup> | yes | yes | yes | yes | yes | yes | yes | n/a | n/a | yes | yes |
 | Saved web pages (`.webarchive`, `.mhtml`, `.mht`) drawn as the page in preview, from the archive alone<sup>aaq</sup> | yes | yes | yes | yes | yes | yes | yes | n/a | n/a | yes | yes |
+| A link clicked in a rendered page: a file moves the pane's cursor onto it and its heading is scrolled to, a web link opens in the browser<sup>aar</sup> | yes | yes | yes | yes | yes | yes | yes | n/a | n/a | yes | yes |
 | Open in the default app (`⏎`) | yes | yes | yes, limited<sup>t, ddd</sup> | yes, limited<sup>u</sup> | yes, limited<sup>u</sup> | yes, limited<sup>u</sup> | yes, limited<sup>u</sup> | n/a | yes, limited<sup>mmm</sup> | yes | yes |
 | Edit `F4`, with save written back | yes | yes | yes, limited<sup>v, ddd</sup> | yes | yes | yes | yes | n/a | no<sup>jjj</sup> | yes | yes |
 | Open With… / Share sheet | yes | yes | yes, limited<sup>yy</sup> | yes, limited<sup>yy</sup> | yes, limited<sup>yy</sup> | yes, limited<sup>yy</sup> | yes, limited<sup>yy</sup> | n/a | yes, limited<sup>yy</sup> | yes | yes |
@@ -951,6 +952,19 @@ file; a reference the seal cannot find in a resource's text (one escaped inside 
 written with its default port) is not drawn; a frame inside a frame of an MHTML file, which Chrome
 writes flat, draws empty; and the page's scripts follow the JavaScript setting, off by default, which
 a saved page needs least, being a snapshot of what was on screen.
+
+<sup>aar</sup> Since 2026-11-13 (PLAN.md §M39). In a Markdown page, an HTML file and a saved page, at every
+Quick View size. A link resolves against the file's own location, so on a server or inside an archive it
+leads to a file there: the active pane's cursor lands on it, entering its folder when that is elsewhere,
+the preview follows, and the pane's Back is the way back; from a results listing (search, Recents, the
+Trash) the folder opens in a new tab and the results stay. `http`, `https` and `mailto` open in the app
+the user chose; anything else is refused by name, as is a link to another computer, a `file:` link in a
+document that is not on this disk, and a file that is not there. A saved page's links go to the real
+URL its author wrote, and a converted office document's to the web only. The hard limits: `..` past the
+top of a location stops at its top, as a browser's does, rather than leading out of the archive or off
+the server; and in an HTML file **on this disk** a link to a file that does not exist, or outside the
+file's own folder, does nothing and says nothing, because WebKit never asks about it. A server's or an
+archive's HTML file is drawn from its bytes, so its links all reach Dirnex.
 
 ## 4. Find Files (`⌥F7`)
 

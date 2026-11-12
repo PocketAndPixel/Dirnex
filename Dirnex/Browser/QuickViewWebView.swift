@@ -1,5 +1,6 @@
 import AppKit
 import DirnexCore
+import UniformTypeIdentifiers
 import WebKit
 
 /// The web view a Quick View *rendered* HTML preview draws into. A named subclass because two places
@@ -39,7 +40,8 @@ final class QuickViewDocumentWebView: WKWebView {}
 /// (`AppPreferences.quickViewJavaScriptEnabled`). The store is non-persistent so nothing a preview
 /// touches outlives it, the file load is scoped to the file's own directory, and `decidePolicyFor`
 /// refuses every navigation but the first, so a link cannot take the preview somewhere the user
-/// never asked to go.
+/// never asked to go. A refused click is handed on instead, and moves the *pane* to the file it
+/// names, which the preview then follows (`QuickViewWebView+Links`, §M39).
 ///
 /// The rule list is a **precondition, not a decoration**: compiling it is asynchronous, so this view
 /// cannot be built until it exists (`withContentRules`). A build that starts before the rules land
@@ -47,71 +49,6 @@ final class QuickViewDocumentWebView: WKWebView {}
 /// looks right, and only a server somewhere else knows.
 @MainActor
 final class QuickViewWebView: NSView {
-    /// What this surface is showing, which is two different things and only one of them is a file.
-    ///
-    /// A `.md` has no HTML on disk — the page is generated from it (PLAN.md §M18) — so there is no
-    /// URL to re-load and the body has to be kept in order to draw it again. An enum rather than a
-    /// second pair of optionals because the two cases answer *every* question differently: what a
-    /// reload re-issues, and which URL `decidePolicyFor` measures a link against.
-    enum Page {
-        /// An HTML file, loaded from disk with read access scoped to its own directory (§M16).
-        case file(URL)
-        /// A document rendered from a file's bytes, loaded with that file's **directory** as the
-        /// base URL — the page's identity, not its read access (see `showMarkdown`). The scan's
-        /// fragment is wrapped afresh on every load, so the stylesheet is the one the current
-        /// appearance calls for.
-        case generated(QuickViewPreviewView.MarkdownScan, directory: URL)
-        /// An office document converted by macOS's own Quick Look generator
-        /// (`QuickViewPreviewView+Document`): `page` inside the bundle directory `bundle`, which is
-        /// also the read access, since a workbook's sheets and a document's images are its siblings.
-        /// `allowsJavaScript` is the **generator's** answer, not the user's preference — the only
-        /// scripts such a page carries are the generator's own tab strip (``DirnexCore/QuickLookPreviewBundle/Content``).
-        /// `fitWidth` is the width to scale the page to the surface from, when the generator allows it.
-        case converted(page: URL, bundle: URL, allowsJavaScript: Bool, fitWidth: Double?)
-        /// A saved page, `.webarchive` or `.mhtml`, sealed by `DirnexCore` so nothing in it names a
-        /// real origin (``DirnexCore/WebArchiveSeal``): the property list WebKit loads, and the file's
-        /// directory as the base URL, which is the main frame's one navigation and grants no read
-        /// access, as a generated page's does not (PLAN.md §M39). `document` is the sealed URL of the
-        /// archive's own page, which its `#anchor` links arrive against.
-        case archive(Data, directory: URL, document: URL)
-
-        /// The one navigation `decidePolicyFor` allows, fragments aside. For a generated page that
-        /// is the base URL, because that is what the page's own links resolve against — measured:
-        /// a `#anchor` click arrives as `<directory>#anchor` and really moves the reading position.
-        var permittedURL: URL {
-            switch self {
-            case let .file(url): url
-            case let .generated(_, directory): directory
-            case let .converted(page, _, _, _): page
-            case let .archive(_, directory, _): directory
-            }
-        }
-
-        /// Whether scripts run on this page: the user's switch for a file somebody wrote, the
-        /// generator's own request for a page it wrote.
-        @MainActor var allowsJavaScript: Bool {
-            switch self {
-            case .file, .generated, .archive: AppPreferences.quickViewJavaScriptValue
-            case let .converted(_, _, allowsJavaScript, _): allowsJavaScript
-            }
-        }
-
-        /// The directory an *embedded frame* may load from — a converted workbook shows each sheet
-        /// in an iframe the tab strip re-points. `nil` for everything else, which keeps the rule a
-        /// file-backed page has always had: nothing but the page itself.
-        var frameDirectory: URL? {
-            if case let .converted(_, bundle, _, _) = self { return bundle }
-            return nil
-        }
-
-        /// The sealed URL of a saved page's own document, which its in-page anchors arrive against.
-        /// `nil` for every other page, whose anchors arrive against ``permittedURL``.
-        var archiveDocument: URL? {
-            if case let .archive(_, _, document) = self { return document }
-            return nil
-        }
-    }
-
     /// Internal, not private: `QuickViewWebView+Find` reads the page through it, and Swift's
     /// `private` does not cross files.
     let webView: QuickViewDocumentWebView
@@ -146,6 +83,14 @@ final class QuickViewWebView: NSView {
     var filterTopToBar: NSLayoutConstraint?
     /// Where the keyboard goes when the bar lets go of it: the file list the arrows walk.
     var returnKeyboard: (() -> Void)?
+
+    // Following a link (`QuickViewWebView+Links`, PLAN.md §M39).
+
+    /// What a click on a link that leaves the page does, given where it leads and the location of
+    /// the document it was clicked in. The preview surface's, which hands it to the window.
+    var onFollowLink: ((DocumentLink, VFSPath) -> Void)?
+    /// The heading to scroll to once the page loading now has finished, when a link named one.
+    var scrollTarget: String?
 
     /// Block everything, then put `file://` back — the order matters, since
     /// `ignore-previous-rules` is what re-admits the page's own bytes and its local siblings.
@@ -233,9 +178,18 @@ final class QuickViewWebView: NSView {
 
     /// Render `url`. The read access is scoped to the file's own directory, so a page reaches the
     /// sibling stylesheet and images that make it a saved page, and nothing above it.
-    func show(_ url: URL) {
-        startNewPage()
-        load(.file(url.standardizedFileURL))
+    ///
+    /// `location` is the file's place on its own backend, which its links lead from, and `fragment`
+    /// the heading a link to it named, scrolled to once it has loaded (PLAN.md §M39). A file on this
+    /// disk is its own location. A file elsewhere is a local copy, and is drawn from its bytes under
+    /// its location's base URL (``Page/copied(_:base:location:)``).
+    func show(_ url: URL, location: VFSPath? = nil, fragment: String? = nil) {
+        startNewPage(scrollingTo: fragment)
+        guard let location, location.backend != .local else {
+            load(.file(url.standardizedFileURL, location: location ?? .local(url.path)))
+            return
+        }
+        load(.copied(url, base: DocumentLink.baseURL(for: location), location: location))
     }
 
     /// Render a document generated from `source`'s bytes — Markdown, today (PLAN.md §M18).
@@ -243,14 +197,23 @@ final class QuickViewWebView: NSView {
     /// The scan's fragment is `DirnexCore`'s; the wrapper and the stylesheet are added here, at load
     /// time, so a page always carries the palette for the appearance it is being drawn in.
     ///
-    /// The base URL is the file's **directory**, and it is not what reaches the file's images —
+    /// The base URL is the document's own path on its own backend, in a scheme nothing serves
+    /// (``DirnexCore/DocumentLink/baseURL(for:)``), and it is not what reaches the file's images —
     /// measured, `loadHTMLString(_:baseURL:)` grants no filesystem access at all, which is why the
-    /// images arrive already inlined (`QuickViewMarkdownImages`). What it is for is *identity*: it
-    /// gives the page a real URL, so a `#anchor` click resolves against something `isPermitted` can
-    /// compare exactly and a link to a sibling file resolves to a path it can refuse by name.
-    func showMarkdown(_ scan: QuickViewPreviewView.MarkdownScan, source: URL) {
-        startNewPage()
-        load(.generated(scan, directory: source.deletingLastPathComponent().standardizedFileURL))
+    /// images arrive already inlined (`QuickViewMarkdownImages`). What it is for is *identity*: a
+    /// `#anchor` click arrives against the document, and a link to another file arrives as that
+    /// file's path on the same backend, which is what lets a click move the pane there (§M39). The
+    /// file's `file://` folder, the base before §M39, resolved `#anchor`, `""` and `.` all to the
+    /// folder.
+    func showMarkdown(
+        _ scan: QuickViewPreviewView.MarkdownScan,
+        source: URL,
+        location: VFSPath? = nil,
+        fragment: String? = nil
+    ) {
+        startNewPage(scrollingTo: fragment)
+        let location = location ?? .local(source.path)
+        load(.generated(scan, base: DocumentLink.baseURL(for: location), location: location))
     }
 
     /// Render a page Quick Look's generator wrote for an office document, from inside its bundle.
@@ -265,14 +228,24 @@ final class QuickViewWebView: NSView {
     }
 
     /// Render a saved page: `archive` is the sealed property list, `document` the sealed URL of its
-    /// page, and `source` the file it was read from.
-    func showArchive(_ archive: Data, document: URL, source: URL) {
-        startNewPage()
-        load(.archive(
-            archive,
+    /// page, `origins` the seal's table, and `source` the file it was read from, whose place on its
+    /// own backend is `location`.
+    func showArchive(
+        _ archive: Data,
+        document: URL,
+        source: URL,
+        origins: [String: String] = [:],
+        location: VFSPath? = nil,
+        fragment: String? = nil
+    ) {
+        startNewPage(scrollingTo: fragment)
+        load(.archive(SavedArchive(
+            data: archive,
             directory: source.deletingLastPathComponent().standardizedFileURL,
-            document: document
-        ))
+            document: document,
+            origins: origins,
+            location: location ?? .local(source.path)
+        )))
     }
 
     // MARK: - Zoom
@@ -301,7 +274,8 @@ final class QuickViewWebView: NSView {
         setZoomLevel(1)
     }
 
-    private func startNewPage() {
+    private func startNewPage(scrollingTo fragment: String? = nil) {
+        scrollTarget = fragment
         zoomLevel = 1
         webView.magnification = 1
         // The matches were in the page being replaced, and the new one carries no highlight to take
@@ -379,21 +353,31 @@ final class QuickViewWebView: NSView {
         self.page = page
         applyZoom()
         switch page {
-        case let .file(url):
+        case let .file(url, _):
             webView.loadFileURL(url, allowingReadAccessTo: url.deletingLastPathComponent())
+        case let .copied(url, base, _):
+            // The type's MIME type rather than `text/html` for all of them: XHTML parsed as HTML is
+            // a different document. No encoding is named, so the page's own `<meta charset>` decides.
+            let mimeType = UTType(filenameExtension: url.pathExtension)?.preferredMIMEType ?? "text/html"
+            webView.load(
+                (try? Data(contentsOf: url)) ?? Data(),
+                mimeType: mimeType,
+                characterEncodingName: "",
+                baseURL: base
+            )
         case let .converted(page, bundle, _, _):
             webView.loadFileURL(page, allowingReadAccessTo: bundle)
-        case let .generated(scan, directory):
+        case let .generated(scan, base, _):
             webView.loadHTMLString(
                 QuickViewMarkdownStyle.document(body: scan.html, isTruncated: scan.isTruncated),
-                baseURL: directory
+                baseURL: base
             )
-        case let .archive(data, directory, _):
+        case let .archive(saved):
             webView.load(
-                data,
+                saved.data,
                 mimeType: DirnexCore.WebArchive.mimeType,
                 characterEncodingName: "",
-                baseURL: directory
+                baseURL: saved.directory
             )
         }
     }

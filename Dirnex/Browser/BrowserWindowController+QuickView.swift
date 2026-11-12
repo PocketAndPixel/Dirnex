@@ -1,4 +1,5 @@
 import AppKit
+import DirnexCore
 
 /// Quick View for the window: the mode where a live preview follows the *active* pane's cursor,
 /// at one of three sizes — the inactive pane (⌃Q, PLAN.md §M4), across both panes (⌃⇧Q) or filling
@@ -208,7 +209,8 @@ extension BrowserWindowController {
             placeholder: placeholder,
             // Only where there is a card to carry them: controls armed for a surface that is showing
             // a real file would act on behalf of a row nobody is looking at.
-            actions: placeholder.map { _ in previewActions(for: active) }
+            actions: placeholder.map { _ in previewActions(for: active) },
+            location: active.quickViewSourceLocation
         )
         switch quickViewMode {
         case .off:
@@ -219,7 +221,8 @@ extension BrowserWindowController {
                 style: style,
                 caption: quickViewCaption(for: url, style: style, from: active),
                 placeholder: placeholder,
-                actions: content.actions
+                actions: content.actions,
+                location: content.location
             )
         case .fullWindow:
             present(ensureFullWindowPreview(), content, from: active)
@@ -276,6 +279,8 @@ extension BrowserWindowController {
         let style: QuickViewRenderStyle
         let placeholder: RemotePreviewPlaceholder?
         let actions: RemotePreviewActions?
+        /// Where the file is on its own backend, which a rendered page's links lead from (§M39).
+        let location: VFSPath?
     }
 
     /// Unhide `preview`, load `content` into it, and name the file in its header.
@@ -289,7 +294,12 @@ extension BrowserWindowController {
     ) {
         preview.isHidden = false
         preview.placeholderActions = content.actions
-        preview.show(content.url, style: content.style, placeholder: content.placeholder)
+        preview.show(
+            content.url,
+            style: content.style,
+            placeholder: content.placeholder,
+            location: content.location
+        )
         preview.setCaption(quickViewCaption(for: content.url, style: content.style, from: active))
     }
 

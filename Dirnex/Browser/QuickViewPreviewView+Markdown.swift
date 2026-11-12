@@ -38,6 +38,10 @@ extension QuickViewPreviewView {
         standDownText()
         loadToken += 1
         let token = loadToken
+        // Taken now, with the file: by the time the render lands the cursor may have moved on, and
+        // the token then discards both.
+        let location = documentLocation(for: url)
+        let fragment = takePendingFragment(for: location)
         Task { [weak self] in
             let scan = await BlockingWork.run {
                 MarkdownScan.read(url)
@@ -54,7 +58,7 @@ extension QuickViewPreviewView {
                     return
                 }
                 surface.isHidden = false
-                surface.showMarkdown(scan, source: url)
+                surface.showMarkdown(scan, source: url, location: location, fragment: fragment)
             }
         }
     }
