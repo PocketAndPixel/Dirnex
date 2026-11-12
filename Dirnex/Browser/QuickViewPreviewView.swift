@@ -252,6 +252,8 @@ final class QuickViewPreviewView: NSView {
             showRenderedHTML(url)
         } else if let url, Self.isRenderableMarkdown(url), style == .rendered {
             showRenderedMarkdown(url)
+        } else if let url, Self.isWebArchive(url) {
+            showWebArchive(url)
         } else if let url, Self.isText(url) || Self.offersBothStyles(url) {
             // HTML reaches the text backend only here, in `.source` — `isText` still refuses it, so
             // that a file which is *only* ever text keeps the one rule it always had. Markdown

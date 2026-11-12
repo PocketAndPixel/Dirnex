@@ -38,9 +38,9 @@ struct QuickViewHTMLPreviewTests {
         #expect(QuickViewPreviewView.isRenderableHTML(url))
     }
 
-    /// The archive-of-a-page formats are the near misses: they *are* web content, and rendering one
-    /// needs a `loadData` path this backend does not have, so they stay with Quick Look rather than
-    /// rendering as an empty page.
+    /// The archive-of-a-page formats are the near misses: they *are* web content, but not files a
+    /// file load can render, so they have a backend of their own that seals them first (PLAN.md §M39,
+    /// `QuickViewWebArchivePreviewTests`) rather than rendering here as an empty page.
     @Test("everything else keeps its single rendering")
     func leavesOtherFilesAlone() throws {
         let tree = try TempDirectory()
