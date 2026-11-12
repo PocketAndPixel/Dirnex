@@ -278,7 +278,20 @@ Decided before Slice 1 (2026-11-12, Oleg, on the probes above):
    included and the archived responses dropped. Sealing costs 0.1–0.7 ms. A WebKit archive names its
    frames in creation order, not document order: the `<object>` before the iframe is `<!--frame2-->`.
 2. **Web archives in the app.** Routing for both UTIs and `.mht`, a page case under the sealed-scheme
-   rule, find, LOCATION-SUPPORT.md, and a live run against a server log.
+   rule, find, LOCATION-SUPPORT.md, and a live run against a server log. **Landed 2026-11-12**:
+   `QuickViewPreviewView+WebArchive` reads, converts and seals off the main actor (a 65 MB webarchive
+   in 19 ms, an 88 MB MHTML in 232 ms, release build), up to 64 MB; the shipped rule list gained one
+   rule, re-admitting the sealed scheme; and the web view's `.archive` page lets its frames load in
+   the scheme but never follow a click, and takes its `#anchor`s against the archive's own document.
+   The navigation delegate moved to `QuickViewWebView+Navigation.swift` to stay under the length
+   ceiling. 8 app tests, one of which drew a sealed image under the shipped rules and failed with the
+   third rule removed. **Run live** in `app.dirnex.Dirnex.live`, full window, scripts on: WebKit's
+   own archive (script, CSS background, SVG, iframe), Chrome's MHTML with its frame, and a crafted
+   archive carrying the probe's leak (a misnamed frame at the server's real URL, a missing image, a
+   `fetch`, a pixel) all drew as designed, the crafted frame empty, and the server logged **no
+   request** across the three. Find and zoom come with the web surface, which picks the visible
+   backend. Not run live: a server or a zip as the location, which reach the same code through the
+   local copy.
 3. **RTF source and page.** `QuickViewDualStyleKind.richText`, a small control-word scanner, the
    header, 14 languages.
 4. **Following a link, core.** An `href` resolved against the document's location on its own backend:

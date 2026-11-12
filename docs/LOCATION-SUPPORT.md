@@ -674,6 +674,7 @@ the agent and adds a last-opened date, and it names a Live Photo's movie `.mov` 
 | CSV and TSV as a sortable, zoomable, filterable table in preview, with the selected row in full in a resizable strip<sup>sss</sup> | yes | yes | yes | yes | yes | yes | yes | n/a | n/a | yes | yes |
 | JSON as a zoomable, filterable tree in preview, a list of records (JSON Lines, an array of objects) as the table above, with the selected value's path and text in a resizable strip<sup>ttt</sup> | yes | yes | yes | yes | yes | yes | yes | n/a | n/a | yes | yes |
 | XML and property lists as the same tree, attributes as `@` rows and a plist as its keys and values, a root of like elements as the table above<sup>uuu</sup> | yes | yes | yes | yes | yes | yes | yes | n/a | n/a | yes | yes |
+| Saved web pages (`.webarchive`, `.mhtml`, `.mht`) drawn as the page in preview, from the archive alone<sup>aaq</sup> | yes | yes | yes | yes | yes | yes | yes | n/a | n/a | yes | yes |
 | Open in the default app (`⏎`) | yes | yes | yes, limited<sup>t, ddd</sup> | yes, limited<sup>u</sup> | yes, limited<sup>u</sup> | yes, limited<sup>u</sup> | yes, limited<sup>u</sup> | n/a | yes, limited<sup>mmm</sup> | yes | yes |
 | Edit `F4`, with save written back | yes | yes | yes, limited<sup>v, ddd</sup> | yes | yes | yes | yes | n/a | no<sup>jjj</sup> | yes | yes |
 | Open With… / Share sheet | yes | yes | yes, limited<sup>yy</sup> | yes, limited<sup>yy</sup> | yes, limited<sup>yy</sup> | yes, limited<sup>yy</sup> | yes, limited<sup>yy</sup> | n/a | yes, limited<sup>yy</sup> | yes | yes |
@@ -936,6 +937,16 @@ and a binary property list whose XML would pass 4 MB goes to Quick Look. Comment
 instructions and the document type are not rows; an entity the DTD declares is shown as written. A
 list of like elements one level below the root stays a tree. The filter (⌥⌘F) searches names or
 values, with the JSON tree's rules.
+
+<sup>aaq</sup> Since 2026-11-12 (PLAN.md §M39). Read, converted when it is MHTML, and **sealed** in-process
+before WebKit sees it: every origin the page was saved from moves to a scheme nothing serves, so the
+page draws from the archive and nothing it lacks can be fetched, whatever the file says. Every location
+reaches it through the local copy Quick View already works from (<sup>s</sup> for a server). The hard
+limits: a file over **64 MB** keeps Quick Look's own view, which draws a webarchive and not an MHTML
+file; a reference the seal cannot find in a resource's text (one escaped inside a script, a host
+written with its default port) is not drawn; a frame inside a frame of an MHTML file, which Chrome
+writes flat, draws empty; and the page's scripts follow the JavaScript setting, off by default, which
+a saved page needs least, being a snapshot of what was on screen.
 
 ## 4. Find Files (`⌥F7`)
 

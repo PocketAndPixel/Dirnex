@@ -192,6 +192,12 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
   and the non-optional form both pass. The RHS arithmetic resolves to a different numeric type
   than the optional's wrapped type. Fix: precompute the RHS as a typed literal, or unwrap with
   `try #require` first. Don't chase it as a bug in the code under test.
+- **`#require(Module.Type(...))` does not compile**: the macro reads the module as the receiver of a
+  call and asks it to be `Copyable` and `Escapable`. Met 2026-11-12, where a test importing WebKit
+  had to write `DirnexCore.WebArchive`, since WebKit's legacy framework has a `WebArchive` class of
+  its own and the bare name is ambiguous. A file-private `typealias` for the qualified name compiles
+  in every macro. The app's own sources name the type in an expression, where the lookup settled on
+  the core's without complaint; qualify it there anyway.
 - **A `mutating` call or `coll.allSatisfy(\.x)` can't sit inside `#expect(...)`** — hoist the
   result into a `let` first. `contains(where: \.x)` is the same (2026-10-01: the expansion fails
   with "call can throw, but it is not marked with 'try'"); a closure, `contains { $0.x }`, compiles.
