@@ -3819,6 +3819,12 @@ Measured 2026-11-08 for M37's byte view, whose table has a row for every 16 byte
     run loop turned. The page under the view's top and bottom edges
     (`page(for:nearest:)`) agreed with it wherever it had caught up and is answered at once, so the
     find now reads that.
+  - **It is wrong, not just empty, straight after a document is laid out.** Measured 2026-11-12: a
+    three-page document in a 500 × 400 view, `autoScales` on, read `[1, 2]` while page 0 filled the
+    top and `currentPage` said 0, 40 times of 40, and `[0, 1]` after one 50 ms run-loop turn. The
+    find's starting point still read `visiblePages.first`, so a search begun in that gap started on
+    page two: one CI failure in the full suite, and none in three runs of the suite alone. It reads
+    the top edge's page now too (`findAnchorOffset`).
   - The document view is **not flipped**: toward the end of the document is down the y axis, and a
     scroll written for a flipped text or table view goes the wrong way.
 - **`PDFDocument.string` is exactly the pages' strings joined by one `\n`, it is cached after the

@@ -28,6 +28,25 @@ struct QuickViewPDFFindTests {
         #expect(surface.filterBar.columnPicker.isHidden)
     }
 
+    /// The test above failed once in CI with the second match current. Straight after layout,
+    /// `PDFView.visiblePages` names pages it has not caught up with — `[1, 2]` for this document
+    /// while page 0 fills the top of the view — and a search begun before the run loop turns started
+    /// on page two. Asked before any turn, the anchor has to be the top page's start all the same.
+    /// The page text is read here rather than by a search, whose wait off the main actor would let
+    /// the run loop turn first; without it every page's offset is unknown and any anchor reads 0.
+    @Test("a search begins at the top page on screen, even before PDFView has caught up")
+    func anchorIsTheTopPageBeforeTheViewCatchesUp() async throws {
+        let fixture = try await QuickViewPDFFindFixtures.pdf()
+        defer { fixture.cleanup() }
+        let surface = fixture.surface
+        let document = try #require(surface.pdfView.document)
+        surface.pages = PagedDocumentText(layerText: PDFDocumentBox(document).layerText())
+        let second = try #require(surface.pages.offset(ofPage: 1))
+        #expect(second > 0, "a fixture whose pages all start at 0 tells nothing")
+        let anchor = await surface.findAnchorOffset()
+        #expect(anchor == 0)
+    }
+
     /// The assertion that the page arithmetic is right rather than merely plausible: a match found
     /// at an offset into the *whole* document's text has to come back as a selection whose text is
     /// the word, on the page that holds it. An off-by-one in the join would give a neighbouring word

@@ -123,12 +123,17 @@ extension QuickViewPDFSurface: QuickViewFindHost {
         redrawHighlightsForVisiblePages()
     }
 
-    /// Where a search with no current match begins: the start of the first page on screen.
+    /// Where a search with no current match begins: the start of the first page on screen, read
+    /// from the view's geometry as the highlights read it. Not `visiblePages.first`: measured
+    /// 2026-11-12, a three-page document laid out in a 500 × 400 view read `[1, 2]` while page 0
+    /// filled its top, and `[0, 1]` only one run-loop turn later, so a search typed in between began
+    /// on page two (the CI failure of "typing finds every occurrence…").
     func findAnchorOffset() async -> Int {
-        guard let page = pdfView.visiblePages.first ?? pdfView.currentPage,
-              let document = pdfView.document
+        guard let document = pdfView.document,
+              let index = pageIndicesInView?.lowerBound
+              ?? pdfView.currentPage.map({ document.index(for: $0) })
         else { return 0 }
-        return pages.offset(ofPage: document.index(for: page)) ?? 0
+        return pages.offset(ofPage: index) ?? 0
     }
 
     /// The bar set up for finding, and the view reporting its scrolls so the highlights can follow
