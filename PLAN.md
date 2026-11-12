@@ -4,7 +4,7 @@ A dual-pane, keyboard-first file manager for macOS in the spirit of Total Comman
 built native (Swift), with macOS-only superpowers TC never had: Quick Look, Spotlight
 search, APFS clones, Finder tags, a command palette, and universal undo.
 
-Status: **M0–M38 shipped**, **M39–M40 planned** (14 languages; M29's licensing is on in betas, off in stable until the
+Status: **M0–M38 shipped**, **M39 open**, **M40 planned** (14 languages; M29's licensing is on in betas, off in stable until the
 store opens; M30's Report a Bug is in every release built while `DIRNEX_BUG_REPORT_URL` is set) ·
 Created: 2026-07-05 ·
 Log: [docs/HISTORY.md](docs/HISTORY.md) · What works where:
@@ -185,6 +185,120 @@ Inherited from M17's and M18's risk rows (§6): the highlighter stays one pass w
 only ever adds color. Markdown is judged against a corpus of real files rather than the spec, an
 unreadable construct falls back to its own text, and the generated page stays inert. Mermaid gains
 diagram types, never a config surface read from the diagram's source.
+
+**Opened 2026-11-12.** Probed on macOS 26.7.1 with the system WebKit, Chrome headless and a throwaway
+`http.server` whose access log was the network instrument:
+
+- **WebKit renders a `.webarchive` from its own subresources and asks the network for nothing it holds.**
+  A real archive written by `createWebArchiveData` loaded by `load(_:mimeType:"application/x-webarchive"…)`
+  and by `loadFileURL` alike (so M16's "needs `loadData`" was only half right), CSS and image applied,
+  and the server saw no request. The page's `location` is the archive's own `http://` URL, and
+  `decidePolicyFor` sees one main-frame navigation, to the base URL passed in.
+- **The shipped rule list blanks an archive.** Block `.*` then re-admit `^file://` blocks the archive's
+  *own* subresources, since their URLs are the originals: heading unstyled, image 0×0.
+- **An archive asks the network for what it lacks.** With no rules and scripts on, a missing image, a
+  `fetch` and a `new Image()` pixel each reached the server. A `fetch` of a URL the archive holds did
+  not.
+- **Re-admitting each archived URL looked like the answer and is not.** Block `.*`, re-admit
+  `^file://`, then each archived URL exactly, for the `document`, `image`, `style-sheet`, `script`,
+  `font`, `media` and `svg-document` types: with scripts on the archive rendered whole, the missing
+  image and both script requests were blocked, and nothing reached the server (compiling cost 1.2 ms
+  for 3 URLs, 15 ms for 1 000; one non-ASCII character fails the whole list). **But an allowed URL is
+  a request WebKit may make.** A subframe whose archived name did not match the one WebKit generates
+  (`<!--frame1-->`) was fetched from the server, and its image after it. WebKit's own archives carry
+  the right names and stayed silent, frames included; a crafted file controls both the names and the
+  HTML.
+- **So an archive is sealed instead: every archived origin moves to a scheme of ours.**
+  `http://127.0.0.1:8765/…` became `x-dirnex-archive://o1/…`, in each resource's URL and in the bytes
+  of every text resource, paths untouched so relative references still resolve. Under one constant
+  rule (re-admit `^x-dirnex-archive:`) WebKit's archive drew its script, web font, CSS background,
+  SVG and subframe from itself, with zero requests. With the frame's name deliberately wrong the
+  frame came up empty, still with zero requests: a miss has no network path, not even DNS, which an
+  `http://o1.dirnex.invalid` host (which also worked) would have had. A reference the rewrite misses
+  keeps its real origin, which the rules block, so every miss fails closed.
+- **WebKit has no MHTML.** A Chrome `Page.captureSnapshot` file loaded as `multipart/related` or
+  `message/rfc822` drew its raw headers as text, and `loadFileURL` failed ("Frame load interrupted").
+  Converted to a webarchive and sealed, it rendered whole with zero requests: windows-1252 text by its
+  own `<meta>` (a main resource with no encoding name honours it), an image at a path with spaces and
+  `é`, and the iframe. Chrome writes CRLF, every reference as an absolute URL, quoted-printable HTML
+  and CSS, base64 images, an iframe as `src="cid:frame-…@mhtml.blink"`, a frame's `<style>` as a
+  `text/css` part whose `Content-Location` is itself a `cid:`, and no scripts. **A frame finds
+  resources only in its own archive**, not its parent's: the frame drew unstyled until the parts it
+  names were copied into its subframe archive.
+- **Quick Look has a webarchive generator and none for MHTML** (`qlmanage -m`); `-p -o` wrote no
+  bundle for either. Both UTIs exist: `com.apple.webarchive`, `org.ietf.mhtml`.
+- **WebKit's MathML is good enough to be the target.** With scripts off it drew a fraction, nested
+  roots, sub- and superscripts, `∑` with limits, an integral, a matrix and double-struck letters. A
+  plain `(` stretches unless it says `stretchy="false"`.
+- **PDF**: `createPDF` gives one 800 × 10 420 pt page of a long page in 73 ms. A headless
+  `printOperation` (`runModal(for:)` on an unshown window, `jobDisposition = .save`) gives 17 A4 pages
+  in 781 ms, text selectable. The dark appearance leaks into the PDF, so an export renders light.
+- **The corpus.** 1 440 distinct `.md` files of Oleg's own and 5 411 in dependencies on this Mac. A
+  relative link to another file: **35 %** of his own (25 % to another `.md`). GitHub alerts
+  (`> [!NOTE]`), which Dirnex draws as a blockquote with `[!NOTE]` in it: **5.7 %**. Everything else
+  M39 names is under 0.5 %: definition lists 7 files, emoji shortcodes 3, math 2, footnotes 1, wiki
+  links 0 (the hits were `[[String]]` in prose). Every mermaid fence is `graph`, `flowchart` or
+  `sequenceDiagram`, which already draw; one `stateDiagram-v2` sits in a dependency.
+
+Decided before Slice 1 (2026-11-12, Oleg, on the probes above):
+
+- **A link to a local file moves the pane**: its cursor lands on the target, entering the target's
+  folder when it is elsewhere, the preview follows the cursor, and the pane's own Back is the way
+  back. So the file list stays the navigation (M11's reason) and the preview gains no history. A
+  `#fragment` scrolls once the target renders. A web link opens in the user's browser, since a
+  click is a deliberate act where a cursor step is not.
+- **Mermaid: all four types**, state, class and ER on the flowchart's layered layout, gantt on a time
+  axis of its own.
+- **A slideshow timer, no filmstrip.** In the two full sizes a key starts a timer that steps the pane's
+  cursor through the folder's images. The filmstrip goes back to *undone*: it is a second file list,
+  which is M15's grid under *Still open*.
+- **Export lands like F5**: a sheet with the name and the other pane's folder, both editable, then a
+  queued copy from a temp file, with F5's conflict policy, undo and remote targets. HTML is one
+  self-contained file, images inlined. PDF is paginated through the print path, in the light palette.
+- **Web archives** are sealed in the core and loaded under one constant rule: a `.webarchive` is read,
+  an `.mhtml` is converted to one, and either has every origin moved to `x-dirnex-archive:` before
+  WebKit sees it. Both are one style, the page, with the user's JavaScript switch.
+- **RTF** gains its source as a fifth dual-style family, opening on the page and remembered apart, so
+  today's rendering stays the default. `.rtfd` and `.odt` keep one style: neither is text.
+- **GitHub alerts join M39**, on the corpus. Not asked; drop them if unwanted.
+- **Themes: VS Code (today's), Xcode and GitHub**, each a light and dark pair held to 4.5:1 on the
+  system text background, for the source view and rendered fences alike. Not asked; open until
+  Slice 10.
+
+#### Slices
+
+1. **Web archives in the core** (additive). The webarchive plist read and written, subframes
+   included; an MHTML parse (MIME headers, the boundary, quoted-printable and base64, charsets) into a
+   webarchive, frames named as WebKit names them and given the parts they reference; and the seal.
+   Tested against the Chrome and WebKit files the probe wrote. **Landed 2026-11-12**: `WebArchive`,
+   `MIMEEntity`, `MHTMLArchive` and `WebArchiveSeal`, 47 tests over five captures in
+   `Fixtures/WebArchive` (the `types` capture taken again without its `@font-face`, which had copied a
+   system font into it). The core's own sealed output, written by a scratch package and loaded under
+   the one rule with scripts on, drew all five whole with zero requests in the server's log, frames
+   included and the archived responses dropped. Sealing costs 0.1–0.7 ms. A WebKit archive names its
+   frames in creation order, not document order: the `<object>` before the iframe is `<!--frame2-->`.
+2. **Web archives in the app.** Routing for both UTIs and `.mht`, a page case under the sealed-scheme
+   rule, find, LOCATION-SUPPORT.md, and a live run against a server log.
+3. **RTF source and page.** `QuickViewDualStyleKind.richText`, a small control-word scanner, the
+   header, 14 languages.
+4. **Following a link, core.** An `href` resolved against the document's location on its own backend:
+   percent-decoding, the fragment split off, a target outside the backend refused by name.
+5. **Following a link, app.** The click moves the pane, the fragment scrolls after the render, a web
+   link opens in the browser; at all three sizes and on a server.
+6. **Markdown: GitHub alerts, footnotes and emoji shortcodes** (core and stylesheet). The shortcode
+   table's source is asked when the slice opens.
+7. **Markdown: wiki links and definition lists.** Wiki links go through Slice 4's resolver.
+8. **Markdown: math.** GitHub's four spellings, a TeX subset to MathML, an unknown command left as its
+   text.
+9. **Highlighting: JSON keys, setext headings and indented code in a Markdown source, Ruby's
+   `=begin`** (core).
+10. **The theme picker** (app). Settings, the source view and the rendered fences.
+11. **Export, core.** The self-contained HTML document and the names.
+12. **Export, app.** The sheet, the PDF through the print path, the queued copy.
+13. **Mermaid: state diagrams.**
+14. **Mermaid: class and ER diagrams.**
+15. **Mermaid: gantt.**
+16. **The slideshow timer.**
 
 #### M40 — Everything else (M)
 

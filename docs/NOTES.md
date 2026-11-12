@@ -3973,6 +3973,24 @@ Measured 2026-11-08 for M37's byte view, whose table has a row for every 16 byte
     file as text. A view built before the rules land would render exactly one page unprotected, and
     it is the quietest failure available: the preview looks perfect, and only a server somewhere else
     knows.
+- **A rule that re-admits a URL is a request WebKit may make, and a webarchive decides when.** Measured
+  2026-11-12 for M39 against a throwaway server's access log. WebKit draws a `.webarchive` from its own
+  resources and asks the network for nothing it holds, but the block-everything list blanks it, since
+  the archived URLs are the originals. Re-admitting exactly the archive's URLs drew it whole, and then a
+  subframe whose archived `WebResourceFrameName` did not match the name WebKit generates
+  (`<!--frame1-->`, numbered in **creation** order, so an `<object>` before an iframe is frame 2) was
+  fetched from the server, its image after it. A crafted file writes both the names and the page. What
+  holds is moving every archived origin to a scheme nothing serves (`WebArchiveSeal`): a miss then has
+  no network path at all, and a reference the rewrite misses keeps a real origin the rules block.
+  - **A frame finds resources only in its own archive**, never its parent's: an MHTML frame drew
+    unstyled until its stylesheet was copied into its subframe archive.
+  - **WebKit on macOS has no MHTML.** As `multipart/related` it drew the raw headers as text, and
+    `loadFileURL` failed with "Frame load interrupted". A `cid:` iframe never loads from an archive
+    either, so the reference has to be rewritten.
+  - **One non-ASCII character fails the whole content rule list** ("Only ASCII characters are
+    supported in pattern"), so a list built from URLs must percent-encode them or lose every rule.
+  - A main resource with no `WebResourceTextEncodingName` honours its own `<meta charset>`, and
+    `WebResourceResponse` is not needed: an archive without any drew from its MIME types alone.
 - **`loadHTMLString(_:baseURL:)` grants the page no file access at all, and a probe put next to its
   own test data will tell you it does.** M18 needed a *generated* document to reach the sibling image
   a `.md` refers to. The first probe measured six candidates and reported the obvious one working —

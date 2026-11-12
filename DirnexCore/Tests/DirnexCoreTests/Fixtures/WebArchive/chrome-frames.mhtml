@@ -1,0 +1,63 @@
+From: <Saved by Blink>
+Snapshot-Content-Location: http://127.0.0.1:8765/outer.html
+Subject: outer
+Date: Thu, 12 Nov 2026 19:55:55 GMT
+MIME-Version: 1.0
+Content-Type: multipart/related;
+	type="text/html";
+	boundary="----MultipartBoundary--0eZ5Tj50hikuPoTcp4zxLAEI4KAGGWgk0yjtqHHqP5----"
+
+
+------MultipartBoundary--0eZ5Tj50hikuPoTcp4zxLAEI4KAGGWgk0yjtqHHqP5----
+Content-Type: text/html
+Content-ID: <frame-50C179D3888FFC3798F43CAEC46660FA@mhtml.blink>
+Content-Transfer-Encoding: quoted-printable
+Content-Location: http://127.0.0.1:8765/outer.html
+
+<!DOCTYPE html><html><head><meta http-equiv=3D"Content-Type" content=3D"tex=
+t/html; charset=3Dwindows-1252"><title>outer</title></head><body><h1 id=3D"=
+h">caf=E9</h1><iframe id=3D"fr" src=3D"cid:frame-5F5CF8022664EC61DBF8FF30DE=
+047FC7@mhtml.blink" width=3D"400" height=3D"120"></iframe><img id=3D"sp" sr=
+c=3D"http://127.0.0.1:8765/dir%20with%20space/r%20%C3%A9%20d.png"></body></=
+html>
+------MultipartBoundary--0eZ5Tj50hikuPoTcp4zxLAEI4KAGGWgk0yjtqHHqP5----
+Content-Type: image/png
+Content-Transfer-Encoding: base64
+Content-Location: http://127.0.0.1:8765/dir%20with%20space/r%20%C3%A9%20d.png
+
+iVBORw0KGgoAAAANSUhEUgAAAHgAAAA8CAIAAAAiz+n/AAAAhklEQVR4nO3QAQkAIBDAQJN8/1CG
+sYXCPFiAcWvP6ELr+cEngQbdCjToVqBBtwINuhVo0K1Ag24FGnQr0KBbgQbdCjToVqBBtwINuhVo
+0K1Ag24FGnQr0KBbgQbdCjToVqBBtwINuhVo0K1Ag24FGnQr0KBbgQbdCjToVqBBtwINuhVo0K0O
+5H7Ew6qOkfgAAAAASUVORK5CYII=
+
+------MultipartBoundary--0eZ5Tj50hikuPoTcp4zxLAEI4KAGGWgk0yjtqHHqP5----
+Content-Type: text/html
+Content-ID: <frame-5F5CF8022664EC61DBF8FF30DE047FC7@mhtml.blink>
+Content-Transfer-Encoding: quoted-printable
+Content-Location: http://127.0.0.1:8765/frame.html
+
+<!DOCTYPE html><html><head><meta http-equiv=3D"Content-Type" content=3D"tex=
+t/html; charset=3DUTF-8"><link rel=3D"stylesheet" type=3D"text/css" href=3D=
+"cid:css-0fdf9d14-d4b8-4d75-bcae-7502d4c86e83@mhtml.blink" /><title>inner</=
+title></head><body><p id=3D"inner">Inner frame =C3=BCn=C3=AFcode</p><img id=
+=3D"fimg" src=3D"http://127.0.0.1:8765/red.png">
+</body></html>
+------MultipartBoundary--0eZ5Tj50hikuPoTcp4zxLAEI4KAGGWgk0yjtqHHqP5----
+Content-Type: image/png
+Content-Transfer-Encoding: base64
+Content-Location: http://127.0.0.1:8765/red.png
+
+iVBORw0KGgoAAAANSUhEUgAAAHgAAAA8CAIAAAAiz+n/AAAAhklEQVR4nO3QAQkAIBDAQJN8/1CG
+sYXCPFiAcWvP6ELr+cEngQbdCjToVqBBtwINuhVo0K1Ag24FGnQr0KBbgQbdCjToVqBBtwINuhVo
+0K1Ag24FGnQr0KBbgQbdCjToVqBBtwINuhVo0K1Ag24FGnQr0KBbgQbdCjToVqBBtwINuhVo0K0O
+5H7Ew6qOkfgAAAAASUVORK5CYII=
+
+------MultipartBoundary--0eZ5Tj50hikuPoTcp4zxLAEI4KAGGWgk0yjtqHHqP5----
+Content-Type: text/css
+Content-Transfer-Encoding: quoted-printable
+Content-Location: cid:css-0fdf9d14-d4b8-4d75-bcae-7502d4c86e83@mhtml.blink
+
+@charset "utf-8";
+
+p { color: rgb(200, 0, 200); }
+------MultipartBoundary--0eZ5Tj50hikuPoTcp4zxLAEI4KAGGWgk0yjtqHHqP5------
