@@ -160,6 +160,17 @@ final class AppPreferences: ObservableObject {
         }
     }
 
+    /// How Quick View draws an RTF file — its control words, or the document they describe (PLAN.md
+    /// §M39 ▸ Slice 3). Its own preference because it opens on the document, as RTF always had, where a
+    /// page opens on its source; one shared choice would make `1` on a letter turn every page to source.
+    @Published var quickViewRichTextStyle: QuickViewRenderStyle {
+        didSet {
+            guard quickViewRichTextStyle != oldValue else { return }
+            defaults.set(quickViewRichTextStyle.rawValue, forKey: Keys.quickViewRichTextStyle)
+            NotificationCenter.default.post(name: Self.quickViewRenderStyleDidChange, object: self)
+        }
+    }
+
     /// Panels ▸ whether a rendered HTML preview may run the page's own JavaScript (PLAN.md §M16).
     ///
     /// **Off** by default: a preview renders on every cursor step, so the file's code would run
@@ -433,6 +444,10 @@ final class AppPreferences: ObservableObject {
         quickViewXMLStyle = QuickViewRenderStyle(
             rawValue: defaults.string(forKey: Keys.quickViewXMLStyle) ?? ""
         ) ?? QuickViewDualStyleKind.xml.defaultStyle
+        // Empty (never written) = the document, which is what RTF showed before it had a source.
+        quickViewRichTextStyle = QuickViewRenderStyle(
+            rawValue: defaults.string(forKey: Keys.quickViewRichTextStyle) ?? ""
+        ) ?? QuickViewDualStyleKind.richText.defaultStyle
         // Empty (never written) = Follow System, and so is anything `PanelPalette` can't parse.
         accentColorHex = defaults.string(forKey: Keys.accentColorHex) ?? ""
         cursorColorHex = defaults.string(forKey: Keys.cursorColorHex) ?? ""

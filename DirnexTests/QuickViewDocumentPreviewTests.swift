@@ -81,7 +81,7 @@ struct QuickViewDocumentPreviewTests {
         let tree = try TempDirectory()
         defer { tree.cleanup() }
         let url = try tree.write("letter.rtf", contents: #"{\rtf1\ansi Plain {\b Bold} text}"#)
-        let preview = try await QuickViewTextPreviewTests.loaded(url)
+        let preview = try await QuickViewTextPreviewTests.loaded(url, style: .rendered)
 
         let hit = try #require(preview.hitTest(NSPoint(x: 200, y: 200)))
         let textView = try #require(QuickViewTextPreviewTests.enclosingTextView(of: hit))
@@ -101,7 +101,8 @@ struct QuickViewDocumentPreviewTests {
         let tree = try TempDirectory()
         defer { tree.cleanup() }
         let preview = try await QuickViewTextPreviewTests.loaded(
-            tree.write("letter.rtf", contents: #"{\rtf1 Hi}"#)
+            tree.write("letter.rtf", contents: #"{\rtf1 Hi}"#),
+            style: .rendered
         )
         let hit = try #require(preview.hitTest(NSPoint(x: 200, y: 200)))
         let textView = try #require(QuickViewTextPreviewTests.enclosingTextView(of: hit))

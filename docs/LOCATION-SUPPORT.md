@@ -670,7 +670,7 @@ the agent and adds a last-opened date, and it names a Live Photo's movie `.mov` 
 | Quick View pane / full size (`⌃Q`) | yes | yes | yes, limited<sup>r, ddd</sup> | yes, limited<sup>s</sup> | yes, limited<sup>s</sup> | yes, limited<sup>s</sup> | yes, limited<sup>s</sup> | n/a | yes, limited<sup>s</sup> | yes | yes |
 | Quick Look (`⌘Y`) | yes | yes | yes, limited<sup>r, ddd</sup> | yes, limited<sup>s</sup> | yes, limited<sup>s</sup> | yes, limited<sup>s</sup> | yes, limited<sup>s</sup> | n/a | yes, limited<sup>s</sup> | yes | yes |
 | Syntax highlighting, Markdown, diagrams in preview | yes | yes | yes | yes | yes | yes | yes | n/a | n/a | yes | yes |
-| Office, iWork and rich-text documents in preview, zoomable and selectable<sup>rrr</sup> | yes | yes | yes | yes | yes | yes | yes | n/a | n/a | yes | yes |
+| Office, iWork and rich-text documents in preview, zoomable and selectable, and an RTF file's source beside its page<sup>rrr</sup> | yes | yes | yes | yes | yes | yes | yes | n/a | n/a | yes | yes |
 | CSV and TSV as a sortable, zoomable, filterable table in preview, with the selected row in full in a resizable strip<sup>sss</sup> | yes | yes | yes | yes | yes | yes | yes | n/a | n/a | yes | yes |
 | JSON as a zoomable, filterable tree in preview, a list of records (JSON Lines, an array of objects) as the table above, with the selected value's path and text in a resizable strip<sup>ttt</sup> | yes | yes | yes | yes | yes | yes | yes | n/a | n/a | yes | yes |
 | XML and property lists as the same tree, attributes as `@` rows and a plist as its keys and values, a root of like elements as the table above<sup>uuu</sup> | yes | yes | yes | yes | yes | yes | yes | n/a | n/a | yes | yes |
@@ -912,6 +912,10 @@ row, through the local copy Quick View already works from (<sup>s</sup> for a se
 come from the generator, not from a location: a spreadsheet shows at most **4 096 rows** of each
 sheet, with nothing on the page to say so, and a file the generator declines (corrupt,
 password-protected) falls back to Quick Look's own view. Rich text above 32 MB does too.
+Since 2026-11-12 (PLAN.md §M39) an RTF file also offers its source (`1`), colored, from the same decoded
+text the text preview reads, and still opens on the document (`2`); the source has the text preview's
+limit, the first **4 MB** with the notice saying so. An RTFD or OpenDocument file has one style, the
+document: neither is text.
 
 <sup>sss</sup> Parsed in-process from the same decoded text the source view shows, so every location
 reaches it through the local copy Quick View already works from (<sup>s</sup> for a server). The hard
