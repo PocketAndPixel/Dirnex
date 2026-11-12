@@ -3997,6 +3997,23 @@ Measured 2026-11-08 for M37's byte view, whose table has a row for every 16 byte
     supported in pattern"), so a list built from URLs must percent-encode them or lose every rule.
   - A main resource with no `WebResourceTextEncodingName` honours its own `<meta charset>`, and
     `WebResourceResponse` is not needed: an archive without any drew from its MIME types alone.
+- **A generated page's link clicks can be read back only if its base URL spells the path they resolve
+  against.** WebKit gives `decidePolicyFor` the URL it resolved, never the `href`. Measured 2026-11-12
+  for M39 Slice 4 with `loadHTMLString` and a synthetic `click()` on each link: under
+  `x-dirnex-document:///<the document's own path>` every click arrived with the backend path as its
+  path, `#anchor` came against the document and scrolled the page, `""` was the document and `.` its
+  folder, a name holding a space, `é` or `#` round-tripped, `file:///…` stayed `file:`, `//host/x`
+  arrived with `host` as the host, and `..` stopped at the root. A non-special scheme keeps `\` as
+  written, where `file:` turns it into `/`. Under the `file://` *folder* the preview loads with,
+  `""`, `.` and `#anchor` all resolved to the folder, and none of the synthetic clicks reached the
+  delegate, which M18's real clicks did; that difference was not chased, since the base is changing.
+  - **`URL(string:)` re-encodes every `%` in a string once it meets one invalid character.**
+    `x-dirnex-document:///My%20Docs/100%.md` parsed as `My%2520Docs/100%25.md`, and a `\` or a
+    space did the same, `https://e.com/My%20Docs/a b` included, so a valid escape beside one bad
+    character comes back as literal text. `encodingInvalidCharacters: false` answers `nil` instead.
+    Foundation also leaves dot segments in an already-absolute URL unfolded, where WHATWG folds them,
+    `%2E%2E` included. `DocumentLink` therefore splits and merges paths by RFC 3986 §5.2 by hand and
+    encodes only a web link's invalid characters before a strict parse.
 - **`loadHTMLString(_:baseURL:)` grants the page no file access at all, and a probe put next to its
   own test data will tell you it does.** M18 needed a *generated* document to reach the sibling image
   a `.md` refers to. The first probe measured six candidates and reported the obvious one working —
