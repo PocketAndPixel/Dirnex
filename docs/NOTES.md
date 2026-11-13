@@ -37,6 +37,12 @@ at build time.
     text, so `10:30:00 :smile:` stays text. And `## :bulb: Highlights` anchors as `#bulb-highlights`
     while `## 💡 Highlights` anchors as `#-highlights`. A sample sent this way is published to
     GitHub's API, so it stays synthetic: no text from a user's file.
+    - **Math is off in `mode=markdown`.** Every `$x$` came back as text, which read as GitHub having
+      no math. `mode=gfm` draws it (as `<math-renderer>`), but turns every line break into `<br>`,
+      so a multi-line `$$` block splits there; read display blocks off a real file instead (M39
+      Slice 8 used opentelemetry's `ieee_754.md` and a Hugging Face template). One raw `<b>` in a
+      sample also stopped every later `$x$` in the file from being math, so keep samples to
+      Markdown.
   - **When nothing on the Mac uses a construct, the corpus still says what the rule must not
     misread.** M39 Slice 7 found no definition list and no real wiki link outside Claude's memory
     notes in 12 603 distinct files, but it did find the prose each obvious rule breaks: a wrapped line
@@ -1307,6 +1313,14 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
   `.search` backend), then for a sheet whose text is not the progress title.
 
 ### Fixtures and shared state
+
+- **A corpus sampled from a source folder changes when a file is added beside it.** Seen 2026-11-14:
+  `LineDiffGitCorpusTests.corpus()` takes every seventh file of `Services`, and two new files from M39
+  Slice 8 shifted the sample, which shifted the seeded edits every later file got. README.md then drew
+  an edit the copy-back property had never met: the first copy realigned the diff around a moved
+  block and took 9 changes to 10, and the loop allowed one copy per change. `ComparedDocument` was
+  right (the original came back after 11 copies). A test failing on a file nobody touched, after
+  files were only added, is the sample moving; read its draw before the code it names.
 
 - **`JSONEncoder` output is not stable between two encodes of one value unless `.sortedKeys` is set.**
   Seen 2026-11-09 in `GitMergeWireTests`: a test comparing a sent frame with a second `frame(request)`
@@ -4149,6 +4163,30 @@ Measured 2026-11-08 for M37's byte view, whose table has a row for every 16 byte
   link, and `scrollY` stayed at 320 because the target was already 102 pt down a 300 pt window. A
   target out of view is scrolled to as usual (`QuickViewMarkdownAlertTests` clicks one). So a live
   check of an anchor needs its target off screen, or the hash read back.
+- **WebKit draws MathML with scripts off, and seven details decide whether it looks like TeX.**
+  Probed 2026-11-14 for M39 Slice 8 in an offscreen `WKWebView`, each candidate beside the others:
+  - A plain `(` in an `<mrow>` stretches to the row's height; TeX's does not, so it needs
+    `stretchy="false"`. `\left` and an environment's delimiters stretch, as the dictionary does.
+  - `columnalign` is read on an `<mtd>` and ignored on an `<mtable>`.
+  - An `<mtd>` is padded on both sides by WebKit's own stylesheet, 6 points between an `aligned`
+    pair at 13 px. Padding 0 from the page's stylesheet closes it.
+  - `<mo>&#x2061;</mo>` after `sin` adds no space (`logn`); an explicit thin `<mspace>` does.
+  - A prime as `<msup><mi>f</mi><mo>′</mo></msup>` is tiny and high, since WebKit does not swap in
+    the font's prime variant. `<mi>f</mi><mo>′</mo>` is right, and `<msup>` of that row takes `f′²`.
+  - Accents: U+02C9 sits on a letter where U+00AF floats high; U+02C7 overlaps unless
+    `stretchy="false"`; U+00AF stretches as an overline where U+203E floats far above. An accent's
+    `<mo>` brings its operator spacing into the `<mover>` (`\vec{v}` drew with a gap each side), so
+    accents carry `lspace="0" rspace="0"`; `\vec`'s `→` at `mathsize="0.6em"` is TeX's small arrow.
+  - `<math display="block">` will not scroll: `overflow-x` on it does nothing, and a wide formula
+    widened the page to 1 169 points in a 420-point window. A `span` around it with `display: block;
+    overflow-x: auto` scrolls, and a `span` (not a `div`) keeps the `<p>` it sits in from closing.
+  - `movablelimits`, `minsize`/`maxsize`, `mathsize`, `scriptlevel`, `displaystyle`, `menclose`,
+    `mphantom` and the Mathematical Alphanumeric characters (`ℝ`, `𝐱`) all drew as specified.
+  - **A `takeSnapshot` PNG is at the screen's scale.** A formula that measured 740 pixels in the
+    probe's image is 370 points, so a test written for "wider than the 420-point window" passed a
+    formula that fit. Measure widths in the page (`getBoundingClientRect`), not in the picture.
+  - **`overflow-x: visible` is not a negative control when `overflow-y` is `hidden`**: CSS computes
+    the visible one to `auto`, so the "broken" page scrolled exactly as before. Remove both.
 
 ### Previews: telling what kind of file it is
 

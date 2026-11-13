@@ -247,6 +247,7 @@ enum QuickViewMarkdownStyle {
         \(tokenRules)
         \(QuickViewMarkdownDiagram.rules)
         \(QuickViewMarkdownAlerts.rules)
+        \(QuickViewMarkdownMath.rules)
         """
     }
 

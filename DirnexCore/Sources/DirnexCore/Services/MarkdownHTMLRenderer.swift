@@ -123,6 +123,12 @@ enum MarkdownHTMLRenderer {
             // listing *plus a note*, which is why the diagram path owns both outcomes rather than
             // failing back into this one (`MarkdownHTMLRenderer+Diagram`).
             if let diagram = diagram(info: info, code: code) { return diagram }
+            // A ```` ```math ```` fence is display math, and stays a listing when its TeX does not
+            // close. Lowercase only, as on GitHub, which draws ```` ```Math ```` as code.
+            if info?.split(whereSeparator: \.isWhitespace).first == "math",
+               let markup = TeXMath.mathML(code, display: true) {
+                return "<div class=\"math-display\">\(markup)</div>"
+            }
             // The first word only: an info string may carry more (`swift showLineNumbers`), and the
             // language is the part that names a grammar.
             let language = info?.split(whereSeparator: \.isWhitespace).first.map(String.init)

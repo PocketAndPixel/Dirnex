@@ -238,7 +238,7 @@ struct QuickViewMarkdownAlertTests {
         }
     }
 
-    private static func contrast(_ ink: String, _ paper: String) -> Double {
+    static func contrast(_ ink: String, _ paper: String) -> Double {
         let (front, back) = (luminance(ink), luminance(paper))
         return (max(front, back) + 0.05) / (min(front, back) + 0.05)
     }
