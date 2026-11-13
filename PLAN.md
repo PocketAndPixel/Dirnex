@@ -438,7 +438,56 @@ Decided before Slice 1 (2026-11-12, Oleg, on the probes above):
    text as the listing says. **Not run live**: a server, which takes the zip's path through its
    listing; full screen; the light appearance.
 8. **Markdown: math.** GitHub's four spellings, a TeX subset to MathML, an unknown command left as its
-   text.
+   text. **Landed 2026-11-14.** **Probed first**, three ways. GitHub's renderer, with synthetic
+   samples and two real files served as HTML: math is off in `mode=markdown` and on in `mode=gfm`
+   (docs/NOTES.md ▸ Working rhythm). A `$` opens at the start of a run of text or after ASCII
+   whitespace or `(`, with no whitespace after it, and closes at the next `$` with no whitespace
+   before it and no ASCII letter, digit or `_` after it, so `$5 and $10`, `word$x$` and `"$x$"` are
+   text; `` $`…`$ `` has no boundary rules; a ```` ```math ```` fence is math and ```` ```Math ```` is
+   code; `${a}, which is (${b})` is text (a closer before `{` closes nothing when the content opened
+   with `{`); a `$` inside a later code span closes nothing; and none is read in a link's text. **The
+   corpus**: 12 600 distinct `.md` files in the home folder, whose real math is a Hugging Face paper
+   template, opentelemetry's `ieee_754.md`, three llama.cpp READMEs and a math-olympiad prompt, from
+   which the subset was sized. And **WebKit**, construct by construct in an offscreen `WKWebView`
+   (docs/NOTES.md ▸ Previews: web views): a plain `(` stretches unless told not to, `columnalign` works
+   only on an `<mtd>`, a superscript prime draws tiny, `&#x2061;` gives `sin` no space, accents need
+   chosen glyphs and no operator spacing, and `<math display="block">` will not scroll.
+   **The spellings** (`MarkdownMath`, read in the inline pass): `$…$`, `$$…$$` inline or alone between
+   lines, `` $`…`$ `` and the fence. **One departure from GitHub, on purpose**: the TeX is kept as
+   written. GitHub reads Markdown's escapes first, so the paper template's `$X = \{x_1, …\}$` draws
+   with no braces there, and `*` pairs into emphasis across two formulas; here, as in pandoc, VS Code
+   and GitHub's own `` $`…`$ ``, the braces are drawn and emphasis never reaches inside. **The
+   converter** (`TeXMath`, `TeXMathParser`, `TeXMathSymbols`, `TeXMathFont`): letters, numbers,
+   operators with TeX's sign rule; scripts and primes; `\frac`, `\sqrt`, `\binom`, `\over`; Greek and
+   some 350 commands by name; large operators with their limits under and over in display and beside
+   inline (`movablelimits`); the named functions with TeX's thin spaces; `\left…\right`, `\middle`, the
+   `\big` family; `\mathbb`, `\mathcal`, `\mathbf` and the rest as Unicode's math letters; `\text`; the
+   accents; spacing; `\not`; the style and size switches; and the matrix, `cases`, `aligned`,
+   `gathered` and `array` environments. An unknown command draws as its own text in GitHub's danger
+   red (5.24:1 light, 4.97:1 dark), and what follows it is read as usual. A brace, `\left` or `\begin`
+   that does not close, or a missing argument, fails the formula, which then draws as the text it was
+   written as (a fence as its code block); nesting past 64 fails rather than exhausting the stack. A
+   formula's heading anchors by its TeX, as GitHub's does (`## The $x^2$ term` → `#the-x2-term`). The
+   app's half is three rules (`QuickViewMarkdownMath`): display math scrolls in its own box, an
+   `aligned` pair sits close, an unknown command is red. 34 core tests and 3 app tests. Negative
+   controls, each failing exactly its own test: without the code-span stop, without the template rule,
+   with math allowed straight after math, with plain delimiters stretching, without a function's thin
+   space, without the display box's scrolling (the page widened to 1 169 points in a 420-point window)
+   and without the `aligned` padding rule (6.1 points between `a` and its `=`). **The corpus after**: 8
+   of 12 600 files render differently, the six with real math and two bcrypt READMEs whose `$2a$` and
+   `$2b$` GitHub also draws as math; the first pass changed 16, and the eight it should not have were
+   the template and code-span rules above, both then read off GitHub. Rendering the corpus took
+   14.97 s against 14.84 s before (release, warm). `ComparedDocumentPropertyTests` samples every seventh file
+   of `Services`, so the new files moved its seeded edits onto a README case its loop bound did not
+   allow for; the bound is now twice the changes (docs/NOTES.md ▸ Testing). **Run live** in
+   `app.dirnex.Dirnex.live`, at pane size and full window in the dark appearance and at pane size in
+   the light: math in a heading; inline formulas with `sin x + log n` spaced, `f′(x)`, a sign after
+   `=`, the set's braces and a bold `O(n log n)`; prices and `${…}` templates left as text; `\foo` in
+   red; a broken formula as its text; a `$$` block, `cases`, `aligned`, matrices with `\left|…\right|`,
+   braces, limits, accents, a root and a binomial. A 20-term sum ended at the pane's edge in its own
+   box and stood whole and centred at full window. **Not run live**: scrolling that box sideways,
+   which the app test measures; full screen; a server or an archive, which reach the same render
+   through the file's bytes.
 9. **Highlighting: JSON keys, setext headings and indented code in a Markdown source, Ruby's
    `=begin`** (core).
 10. **The theme picker** (app). Settings, the source view and the rendered fences.

@@ -172,7 +172,11 @@ struct ComparedDocumentPropertyTests {
             var right = try ComparedDocument.decode(Data(edited.utf8))
             try #require(right.commonLineEnding == .lf)
             let first = LineDiff.compare(left.lines, right.lines)
-            for _ in 0...first.changes.count {
+            // Twice the changes, not one per change: a copy beside a moved block can realign the
+            // diff and add a change before the count falls. Seen 2026-11-14 on README.md once two
+            // new files in Services moved this corpus's sample and so its edits: 9, 10, 9 … 0, the
+            // original back after 11 copies.
+            for _ in 0...(2 * first.changes.count) {
                 guard let change = LineDiff.compare(left.lines, right.lines).changes.first else {
                     break
                 }

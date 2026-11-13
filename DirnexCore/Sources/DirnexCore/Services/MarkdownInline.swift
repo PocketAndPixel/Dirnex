@@ -23,6 +23,10 @@ public indirect enum MarkdownInline: Equatable, Sendable {
     /// (`MarkdownLinkReference.key(for:)`); the number it draws as depends on the references before
     /// it, so the renderer hands it out (`MarkdownFootnotes`).
     case footnoteReference(String)
+    /// `$x$`, `$$x$$` or `` $`x`$ ``: TeX, exactly as written between its delimiters
+    /// (`MarkdownMath`). `written` is the whole span, delimiters included, which is what draws when
+    /// the TeX cannot be (`TeXMath`).
+    case math(tex: String, display: Bool, written: String)
     /// A newline the author asked to keep — two trailing spaces, or a trailing backslash.
     case lineBreak
     /// A newline inside a paragraph, which renders as an ordinary space. Kept as a node rather than
@@ -48,9 +52,36 @@ extension MarkdownInline {
             // Its number is the renderer's to hand out, so it adds nothing to a heading's anchor
             // (`MarkdownFootnotes` names the one way that departs from GitHub).
             case .footnoteReference: ""
+            // The TeX, as GitHub's anchor reads the text of its math element: `## The $x^2$ term`
+            // anchors as `#the-x2-term` either way.
+            case let .math(tex, _, _): tex
             case .lineBreak, .softBreak: " "
             }
         }.joined()
+    }
+}
+
+extension MarkdownInline {
+    /// A code span's content: line breaks become spaces, and one space comes off each end when both
+    /// have one, the rule that lets `` ` `` be written as `` `` ` `` ``. `` $`…`$ `` trims the same
+    /// way (`MarkdownMath`).
+    static func codeSpanContent(_ text: String) -> String {
+        var text = text.replacingOccurrences(of: "\n", with: " ")
+        if text.count > 2, text.hasPrefix(" "), text.hasSuffix(" "),
+           text.contains(where: { $0 != " " }) {
+            text = String(text.dropFirst().dropLast())
+        }
+        return text
+    }
+
+    /// How many times `character` repeats from `start`: a backtick fence's length, an emphasis
+    /// run's, a dollar run's.
+    static func runLength(of character: Character, in characters: [Character], from start: Int) -> Int {
+        var length = 0
+        while start + length < characters.count, characters[start + length] == character {
+            length += 1
+        }
+        return length
     }
 }
 

@@ -60,11 +60,23 @@ extension MarkdownHTMLRenderer.Context {
             image(source: source, title: title, alt: alt)
         case let .footnoteReference(key):
             footnoteReference(key)
+        case let .math(tex, display, written):
+            math(tex, display: display, written: written)
         case .lineBreak:
             "<br>\n"
         case .softBreak:
             "\n"
         }
+    }
+
+    /// A formula as MathML, or the text it was written as when its TeX does not close (`TeXMath`).
+    /// Display math sits in a `span` the app's stylesheet makes a block that scrolls sideways, since
+    /// WebKit will not scroll a `<math>` itself; a `div` would end the paragraph it is in.
+    private func math(_ tex: String, display: Bool, written: String) -> String {
+        guard let markup = TeXMath.mathML(tex, display: display) else {
+            return MarkdownHTML.escaped(written)
+        }
+        return display ? "<span class=\"math-display\">\(markup)</span>" : markup
     }
 
     /// A link whose destination this build will not point at keeps its **text** and loses its
