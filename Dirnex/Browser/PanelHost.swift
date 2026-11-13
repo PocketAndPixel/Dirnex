@@ -99,6 +99,11 @@ protocol PanelHost: ClosedTabHost {
         on surface: QuickViewPreviewView
     )
 
+    /// The files the active pane lists beside the document at `location`, which a page's wiki links
+    /// are found among when the document is not on this disk (PLAN.md §M39 ▸ Slice 7). The window's
+    /// for `followQuickViewLink`'s reason.
+    func quickViewNamesListed(beside location: VFSPath) -> Set<String>
+
     /// Move a full-size Quick View on by `steps` files, animated like the two-finger swipe (← / →).
     /// The window owns it because the preview surface being turned is the window's, not the pane's.
     func flipQuickView(steps: Int)

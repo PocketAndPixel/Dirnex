@@ -49,6 +49,16 @@ extension PanelViewController {
         }
     }
 
+    /// The files this pane lists in the folder `location` is in, by name: every one in a folder's own
+    /// listing, and in a results listing only those from that folder. The whole listing, not what a
+    /// filter leaves on screen, since a filter hides a row and does not remove the file.
+    func namesListed(beside location: VFSPath) -> Set<String> {
+        guard let folder = location.parent else { return [] }
+        return Set(panel.model.listing.entries.lazy
+            .filter { !$0.isDirectoryLike && $0.path.parent == folder }
+            .map(\.name))
+    }
+
     /// Say that the file a link names is not where the link says. The target always has a folder:
     /// a backend's root, the one place without one, is never missing.
     private func presentMissingLinkTarget(_ target: VFSPath) {

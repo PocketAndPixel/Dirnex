@@ -127,6 +127,10 @@ enum MarkdownFootnotes {
                 for item in list.items {
                     collect(item.blocks, into: &footnotes)
                 }
+            case let .definitionList(items):
+                for definition in items.flatMap(\.definitions) {
+                    collect(definition.blocks, into: &footnotes)
+                }
             case .heading, .paragraph, .thematicBreak, .codeBlock, .table, .frontMatter,
                  .tableOfContents:
                 break

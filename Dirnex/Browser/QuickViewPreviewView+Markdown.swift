@@ -42,9 +42,11 @@ extension QuickViewPreviewView {
         // the token then discards both.
         let location = documentLocation(for: url)
         let fragment = takePendingFragment(for: location)
+        // Taken now too: a server's listing is the pane's, read on the main actor.
+        let locateFile = wikiLinkFiles(for: url, at: location)
         Task { [weak self] in
             let scan = await BlockingWork.run {
-                MarkdownScan.read(url)
+                MarkdownScan.read(url, locateFile: locateFile)
             }
             guard let self, token == loadToken else { return }
             guard let scan else {
@@ -81,8 +83,13 @@ extension QuickViewPreviewView {
         let isTruncated: Bool
 
         /// Blocking; call it off the main thread — which is also where the images are read, since
-        /// the resolver runs inside the render (`QuickViewMarkdownImages`).
-        static func read(_ url: URL) -> MarkdownScan? {
+        /// the resolver runs inside the render (`QuickViewMarkdownImages`), and where a wiki link's
+        /// file is looked for. `locateFile` defaults to the disk beside `url`, which is right for a
+        /// file on this disk (`QuickViewMarkdownWikiLinks`).
+        static func read(
+            _ url: URL,
+            locateFile: (@Sendable (String) -> String?)? = nil
+        ) -> MarkdownScan? {
             guard let preview = TextPreview.read(contentsOf: url) else { return nil }
             let options = MarkdownRenderOptions(
                 resolveImageSource: QuickViewMarkdownImages.resolver(for: url),
@@ -92,7 +99,8 @@ extension QuickViewPreviewView {
                 textMetric: QuickViewMarkdownDiagram.metric,
                 describeUndrawnDiagram: { QuickViewMarkdownDiagram.describeUndrawn($0) },
                 diagramScale: QuickViewMarkdownDiagram.scale,
-                alertTitle: { QuickViewMarkdownAlerts.title($0) }
+                alertTitle: { QuickViewMarkdownAlerts.title($0) },
+                locateFile: locateFile ?? QuickViewMarkdownWikiLinks.onDisk(beside: url)
             )
             return MarkdownScan(
                 html: MarkdownDocument.render(preview.text, options: options).html,

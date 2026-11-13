@@ -91,6 +91,31 @@ struct QuickViewLinkClickTests {
         #expect(followed.links.first?.location == location)
     }
 
+    /// PLAN.md §M39 ▸ Slice 7: a wiki link is written into the page as a relative `href`, so its click
+    /// takes Slice 4's road like any other link, here from a server's document whose sibling the
+    /// pane lists.
+    @Test("a wiki link is handed on as the file it names, the heading as its anchor")
+    func wikiLink() async throws {
+        let tree = try TempDirectory()
+        defer { tree.cleanup() }
+        let url = try tree.write("README.md", contents: "See [[deep note#Part Two|the notes]].")
+        let location = VFSPath(backend: VFSBackendID("sftp://u@nas:22"), path: "/srv/docs/README.md")
+        let (surface, _) = try await QuickViewLinkSurface.hosted()
+        let followed = Followed()
+        surface.onFollowLink = { followed.links.append(($0, $1)) }
+        let scan = try #require(QuickViewPreviewView.MarkdownScan.read(
+            url,
+            locateFile: QuickViewMarkdownWikiLinks.listed(["deep note.md"])
+        ))
+        surface.showMarkdown(scan, source: url, location: location)
+        try await Self.waitForLinks(1, in: surface)
+
+        try await Self.click("a", in: surface)
+        try await Self.until { followed.links.count >= 1 }
+        let target = VFSPath(backend: location.backend, path: "/srv/docs/deep note.md")
+        #expect(followed.links.first?.link == .location(target, fragment: "part-two"))
+    }
+
     @Test("a page a link named a heading in opens scrolled to it, and one without opens at the top")
     func scrollsToTheNamedHeading() async throws {
         let tree = try TempDirectory()

@@ -40,7 +40,9 @@ struct MarkdownCorpusTests {
         // Slice 2: `nav` is `[[_TOC_]]`'s outline, `span` is one token of a colored fence.
         "nav", "span",
         // M39 Slice 6: an alert's box, the footnotes' section, and a reference's number.
-        "div", "section", "sup"
+        "div", "section", "sup",
+        // M39 Slice 7: a definition list.
+        "dl", "dt", "dd"
     ]
 
     private static let headingTags: Set<String> = ["h1", "h2", "h3", "h4", "h5", "h6"]

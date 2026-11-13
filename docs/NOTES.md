@@ -37,6 +37,14 @@ at build time.
     text, so `10:30:00 :smile:` stays text. And `## :bulb: Highlights` anchors as `#bulb-highlights`
     while `## 💡 Highlights` anchors as `#-highlights`. A sample sent this way is published to
     GitHub's API, so it stays synthetic: no text from a user's file.
+  - **When nothing on the Mac uses a construct, the corpus still says what the rule must not
+    misread.** M39 Slice 7 found no definition list and no real wiki link outside Claude's memory
+    notes in 12 603 distinct files, but it did find the prose each obvious rule breaks: a wrapped line
+    of HISTORY.md opening with `: "conflicts"`, and READMEs writing `[[Prototype]]` for a JavaScript
+    spec slot. Render every file before and after the change, keeping one hash of the HTML per file,
+    and the files whose hash moved are the change's whole effect. Slice 7's list was 0 files with
+    the app's defaults, and 25 with a real existence check, all of them memory notes. A scratch
+    package over `DirnexCore` in release renders the lot in 16 s.
 - **Core first, then the app.** A slice opens with pure, tested, purely-additive `DirnexCore`
   files (app untouched, no rebuild) and lands in a second pass that wires the app. PLAN.md §2:
   if it touches bytes it lives in the core and has tests.

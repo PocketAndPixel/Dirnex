@@ -15,44 +15,30 @@ import Foundation
 /// character before this `*` whitespace" is a question about what the reader sees.
 enum MarkdownInlineParser {
     /// `footnotes` holds the key of every footnote the document defines, since `[^label]` is a
-    /// reference only when its definition exists, and text otherwise.
+    /// reference only when its definition exists, and text otherwise. `wikiLinks` is what a
+    /// `[[name]]` is checked against, for the same reason; without it every one stays text, which
+    /// is what a heading's anchor is made from (`MarkdownWikiLink`).
     static func parse(
         _ source: String,
         references: [String: MarkdownLinkReference] = [:],
-        footnotes: Set<String> = []
+        footnotes: Set<String> = [],
+        wikiLinks: MarkdownWikiLink.Lookup? = nil
     ) -> [MarkdownInline] {
         guard !source.isEmpty else { return [] }
         var scanner = Scanner(
             characters: Array(source),
             references: references,
-            footnotes: footnotes
+            footnotes: footnotes,
+            wikiLinks: wikiLinks
         )
         return MarkdownInlineEmphasis.resolve(scanner.run())
-    }
-
-    /// The literal text of `source` — every construct flattened away, which is what an image's
-    /// `alt` and a heading's anchor need.
-    static func plainText(_ nodes: [MarkdownInline]) -> String {
-        nodes.map { node in
-            switch node {
-            case let .text(text): text
-            case let .code(code): code
-            case let .emphasis(children), let .strong(children), let .strikethrough(children):
-                plainText(children)
-            case let .link(_, _, children): plainText(children)
-            case let .image(_, _, alt): alt
-            // Its number is the renderer's to hand out, so it adds nothing to a heading's anchor
-            // (`MarkdownFootnotes` names the one way that departs from GitHub).
-            case .footnoteReference: ""
-            case .lineBreak, .softBreak: " "
-            }
-        }.joined()
     }
 
     struct Scanner {
         let characters: [Character]
         let references: [String: MarkdownLinkReference]
         let footnotes: Set<String>
+        let wikiLinks: MarkdownWikiLink.Lookup?
         private var items: [MarkdownInlineEmphasis.Item] = []
         private var pending = ""
         private var index = 0
@@ -168,8 +154,16 @@ enum MarkdownInlineParser {
         }
 
         /// A footnote's reference is tested before a link, as GitHub does: `[x][^1]` is the text
-        /// `[x]` and then the reference, never a reference link labelled `^1`.
+        /// `[x]` and then the reference, never a reference link labelled `^1`. A wiki link is tested
+        /// before both, and is one only when what it names is there.
         private mutating func takeLink() {
+            if let wikiLinks,
+               let (link, end) = MarkdownWikiLink.take(in: characters, at: index, lookup: wikiLinks) {
+                flushPending()
+                items.append(.node(link))
+                index = end
+                return
+            }
             guard let (key, end) = MarkdownFootnotes.reference(
                 in: characters,
                 at: index,
@@ -246,6 +240,8 @@ enum MarkdownInlineParser {
             destination: String,
             title: String?
         ) -> MarkdownInline {
+            // No wiki links in a link's text, which would put an `<a>` inside an `<a>`. An image's
+            // alt is text, so it reads none either.
             let children = MarkdownInlineParser.parse(
                 label,
                 references: references,
@@ -257,7 +253,7 @@ enum MarkdownInlineParser {
             return .image(
                 source: destination,
                 title: title,
-                alt: MarkdownInlineParser.plainText(children)
+                alt: MarkdownInline.plainText(children)
             )
         }
 

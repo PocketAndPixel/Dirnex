@@ -120,6 +120,9 @@ extension PanelViewController {
         preview.links.follow = { [weak self] link, location, surface in
             self?.host?.followQuickViewLink(link, from: location, on: surface)
         }
+        preview.links.namesListed = { [weak self] in
+            self?.host?.quickViewNamesListed(beside: $0) ?? []
+        }
         view.addSubview(preview)
         NSLayoutConstraint.activate([
             preview.leadingAnchor.constraint(equalTo: scrollView.leadingAnchor),

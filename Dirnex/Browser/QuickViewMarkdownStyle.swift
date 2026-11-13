@@ -199,6 +199,10 @@ enum QuickViewMarkdownStyle {
         ul.task-list ul { list-style: disc; padding-left: 1.6em; }
         li.task { list-style: none; }
         li.task input { margin-right: 0.4em; }
+        dl { margin: 0 0 0.85em; }
+        dt { margin-top: 0.85em; font-style: italic; font-weight: 600; }
+        dd { margin: 0.15em 0 0 1.6em; }
+        dd > :last-child { margin-bottom: 0; }
         code {
           font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
           font-size: \(small)px;

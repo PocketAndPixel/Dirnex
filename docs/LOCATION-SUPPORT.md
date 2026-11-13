@@ -676,6 +676,7 @@ the agent and adds a last-opened date, and it names a Live Photo's movie `.mov` 
 | XML and property lists as the same tree, attributes as `@` rows and a plist as its keys and values, a root of like elements as the table above<sup>uuu</sup> | yes | yes | yes | yes | yes | yes | yes | n/a | n/a | yes | yes |
 | Saved web pages (`.webarchive`, `.mhtml`, `.mht`) drawn as the page in preview, from the archive alone<sup>aaq</sup> | yes | yes | yes | yes | yes | yes | yes | n/a | n/a | yes | yes |
 | A link clicked in a rendered page: a file moves the pane's cursor onto it and its heading is scrolled to, a web link opens in the browser<sup>aar</sup> | yes | yes | yes | yes | yes | yes | yes | n/a | n/a | yes | yes |
+| A wiki link (`[[name]]`) in a Markdown page drawn as a link to the file it names, and its own text when there is none<sup>aas</sup> | yes | yes | yes, limited<sup>aas</sup> | yes, limited<sup>aas</sup> | yes, limited<sup>aas</sup> | yes, limited<sup>aas</sup> | yes, limited<sup>aas</sup> | n/a | n/a | yes | yes |
 | Open in the default app (`⏎`) | yes | yes | yes, limited<sup>t, ddd</sup> | yes, limited<sup>u</sup> | yes, limited<sup>u</sup> | yes, limited<sup>u</sup> | yes, limited<sup>u</sup> | n/a | yes, limited<sup>mmm</sup> | yes | yes |
 | Edit `F4`, with save written back | yes | yes | yes, limited<sup>v, ddd</sup> | yes | yes | yes | yes | n/a | no<sup>jjj</sup> | yes | yes |
 | Open With… / Share sheet | yes | yes | yes, limited<sup>yy</sup> | yes, limited<sup>yy</sup> | yes, limited<sup>yy</sup> | yes, limited<sup>yy</sup> | yes, limited<sup>yy</sup> | n/a | yes, limited<sup>yy</sup> | yes | yes |
@@ -965,6 +966,14 @@ top of a location stops at its top, as a browser's does, rather than leading out
 the server; and in an HTML file **on this disk** a link to a file that does not exist, or outside the
 file's own folder, does nothing and says nothing, because WebKit never asks about it. A server's or an
 archive's HTML file is drawn from its bytes, so its links all reach Dirnex.
+
+<sup>aas</sup> Since 2026-11-14 (PLAN.md §M39). `[[name]]`, `[[name|text]]` and `[[name#Heading]]` name a
+file beside the document, `.md` added when the name has none, and are drawn as a link only when that
+file is there, so `[[Prototype]]` in a JavaScript README stays text. A click then follows it as any link
+above. On this disk the disk is asked, a path in the name included, and a name in another case finds
+the file on a volume that ignores case. On a server or in an archive the page is drawn from a local copy,
+so the names are those the active pane lists in the document's folder, which costs no request: a name
+in a subfolder stays text there. Obsidian's search of a whole vault for a name is not made.
 
 ## 4. Find Files (`⌥F7`)
 

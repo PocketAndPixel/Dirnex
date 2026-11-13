@@ -28,6 +28,8 @@ public enum MarkdownBlock: Equatable, Sendable {
     /// draws every footnote that is referenced at the foot of the page (`MarkdownFootnotes`).
     case footnoteDefinition(label: String, blocks: [MarkdownBlock])
     case list(MarkdownList)
+    /// `Term` over `: its definition`, Pandoc's definition list (`MarkdownDefinitionLists`).
+    case definitionList([MarkdownDefinitionItem])
     case table(MarkdownTable)
     /// YAML front matter, recognized rather than ignored: an opening `---` otherwise parses as a
     /// thematic break and the document opens looking broken. A file manager shows what is in the
@@ -76,6 +78,31 @@ public struct MarkdownListItem: Equatable, Sendable {
 public enum MarkdownTaskState: Equatable, Sendable {
     case unchecked
     case checked
+}
+
+/// One term of a definition list and everything defined under it.
+public struct MarkdownDefinitionItem: Equatable, Sendable {
+    /// Unparsed inline source, one line of it: a term never spans two.
+    public let term: String
+    public let definitions: [MarkdownDefinition]
+
+    public init(term: String, definitions: [MarkdownDefinition]) {
+        self.term = term
+        self.definitions = definitions
+    }
+}
+
+/// One `: definition`, parsed as blocks, so it can hold a second paragraph, a list or code.
+public struct MarkdownDefinition: Equatable, Sendable {
+    /// Whether a blank line stands before its marker, which draws its text as a paragraph rather
+    /// than bare. Pandoc's rule, and decided per definition rather than per list as a list's is.
+    public let isLoose: Bool
+    public let blocks: [MarkdownBlock]
+
+    public init(isLoose: Bool, blocks: [MarkdownBlock]) {
+        self.isLoose = isLoose
+        self.blocks = blocks
+    }
 }
 
 /// A GFM table: a header row, a per-column alignment taken from the delimiter row, and the body.

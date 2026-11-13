@@ -56,6 +56,17 @@ public struct MarkdownRenderOptions: Sendable {
     /// app's to translate. The default is GitHub's English.
     public var alertTitle: @Sendable (MarkdownAlertKind) -> String
 
+    /// The file at `path`, written relative to the document's folder with nothing left to decode:
+    /// `path` itself, or spelled as the file is when a disk that ignores case found it under
+    /// another; `nil` when there is none. It decides whether `[[name]]` is a link, and where to
+    /// (`MarkdownWikiLink`), and it is asked once per path per render.
+    ///
+    /// A closure for `resolveImageSource`'s reason: the render does no I/O, and only the app knows
+    /// whether the document is on this disk or on a server it holds a listing of. The default
+    /// finds nothing, so a page rendered without the app's say draws every `[[name]]` as the text it
+    /// was written as.
+    public var locateFile: @Sendable (String) -> String?
+
     public init(
         resolveImageSource: @escaping @Sendable (String) -> String = { $0 },
         textMetric: MarkdownTextMetric = .fixedAdvance,
@@ -63,13 +74,15 @@ public struct MarkdownRenderOptions: Sendable {
             "“\($0)” is not drawn in this preview."
         },
         diagramScale: Double = 1,
-        alertTitle: @escaping @Sendable (MarkdownAlertKind) -> String = MarkdownRenderOptions.englishAlertTitle
+        alertTitle: @escaping @Sendable (MarkdownAlertKind) -> String = MarkdownRenderOptions.englishAlertTitle,
+        locateFile: @escaping @Sendable (String) -> String? = { _ in nil }
     ) {
         self.resolveImageSource = resolveImageSource
         self.textMetric = textMetric
         self.describeUndrawnDiagram = describeUndrawnDiagram
         self.diagramScale = diagramScale
         self.alertTitle = alertTitle
+        self.locateFile = locateFile
     }
 
     /// GitHub's own titles, which it draws in English whatever the reader's language.

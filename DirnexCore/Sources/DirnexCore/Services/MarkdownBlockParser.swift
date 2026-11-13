@@ -225,6 +225,13 @@ enum MarkdownBlockParser {
                 index = next
                 return
             }
+            // Last before a paragraph, because a term *is* a paragraph's first line until the line
+            // under it says otherwise.
+            if let (list, next) = MarkdownDefinitionLists.take(from: lines, at: index) {
+                blocks.append(list)
+                index = next
+                return
+            }
             takeParagraph()
         }
 
