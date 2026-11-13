@@ -22,6 +22,11 @@ public enum MarkdownBlock: Equatable, Sendable {
     /// 2 colors the body with — and is `nil` for an indented block, which has nowhere to carry one.
     case codeBlock(info: String?, code: String)
     case blockQuote([MarkdownBlock])
+    /// A GitHub alert, `> [!NOTE]`: a blockquote GitHub draws as a titled box (`MarkdownAlert`).
+    case alert(MarkdownAlertKind, [MarkdownBlock])
+    /// `[^label]: text`, a footnote's definition. It draws nothing where it stands: the renderer
+    /// draws every footnote that is referenced at the foot of the page (`MarkdownFootnotes`).
+    case footnoteDefinition(label: String, blocks: [MarkdownBlock])
     case list(MarkdownList)
     case table(MarkdownTable)
     /// YAML front matter, recognized rather than ignored: an opening `---` otherwise parses as a

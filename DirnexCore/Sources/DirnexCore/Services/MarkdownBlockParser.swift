@@ -10,15 +10,20 @@ public struct MarkdownBlockScan: Equatable, Sendable {
     /// carry. Both the `id`s and `[[_TOC_]]`'s links come from this one list (PLAN.md §M18 ▸
     /// Slice 2) — see `MarkdownHeadings` for why it is not derived twice.
     public let headings: [MarkdownHeading]
+    /// Every footnote definition, keyed by `MarkdownLinkReference.key(for:)` like `references`, so a
+    /// reference finds its definition wherever in the file either is written.
+    public let footnotes: [String: MarkdownFootnote]
 
     public init(
         blocks: [MarkdownBlock],
         references: [String: MarkdownLinkReference] = [:],
-        headings: [MarkdownHeading] = []
+        headings: [MarkdownHeading] = [],
+        footnotes: [String: MarkdownFootnote] = [:]
     ) {
         self.blocks = blocks
         self.references = references
         self.headings = headings
+        self.footnotes = footnotes
     }
 }
 
@@ -44,10 +49,16 @@ enum MarkdownBlockParser {
         }
         let references = MarkdownLinkDefinitions.extract(from: &lines)
         blocks.append(contentsOf: self.blocks(in: lines))
+        let footnotes = MarkdownFootnotes.gather(from: blocks)
         return MarkdownBlockScan(
             blocks: blocks,
             references: references,
-            headings: MarkdownHeadings.gather(from: blocks, references: references)
+            headings: MarkdownHeadings.gather(
+                from: blocks,
+                references: references,
+                footnotes: Set(footnotes.keys)
+            ),
+            footnotes: footnotes
         )
     }
 
@@ -147,6 +158,8 @@ enum MarkdownBlockParser {
         if isThematicBreak(content) { return true }
         if fenceRun(content) != nil { return true }
         if isTableOfContents(content) { return true }
+        // GitHub lets a footnote's definition interrupt a paragraph (checked 2026-11-13).
+        if MarkdownFootnotes.definition(in: line) != nil { return true }
         if MarkdownTableParser.take(from: lines, at: index) != nil { return true }
         return MarkdownListParser.interruptsParagraph(lines, at: index)
     }
@@ -195,6 +208,11 @@ enum MarkdownBlockParser {
             }
             if content.first == ">" {
                 takeBlockQuote()
+                return
+            }
+            if let (definition, next) = MarkdownFootnotes.take(from: lines, at: index) {
+                blocks.append(definition)
+                index = next
                 return
             }
             if let (table, next) = MarkdownTableParser.take(from: lines, at: index) {
@@ -269,7 +287,7 @@ enum MarkdownBlockParser {
 
         /// A quote takes every following line carrying `>`, plus **lazy continuation** lines — an
         /// unmarked line that simply continues the paragraph inside it, which is how quoted prose is
-        /// written when it wraps.
+        /// written when it wraps. A quote opening on `[!NOTE]` and its siblings is a GitHub alert.
         private mutating func takeBlockQuote() {
             var inner: [String] = []
             while index < lines.count {
@@ -288,7 +306,11 @@ enum MarkdownBlockParser {
                 inner.append(line)
                 index += 1
             }
-            blocks.append(.blockQuote(MarkdownBlockParser.blocks(in: inner)))
+            if let (kind, body) = MarkdownAlert.take(inner) {
+                blocks.append(.alert(kind, MarkdownBlockParser.blocks(in: body)))
+            } else {
+                blocks.append(.blockQuote(MarkdownBlockParser.blocks(in: inner)))
+            }
         }
 
         /// Text up to a blank line or the start of another block — with the **setext** check first,

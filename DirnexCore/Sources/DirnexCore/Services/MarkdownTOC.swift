@@ -67,10 +67,12 @@ enum MarkdownTOC {
             return html + "</ul>"
         }
 
+        /// The entry draws a heading's shortcodes as the heading does (`MarkdownEmoji`), with the
+        /// whole text as one run, which is all the plain text keeps.
         private func item(_ heading: MarkdownHeading) -> String {
             MarkdownHTML.element(
                 "a",
-                MarkdownHTML.escaped(heading.text),
+                MarkdownHTML.escaped(MarkdownEmoji.converting(heading.text)),
                 attributes: MarkdownHTML.attribute("href", "#" + heading.slug)
             )
         }

@@ -19,6 +19,10 @@ public indirect enum MarkdownInline: Equatable, Sendable {
     /// An image. Its alt text stays a plain `String` rather than nodes: it lands in an attribute,
     /// where markup cannot be drawn, so parsing it would produce nodes with nowhere to go.
     case image(source: String, title: String?, alt: String)
+    /// `[^label]`, a reference to a footnote the document defines. It carries the definition's key
+    /// (`MarkdownLinkReference.key(for:)`); the number it draws as depends on the references before
+    /// it, so the renderer hands it out (`MarkdownFootnotes`).
+    case footnoteReference(String)
     /// A newline the author asked to keep — two trailing spaces, or a trailing backslash.
     case lineBreak
     /// A newline inside a paragraph, which renders as an ordinary space. Kept as a node rather than

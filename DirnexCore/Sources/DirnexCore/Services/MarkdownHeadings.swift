@@ -36,39 +36,53 @@ public struct MarkdownHeading: Equatable, Sendable {
 enum MarkdownHeadings {
     static func gather(
         from blocks: [MarkdownBlock],
-        references: [String: MarkdownLinkReference]
+        references: [String: MarkdownLinkReference],
+        footnotes: Set<String> = []
     ) -> [MarkdownHeading] {
-        var slugger = MarkdownSlugger()
-        var headings: [MarkdownHeading] = []
-        collect(blocks, into: &headings, slugger: &slugger, references: references)
-        return headings
+        var walk = Walk(references: references, footnotes: footnotes)
+        walk.collect(blocks)
+        return walk.headings
     }
 
-    private static func collect(
-        _ blocks: [MarkdownBlock],
-        into headings: inout [MarkdownHeading],
-        slugger: inout MarkdownSlugger,
-        references: [String: MarkdownLinkReference]
-    ) {
-        for block in blocks {
-            switch block {
-            case let .heading(level, source):
-                let text = MarkdownInlineParser.plainText(
-                    MarkdownInlineParser.parse(source, references: references)
-                )
-                headings.append(
-                    MarkdownHeading(level: level, text: text, slug: slugger.next(for: text))
-                )
-            case let .blockQuote(inner):
-                collect(inner, into: &headings, slugger: &slugger, references: references)
-            case let .list(list):
-                for item in list.items {
-                    collect(item.blocks, into: &headings, slugger: &slugger, references: references)
+    private struct Walk {
+        let references: [String: MarkdownLinkReference]
+        let footnotes: Set<String>
+        var slugger = MarkdownSlugger()
+        var headings: [MarkdownHeading] = []
+
+        init(references: [String: MarkdownLinkReference], footnotes: Set<String>) {
+            self.references = references
+            self.footnotes = footnotes
+        }
+
+        mutating func collect(_ blocks: [MarkdownBlock]) {
+            for block in blocks {
+                switch block {
+                case let .heading(level, source):
+                    let text = MarkdownInlineParser.plainText(MarkdownInlineParser.parse(
+                        source,
+                        references: references,
+                        footnotes: footnotes
+                    ))
+                    headings.append(
+                        MarkdownHeading(level: level, text: text, slug: slugger.next(for: text))
+                    )
+                case let .blockQuote(inner), let .alert(_, inner):
+                    collect(inner)
+                case let .list(list):
+                    for item in list.items {
+                        collect(item.blocks)
+                    }
+                // A footnote is drawn at the foot of the page, after every heading has taken its
+                // anchor, so a heading inside one gets none, here and in the renderer alike.
+                case .footnoteDefinition:
+                    break
+                // Spelled out rather than left to a `default`, so a block kind that gains children
+                // is named here by the compiler instead of quietly holding headings nobody can
+                // link to.
+                case .paragraph, .thematicBreak, .codeBlock, .table, .frontMatter, .tableOfContents:
+                    break
                 }
-            // Spelled out rather than left to a `default`, so a block kind that gains children is
-            // named here by the compiler instead of quietly holding headings nobody can link to.
-            case .paragraph, .thematicBreak, .codeBlock, .table, .frontMatter, .tableOfContents:
-                break
             }
         }
     }
