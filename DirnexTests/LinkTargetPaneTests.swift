@@ -64,6 +64,25 @@ struct LinkTargetPaneTests {
         }
     }
 
+    /// PLAN.md §M39 ▸ Slice 7: what a server document's wiki links are found among.
+    @Test("the files the pane lists beside a document, and none beside one it does not list")
+    func namesListed() async throws {
+        let fixture = try Fixture()
+        defer { fixture.remove() }
+        try await fixture.openReadme()
+
+        #expect(
+            fixture.pane.namesListed(beside: fixture.file("a/README.md"))
+                == ["README.md", "sibling.md"]
+        )
+        #expect(fixture.pane.namesListed(beside: fixture.file("b/target.md")).isEmpty)
+        // The top lists only the folders `a`, `b` and `c`, and a folder is no file a link can name.
+        let top = VFSPath.local(fixture.directory.path)
+        fixture.pane.navigate(to: top)
+        try await fixture.settled(on: top)
+        #expect(fixture.pane.namesListed(beside: fixture.file("a")).isEmpty)
+    }
+
     @Test("a sibling the folder lists takes one cursor step, at once")
     func sibling() async throws {
         let fixture = try Fixture()

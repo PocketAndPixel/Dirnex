@@ -24,6 +24,7 @@ extension BrowserWindowController {
         preview.onClose = { [weak self] in self?.closeQuickView() }
         preview.onPickStyle = { [weak self] in self?.setQuickViewRenderStyle($0) }
         preview.links.follow = { [weak self] in self?.followQuickViewLink($0, from: $1, on: $2) }
+        preview.links.namesListed = { [weak self] in self?.quickViewNamesListed(beside: $0) ?? [] }
         let panes = panesSplitViewController.view
         install(preview, pinnedTo: panes)
         fullWindowPreview = preview
@@ -45,6 +46,7 @@ extension BrowserWindowController {
         preview.onClose = { [weak self] in self?.closeQuickView() }
         preview.onPickStyle = { [weak self] in self?.setQuickViewRenderStyle($0) }
         preview.links.follow = { [weak self] in self?.followQuickViewLink($0, from: $1, on: $2) }
+        preview.links.namesListed = { [weak self] in self?.quickViewNamesListed(beside: $0) ?? [] }
         guard let content = window?.contentView else { return preview }
         // Without this the fading header never appears: a window does not post mouse-moved events
         // by default, so the tracking area that reveals the strip is never told the pointer moved.

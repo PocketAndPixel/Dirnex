@@ -34,6 +34,10 @@ extension BrowserWindowController {
         }
     }
 
+    func quickViewNamesListed(beside location: VFSPath) -> Set<String> {
+        focusedPanel.namesListed(beside: location)
+    }
+
     private func presentRefusedLink(_ refusal: DocumentLink.Refusal) {
         let alert = NSAlert()
         alert.messageText = String(localized: "Can’t follow this link")

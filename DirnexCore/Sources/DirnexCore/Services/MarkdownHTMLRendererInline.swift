@@ -9,7 +9,12 @@ extension MarkdownHTMLRenderer.Context {
     /// Parse and render one block's text in a single call — the only entry the block side uses, so
     /// there is one place that decides an inline pass happens and one place it can be skipped from.
     func inline(_ source: String) -> String {
-        render(MarkdownInlineParser.parse(source, references: references, footnotes: footnoteKeys))
+        render(MarkdownInlineParser.parse(
+            source,
+            references: references,
+            footnotes: footnoteKeys,
+            wikiLinks: wikiLinks
+        ))
     }
 
     /// The nodes in order, with each **run of text** drawn as one: the text and soft breaks between

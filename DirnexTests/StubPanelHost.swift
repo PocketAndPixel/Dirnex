@@ -157,6 +157,13 @@ final class StubPanelHost: PanelHost {
         quickViewLinks.append((link, location))
     }
 
+    /// What a page's wiki links find beside a document that is not on this disk: none, unless a
+    /// test says otherwise.
+    var quickViewListedNames: Set<String> = []
+    func quickViewNamesListed(beside location: VFSPath) -> Set<String> {
+        quickViewListedNames
+    }
+
     /// Every flip a pane asked for, and every scroll. Recorded since the ⇧-arrows learned to scroll
     /// the preview (2026-10-18): at full size the same arrow key flips or scrolls depending on ⇧, and
     /// which of the two calls a key made is the table's whole answer.

@@ -401,7 +401,42 @@ Decided before Slice 1 (2026-11-12, Oleg, on the probes above):
    a real page read the hash as `#fnref-1-2` with the scroll unchanged, which is WebKit's behavior
    (docs/NOTES.md ▸ Previews: web views). **Not run live**: the light appearance, a translated title,
    and a server or archive location, which reach the same render through the file's bytes.
-7. **Markdown: wiki links and definition lists.** Wiki links go through Slice 4's resolver.
+7. **Markdown: wiki links and definition lists.** Wiki links go through Slice 4's resolver. **Landed
+   2026-11-14.** **The corpus first**: 12 603 distinct `.md` files in the home folder hold no definition
+   list and no real wiki link outside Claude's memory notes (`[[dirnex-project-goal]]`, each naming a
+   sibling `.md`), but they hold the prose each obvious rule misreads: JavaScript READMEs writing
+   `[[Prototype]]` and `[[Get]]s`, changelogs writing `[[#4995]](url)`, HISTORY.md writing
+   `[[swift-testing-…]]-adjacent`, and a wrapped HISTORY.md line opening with `: "conflicts"` inside a
+   paragraph. Oleg's two calls on that: **a wiki link is a link only when its file is there**, and is
+   its own text otherwise, as a footnote reference with no definition is; and **it looks in the
+   document's folder**, the name or the path written in it, with no Obsidian vault search.
+   **Wiki links** (`MarkdownWikiLink`): Obsidian's order, `[[name]]`, `[[name|text]]`, `[[name#Heading]]`
+   and `[[#Heading]]`, `.md` tried before the name as written; the `href` is a percent-encoded relative
+   path (`:` encoded, so `Notes: May` is no scheme) and the heading becomes its GitHub anchor, so a
+   click takes Slice 5's road unchanged. A link whose text is in brackets, a code span and an escape win,
+   no wiki link is read inside a link's text, and a heading anchors from its text as written, as GitHub
+   would. Which files exist is the app's to say (`MarkdownRenderOptions.locateFile`, default none),
+   answered as the file spells it: on this disk the disk beside the document, so `[[Note]]` finds
+   `note.md` on a volume that ignores case and the click lands on that row
+   (`QuickViewMarkdownWikiLinks`); anywhere else the files the active pane lists in the document's
+   folder (`PanelViewController.namesListed(beside:)`), which costs no request. **Definition lists**
+   (`MarkdownDefinitionLists`): Pandoc's rules where PHP Markdown Extra agrees, a one-line term over
+   `: ` definitions, loose per definition after a blank line, continuing lazily or at four columns; a
+   `:` line never interrupts a paragraph, which keeps HISTORY.md's line prose, no `~` marker and no
+   several terms over one definition. Drawn in GitHub's `dl` style. `plainText` moved from
+   `MarkdownInlineParser` to `MarkdownInline` when the parser reached `type_body_length`. 20 core tests
+   and 5 app tests (one a real click handed on as the file and its heading). Negative controls: without
+   the `(` exclusion, without the existence check, with the disk asked for a server's document, and
+   without the disk's spelling, each failed exactly its own test. **The corpus after**: with the app's
+   default options 0 of 12 603 files render differently, and with a real existence check exactly 25
+   do, all memory notes, every link in them resolved. **Run live** in `app.dirnex.Dirnex.live`, dark
+   appearance. At pane size on this disk: the four links drawn and `[[Prototype]]`, `[[Get]]s` and the
+   code span left as text; `[[#Definitions]]` scrolled in place; `[[Note|…]]` put the cursor on
+   `note.md`, whose `[[index]]` came back; `[[sub/deep#Part Two|…]]` entered `sub` with the heading at
+   the top; the definition list drew with its italic terms. Inside a zip at pane size and full window:
+   `[[note]]` and `[[index]]` linked and moved the cursor, `[[Note|…]]` and `[[sub/deep…]]` stayed
+   text as the listing says. **Not run live**: a server, which takes the zip's path through its
+   listing; full screen; the light appearance.
 8. **Markdown: math.** GitHub's four spellings, a TeX subset to MathML, an unknown command left as its
    text.
 9. **Highlighting: JSON keys, setext headings and indented code in a Markdown source, Ruby's

@@ -31,6 +31,29 @@ public indirect enum MarkdownInline: Equatable, Sendable {
     case softBreak
 }
 
+extension MarkdownInline {
+    /// The literal text of `nodes` — every construct flattened away, which is what an image's `alt`
+    /// and a heading's anchor need. A fact about the nodes rather than about reading them, which is
+    /// why it lives here and not in `MarkdownInlineParser` (moved 2026-11-14, when that type reached
+    /// SwiftLint's `type_body_length`).
+    static func plainText(_ nodes: [MarkdownInline]) -> String {
+        nodes.map { node in
+            switch node {
+            case let .text(text): text
+            case let .code(code): code
+            case let .emphasis(children), let .strong(children), let .strikethrough(children):
+                plainText(children)
+            case let .link(_, _, children): plainText(children)
+            case let .image(_, _, alt): alt
+            // Its number is the renderer's to hand out, so it adds nothing to a heading's anchor
+            // (`MarkdownFootnotes` names the one way that departs from GitHub).
+            case .footnoteReference: ""
+            case .lineBreak, .softBreak: " "
+            }
+        }.joined()
+    }
+}
+
 /// A `[label]: destination "title"` definition, collected before the block pass so a reference link
 /// can resolve against one written *after* it — which is the common shape, with every definition at
 /// the foot of the file.

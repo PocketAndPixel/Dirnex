@@ -59,7 +59,7 @@ enum MarkdownHeadings {
             for block in blocks {
                 switch block {
                 case let .heading(level, source):
-                    let text = MarkdownInlineParser.plainText(MarkdownInlineParser.parse(
+                    let text = MarkdownInline.plainText(MarkdownInlineParser.parse(
                         source,
                         references: references,
                         footnotes: footnotes
@@ -72,6 +72,10 @@ enum MarkdownHeadings {
                 case let .list(list):
                     for item in list.items {
                         collect(item.blocks)
+                    }
+                case let .definitionList(items):
+                    for definition in items.flatMap(\.definitions) {
+                        collect(definition.blocks)
                     }
                 // A footnote is drawn at the foot of the page, after every heading has taken its
                 // anchor, so a heading inside one gets none, here and in the renderer alike.

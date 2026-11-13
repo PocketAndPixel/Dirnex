@@ -33,6 +33,8 @@ enum MarkdownHTMLRenderer {
         let footnotes: [String: MarkdownFootnote]
         /// The key of every footnote, which is what the inline pass needs to know of them.
         let footnoteKeys: Set<String>
+        /// What a `[[name]]` is checked against, its answers kept for the whole page.
+        let wikiLinks: MarkdownWikiLink.Lookup
         /// How many headings have been rendered. See `nextHeadingID`.
         private var headingIndex = 0
         /// Footnotes in the order they were first referenced, which is their numbering.
@@ -46,6 +48,10 @@ enum MarkdownHTMLRenderer {
             headings = scan.headings
             footnotes = scan.footnotes
             footnoteKeys = Set(scan.footnotes.keys)
+            wikiLinks = MarkdownWikiLink.Lookup(
+                locateFile: options.locateFile,
+                anchors: Set(scan.headings.map(\.slug))
+            )
             self.options = options
         }
 
@@ -67,6 +73,8 @@ enum MarkdownHTMLRenderer {
                 ""
             case let .list(list):
                 self.list(list)
+            case let .definitionList(items):
+                definitionList(items)
             case let .table(table):
                 self.table(table)
             case let .frontMatter(entries):
@@ -167,6 +175,20 @@ enum MarkdownHTMLRenderer {
                 attributes = " class=\"task\""
             }
             return MarkdownHTML.element("li", inner, attributes: attributes)
+        }
+
+        /// A definition list. A definition with no blank line before it draws its text bare, as a
+        /// tight list's item does.
+        private func definitionList(_ items: [MarkdownDefinitionItem]) -> String {
+            let rows = items.flatMap { item in
+                [MarkdownHTML.element("dt", inline(item.term))] + item.definitions.map {
+                    MarkdownHTML.element(
+                        "dd",
+                        $0.isLoose ? render($0.blocks) : unwrappedParagraph($0.blocks)
+                    )
+                }
+            }
+            return MarkdownHTML.element("dl", "\n" + rows.joined(separator: "\n") + "\n")
         }
 
         private func unwrappedParagraph(_ blocks: [MarkdownBlock]) -> String {
