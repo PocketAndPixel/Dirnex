@@ -9,11 +9,32 @@ extension MarkdownHTMLRenderer.Context {
     /// Parse and render one block's text in a single call — the only entry the block side uses, so
     /// there is one place that decides an inline pass happens and one place it can be skipped from.
     func inline(_ source: String) -> String {
-        render(MarkdownInlineParser.parse(source, references: references))
+        render(MarkdownInlineParser.parse(source, references: references, footnotes: footnoteKeys))
     }
 
+    /// The nodes in order, with each **run of text** drawn as one: the text and soft breaks between
+    /// two elements, which is what an HTML text node holds and what GitHub reads emoji shortcodes
+    /// across (`MarkdownEmoji`). The bytes are the same as drawing the nodes one by one, since a
+    /// soft break draws as the newline it is joined with.
     func render(_ nodes: [MarkdownInline]) -> String {
-        nodes.map(render).joined()
+        var html = ""
+        var run = ""
+        for node in nodes {
+            switch node {
+            case let .text(text):
+                run += text
+            case .softBreak:
+                run += "\n"
+            default:
+                if !run.isEmpty {
+                    html += MarkdownHTML.escaped(MarkdownEmoji.converting(run))
+                    run = ""
+                }
+                html += render(node)
+            }
+        }
+        if !run.isEmpty { html += MarkdownHTML.escaped(MarkdownEmoji.converting(run)) }
+        return html
     }
 
     func render(_ node: MarkdownInline) -> String {
@@ -32,6 +53,8 @@ extension MarkdownHTMLRenderer.Context {
             link(destination: destination, title: title, children: children)
         case let .image(source, title, alt):
             image(source: source, title: title, alt: alt)
+        case let .footnoteReference(key):
+            footnoteReference(key)
         case .lineBreak:
             "<br>\n"
         case .softBreak:

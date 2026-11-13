@@ -50,18 +50,37 @@ public struct MarkdownRenderOptions: Sendable {
     /// exact number is written against.
     public var diagramScale: Double
 
+    /// The title a GitHub alert draws above its text, `Note` for `[!NOTE]`.
+    ///
+    /// A closure for `describeUndrawnDiagram`'s reason: the title is a word on the page, so it is the
+    /// app's to translate. The default is GitHub's English.
+    public var alertTitle: @Sendable (MarkdownAlertKind) -> String
+
     public init(
         resolveImageSource: @escaping @Sendable (String) -> String = { $0 },
         textMetric: MarkdownTextMetric = .fixedAdvance,
         describeUndrawnDiagram: @escaping @Sendable (String) -> String = {
             "“\($0)” is not drawn in this preview."
         },
-        diagramScale: Double = 1
+        diagramScale: Double = 1,
+        alertTitle: @escaping @Sendable (MarkdownAlertKind) -> String = MarkdownRenderOptions.englishAlertTitle
     ) {
         self.resolveImageSource = resolveImageSource
         self.textMetric = textMetric
         self.describeUndrawnDiagram = describeUndrawnDiagram
         self.diagramScale = diagramScale
+        self.alertTitle = alertTitle
+    }
+
+    /// GitHub's own titles, which it draws in English whatever the reader's language.
+    public static func englishAlertTitle(_ kind: MarkdownAlertKind) -> String {
+        switch kind {
+        case .note: "Note"
+        case .tip: "Tip"
+        case .important: "Important"
+        case .warning: "Warning"
+        case .caution: "Caution"
+        }
     }
 }
 

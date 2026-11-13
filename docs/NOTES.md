@@ -27,6 +27,16 @@ at build time.
   time and read as *our* bug when a user's link lands nowhere. The same corpus handed over the
   duplicate rule's real shape — a file linking to `#all`, `#all-1` **and** `#all-2`, which is a
   counter that steps past a collision the author wrote, not "append the count".
+  - **When the corpus has no answer, GitHub's renderer can be asked directly, two ways.**
+    `gh api markdown -f mode=markdown -F text=@sample.md` renders a synthetic sample as GitHub
+    does, footnotes included, but with **no alerts and no heading anchors**. For those, render a real
+    file in a public repository: `gh api repos/<owner>/<repo>/contents/<path> -H 'Accept:
+    application/vnd.github.html'` returns the page as the site draws it, alert boxes and
+    `user-content-` anchors included. Used 2026-11-13 for M39 Slice 6, it turned up two rules
+    no guess would have produced. A shortcode is drawn or not by the *first* `:word:` in its run of
+    text, so `10:30:00 :smile:` stays text. And `## :bulb: Highlights` anchors as `#bulb-highlights`
+    while `## 💡 Highlights` anchors as `#-highlights`. A sample sent this way is published to
+    GitHub's API, so it stays synthetic: no text from a user's file.
 - **Core first, then the app.** A slice opens with pure, tested, purely-additive `DirnexCore`
   files (app untouched, no rebuild) and lands in a second pass that wires the app. PLAN.md §2:
   if it touches bytes it lives in the core and has tests.
@@ -4125,6 +4135,12 @@ Measured 2026-11-08 for M37's byte view, whose table has a row for every 16 byte
     answer — the find searches what the page shows — and a fixture without the declaration measures
     the decoder rather than the find. It also means the **source** and **rendered** styles of one file
     can honestly disagree about its text, since `TextPreview` detects the encoding and WebKit guesses.
+- **An in-page link to an element already in view does not scroll.** Seen 2026-11-13 in M39 Slice
+  6's live run: a footnote's `↩²` back link was clicked and the page stayed put, which read as a dead
+  link. A probe in a real page settled it. `location.hash` became `#fnref-1-2`, so WebKit followed the
+  link, and `scrollY` stayed at 320 because the target was already 102 pt down a 300 pt window. A
+  target out of view is scrolled to as usual (`QuickViewMarkdownAlertTests` clicks one). So a live
+  check of an anchor needs its target off screen, or the hash read back.
 
 ### Previews: telling what kind of file it is
 

@@ -91,7 +91,8 @@ extension QuickViewPreviewView {
                 // sentence is a catalog lookup.
                 textMetric: QuickViewMarkdownDiagram.metric,
                 describeUndrawnDiagram: { QuickViewMarkdownDiagram.describeUndrawn($0) },
-                diagramScale: QuickViewMarkdownDiagram.scale
+                diagramScale: QuickViewMarkdownDiagram.scale,
+                alertTitle: { QuickViewMarkdownAlerts.title($0) }
             )
             return MarkdownScan(
                 html: MarkdownDocument.render(preview.text, options: options).html,

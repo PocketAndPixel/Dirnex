@@ -366,7 +366,41 @@ Decided before Slice 1 (2026-11-12, Oleg, on the probes above):
    alert came up over the full-screen window and left it there. **Not run live**: a web link opening
    the browser; a saved page's link; a link from a results listing, which its test covers.
 6. **Markdown: GitHub alerts, footnotes and emoji shortcodes** (core and stylesheet). The shortcode
-   table's source is asked when the slice opens.
+   table's source is asked when the slice opens. **Landed 2026-11-13**. Oleg chose GitHub's gemoji:
+   v4.1.0's `db/emoji.json` (MIT, 1 913 names) is reduced by `scripts/generate_emoji_shortcodes.py`
+   to one string literal, `MarkdownEmojiTable.swift`, and its notice is in NOTICE. GitHub writes none
+   of these rules down, so each was read off GitHub's own renderer: its `/markdown` API, and real files
+   served with `Accept: application/vnd.github.html` (docs/NOTES.md ▸ Working rhythm).
+   **Shortcodes** (`MarkdownEmoji`) do not follow a word boundary. Within one run of text, which is
+   the text between two elements with soft breaks included, the first `:word:` decides. If it opens
+   the run or follows ASCII whitespace, every known name in the run is drawn; if not, none is. So
+   `10:30:00 :smile:` stays text, and `requestOpenLink(source:link:)` keeps the selector that a
+   plain search for names turned into `source🔗`. Shortcodes are drawn at render time, so
+   `## :bulb: Highlights` draws 💡 and anchors as `#bulb-highlights`, as GitHub served nodelib's
+   README; an image's alt keeps its shortcode. **Alerts** (`MarkdownAlert`): the marker in any case,
+   alone on a quote's first line with something under it, inside a list item too (eslint-plugin-
+   import's `order.md`); a second marker in the same quote stays text in the first alert, as GitHub
+   draws baseline-browser-mapping's README. GitHub's classes and palette, which scores 4.87–6.60:1 on
+   this page's own backgrounds, SF Symbols as CSS masks where GitHub draws Octicons, and titles in 14
+   languages (`QuickViewMarkdownAlerts`). **Footnotes** (`MarkdownFootnotes`): a label holds no
+   whitespace and matches in any case, and the first definition wins. Footnotes are numbered by first
+   reference, with `fn-1` and `fnref-1-2` anchors percent-encoded as GitHub's are, and a `↩` back to
+   every reference. A definition interrupts a paragraph and may sit inside a quote or an item; it
+   continues lazily or at four columns. One departure: a reference in a heading adds nothing to its
+   anchor, where GitHub gives `#heading3`. A block that draws nothing now leaves no line behind, which
+   also took the stray newline off an empty `[[_TOC_]]`. 28 core tests and 7 app tests; the app's
+   follow a footnote down and back in a real page, an encoded label included. **The corpus**: all
+   27 756 `.md` files in the home folder render. 297 alerts are drawn where a text search finds 299
+   markers, and the two are the baseline-browser-mapping case above. 14 files have footnotes. The
+   shortcode pass cost 5–7 % of the whole render until a byte-level check went ahead of it; the corpus
+   now renders within noise of before (23.9 s against 23.8 s, release build). **Run live** in
+   `app.dirnex.Dirnex.live`, full window, dark appearance: emoji in a heading, its TOC entry and
+   prose; `:smile:` kept in code and after `10:30:00`; the five alerts in their colors with their
+   icons; footnote numbers 1, 2, 1. A click on the first jumped to the notes, which drew `↩ ↩²` and a
+   two-paragraph note. `↩²` went nowhere visible, because its target was already in view: a probe in
+   a real page read the hash as `#fnref-1-2` with the scroll unchanged, which is WebKit's behavior
+   (docs/NOTES.md ▸ Previews: web views). **Not run live**: the light appearance, a translated title,
+   and a server or archive location, which reach the same render through the file's bytes.
 7. **Markdown: wiki links and definition lists.** Wiki links go through Slice 4's resolver.
 8. **Markdown: math.** GitHub's four spellings, a TeX subset to MathML, an unknown command left as its
    text.
