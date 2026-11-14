@@ -51,6 +51,7 @@ enum Unit {
     static let lowerP: UInt16 = 0x70
     static let lowerZ: UInt16 = 0x7A
     static let openBrace: UInt16 = 0x7B
+    static let pipe: UInt16 = 0x7C
     static let closeBrace: UInt16 = 0x7D
     static let tilde: UInt16 = 0x7E
     static let openParen: UInt16 = 0x28

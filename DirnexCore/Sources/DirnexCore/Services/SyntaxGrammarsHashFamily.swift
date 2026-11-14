@@ -51,20 +51,23 @@ enum HashFamilyGrammars {
         annotationSigil: "@"
     )
 
-    /// Ruby's `=begin`/`=end` block comment is not scanned: it is a whole-line delimiter rather
-    /// than an inline one, and it is rare enough that the single flag it would need in
-    /// `LanguageGrammar` would be carried by ten grammars for one.
-    static let ruby = base(
-        keywords: words("""
-        alias and attr_accessor attr_reader attr_writer begin BEGIN break case class def do else
-        elsif END end ensure extend false for if in include lambda module next nil not or proc
-        redo require require_relative rescue retry return self super then true undef unless until
-        when while yield
-        """),
-        typeNames: words("""
-        Array File Float Hash Integer Proc Range String Struct Symbol Time
-        """)
-    )
+    /// `=begin` … `=end` is the one row with a whole-line block comment
+    /// (`LanguageGrammar.lineBlockComment`), which M17 left out as too rare for a field of its own.
+    static let ruby: LanguageGrammar = {
+        var grammar = base(
+            keywords: words("""
+            alias and attr_accessor attr_reader attr_writer begin BEGIN break case class def do else
+            elsif END end ensure extend false for if in include lambda module next nil not or proc
+            redo require require_relative rescue retry return self super then true undef unless
+            until when while yield
+            """),
+            typeNames: words("""
+            Array File Float Hash Integer Proc Range String Struct Symbol Time
+            """)
+        )
+        grammar.lineBlockComment = LanguageGrammar.BlockComment(open: "=begin", close: "=end")
+        return grammar
+    }()
 
     /// A **heredoc** (`<<EOF`) is not scanned — its terminator is named at the opening and has to
     /// be remembered, which is the boundary PLAN.md §6 draws. Its body simply colors as code.

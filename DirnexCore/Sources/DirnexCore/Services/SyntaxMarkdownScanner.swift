@@ -16,25 +16,70 @@ import Foundation
 /// beside it. A **fenced block's body** is none of these — it is scanned as the language its info
 /// string names, and left alone when it names none; see `scanFence`.
 ///
-/// Two constructs are deliberately absent, both because they need to remember a *previous* line:
-/// the **setext heading** (text underlined with `===`) and the **indented code block**, which is
-/// only code when a blank line precedes it. Each is a wrong color at worst, never a wrong
-/// character (PLAN.md §6).
+/// Two constructs need the line before, which M17 left out for that reason and M39 ▸ Slice 9 took
+/// up: the **setext heading**, text underlined with `===` or `---`, and the **indented code
+/// block**, four columns in where no paragraph is open. What the scanner keeps between lines is the
+/// least that answers both, a few values and no stack: the open paragraph, the latest list item's
+/// content column, and the indent a code block's lines must keep. A heading underlined takes
+/// `.keyword` on every line, the underline included. An indented block colors nothing, as an
+/// undecorated fence does, and is drawn that way by VS Code, whose palette this is; what it fixes
+/// is that a `# comment` or a `*ptr` inside one no longer colors as a heading or emphasis. Each rule
+/// was scored against micromark over every `.md` file on this Mac (PLAN.md §M39 ▸ Slice 9).
 enum SyntaxMarkdownScanner {
-    static func tokens(in text: String) -> [SyntaxToken] {
+    /// How deep a `markdown` fence inside a `markdown` fence is still colored, the document
+    /// itself being level zero. A page about Markdown shows a ```` block holding ``` blocks, which
+    /// is one level; the bound is there for a file built to go further.
+    static let maxNesting = 3
+
+    static func tokens(in text: String, depth: Int = 0) -> [SyntaxToken] {
         guard !text.isEmpty else { return [] }
-        var scanner = Scanner(units: Array(text.utf16))
+        var scanner = Scanner(units: Array(text.utf16), depth: depth)
         return scanner.run()
     }
 
-    private struct Scanner {
-        let units: [UInt16]
-        private var tokens: [SyntaxToken] = []
+    /// What the line before left open, as `Scanner.paragraph` keeps it.
+    private enum Paragraph: Equatable {
+        case none
+        /// A paragraph at the top level, which an underline makes a heading: where its first
+        /// line starts, and how many tokens came before it.
+        case open(start: Int, tokenCount: Int)
+        /// A paragraph in a list item or a blockquote. It takes lazy lines, but CommonMark lets
+        /// no underline below it be one, so a `---` there stays a thematic break.
+        case contained
 
-        init(units: [UInt16]) { self.units = units }
+        var isOpen: Bool {
+            if case .open = self { return true }
+            return false
+        }
+    }
+
+    /// Internal rather than private so `SyntaxMarkdownScanner+Constructs.swift` can extend it.
+    struct Scanner {
+        let units: [UInt16]
+        /// How many `markdown` fences this text sits inside (`SyntaxMarkdownScanner.maxNesting`).
+        let depth: Int
+        var tokens: [SyntaxToken] = []
+        /// The paragraph the line before belongs to, which is the line of memory a setext heading
+        /// needs.
+        private var paragraph = Paragraph.none
+        /// The content column of the latest list item while a list is open, `nil` outside one.
+        ///
+        /// One column rather than a stack of them, so after a nested list it holds the innermost
+        /// item's column even when a later line has gone back to an outer one. That errs one way
+        /// only: a line has to sit further in to be read as code than it needs to, so a code block
+        /// may be missed but a list's own paragraph is never painted as one.
+        private var listColumn: Int?
+        /// While inside an indented code block, the column its lines must reach to stay in it.
+        private var codeColumn: Int?
+        private var previousLineBlank = true
+
+        init(units: [UInt16], depth: Int) {
+            self.units = units
+            self.depth = depth
+        }
 
         mutating func run() -> [SyntaxToken] {
-            var lineStart = 0
+            var lineStart = scanFrontMatter()
             while lineStart < units.count { lineStart = scanLine(from: lineStart) }
             return tokens
         }
@@ -42,251 +87,226 @@ enum SyntaxMarkdownScanner {
         /// One line — or, for a fence, one block. Returns where scanning continues.
         private mutating func scanLine(from lineStart: Int) -> Int {
             let end = Unit.lineEnd(from: lineStart, in: units)
-            let content = Unit.firstNonSpace(from: lineStart, upTo: end, in: units)
-            guard content < end else { return Unit.nextLineStart(after: end, in: units) }
-
-            if let afterFence = scanFence(from: content, lineEnd: end) { return afterFence }
             let next = Unit.nextLineStart(after: end, in: units)
-            if headingEnd(from: content, to: end) != nil {
-                emit(content, end, .keyword)
+            let content = Unit.firstNonSpace(from: lineStart, upTo: end, in: units)
+            guard content < end else {
+                paragraph = .none
+                previousLineBlank = true
                 return next
             }
-            if isThematicBreak(from: content, to: end) {
+            defer { previousLineBlank = false }
+            let indent = column(of: content, from: lineStart)
+            if let required = codeColumn {
+                if indent >= required { return next }
+                codeColumn = nil
+            }
+            leaveListIfOutside(indent: indent, content: content, end: end)
+            // Four columns past the container's content is never a block's start: it opens a code
+            // block where no paragraph is open, and continues the paragraph where one is.
+            let codeIndent = (listColumn ?? 0) + 4
+            if indent >= codeIndent {
+                if paragraph == .none {
+                    codeColumn = codeIndent
+                } else {
+                    scanInline(from: content, to: end)
+                }
+                return next
+            }
+            if case let .open(start, tokenCount) = paragraph, isUnderline(from: content, to: end) {
+                emitHeading(from: start, through: lineStart, after: tokenCount)
+                return next
+            }
+            return scanBlock(lineStart: lineStart, content: content, end: end, next: next)
+        }
+
+        /// The constructs a line opens by its first characters, with the paragraph state each
+        /// leaves behind.
+        private mutating func scanBlock(lineStart: Int, content: Int, end: Int, next: Int) -> Int {
+            let closerIndent = (listColumn ?? 0) + 4
+            if let afterFence = scanFence(from: content, lineEnd: end, closerIndent: closerIndent) {
+                paragraph = .none
+                return afterFence
+            }
+            if headingEnd(from: content, to: end) != nil || isThematicBreak(from: content, to: end) {
                 emit(content, end, .keyword)
+                paragraph = .none
                 return next
             }
             if units[content] == Unit.greater {
                 emit(content, end, .comment)
+                paragraph = .contained
                 return next
             }
             var cursor = content
-            if let marker = listMarkerEnd(from: content, to: end) {
+            if let marker = listMarkerEnd(from: content, to: end),
+               !paragraph.isOpen || Unit.firstNonSpace(from: marker, upTo: end, in: units) < end {
                 emit(content, marker, .number)
                 cursor = marker
+                listColumn = contentColumn(after: marker, to: end, from: lineStart)
+                paragraph = .contained
+            } else if paragraph == .none {
+                paragraph = listColumn == nil
+                    ? .open(start: lineStart, tokenCount: tokens.count) : .contained
+            } else if isTableDelimiterRow(from: content, to: end) {
+                // The line above was a table's header, and a table's rows take no underline: a
+                // `---` straight under the last row is a thematic break, as GitHub draws it.
+                paragraph = .contained
             }
             scanInline(from: cursor, to: end)
             return next
         }
 
-        // MARK: Block constructs
-
-        /// A fenced code block, from its opening fence to the end of the matching closing one — or
-        /// to the end of the buffer when it is never closed, which is what a truncated file hands
-        /// over. The closer must be the same character, so a ``` block containing `~~~` survives.
-        ///
-        /// **Three tokens, not one.** The two fence *lines* take `.keyword`, on the heading's
-        /// argument — they are the document's own structure — and the block's **content** is
-        /// scanned as the language its info string names, or left entirely uncolored when it names
-        /// none. That is what VS Code shows and what the block wants: a fence is routinely the
-        /// largest thing on a page, so painting it all one literal color makes the loudest region
-        /// of the document the one carrying the least meaning. Whatever a fence holds, it is not a
-        /// string.
-        private mutating func scanFence(from content: Int, lineEnd: Int) -> Int? {
-            guard let fence = fenceCharacter(at: content, upTo: lineEnd) else { return nil }
-            let bodyStart = Unit.nextLineStart(after: lineEnd, in: units)
-            var cursor = bodyStart
-            while cursor < units.count {
-                let end = Unit.lineEnd(from: cursor, in: units)
-                let lineContent = Unit.firstNonSpace(from: cursor, upTo: end, in: units)
-                if fenceCharacter(at: lineContent, upTo: end) == fence {
-                    emit(content, lineEnd, .keyword)
-                    emitBody(from: bodyStart, to: cursor, openedAt: content, lineEnd: lineEnd)
-                    emit(lineContent, end, .keyword)
-                    return Unit.nextLineStart(after: end, in: units)
-                }
-                cursor = Unit.nextLineStart(after: end, in: units)
-            }
-            emit(content, lineEnd, .keyword)
-            emitBody(from: bodyStart, to: units.count, openedAt: content, lineEnd: lineEnd)
-            return units.count
-        }
-
-        /// The block's content, scanned as its own language and re-based onto this document.
-        ///
-        /// Re-entrant, and bounded at two levels rather than by a counter: a fence closes on the
-        /// **first** run of its own character, so its body can contain no fence of that character
-        /// at all. An outer ``` block therefore holds only `~~~` fences, whose bodies can hold
-        /// neither — there is no third level to reach.
-        private mutating func emitBody(from start: Int, to end: Int, openedAt: Int, lineEnd: Int) {
-            guard start < end, let language = fenceLanguage(openedAt: openedAt, lineEnd: lineEnd)
-            else { return }
-            let text = String(decoding: units[start..<end], as: UTF16.self)
-            // The slice is cut at line boundaries, so it cannot split a surrogate pair — but a
-            // re-encode that changed length would slide every offset below it, and a wrong offset
-            // is the one failure that is not merely a wrong color. Checked rather than argued.
-            guard text.utf16.count == end - start else { return }
-            for token in SyntaxHighlighter.tokens(in: text, language: language) {
-                tokens.append(
-                    SyntaxToken(
-                        offset: start + token.offset,
-                        length: token.length,
-                        kind: token.kind
-                    )
-                )
-            }
-        }
-
-        /// The language named after the opening fence's run of delimiters, if any.
-        private func fenceLanguage(openedAt: Int, lineEnd: Int) -> SyntaxLanguage? {
-            var position = openedAt
-            while position < lineEnd, units[position] == units[openedAt] { position += 1 }
-            guard position < lineEnd else { return nil }
-            return SyntaxLanguage.forFenceInfo(
-                String(decoding: units[position..<lineEnd], as: UTF16.self)
-            )
-        }
-
-        /// The fence character when at least three of it open the line, else `nil`.
-        private func fenceCharacter(at content: Int, upTo end: Int) -> UInt16? {
-            guard content < end else { return nil }
-            let unit = units[content]
-            guard unit == Unit.backtick || unit == Unit.tilde else { return nil }
-            var run = 0
-            while content + run < end, units[content + run] == unit { run += 1 }
-            return run >= 3 ? unit : nil
-        }
-
-        /// `#` … `######`, which must be followed by a space or by the end of the line.
-        private func headingEnd(from content: Int, to end: Int) -> Int? {
-            guard units[content] == Unit.hash else { return nil }
-            var run = 0
-            while content + run < end, units[content + run] == Unit.hash, run < 7 { run += 1 }
-            guard run <= 6 else { return nil }
-            let after = content + run
-            guard after == end || Unit.isSpaceOrTab(units[after]) else { return nil }
-            return after
-        }
-
-        /// Three or more `-`, `*` or `_`, alone on the line but for spaces. Tested **before** the
-        /// list marker, or `---` reads as a bullet with no content.
-        private func isThematicBreak(from content: Int, to end: Int) -> Bool {
-            let unit = units[content]
-            guard unit == Unit.minus || unit == Unit.asterisk || unit == Unit.underscore else {
-                return false
-            }
-            var count = 0
+        /// GFM's delimiter row, `| --- | :-: |`: pipes, hyphens, colons and spaces, with at least
+        /// one pipe, which is what keeps a lone `---` an underline.
+        private func isTableDelimiterRow(from content: Int, to end: Int) -> Bool {
+            var sawPipe = false
+            var sawHyphen = false
             for position in content..<end {
-                if units[position] == unit {
-                    count += 1
-                } else if !Unit.isSpaceOrTab(units[position]) {
-                    return false
+                switch units[position] {
+                case Unit.pipe: sawPipe = true
+                case Unit.minus: sawHyphen = true
+                case Unit.colon, Unit.space, Unit.tab: break
+                default: return false
                 }
             }
-            return count >= 3
+            return sawPipe && sawHyphen
         }
 
-        /// `- `, `* `, `+ `, `1. ` or `1) ` — the marker only, never the space after it.
-        private func listMarkerEnd(from content: Int, to end: Int) -> Int? {
-            let unit = units[content]
-            if unit == Unit.minus || unit == Unit.asterisk || unit == Unit.plus {
-                guard content + 1 < end, Unit.isSpaceOrTab(units[content + 1]) else { return nil }
-                return content + 1
-            }
-            guard Unit.isDigit(unit) else { return nil }
+        // MARK: Setext headings
+
+        /// A run of `=` or of `-` with nothing after it but spaces, CommonMark's underline. One
+        /// character is enough, and a space inside the run makes `- - -` a thematic break instead.
+        private func isUnderline(from content: Int, to end: Int) -> Bool {
+            let marker = units[content]
+            guard marker == Unit.equals || marker == Unit.minus else { return false }
             var position = content
-            while position < end, Unit.isDigit(units[position]) { position += 1 }
-            guard position < end, units[position] == Unit.dot || units[position] == Unit.closeParen
-            else { return nil }
-            position += 1
-            guard position < end, Unit.isSpaceOrTab(units[position]) else { return nil }
-            return position
+            while position < end, units[position] == marker { position += 1 }
+            while position < end, Unit.isSpaceOrTab(units[position]) { position += 1 }
+            return position == end
         }
 
-        // MARK: Inline constructs
+        /// The paragraph from `start` and its underline at `underline`, every line `.keyword` in
+        /// place of what its inline scan colored. The one place the scanner takes back tokens it
+        /// emitted, and only its own paragraph's: a forward look for the underline from each
+        /// paragraph's first line would read the same lines twice to the same end.
+        private mutating func emitHeading(
+            from start: Int,
+            through underline: Int,
+            after tokenCount: Int
+        ) {
+            tokens.removeSubrange(tokenCount...)
+            var line = start
+            while true {
+                let end = Unit.lineEnd(from: line, in: units)
+                emit(Unit.firstNonSpace(from: line, upTo: end, in: units), end, .keyword)
+                guard line < underline else { break }
+                line = Unit.nextLineStart(after: end, in: units)
+            }
+            paragraph = .none
+        }
 
-        /// Code spans, emphasis and links, within one line. Anything whose closer is not on the
-        /// same line colors nothing at all — silence beats painting the paragraph.
-        private mutating func scanInline(from start: Int, to end: Int) {
+        // MARK: Lists and indentation
+
+        /// Closes the list when a line falls outside the latest item: one less indented that is
+        /// neither a new item nor a lazy line of the item's paragraph. A line still two columns in
+        /// may belong to an outer item, whose column was not kept, so its own indent stands in.
+        private mutating func leaveListIfOutside(indent: Int, content: Int, end: Int) {
+            guard let column = listColumn, indent < column,
+                  listMarkerEnd(from: content, to: end) == nil
+            else { return }
+            let opensBlock = fenceOpener(at: content, upTo: end) != nil
+                || headingEnd(from: content, to: end) != nil
+                || isThematicBreak(from: content, to: end) || units[content] == Unit.greater
+            if !previousLineBlank, paragraph != .none, !opensBlock { return }
+            listColumn = indent >= 2 ? indent : nil
+        }
+
+        /// Where a list item's content starts, which is how far in its own lines must sit. One to
+        /// four columns after the marker count; with more, the content is code one column in.
+        private func contentColumn(after marker: Int, to end: Int, from lineStart: Int) -> Int {
+            let markerEnd = column(of: marker, from: lineStart)
+            let text = Unit.firstNonSpace(from: marker, upTo: end, in: units)
+            guard text < end else { return markerEnd + 1 }
+            let textColumn = column(of: text, from: lineStart)
+            return textColumn - markerEnd > 4 ? markerEnd + 1 : textColumn
+        }
+
+        /// The column `position` sits at, a tab moving on to the next multiple of four.
+        func column(of position: Int, from lineStart: Int) -> Int {
+            var column = 0
+            for index in lineStart..<position {
+                column = units[index] == Unit.tab ? column + 4 - column % 4 : column + 1
+            }
+            return column
+        }
+
+        // MARK: Front matter
+
+        /// YAML front matter, found by `MarkdownFrontMatter`'s own rule so the source and the page
+        /// agree on where it ends: `---` on the first line, a `---` or `...` closing it, and a
+        /// `key:` as the first line between. Its lines color as they always have; what changes is
+        /// that the closing fence is a fence, where the setext rule would read the last key above
+        /// it as a heading. Returns where the document after it starts, `0` when there is none.
+        private mutating func scanFrontMatter() -> Int {
+            guard let closer = frontMatterCloser() else { return 0 }
+            var line = 0
+            while line < closer {
+                let end = Unit.lineEnd(from: line, in: units)
+                let next = Unit.nextLineStart(after: end, in: units)
+                let content = Unit.firstNonSpace(from: line, upTo: end, in: units)
+                line = content < end ? scanBlock(
+                    lineStart: line,
+                    content: content,
+                    end: end,
+                    next: next
+                ) : next
+            }
+            paragraph = .none
+            listColumn = nil
+            // A fence opened inside it ran past the closer, which is the line-by-line answer of
+            // before this existed; keep it rather than emit a token behind the ones already out.
+            guard line == closer else { return line }
+            let end = Unit.lineEnd(from: closer, in: units)
+            emit(Unit.firstNonSpace(from: closer, upTo: end, in: units), end, .keyword)
+            return Unit.nextLineStart(after: end, in: units)
+        }
+
+        /// The start of the closing fence's line, or `nil` when the file opens with no front matter.
+        private func frontMatterCloser() -> Int? {
+            let firstEnd = Unit.lineEnd(from: 0, in: units)
+            guard isFrontMatterFence(from: 0, to: firstEnd, opening: true) else { return nil }
+            var line = Unit.nextLineStart(after: firstEnd, in: units)
+            var sawKey = false
+            while line < units.count {
+                let end = Unit.lineEnd(from: line, in: units)
+                if isFrontMatterFence(from: line, to: end, opening: false) { return sawKey ? line : nil }
+                if !sawKey, Unit.firstNonSpace(from: line, upTo: end, in: units) < end {
+                    guard opensWithKey(from: line, to: end) else { return nil }
+                    sawKey = true
+                }
+                line = Unit.nextLineStart(after: end, in: units)
+            }
+            return nil
+        }
+
+        private func isFrontMatterFence(from start: Int, to end: Int, opening: Bool) -> Bool {
+            let content = Unit.firstNonSpace(from: start, upTo: end, in: units)
+            var trimmed = end
+            while trimmed > content, Unit.isSpaceOrTab(units[trimmed - 1]) { trimmed -= 1 }
+            guard trimmed - content == 3 else { return false }
+            let unit = units[content]
+            guard unit == Unit.minus || (!opening && unit == Unit.dot) else { return false }
+            return units[content + 1] == unit && units[content + 2] == unit
+        }
+
+        /// An unindented `key:` whose key holds no whitespace.
+        private func opensWithKey(from start: Int, to end: Int) -> Bool {
             var position = start
-            while position < end {
-                let unit = units[position]
-                if unit == Unit.backtick {
-                    position = scanCodeSpan(from: position, to: end)
-                } else if unit == Unit.asterisk || unit == Unit.underscore {
-                    position = scanEmphasis(from: position, to: end)
-                } else if unit == Unit.openBracket {
-                    position = scanLink(from: position, to: end)
-                } else {
-                    position += 1
-                }
+            while position < end, units[position] != Unit.colon {
+                if Unit.isSpaceOrTab(units[position]) { return false }
+                position += 1
             }
-        }
-
-        /// A code span closes on a backtick run of the **same** length, which is what lets
-        /// ``` ``a `b` c`` ``` hold a backtick.
-        private mutating func scanCodeSpan(from start: Int, to end: Int) -> Int {
-            let opener = runLength(of: Unit.backtick, from: start, to: end)
-            var position = start + opener
-            while position < end {
-                guard units[position] == Unit.backtick else {
-                    position += 1
-                    continue
-                }
-                let closer = runLength(of: Unit.backtick, from: position, to: end)
-                guard closer == opener else {
-                    position += closer
-                    continue
-                }
-                emit(start, position + closer, .string)
-                return position + closer
-            }
-            return start + opener
-        }
-
-        /// `*a*`, `**a**`, `_a_`. Both flanking rules are enforced, and each removes a false
-        /// positive that a Markdown file really does contain: a delimiter may not be followed by a
-        /// space (so `2 * 3 * 4` is arithmetic, not emphasis) and a closer may not be preceded by
-        /// one.
-        private mutating func scanEmphasis(from start: Int, to end: Int) -> Int {
-            let marker = units[start]
-            let opener = runLength(of: marker, from: start, to: end)
-            // CommonMark ignores an intraword `_`, so `report_2026_final` stays plain. It is the
-            // one of the two markers where that holds — the same asymmetry NOTES.md ▸ Localization
-            // measured from the other direction, where `*.jpg;*.png` lost its asterisks.
-            if marker == Unit.underscore, start > 0, Unit.isIdentifierContinue(units[start - 1]) {
-                return start + opener
-            }
-            var position = start + opener
-            guard position < end, !Unit.isSpaceOrTab(units[position]) else { return position }
-            while position < end {
-                guard units[position] == marker, !Unit.isSpaceOrTab(units[position - 1]) else {
-                    position += 1
-                    continue
-                }
-                let closer = runLength(of: marker, from: position, to: end)
-                emit(start, position + min(closer, opener), .typeOrTag)
-                return position + closer
-            }
-            return start + opener
-        }
-
-        /// `[text](url)`, and the `[text]` of a reference link on its own.
-        private mutating func scanLink(from start: Int, to end: Int) -> Int {
-            var position = start + 1
-            while position < end, units[position] != Unit.closeBracket { position += 1 }
-            guard position < end else { return start + 1 }
-            let textEnd = position + 1
-            emit(start, textEnd, .typeOrTag)
-            guard textEnd < end, units[textEnd] == Unit.openParen else { return textEnd }
-            position = textEnd + 1
-            while position < end, units[position] != Unit.closeParen { position += 1 }
-            guard position < end else { return textEnd }
-            emit(textEnd, position + 1, .string)
-            return position + 1
-        }
-
-        // MARK: Primitives
-
-        private func runLength(of unit: UInt16, from start: Int, to end: Int) -> Int {
-            var run = 0
-            while start + run < end, units[start + run] == unit { run += 1 }
-            return run
-        }
-
-        private mutating func emit(_ start: Int, _ end: Int, _ kind: SyntaxToken.Kind) {
-            let bounded = min(end, units.count)
-            guard bounded > start else { return }
-            tokens.append(SyntaxToken(offset: start, length: bounded - start, kind: kind))
+            return position > start && position < end
         }
     }
 }
