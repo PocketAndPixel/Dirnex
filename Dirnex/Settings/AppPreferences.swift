@@ -12,7 +12,12 @@ import Foundation
 /// a session). Boring `UserDefaults` persistence, like the rest of the app's config.
 @MainActor
 final class AppPreferences: ObservableObject {
-    static let shared = AppPreferences()
+    /// The app's own preferences, and the only instance whose syntax theme reaches the screen.
+    static let shared: AppPreferences = {
+        let preferences = AppPreferences()
+        SyntaxTheme.select(preferences.syntaxTheme)
+        return preferences
+    }()
 
     /// `internal` rather than `private` only because Swift's `private` does not cross files and
     /// `AppPreferences+Palette` writes through it (docs/NOTES.md ▸ Lint ceilings and file splitting).
@@ -190,6 +195,13 @@ final class AppPreferences: ObservableObject {
             defaults.set(quickViewJavaScriptEnabled, forKey: Keys.quickViewJavaScriptEnabled)
             NotificationCenter.default.post(name: Self.quickViewJavaScriptDidChange, object: self)
         }
+    }
+
+    /// Panels ▸ the colors code is drawn in: VS Code's (the default), Xcode's or GitHub's (PLAN.md
+    /// §M39 ▸ Slice 10). Changing it posts `syntaxThemeDidChange`, and on the shared instance it moves
+    /// `SyntaxTheme.current`, which every open surface redraws in (`SyntaxThemeRepaint`).
+    @Published var syntaxTheme: SyntaxColorTheme {
+        didSet { syntaxThemeChanged(from: oldValue) }
     }
 
     /// Panels ▸ how large a file Quick View may pull down from a server on its own, in **bytes**
@@ -413,6 +425,9 @@ final class AppPreferences: ObservableObject {
         // Defaults off (see the property), which is what `bool(forKey:)` already answers for a
         // never-written key.
         quickViewJavaScriptEnabled = defaults.bool(forKey: Keys.quickViewJavaScriptEnabled)
+        // Empty (never written) = VS Code's, and so is a theme an older or newer build can't parse.
+        syntaxTheme = SyntaxColorTheme(rawValue: defaults.string(forKey: Keys.syntaxTheme) ?? "")
+            ?? .standard
         // `object(forKey:)`, not `integer(forKey:)`: a missing key reads as **0** there, which is a
         // legitimate value here ("never fetch unasked") — so the cheap spelling would hand every
         // fresh install the one setting that turns the feature off, and read as it never working.

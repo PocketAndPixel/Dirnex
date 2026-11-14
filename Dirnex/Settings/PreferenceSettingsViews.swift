@@ -118,6 +118,8 @@ struct PanelsSettingsView: View {
                 .foregroundStyle(.secondary)
             }
 
+            SyntaxThemeSection(preferences: preferences)
+
             PaletteSettingsSection(preferences: preferences)
 
             FileColorRulesSection()
