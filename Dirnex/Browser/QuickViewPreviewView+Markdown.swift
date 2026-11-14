@@ -81,16 +81,22 @@ extension QuickViewPreviewView {
         /// where the appearance is known.
         let html: String
         let isTruncated: Bool
+        /// The document's own title (``DirnexCore/MarkdownRender/title``), which only an export draws.
+        var title: String?
 
         /// Blocking; call it off the main thread — which is also where the images are read, since
         /// the resolver runs inside the render (`QuickViewMarkdownImages`), and where a wiki link's
         /// file is looked for. `locateFile` defaults to the disk beside `url`, which is right for a
-        /// file on this disk (`QuickViewMarkdownWikiLinks`).
+        /// file on this disk (`QuickViewMarkdownWikiLinks`). `byteLimit` is the preview's 4 MB unless
+        /// an export reads the whole file (PLAN.md §M39 ▸ Slice 12).
         static func read(
             _ url: URL,
+            byteLimit: Int = TextPreview.byteLimit,
             locateFile: (@Sendable (String) -> String?)? = nil
         ) -> MarkdownScan? {
-            guard let preview = TextPreview.read(contentsOf: url) else { return nil }
+            guard let preview = TextPreview.read(contentsOf: url, byteLimit: byteLimit) else {
+                return nil
+            }
             let options = MarkdownRenderOptions(
                 resolveImageSource: QuickViewMarkdownImages.resolver(for: url),
                 // Both are safe here, off the main actor: the metric was probed against four
@@ -102,9 +108,11 @@ extension QuickViewPreviewView {
                 alertTitle: { QuickViewMarkdownAlerts.title($0) },
                 locateFile: locateFile ?? QuickViewMarkdownWikiLinks.onDisk(beside: url)
             )
+            let render = MarkdownDocument.render(preview.text, options: options)
             return MarkdownScan(
-                html: MarkdownDocument.render(preview.text, options: options).html,
-                isTruncated: preview.isTruncated
+                html: render.html,
+                isTruncated: preview.isTruncated,
+                title: render.title
             )
         }
     }
@@ -124,7 +132,7 @@ extension QuickViewPreviewView {
         return type.conforms(to: markdownType)
     }
 
-    private static let markdownExtensions: Set<String> = ["md", "markdown", "mdown", "mkd"]
+    static let markdownExtensions: Set<String> = ["md", "markdown", "mdown", "mkd"]
 
     /// Left **optional** rather than given a fallback: every plausible stand-in is a type this
     /// backend must not claim, and `?? .plainText` would quietly hand it every `.txt` on the Mac.

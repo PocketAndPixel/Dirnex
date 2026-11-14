@@ -163,7 +163,10 @@ extension PackAccessory {
                 localized: "Name:",
                 comment: "Field label for the name of the thing being created. Pack and New Vault."
             ),
-            String(localized: "Format:", comment: "Pack sheet field label for the archive format."),
+            String(
+                localized: "Format:",
+                comment: "Field label for a file format. Pack sheet and Export sheet."
+            ),
             String(
                 localized: "Compression:",
                 comment: "Pack sheet field label for the compression level."

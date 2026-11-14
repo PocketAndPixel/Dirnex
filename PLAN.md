@@ -608,7 +608,55 @@ Decided before Slice 1 (2026-11-12, Oleg, on the probes above):
    emoji and combining-mark names, which rely on it. Rendering the corpus: 7.14 s against 7.30 s.
    **For Slice 12**: the app's two `<style>`s become one string, a `max-width` for a browser window,
    the light palette for the PDF, and whether a source past the preview's 4 MB exports whole.
-12. **Export, app.** The sheet, the PDF through the print path, the queued copy.
+12. **Export, app.** The sheet, the PDF through the print path, the queued copy. **Landed 2026-11-14.**
+   Oleg's three calls when it opened: **one File ▸ Export…** (`file.export`, in ⌘K and the `.sdef`, no
+   key) whose sheet holds a format popup, remembered (`Dirnex.exportFormat`), above the name and the
+   folder; it acts on **the cursor's Markdown file in either pane, Quick View on or off**; and it
+   exports **the whole file**, up to 64 MB, where the preview reads 4 (`MarkdownExport.sourceByteLimit`,
+   checked on the file's size before a byte is read). **Probed first**, a page printed headlessly
+   through `WKWebView.printOperation` (docs/NOTES.md ▸ Previews: web views): pages of selectable text
+   on the user's paper in under 0.1 s, the callback off the main thread; **a CSS mask is not applied
+   on paper**, so an alert's icon printed as a square of its color with the black symbol over it,
+   where a pre-tinted symbol printed right; backgrounds print only with `shouldPrintBackgrounds`;
+   `@media print` and the margins apply; `scalingFactor` laid a page sideways across sheets. And
+   **print is light by itself**: a view drawing the dark palette printed the light one, while
+   `createPDF` of it came out dark, which is what the M39 probe had seen. **The page**
+   (`MarkdownExportFile`) is the preview's render, so it holds what the preview drew, under one
+   stylesheet (`QuickViewMarkdownStyle.exportStylesheet`): the preview's palettes and the theme's token
+   colors, then `QuickViewMarkdownExportStyle`, a 980 px reading width in a browser and, for paper,
+   11 pt text, wrapping code, nothing that scrolls, and each alert's symbol drawn in its light color
+   (`QuickViewMarkdownAlerts.iconMask(_:tint:)`), which a browser printing the HTML file reads too.
+   **The PDF** (`MarkdownExportPDF`) is that file printed in a window never shown, under the preview's
+   block-remote rules (`QuickViewWebView.contentRules`), scripts off and no navigation past the page,
+   with ¾-inch margins. **The flow** (`PanelViewController+Export`): a refusal before the sheet when
+   the other pane cannot be written to (a browsed archive or a results listing included, since an
+   export is a copy and not an add); the sheet's name follows the format
+   (`MarkdownExport.renamed`), its folder is typed on the other pane's backend (`~` on this disk
+   only), and a bad name or a missing or read-only folder is said under the form with the sheet still
+   up; then the source is brought down through Share's funnel (`RemoteFetchPurpose.export`, on the
+   open row), the page is staged under its real name in a folder of its own
+   (`MarkdownExportStaging`), and **the queue copies it** with F5's `.ask` policy, conflict dialog and
+   undo, into any backend F5 writes to. The staged file is kept for the session and purged at launch,
+   since a redo of the copy reads it again. 16 strings in 14 languages, three of them shared with Pack
+   and create-file. 4 core tests and 18 app tests in two suites
+   (`MarkdownExportPageTests`, `MarkdownExportGestureTests`), the PDF's checked by its own pixels:
+   more than one page, the title at the margin, under 10 % dark inside the margins, and the note's icon
+   blue with no black. Negative controls, each failing exactly its own test: no print backgrounds, the
+   default margins, the mask left on for paper, the preview's 4 MB read, the name not following the
+   format, a file taken for a folder, `~` expanded on a server and no write check before the sheet. One
+   did not fail, and that is the finding above: with the web view set dark the PDF still printed light,
+   and the measure was shown able to see a dark page by printing colors set without the media query.
+   **Run live** in `app.dirnex.Dirnex.live`, dark appearance, pane size: File ▸ Export… lit on
+   `guide.md` and the sheet drew as designed; HTML landed in the other pane through the queue, titled
+   from front matter, its image inlined and its link as written, and headless Chrome drew it at the
+   reading width in both appearances; PDF landed as 4 A4 pages titled "Export check", light, both
+   alert icons in their colors; a second HTML export raised F5's conflict dialog, Keep Both landed
+   `guide copy.html`, Edit ▸ Undo Copy removed it and Redo Copy brought it back from the staged file;
+   from inside a zip the member was extracted and exported, its image left as `pic.png` as
+   LOCATION-SUPPORT.md <sup>aat</sup> says. The run cost Oleg two cloud-provider prompts before the copy
+   was seeded away from Home (docs/LIVE-VERIFICATION.md). **Not run live**: a server as source or
+   destination, which reach Share's funnel and F5's queue; the sheet's inline errors, which the tests
+   cover and which a background run could not type into; full window and full screen; a translation.
 13. **Mermaid: state diagrams.**
 14. **Mermaid: class and ER diagrams.**
 15. **Mermaid: gantt.**
