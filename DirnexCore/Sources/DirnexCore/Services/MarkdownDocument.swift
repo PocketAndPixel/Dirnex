@@ -6,8 +6,14 @@ public struct MarkdownRender: Equatable, Sendable {
     /// `<style>` and the appearance they carry are the app's (PLAN.md §M18 ▸ Slice 3).
     public let html: String
 
-    public init(html: String) {
+    /// The document's own title: its front matter's `title`, or its first heading when that is
+    /// level 1; `nil` when it names none (`MarkdownTitle`). What an exported page carries in its
+    /// `<title>` (PLAN.md §M39 ▸ Slice 11).
+    public let title: String?
+
+    public init(html: String, title: String? = nil) {
         self.html = html
+        self.title = title
     }
 }
 
@@ -113,10 +119,11 @@ public enum MarkdownDocument {
         _ text: String,
         options: MarkdownRenderOptions = MarkdownRenderOptions()
     ) -> MarkdownRender {
-        MarkdownRender(html: MarkdownHTMLRenderer.render(
-            MarkdownBlockParser.scan(text),
-            options: options
-        ))
+        let scan = MarkdownBlockParser.scan(text)
+        return MarkdownRender(
+            html: MarkdownHTMLRenderer.render(scan, options: options),
+            title: MarkdownTitle.of(scan)
+        )
     }
 
     /// The class a colored run inside a fence carries, or `nil` for a run the scanner made no
