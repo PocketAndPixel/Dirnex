@@ -4210,6 +4210,15 @@ Measured 2026-11-08 for M37's byte view, whose table has a row for every 16 byte
     formula that fit. Measure widths in the page (`getBoundingClientRect`), not in the picture.
   - **`overflow-x: visible` is not a negative control when `overflow-y` is `hidden`**: CSS computes
     the visible one to `auto`, so the "broken" page scrolled exactly as before. Remove both.
+- **A Content-Security-Policy in a `<meta>` holds in a `file://` page, in WebKit and in Chrome, and one
+  naming only scripts leaves every picture alone.** Probed 2026-11-14 for an exported Markdown page
+  (PLAN.md §M39 ▸ Slice 11), loaded by `loadFileURL` in an offscreen `WKWebView` and by headless
+  Chrome's `--dump-dom`, beside a throwaway `http.server`: under `script-src 'none'; object-src 'none';
+  base-uri 'none'; form-action 'none'` an inline `<script>`, an `onerror` handler and a `javascript:`
+  link did nothing, and each ran with the `<meta>` removed; a `data:` image, a sibling file and an image
+  from the server drew (`naturalWidth` 1) and the server logged each fetch. Without `default-src` the
+  policy says nothing about images, styles or fonts. Read the page's state with `evaluateJavaScript`,
+  which answered under the policy: it is the app's script, not the page's.
 
 ### Previews: telling what kind of file it is
 
@@ -10775,6 +10784,15 @@ overturned the obvious implementation.
   not found in the Kelvin sign, which lowercases to `k`; and lowercasing can lengthen a text in UTF-16
   (`İ` becomes `i` and a combining dot) while it kept the character count on every sample tried, so a
   match in the lowercased text comes back by characters, never by offsets (`FilterQuery`).
+- **APFS's file-name limit is 255 UTF-16 units, not bytes, while a volume name's and ext4's are 255
+  bytes.** Probed 2026-11-14 with `open()` in the scratchpad: 255 `é` (510 bytes) and 255 `漢` (765
+  bytes) were created, 127 `😀` (254 units) was and 128 (256 units) was refused with `ENAMETOOLONG`,
+  and 128 decomposed `é` (256 units) were refused too. The vault rule above (▸ Encryption) is a volume
+  name through `diskutil`, a different limit. So a name derived from another one has to fit the limits
+  its source fitted: `MarkdownExport.fileName` counts units always, and bytes only when the source kept
+  to 255 of them, since a source of 200 `é` came from a disk that does not count bytes. Trimming by
+  `Character` keeps a flag whole; one character of hundreds of combining marks still needs a cut
+  between scalars, or the trimmed name is empty.
 
 ### Persisted state and missing values
 

@@ -670,6 +670,7 @@ the agent and adds a last-opened date, and it names a Live Photo's movie `.mov` 
 | Quick View pane / full size (`⌃Q`) | yes | yes | yes, limited<sup>r, ddd</sup> | yes, limited<sup>s</sup> | yes, limited<sup>s</sup> | yes, limited<sup>s</sup> | yes, limited<sup>s</sup> | n/a | yes, limited<sup>s</sup> | yes | yes |
 | Quick Look (`⌘Y`) | yes | yes | yes, limited<sup>r, ddd</sup> | yes, limited<sup>s</sup> | yes, limited<sup>s</sup> | yes, limited<sup>s</sup> | yes, limited<sup>s</sup> | n/a | yes, limited<sup>s</sup> | yes | yes |
 | Syntax highlighting, Markdown, diagrams in preview | yes | yes | yes | yes | yes | yes | yes | n/a | n/a | yes | yes |
+| The images a Markdown file names beside it, drawn in its page<sup>aat</sup> | yes | yes | **no**<sup>aat</sup> | **no**<sup>aat</sup> | **no**<sup>aat</sup> | **no**<sup>aat</sup> | **no**<sup>aat</sup> | n/a | n/a | yes, limited<sup>aat</sup> | yes |
 | Office, iWork and rich-text documents in preview, zoomable and selectable, and an RTF file's source beside its page<sup>rrr</sup> | yes | yes | yes | yes | yes | yes | yes | n/a | n/a | yes | yes |
 | CSV and TSV as a sortable, zoomable, filterable table in preview, with the selected row in full in a resizable strip<sup>sss</sup> | yes | yes | yes | yes | yes | yes | yes | n/a | n/a | yes | yes |
 | JSON as a zoomable, filterable tree in preview, a list of records (JSON Lines, an array of objects) as the table above, with the selected value's path and text in a resizable strip<sup>ttt</sup> | yes | yes | yes | yes | yes | yes | yes | n/a | n/a | yes | yes |
@@ -974,6 +975,14 @@ above. On this disk the disk is asked, a path in the name included, and a name i
 the file on a volume that ignores case. On a server or in an archive the page is drawn from a local copy,
 so the names are those the active pane lists in the document's folder, which costs no request: a name
 in a subfolder stays text there. Obsidian's search of a whole vault for a name is not made.
+
+<sup>aat</sup> Written down 2026-11-14 (PLAN.md §M39 ▸ Slice 11), and true since M18. A page carries an image
+only when the preview can read it beside the document on this disk, in the document's own folder or
+below it, up to 32 MB a page; anything else keeps its reference and is not drawn. On a server or in an
+archive the preview reads a copy of the one file, alone in a temp folder, so no image beside it is there
+to read, and a results listing is local or remote as each row's file is. A page exported to HTML holds
+what the preview drew, so it carries the same images (Oleg's call that day). Ours to close, for the
+preview and the export together: the images could be read through the document's own backend.
 
 ## 4. Find Files (`⌥F7`)
 

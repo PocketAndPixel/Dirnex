@@ -574,7 +574,40 @@ Decided before Slice 1 (2026-11-12, Oleg, on the probes above):
    (`#FC6A5D`) are near hues, so a CSV's second and third columns read close there, as they do in Xcode.
    **Not run live**: the compare and merge windows, which the same walk reaches; full window and full
    screen; a 4 MB file; a translated Settings tab.
-11. **Export, core.** The self-contained HTML document and the names.
+11. **Export, core.** The self-contained HTML document and the names. **Landed 2026-11-14.** Oleg's three
+   calls when it opened: a link to another file stays as written, relative, as pandoc and GitHub leave
+   it; a remote image keeps its URL, for the browser to fetch; and the file holds what the preview drew,
+   so a server's or an archive's document carries no sibling image, since its preview draws none (now
+   written down, LOCATION-SUPPORT.md <sup>aat</sup>). **Probed first.** APFS limits a name to 255
+   **UTF-16 units**, not bytes (255 `é` created, 128 `😀` refused), where ext4 counts 255 bytes. A
+   `<meta>` Content-Security-Policy in a `file://` page, in `WKWebView` and headless Chrome beside a
+   throwaway server: scripts, an `onerror` and a `javascript:` link stopped, and `data:`, sibling and
+   remote images all drew (docs/NOTES.md ▸ Previews: web views). And the corpus, 5 655 distinct `.md`
+   files: 4 302 open on a level-1 heading, 18 have one only later (release changelogs), 467 a
+   front-matter `title`. **`MarkdownExport`**: `fileName(forSource:as:)` drops the last extension by
+   `NSString`'s rule (`.md` gives `.md.html`) and, when the name outgrows a limit, trims whole
+   characters off the stem until it fits every limit the source fitted, units always and bytes when
+   the source kept to them; `htmlDocument(title:stylesheet:body:)` is the file's UTF-8 bytes, charset
+   first, then the policy (`script-src`, `object-src`, `base-uri` and `form-action` all `'none'`, and
+   nothing on images or styles), the escaped title, the app's stylesheet and the page verbatim.
+   **`MarkdownRender.title`** (`MarkdownTitle`): front matter's `title` in any case (`''` and a YAML
+   block scalar name none), else the first heading when it is level 1, else, at export, the file's
+   stem. The first version's corpus run found 305 titles carrying markup or a badge (`PostCSS Lab
+   Function <img … align="right">`, `is-bigint <sup>Version Badge</sup>`); in the dependencies 500 of
+   3 651 first headings hold an image and 247 a raw tag, against 1 each of Oleg's 511. So a title is the
+   heading's words less its images and less any run CommonMark reads as a tag (§6.6's open tag, closing
+   tag and comment), which GitHub draws as nothing; a code span and a formula keep every character, and
+   shortcodes are drawn run by run as the heading draws them. After: 28 flagged, all real words but two
+   badges whose references the file never defines, which the page draws as typed too. `MarkdownHeadings`'
+   walk is one `visit` that the anchors and the title share, so they agree on the first heading. 21
+   tests, 40 cases. Negative controls, each failing its own test: bytes never counted, trimming by
+   scalar, any first heading, no block-scalar check, a case-sensitive key, the title unescaped or
+   uncollapsed, `default-src 'none'`, an image's alt kept, no tag stripping, stripping run by run (only
+   the tag that emphasis splits), a code span read as prose, shortcodes over the whole title, the walk
+   skipping quotes (the anchors' test too) and comments unread; bytes always counted also failed the
+   emoji and combining-mark names, which rely on it. Rendering the corpus: 7.14 s against 7.30 s.
+   **For Slice 12**: the app's two `<style>`s become one string, a `max-width` for a browser window,
+   the light palette for the PDF, and whether a source past the preview's 4 MB exports whole.
 12. **Export, app.** The sheet, the PDF through the print path, the queued copy.
 13. **Mermaid: state diagrams.**
 14. **Mermaid: class and ER diagrams.**
