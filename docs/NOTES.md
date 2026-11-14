@@ -43,6 +43,18 @@ at build time.
       Slice 8 used opentelemetry's `ieee_754.md` and a Hugging Face template). One raw `<b>` in a
       sample also stopped every later `$x$` in the file from being math, so keep samples to
       Markdown.
+  - **Score every line against the oracle, before and after, rather than reading the lines that
+    changed.** M39 Slice 9 changed 16 146 Markdown lines that none of its rules named. Most were JSON
+    keys inside ```` ```json ```` fences, and the rest were lines a mis-paired fence had swallowed.
+    "Changed" kept reading as "suspect" until each line was given what a CommonMark parser says it is
+    (heading, rule, fence line, indented code, paragraph) and both versions were scored. That gave 18
+    lines worse, in three copies of one README, against 15 188 fixed. A parser that reports lines is
+    already on this Mac: `mdast-util-from-markdown` with `micromark-extension-gfm`, under
+    `dirnex-home/web/node_modules`. It has three traps as an oracle. Its offsets index the text with
+    any BOM removed, so strip the BOM before slicing by `offset`. It knows no front matter, so it
+    reads every `---` / `key:` / `---` block as a setext heading (1 869 files here). And after an
+    indented code block it will not start an ordered list at `2.`, where GitHub's renderer does
+    (asked 2026-11-14).
   - **When nothing on the Mac uses a construct, the corpus still says what the rule must not
     misread.** M39 Slice 7 found no definition list and no real wiki link outside Claude's memory
     notes in 12 603 distinct files, but it did find the prose each obvious rule breaks: a wrapped line
