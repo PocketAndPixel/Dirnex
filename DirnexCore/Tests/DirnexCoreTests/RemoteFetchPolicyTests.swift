@@ -169,6 +169,19 @@ struct RemoteFetchPolicyTests {
         #expect(!RemoteFetchPurpose.addToArchive.isAutomatic)
     }
 
+    /// An export reads the one file somebody chose from File ▸ Export…, as ⏎ opens one (PLAN.md §M39
+    /// ▸ Slice 12), so it asks where opening asks and never declines.
+    @Test("an export weighs its file the way opening one does")
+    func exportWeighsLikeOpen() {
+        for limit in Self.limits {
+            #expect(
+                RemoteFetchPolicy.threshold(for: .export, previewLimit: limit)
+                    == RemoteFetchPolicy.threshold(for: .open, previewLimit: limit)
+            )
+        }
+        #expect(!RemoteFetchPurpose.export.isAutomatic)
+    }
+
     // MARK: - A save's content check
 
     /// The check's whole budget is the user's limit: up to it the bytes come down, past it the save

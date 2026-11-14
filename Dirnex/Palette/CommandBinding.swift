@@ -33,6 +33,7 @@ enum CommandBinding {
         "file.pack": #selector(PanelViewController.packSelection(_:)),
         "file.archiveNameEncoding":
             #selector(PanelViewController.chooseArchiveNameEncoding(_:)),
+        "file.export": #selector(PanelViewController.exportRenderedPage(_:)),
         "file.syncDirectories": #selector(PanelViewController.synchronizeDirectories(_:)),
         "file.compareByContents": #selector(PanelViewController.compareByContents(_:)),
         "file.resolveConflict": #selector(PanelViewController.resolveConflict(_:)),

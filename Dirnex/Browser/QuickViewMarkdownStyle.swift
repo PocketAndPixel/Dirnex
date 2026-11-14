@@ -63,11 +63,7 @@ enum QuickViewMarkdownStyle {
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <style>
-        \(palette(for: .aqua, selector: ":root"))
-        @media (prefers-color-scheme: dark) {
-        \(palette(for: .darkAqua, selector: ":root"))
-        }
-        \(rules)
+        \(pageStylesheet)
         </style>
         <style \(syntaxStyleAttribute)>
         \(syntaxPalette(theme))
@@ -78,6 +74,26 @@ enum QuickViewMarkdownStyle {
         \(isTruncated ? truncationNotice : "")
         </body>
         </html>
+        """
+    }
+
+    /// An exported page's whole stylesheet as one string (PLAN.md §M39 ▸ Slice 12): the preview's, in
+    /// both appearances and `theme`'s token colors, then what a page of its own needs on a wide screen
+    /// and on paper (`QuickViewMarkdownExportStyle`). One string, since nothing will restyle an
+    /// exported file in place the way a theme change restyles a page on screen.
+    static func exportStylesheet(theme: SyntaxColorTheme = SyntaxTheme.current) -> String {
+        [pageStylesheet, syntaxPalette(theme), QuickViewMarkdownExportStyle.rules]
+            .joined(separator: "\n")
+    }
+
+    /// Both palettes and every rule: the content of a page's first `<style>`.
+    private static var pageStylesheet: String {
+        """
+        \(palette(for: .aqua, selector: ":root"))
+        @media (prefers-color-scheme: dark) {
+        \(palette(for: .darkAqua, selector: ":root"))
+        }
+        \(rules)
         """
     }
 

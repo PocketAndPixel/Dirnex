@@ -66,6 +66,40 @@ public enum MarkdownExport {
         return stem + suffix
     }
 
+    /// `name` with its extension following a change of format: `README.html` becomes `README.pdf`.
+    ///
+    /// Only an extension that is the old format's, in any case, gives way. A name typed with no
+    /// extension, or with one of its own, is the user's and is left as it is.
+    public static func renamed(_ name: String, from old: Format, to new: Format) -> String {
+        let extensionName = (name as NSString).pathExtension
+        guard old != new, extensionName.lowercased() == old.fileExtension else { return name }
+        return stemOf(name) + "." + new.fileExtension
+    }
+
+    /// What is wrong with a name typed for the exported file, if anything.
+    public enum NameProblem: Equatable, Sendable {
+        /// Nothing, or only whitespace.
+        case empty
+        /// A `/`, which separates folders and can be in no name.
+        case containsSlash
+        /// `.` or `..`, which name a folder and not a file.
+        case reserved
+    }
+
+    /// Why `name` cannot be the exported file's name, or `nil` when it can. The name is taken as
+    /// typed: spaces at its ends are the user's, as they are in a rename.
+    public static func problem(withName name: String) -> NameProblem? {
+        if name.allSatisfy(\.isWhitespace) { return .empty }
+        if name.contains("/") { return .containsSlash }
+        if name == "." || name == ".." { return .reserved }
+        return nil
+    }
+
+    /// The largest Markdown file that is exported, in bytes: a saved page's ceiling (PLAN.md §M39 ▸
+    /// Slice 2). Export reads the whole file, where the preview reads its first 4 MB, since it is one
+    /// deliberate act and not a cursor step (Oleg's call, 2026-11-14).
+    public static let sourceByteLimit = 64 * 1024 * 1024
+
     /// The title an exported page carries: the document's own (``MarkdownRender/title``), or the
     /// stem of the file's name when it names none.
     public static func title(of render: MarkdownRender, sourceName: String) -> String {

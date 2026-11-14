@@ -142,8 +142,12 @@ enum QuickViewMarkdownAlerts {
     /// `symbol` drawn black on clear into a PNG, as a `data:` URI, for a CSS mask: only its alpha is
     /// read, and the title's color shows through it. Drawn at 32 points, twice the size it is shown
     /// at, so it stays sharp on a Retina screen.
+    ///
+    /// With `tint`, drawn in that color instead, for paper: WebKit's print path applies no CSS mask,
+    /// and draws the box filled with the title's color and the black symbol over it
+    /// (`QuickViewMarkdownExportStyle`).
     @MainActor
-    static func iconMask(_ symbol: String) -> String? {
+    static func iconMask(_ symbol: String, tint: NSColor? = nil) -> String? {
         let configuration = NSImage.SymbolConfiguration(pointSize: 32, weight: .medium)
         guard let image = NSImage(systemSymbolName: symbol, accessibilityDescription: nil)?
             .withSymbolConfiguration(configuration)
@@ -167,6 +171,11 @@ enum QuickViewMarkdownAlerts {
         NSGraphicsContext.saveGraphicsState()
         NSGraphicsContext.current = NSGraphicsContext(bitmapImageRep: bitmap)
         image.draw(in: NSRect(origin: .zero, size: size))
+        if let tint {
+            // Over the symbol's own pixels only: source-atop keeps the alpha it was drawn with.
+            tint.setFill()
+            NSRect(origin: .zero, size: size).fill(using: .sourceAtop)
+        }
         NSGraphicsContext.restoreGraphicsState()
         guard let png = bitmap.representation(using: .png, properties: [:]) else { return nil }
         return "data:image/png;base64," + png.base64EncodedString()

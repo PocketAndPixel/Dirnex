@@ -145,8 +145,16 @@ final class QuickViewWebView: NSView {
         findOptions: QuickViewFindOptionsStore,
         _ completion: @escaping (QuickViewWebView?) -> Void
     ) {
+        contentRules { rules in
+            completion(rules.map { QuickViewWebView(rules: $0, findOptions: findOptions) })
+        }
+    }
+
+    /// The block-remote rules, compiled once for the process. Also what an exported page is printed
+    /// under (`MarkdownExportPDF`), so the PDF reaches no further than the preview did.
+    static func contentRules(_ completion: @escaping (WKContentRuleList?) -> Void) {
         if let compiledRules {
-            completion(QuickViewWebView(rules: compiledRules, findOptions: findOptions))
+            completion(compiledRules)
             return
         }
         guard let store = WKContentRuleListStore.default() else {
@@ -163,13 +171,12 @@ final class QuickViewWebView: NSView {
             MainActor.assumeIsolated {
                 if let list {
                     compiledRules = list
-                    completion(QuickViewWebView(rules: list, findOptions: findOptions))
                 } else {
                     NSLog(
                         "Quick View: content rules failed to compile — \(String(describing: error))"
                     )
-                    completion(nil)
                 }
+                completion(list)
             }
         }
     }

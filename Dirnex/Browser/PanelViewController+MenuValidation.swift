@@ -194,6 +194,10 @@ extension PanelViewController: NSMenuItemValidation {
             // a real folder (not an archive or search-results view) and there must be a pane to
             // land the archive in. The pack flow re-checks the destination is local + writable.
             return canPackFromHere && !selectionTargets().isEmpty && host?.panelCounterpart(of: self) != nil
+        case #selector(exportRenderedPage(_:)):
+            // Export makes a file in the other pane as Pack does, so it validates beside it: a
+            // Markdown file under the cursor and a pane to export it into (PLAN.md §M39).
+            return canExport
         default:
             return nil
         }

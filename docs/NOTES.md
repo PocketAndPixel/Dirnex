@@ -4219,6 +4219,29 @@ Measured 2026-11-08 for M37's byte view, whose table has a row for every 16 byte
   from the server drew (`naturalWidth` 1) and the server logged each fetch. Without `default-src` the
   policy says nothing about images, styles or fonts. Read the page's state with `evaluateJavaScript`,
   which answered under the policy: it is the app's script, not the page's.
+- **A `WKWebView` prints to PDF headlessly, and paper is not the screen.** Probed 2026-11-14 for
+  M39's export (`MarkdownExportPDF`): `printOperation(with:)` on a web view in a borderless window that
+  is never shown, print and progress panels off, `jobDisposition = .save` and the URL in the info's
+  `jobSavingURL`, gave 17 A4 pages of selectable text in 69–86 ms. No frame had to be set on the
+  operation's view. What a caller has to know:
+  - `runModal(for:delegate:didRun:contextInfo:)` **returns at once**, and the `didRun` selector is
+    called **off the main thread**. A `@MainActor` delegate trapped in `_dispatch_assert_queue_fail`;
+    a `nonisolated` method resuming a continuation works.
+  - **A CSS mask is not applied on paper.** An SF Symbol used as `-webkit-mask` over the title's color
+    printed as a square of that color with the black symbol drawn on it, as a shorthand, as longhands
+    and with `print-color-adjust: exact` alike. The same symbol pre-tinted, as a background or as
+    `content: url(…)`, printed right.
+  - **Backgrounds print only when `WKPreferences.shouldPrintBackgrounds` is on.** Off, an inline code
+    span's fill and the masked icon both vanished.
+  - `@media print` applies; the info's margins are honored (36 pt put the text at x = 36); and the
+    paper is the user's own (`NSPrintInfo.shared` was `iso-a4` here). `scalingFactor` is honored too,
+    but 1.25 took an 11-page document to 28, laid sideways across sheets, so size the text in CSS.
+  - **Print evaluates `prefers-color-scheme` as light, whatever the view's appearance; `createPDF`
+    follows the view.** Measured on a dark Mac with a page whose palette sat under the media query: a
+    view drawing `rgb(30, 30, 30)` on screen printed 9 % dark pixels, the text, while `createPDF` of it
+    came out 71 % dark. Colors set without the query printed 67 % dark, which is what showed the
+    measure could see a dark page. So a test that a print is light passes with the view set dark, and
+    only proves something once its fixture is checked that way.
 
 ### Previews: telling what kind of file it is
 

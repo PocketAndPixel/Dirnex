@@ -94,6 +94,20 @@ so a trap goes here only if it can bite any live run; one tied to an area goes u
     leave out. A new bundle id has none of the grants the real one holds. For a run that needs no cloud
     row, add a temporary env-gated `return []` at the top of `SidebarViewController.cloudPlaces()` and
     launch with `open --env`, then take it out. For a run that does need them, tell him first.
+  - **A rebuild asks again, not only a first launch.** Seen 2026-11-14: `build/live-copy`, launched many
+    times before, rebuilt for M39 Slice 12 and opened by path, raised the prompt again within three
+    seconds (`TCCAccessRequestIndirect` for each File Provider domain in the log, a `UserNotificationCenter`
+    alert in front). An ad-hoc signature's designated requirement is its code hash, which every build
+    changes, so a grant answers for one build. Put the env-gated `return []` in before *every* build of
+    the copy that does not need a cloud row, and quitting the copy does not take a prompt already up.
+  - **The `return []` alone was not enough: seed the copy away from Home too.** The same day, with it
+    in, a launch still asked. The copy opens at Home, whose cloud symlinks and seeded Desktop and
+    Documents favorites reach the providers. Seeding both tabs at the fixture and `Dirnex.favorites` to
+    the fixture alone (`-data`, with the copy quit) made a launch with no request in the log
+    (`function=TCCAccessRequestIndirect` counts them).
+  - **`open -g` still put the copy in front.** Seen the same day, launched with `--env`: `lsappinfo
+    front` named `app.dirnex.Dirnex.live`. So did a background double-click on a row, and F5's
+    conflict dialog. Check the front after each, and put Oleg's app back with `open -b`.
 - **A measurement at scale needs a Release build, and an ad-hoc signed one needs the hardened runtime
   off.** A Debug `DirnexCore` is `-Onone`, far too slow to say anything about a 256 MiB comparison.
   Seen 2026-11-08: `xcodebuild -configuration Release CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual
@@ -491,6 +505,10 @@ so a trap goes here only if it can bite any live run; one tied to an area goes u
   double-click ran, so the window zoomed. On a tab's × it came back "AXPress", and the button fired
   once. So it cannot produce a double-click that starts on a control and ends somewhere else. Read which
   of the two the tool reports before counting the run as a test of the second click.
+- **F5's conflict dialog is out of reach of background computer use.** Seen 2026-11-14: the 492 × 514
+  window was in `CGWindowListCopyWindowInfo`, but `app_list_windows` did not list it and an
+  `app_screenshot` by its id answered that it was not among the app's windows. Full-screen control
+  answered it. Name an export or copy so it lands on nothing, unless the dialog is the subject.
 - **A background `app_click` on a row of the inactive pane selects it and leaves the other pane
   active.** Seen 2026-11-08: the click reported `set AXSelected=true` on the right pane's row, and the
   function bar's F5 then copied the *left* pane's cursor row the other way, a server's `#recycle` down

@@ -671,6 +671,7 @@ the agent and adds a last-opened date, and it names a Live Photo's movie `.mov` 
 | Quick Look (`⌘Y`) | yes | yes | yes, limited<sup>r, ddd</sup> | yes, limited<sup>s</sup> | yes, limited<sup>s</sup> | yes, limited<sup>s</sup> | yes, limited<sup>s</sup> | n/a | yes, limited<sup>s</sup> | yes | yes |
 | Syntax highlighting, Markdown, diagrams in preview | yes | yes | yes | yes | yes | yes | yes | n/a | n/a | yes | yes |
 | The images a Markdown file names beside it, drawn in its page<sup>aat</sup> | yes | yes | **no**<sup>aat</sup> | **no**<sup>aat</sup> | **no**<sup>aat</sup> | **no**<sup>aat</sup> | **no**<sup>aat</sup> | n/a | n/a | yes, limited<sup>aat</sup> | yes |
+| A Markdown file exported as an HTML or PDF page of its own (File ▸ Export…)<sup>aau</sup> | yes | yes | yes | yes | yes | yes | yes | n/a | n/a | yes | yes |
 | Office, iWork and rich-text documents in preview, zoomable and selectable, and an RTF file's source beside its page<sup>rrr</sup> | yes | yes | yes | yes | yes | yes | yes | n/a | n/a | yes | yes |
 | CSV and TSV as a sortable, zoomable, filterable table in preview, with the selected row in full in a resizable strip<sup>sss</sup> | yes | yes | yes | yes | yes | yes | yes | n/a | n/a | yes | yes |
 | JSON as a zoomable, filterable tree in preview, a list of records (JSON Lines, an array of objects) as the table above, with the selected value's path and text in a resizable strip<sup>ttt</sup> | yes | yes | yes | yes | yes | yes | yes | n/a | n/a | yes | yes |
@@ -983,6 +984,15 @@ archive the preview reads a copy of the one file, alone in a temp folder, so no 
 to read, and a results listing is local or remote as each row's file is. A page exported to HTML holds
 what the preview drew, so it carries the same images (Oleg's call that day). Ours to close, for the
 preview and the export together: the images could be read through the document's own backend.
+
+<sup>aau</sup> Since 2026-11-14 (PLAN.md §M39 ▸ Slice 12). The Markdown file under the cursor, wherever it
+is: a file on a server or in an archive is brought down first, and a cloud placeholder downloaded, as
+Share brings them down. The page lands where F5 would put a file, in the other pane's folder or one
+typed in the sheet on that pane's backend, with F5's conflict question and undo, so on this disk, a
+cloud mount, SFTP, FTP, WebDAV or S3 alike. A browsed archive or a results listing in the other pane
+is refused before the sheet, since an export is a copy and not an add. HTML is one file with the preview's images inlined (<sup>aat</sup>); a PDF is that
+page printed on the user's paper in the light palette, with no remote image, as the preview draws none.
+The whole file is exported up to 64 MB, where the preview reads 4.
 
 ## 4. Find Files (`⌥F7`)
 
