@@ -47,7 +47,15 @@ enum QuickViewMarkdownStyle {
     /// obligation — "a preview that silently ends early is a preview that lies" — and a *rendered*
     /// document is where that lie is easiest to tell, because a page has no visible end for the
     /// reader to notice missing. The source view draws the same sentence as a floating strip.
-    static func document(body: String, isTruncated: Bool = false) -> String {
+    ///
+    /// The token colors are `theme`'s, in a `<style>` of their own (`syntaxStyleAttribute`), so a
+    /// change of theme can replace that one element in a page already on screen and keep the
+    /// reader's place (`SyntaxThemeRepaint`).
+    static func document(
+        body: String,
+        isTruncated: Bool = false,
+        theme: SyntaxColorTheme = SyntaxTheme.current
+    ) -> String {
         """
         <!doctype html>
         <html>
@@ -60,6 +68,9 @@ enum QuickViewMarkdownStyle {
         \(palette(for: .darkAqua, selector: ":root"))
         }
         \(rules)
+        </style>
+        <style \(syntaxStyleAttribute)>
+        \(syntaxPalette(theme))
         </style>
         </head>
         <body>
@@ -90,7 +101,7 @@ enum QuickViewMarkdownStyle {
     private static func palette(for appearance: NSAppearance.Name, selector: String) -> String {
         guard let appearance = NSAppearance(named: appearance) else { return "" }
         let background = resolved(.textBackgroundColor, in: appearance)
-        var lines = [
+        let lines = [
             "--background: \(hex(background));",
             "--text: \(hex(resolved(.textColor, in: appearance)));",
             "--muted: \(hex(flattened(.secondaryLabelColor, over: background, in: appearance)));",
@@ -99,17 +110,41 @@ enum QuickViewMarkdownStyle {
             "--link: \(hex(resolved(.linkColor, in: appearance)));",
             "--code-fill: \(hex(flattened(.quaternaryLabelColor, over: background, in: appearance)));"
         ]
-        // One rule per token kind, from the core's own class name rather than a second spelling of
-        // it — the whole reason `MarkdownDocument.tokenClass` is public. A kind added later arrives
-        // here automatically, and `SyntaxTheme.color(for:)` is a compiler-checked switch, so it
-        // cannot arrive uncolored.
-        for kind in SyntaxToken.Kind.allCases {
-            guard let name = MarkdownDocument.tokenClass(for: kind),
-                  let color = SyntaxTheme.color(for: kind)
-            else { continue }
-            lines.append("--\(name): \(hex(resolved(color, in: appearance)));")
-        }
         return selector + " {\n" + lines.map { "  " + $0 }.joined(separator: "\n") + "\n}"
+    }
+
+    /// The attribute that marks the page's token-color `<style>`. An attribute on an element in
+    /// `<head>` rather than an `id`, because a heading's anchor is an `id` made from its text, and
+    /// the fragment never writes into `<head>`.
+    static let syntaxStyleAttribute = "data-dirnex-syntax"
+
+    /// `theme`'s token colors for both appearances, as custom properties: the whole content of the
+    /// page's syntax `<style>`.
+    static func syntaxPalette(_ theme: SyntaxColorTheme) -> String {
+        """
+        \(tokenPalette(theme, for: .aqua))
+        @media (prefers-color-scheme: dark) {
+        \(tokenPalette(theme, for: .darkAqua))
+        }
+        """
+    }
+
+    /// One property per token kind, from the core's own class name rather than a second spelling of
+    /// it — the whole reason `MarkdownDocument.tokenClass` is public. A kind added later arrives here
+    /// automatically, and `SyntaxColorTheme.pair(for:)` is a compiler-checked switch, so it cannot
+    /// arrive uncolored.
+    private static func tokenPalette(
+        _ theme: SyntaxColorTheme,
+        for appearance: NSAppearance.Name
+    ) -> String {
+        guard let appearance = NSAppearance(named: appearance) else { return "" }
+        let lines = SyntaxToken.Kind.allCases.compactMap { kind -> String? in
+            guard let name = MarkdownDocument.tokenClass(for: kind),
+                  let color = SyntaxTheme.color(for: kind, in: theme)
+            else { return nil }
+            return "  --\(name): \(hex(resolved(color, in: appearance)));"
+        }
+        return ":root {\n" + lines.joined(separator: "\n") + "\n}"
     }
 
     /// `color` as it resolves in `appearance`, in sRGB.

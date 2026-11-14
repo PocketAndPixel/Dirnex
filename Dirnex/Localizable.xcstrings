@@ -27641,6 +27641,96 @@
         }
       }
     },
+    "Code is drawn in these colors": {
+      "comment": "Settings ▸ Panels: the comment line of the syntax theme's code sample",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Code wird in diesen Farben dargestellt"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Code is drawn in these colors"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El código se muestra con estos colores"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le code s’affiche dans ces couleurs"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Il codice viene mostrato con questi colori"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "コードはこれらの色で表示されます"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "코드는 이 색상으로 표시됩니다"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Code wordt in deze kleuren weergegeven"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kod jest wyświetlany w tych kolorach"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O código é exibido nestas cores"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Код отображается этими цветами"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Код відображається цими кольорами"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "代码以这些颜色显示"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "程式碼以這些顏色顯示"
+          }
+        }
+      }
+    },
     "Collapsed": {
       "comment": "Accessibility state of a folded sidebar section's disclosure triangle.",
       "localizations": {
@@ -62862,6 +62952,96 @@
           "stringUnit": {
             "state": "translated",
             "value": "主機："
+          }
+        }
+      }
+    },
+    "How code is colored in Quick View, in a file’s source and in a rendered page’s code blocks, and in the compare and merge windows. Each theme has a light and a dark version, and follows your Mac’s appearance.": {
+      "comment": "Settings ▸ Panels: footer under the syntax theme picker and its code sample",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wie Code in der Übersicht eingefärbt wird – im Quelltext einer Datei und in den Codeblöcken einer gerenderten Seite – sowie in den Vergleichs- und Zusammenführungsfenstern. Jedes Farbschema hat eine helle und eine dunkle Variante und folgt dem Erscheinungsbild Ihres Mac."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "How code is colored in Quick View, in a file’s source and in a rendered page’s code blocks, and in the compare and merge windows. Each theme has a light and a dark version, and follows your Mac’s appearance."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cómo se colorea el código en la vista rápida, en el código fuente de un archivo y en los bloques de código de una página renderizada, y en las ventanas de comparación y fusión. Cada tema tiene una versión clara y otra oscura, y sigue el aspecto de tu Mac."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La coloration du code dans le coup d’œil, dans la source d’un fichier et dans les blocs de code d’une page rendue, ainsi que dans les fenêtres de comparaison et de fusion. Chaque thème a une version claire et une version sombre, et suit l’apparence de votre Mac."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Come viene colorato il codice nell’anteprima rapida, nel sorgente di un file e nei blocchi di codice di una pagina renderizzata, e nelle finestre di confronto e di merge. Ogni tema ha una versione chiara e una scura e segue l’aspetto del tuo Mac."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "クイックビューでのコードの色分けです。ファイルのソースとレンダリングされたページのコードブロック、および比較ウインドウとマージウインドウに適用されます。各テーマにはライト版とダーク版があり、Mac の外観に従います。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "빠른 보기에서 파일의 소스와 렌더링된 페이지의 코드 블록, 그리고 비교 및 병합 윈도우에서 코드를 칠하는 색상입니다. 각 테마에는 라이트 버전과 다크 버전이 있으며 Mac의 화면 모드를 따릅니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hoe code wordt gekleurd in het overzicht, in de bron van een bestand en in de codeblokken van een weergegeven pagina, en in de vergelijk- en samenvoegvensters. Elk thema heeft een lichte en een donkere versie en volgt de weergave van je Mac."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kolory kodu w podglądzie – w źródle pliku i w blokach kodu renderowanej strony – oraz w oknach porównania i scalania. Każdy motyw ma wersję jasną i ciemną i dopasowuje się do wyglądu Maca."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Como o código é colorido na Visualização Rápida, no código-fonte de um arquivo e nos blocos de código de uma página renderizada, e nas janelas de comparação e de mesclagem. Cada tema tem uma versão clara e uma escura e segue a aparência do seu Mac."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Цвета кода в быстром просмотре — в исходном тексте файла и в блоках кода отрисованной страницы, — а также в окнах сравнения и объединения. У каждой темы есть светлый и тёмный вариант, и она следует оформлению вашего Mac."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Кольори коду у швидкому перегляді — у вихідному тексті файлу та в блоках коду відтвореної сторінки, — а також у вікнах порівняння й об’єднання. Кожна тема має світлий і темний варіант і відповідає оформленню вашого Mac."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "快速查看中代码的配色，包括文件源代码和渲染页面中的代码块，以及比较和合并窗口。每个主题都有浅色和深色两个版本，并跟随 Mac 的外观。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "快速預覽中程式碼的配色，包括檔案原始碼和算繪頁面中的程式碼區塊，以及比較和合併視窗。每個主題都有淺色和深色兩個版本，並跟隨 Mac 的外觀。"
           }
         }
       }
@@ -105606,6 +105786,96 @@
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "Syntax colors": {
+      "comment": "Settings ▸ Panels: label of the picker that chooses the syntax theme (VS Code, Xcode or GitHub)",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Syntaxfarben"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Syntax colors"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Colores de sintaxis"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couleurs de syntaxe"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Colori della sintassi"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "シンタックスカラー"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "구문 색상"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Syntaxiskleuren"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kolory składni"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cores de sintaxe"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Цвета синтаксиса"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Кольори синтаксису"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "语法颜色"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "語法顏色"
           }
         }
       }

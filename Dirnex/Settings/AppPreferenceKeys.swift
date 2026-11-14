@@ -23,6 +23,7 @@ extension AppPreferences {
         static let quickViewXMLStyle = "Dirnex.pref.quickViewXMLStyle"
         static let quickViewRichTextStyle = "Dirnex.pref.quickViewRichTextStyle"
         static let quickViewJavaScriptEnabled = "Dirnex.pref.quickViewJavaScriptEnabled"
+        static let syntaxTheme = "Dirnex.pref.syntaxTheme"
         static let quickViewFetchLimit = "Dirnex.pref.quickViewFetchLimit"
         static let remoteRefreshFloor = "Dirnex.pref.remoteRefreshFloor"
         static let accentColorHex = "Dirnex.pref.accentColorHex"

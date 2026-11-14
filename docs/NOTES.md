@@ -3652,6 +3652,17 @@ Measured 2026-11-08 for M37's byte view, whose table has a row for every 16 byte
     because M17 authored those values against `.textBackgroundColor` and they clear AA *there*. So a
     code fence that carries syntax colors is delimited by a **border** and keeps the page's own
     background; the fill is only safe on inline code, which carries `.textColor` and nothing else.
+- **A dynamic `NSColor` asks its provider again on every resolution, so it can follow more than the
+  appearance.** Probed 2026-11-14 for M39's syntax themes: a color from `NSColor(name:dynamicProvider:)`
+  whose block read a locked global answered the new value under `performAsCurrentDrawingAppearance`
+  and through `cgColor` as soon as the global changed, and an attributed string kept the same object.
+  So a user setting that changes colors can live in the provider, and every attributed string and
+  label already holding the color only needs to draw again (`SyntaxTheme`, `SyntaxThemeRepaint`).
+  "Draw again" is `needsDisplay` on every view in the window, subviews included, and nothing more,
+  TextKit 2 text views too: in the running app an open Swift preview took the new colors with no
+  layout invalidated, and kept the old ones with the walk switched off. What does not follow is
+  anything that took a value out of the color: a layer's `cgColor` (below) and a generated
+  stylesheet, which has to be rewritten.
 - **A layer's `cgColor` is frozen at whichever appearance was current when it was taken.** The tab
   chip set `layer.backgroundColor` from `.unemphasizedSelectedContentBackgroundColor` whenever its
   state changed, so after a switch from dark the inactive pane's tab stayed `#464646` in a light

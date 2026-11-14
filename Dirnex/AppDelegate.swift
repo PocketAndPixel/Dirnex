@@ -73,6 +73,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // next unlock (PLAN.md §M19).
         VaultVisibility.start()
 
+        // And for a change of syntax theme, which every open preview, tree and compare window
+        // redraws in at once (PLAN.md §M39 ▸ Slice 10).
+        SyntaxThemeRepaint.start()
+
         // Rebuild the registry-driven menu whenever the user rebinds a shortcut, so the new
         // key equivalents take effect immediately (PLAN.md §M3 "rebindable shortcuts").
         NotificationCenter.default.addObserver(

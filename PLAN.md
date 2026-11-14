@@ -262,8 +262,8 @@ Decided before Slice 1 (2026-11-12, Oleg, on the probes above):
   today's rendering stays the default. `.rtfd` and `.odt` keep one style: neither is text.
 - **GitHub alerts join M39**, on the corpus. Not asked; drop them if unwanted.
 - **Themes: VS Code (today's), Xcode and GitHub**, each a light and dark pair held to 4.5:1 on the
-  system text background, for the source view and rendered fences alike. Not asked; open until
-  Slice 10.
+  system text background, for the source view and rendered fences alike. Asked at Slice 10
+  (2026-11-14): all three, picked in Settings ▸ Panels over a code sample.
 
 #### Slices
 
@@ -540,7 +540,40 @@ Decided before Slice 1 (2026-11-12, Oleg, on the probes above):
    line; a `.rb` with its `=begin` block one comment and an indented `=begin` left as code. **Not run
    live**: the light appearance, a rendered page's ```` ```json ```` fence, and the compare and merge
    windows, which color through the same scanner.
-10. **The theme picker** (app). Settings, the source view and the rendered fences.
+10. **The theme picker** (app). Settings, the source view and the rendered fences. **Landed 2026-11-14.**
+   Oleg's call on the probe: all three themes, in Settings ▸ Panels over a code sample. **Probed first**:
+   Xcode's `Default (Light)` and `Default (Dark)` `.xccolortheme` files inside Xcode.app, and GitHub's
+   `--color-prettylights-syntax-*` values from its own Markdown stylesheet, every value measured on the
+   system text background (`#FFFFFF`, `#1E1E1E`), which every theme keeps. Two needed a decision: Xcode's
+   dark comment `#6C7986` scores 3.74:1 (it fails in Xcode too) and is lightened along its hue to
+   `#7C8996`, 4.66:1; GitHub's light palette gives a tag the constant's blue (`#0550AE` for both), so
+   `typeOrTag` takes its `entity` purple. Xcode colors no diff: a removed line takes its string red and
+   an added one the teal of `identifier.function`. VS Code stays the default, M17's table value for value
+   (`SyntaxColorTheme`, `Dirnex.pref.syntaxTheme`, an unknown value reading as the default). **The
+   mechanism**: `SyntaxTheme`'s colors stay one `NSColor` per kind and now resolve through the selected
+   theme at draw time, since a dynamic color asks its provider on every resolution (probed, `cgColor`
+   included; docs/NOTES.md ▸ Color and contrast). So nothing anywhere rebuilds a document: the shared
+   preferences alone move `SyntaxTheme.current`, and `SyntaxThemeRepaint` walks every window marking each
+   view for display, which reaches the source view, the JSON and XML tree, a CSV's columns and the
+   compare and merge windows without listing them. A Markdown page's token colors sit in a `<style>` of
+   their own, rewritten in place by a client-world script (page scripts off), so the page keeps its
+   scroll; a page loaded later is generated in the new theme. The sample is three lines of Swift through
+   the real grammar, its comment translated; three new strings in 14 languages. **Tests**:
+   `SyntaxThemeTests` now holds every theme to 4.5:1 in both appearances, its pairs apart, its code kinds
+   distinct and VS Code unchanged, and a following color to its source; `SyntaxThemeChoiceTests` (8)
+   covers the preference, the sample, the page's stylesheet, a real page restyled twice in place with
+   its scroll kept, the walk finding that page inside its surface, and an HTML page left alone. Negative
+   controls, each failing exactly its own tests: a scratch instance moving the screen's theme, the walk
+   not descending, a following color ignoring its source, and the token colors back in the main
+   `<style>`. **Run live** in `app.dirnex.Dirnex.live` at pane size. Dark: the Swift source, the Markdown
+   source, a rendered page scrolled to its last fence (it stayed there), the JSON tree and the CSV source
+   each took the new theme the moment a segment was pressed, nothing reopened; a relaunch came back in
+   the saved theme. Light: all three on the rendered page and in the sample. Two controls in the running
+   app: with the text view's layout no longer invalidated it still recolored, so that code went; with the
+   walk switched off it kept the old colors. One thing seen: Xcode's dark keyword (`#FC5FA3`) and string
+   (`#FC6A5D`) are near hues, so a CSV's second and third columns read close there, as they do in Xcode.
+   **Not run live**: the compare and merge windows, which the same walk reaches; full window and full
+   screen; a 4 MB file; a translated Settings tab.
 11. **Export, core.** The self-contained HTML document and the names.
 12. **Export, app.** The sheet, the PDF through the print path, the queued copy.
 13. **Mermaid: state diagrams.**
