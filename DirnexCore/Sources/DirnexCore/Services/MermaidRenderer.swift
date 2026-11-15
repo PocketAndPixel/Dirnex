@@ -28,13 +28,15 @@ enum MermaidRenderer {
 
     /// The diagram in `source`, or `nil` when the whole fence has to fall back to its text.
     static func render(_ source: String, options: MarkdownRenderOptions) -> Output? {
-        var output = draw(source, options: options)
-        output?.title = MermaidFrontMatter.split(source).title
+        guard var output = draw(source, options: options) else { return nil }
+        // A gantt's `title` statement wins over the front matter's, as Mermaid draws it.
+        output.title = output.title ?? MermaidFrontMatter.split(source).title
         return output
     }
 
     private static func draw(_ source: String, options: MarkdownRenderOptions) -> Output? {
-        switch MermaidParser.parse(source) {
+        let clock = MermaidGanttClock(now: options.now, timeZone: options.timeZone)
+        switch MermaidParser.parse(source, clock: clock) {
         case let .flowchart(chart):
             let drawing = MermaidFlowchartLayout.lay(out: chart, metric: options.textMetric)
             return Output(
@@ -64,6 +66,17 @@ enum MermaidRenderer {
             return Output(
                 svg: MermaidERSVG.svg(drawing, scale: options.diagramScale),
                 undrawn: diagram.undrawn
+            )
+        case let .gantt(gantt):
+            let drawing = MermaidGanttLayout.lay(
+                out: gantt,
+                metric: options.textMetric,
+                zone: options.timeZone
+            )
+            return Output(
+                svg: MermaidGanttSVG.svg(drawing, scale: options.diagramScale),
+                undrawn: gantt.undrawn,
+                title: gantt.title
             )
         case .unsupported:
             return nil

@@ -764,7 +764,57 @@ Decided before Slice 1 (2026-11-12, Oleg, on the probes above):
    block that never closes named `---`. **Not run live**: the light appearance, full window and full
    screen, an export, and a server or archive location, which reach the same render through the
    file's bytes.
-15. **Mermaid: gantt.**
+15. **Mermaid: gantt.** **Landed 2026-11-15.** Oleg's four calls when it opened: a **fixed width**, a
+   700-point time line shrunk to the pane like every other diagram, since Mermaid takes the page's
+   width when it draws and the preview draws once; the **today line drawn**, from a clock the app hands
+   the render (`MarkdownRenderOptions.now` and `timeZone`), with `todayMarker off` honored and its style
+   string skipped under M39's no-config rule; **the page's palette** for the states rather than
+   Mermaid's; and **English** month and day names on the axis, as Mermaid writes them. **Probed first**,
+   from Mermaid 12.3's own `ganttDb.js`, `ganttRenderer.js` and `gantt.jison`, then on its docs page,
+   whose bars read back as Mermaid's dates (docs/NOTES.md ▸ Working rhythm). Rows keep the file's order,
+   and Mermaid sorts by start only to paint; a statement `title` beats the front matter's; a name goes
+   in its bar, after it, or before it when after would run half the right margin past the time line;
+   `vert` takes no row; and two rules the docs get wrong: with no `dateFormat` Mermaid hands dates to
+   JavaScript's `Date` and drops an end date, and an `until` end is pushed past excluded days like a
+   duration. **The corpus**: the only gantt charts on this Mac are two fences in a Figma skill's
+   reference file, both now drawn; the other 70 fences render byte for byte as before. **The parse**
+   (`MermaidGanttParser`): keywords in any case, a value cut at `#` or `;`, `click` named in the
+   caption, accessibility lines skipped, and a line Mermaid could not parse falls back. **The schedule**
+   (`MermaidGanttSchedule`, `MermaidGanttScheduler`) is Mermaid's own loop, up to eleven passes in
+   order, because that loop decides what a forward reference in an `after` list draws; with tags, ids,
+   `after`/`until`, durations by dayjs's `add` (`1.5d` is two days, `1.5M` one month), `excludes` and
+   `includes`, `weekend friday` and `inclusiveEndDates`. Times are wall clocks with no zone
+   (`MermaidGanttTime`), so a day is always 24 hours and nothing moves with the Mac's zone; only `Z`, a
+   Unix timestamp and the today line pass through one. Dates parse strictly as dayjs parses them
+   (`MermaidGanttDateFormat`), and a start that fails gets JavaScript's ISO reading
+   (`MermaidGanttScriptDate`), a bare date at midnight in UTC as there. The axis is d3's
+   (`MermaidGanttTicks`, `MermaidGanttAxisFormat`): its eighteen steps, `every` by the next unit's field,
+   a named `tickInterval` and `weekday`, and d3's `en-US` specifiers. **Departures**, each said where it
+   is made: no `dateFormat` reads `YYYY-MM-DD` as the docs promise; tick labels that would touch are
+   thinned to every `k`th, all grid lines kept, since d3's ten ticks ran into one another at 700 points
+   (the first headless look found it); a label past either edge widens the drawing where Mermaid cuts
+   it; a section column fits its longest name where Mermaid's 75 px lets it run under the bars; a
+   section named again further down is a block of its own; and an excluded run at the very end is
+   shaded, which Mermaid's loop forgets. **The app** (`QuickViewMarkdownGantt`): each state's fill is
+   `color-mix` of a page color into the background, so a name keeps the text color on it: 9.9–18.2:1 in
+   both appearances, outlines 3.9–5.9:1, held to 4.5 and 3 by a test. 61 core tests in six suites, 2 app
+   tests, and the class sweep draws a gantt. Negative controls, 17, each failing its own tests: thinning
+   off, the strict check off, one pass, bars to the pushed end, `after` taking its first task, dated ends
+   pushed, `weekend friday` as Saturday, today off the chart, labels always after, a fixed section
+   column, the front matter's title winning, bare dates local, day ticks counted by days, no trailing
+   run, and in the app the gantt rules left out, a fill at 100 % and a misspelt color space. Four
+   first passed and taught something: the results reader missed parameterized tests, the Friday case
+   gave the same date under both weekends, a fill at 60 % still clears 4.5:1, and a guard on section
+   blocks was redundant, so it went. **Run
+   live** in `app.dirnex.Dirnex.live` at pane size, with the cloud guard in and seeded at the fixture:
+   dark, Mermaid's excludes example, the today line at this evening over the active slice, and the
+   edge file (front matter title, a long name left of its bar, Monday ticks, `click` captioned, a broken
+   fence falling back); light, the same example and a time-only chart with a top axis. **Not run
+   live**: full window and full screen; an export, whose PDF would carry the today line as it stood;
+   a server or archive location, which reach the same render through the file's bytes. **Kept as
+   Mermaid draws it** (Oleg's call after the slice): a chart within one day and no `axisFormat` writes
+   the same date on every tick, since Mermaid's default format is `%Y-%m-%d` whatever the
+   `dateFormat`; the file's author can name one.
 16. **The slideshow timer.**
 
 #### M40 — Everything else (M)

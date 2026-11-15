@@ -77,6 +77,17 @@ at build time.
       the classic look only where an example's front matter asks for it, and GitHub's older
       Mermaid draws classic, so read layout off a `look: classic` example and membership or
       markers off any.
+    - **For a gantt, read Mermaid's source first and the page second.** The schedule is code with
+      no layout in it, so `ganttDb.js`, `ganttRenderer.js` and `gantt.jison` answer more than any
+      drawing: `gh api repos/mermaid-js/mermaid/contents/packages/mermaid/src/diagrams/gantt/<file>
+      -H 'Accept: application/vnd.github.raw'`. The page then checks the reading: it lays a gantt
+      out at its container's width (1 024 px there, so a time line of 874), and a bar's `x` and
+      `width` divided by the pixels a day give back Mermaid's dates exactly. Used 2026-11-15 for
+      M39 Slice 15, it settled two rules the docs get wrong. With no `dateFormat` Mermaid hands
+      every date to JavaScript's `Date`, so `2014-01-01` is midnight in London and an end date is
+      ignored, giving the bar no length, where the docs say the default is `YYYY-MM-DD`. And an
+      `until` end is no `YYYY-MM-DD` date, so `excludes` pushes it past a weekend too, while the bar
+      stops where `until` said.
   - **To look at a diagram before the app does, screenshot a scratch page headlessly.** A scratch
     package over `DirnexCore` can measure with the app's own font through AppKit
     (`QuickViewMarkdownDiagram.metric`'s three lines) and write the render into a page carrying the
@@ -4271,6 +4282,12 @@ Measured 2026-11-08 for M37's byte view, whose table has a row for every 16 byte
     came out 71 % dark. Colors set without the query printed 67 % dark, which is what showed the
     measure could see a dark page. So a test that a print is light passes with the view set dark, and
     only proves something once its fixture is checked that way.
+- **`color-mix(in srgb, var(--a) 25%, var(--b))` works as an SVG `fill` in the preview's WebKit**, and
+  follows both custom properties into whichever appearance is on, so a tint of a page color needs no
+  second palette. Used 2026-11-15 for M39 Slice 15's gantt bars: four mixes came back as four
+  distinct computed `fill`s, none the page's background. With the color space misspelt the whole
+  declaration is dropped, which only a test reading the computed style in a real page catches; the
+  stylesheet sweep still finds the class named.
 
 ### Previews: telling what kind of file it is
 

@@ -106,7 +106,11 @@ extension QuickViewPreviewView {
                 describeUndrawnDiagram: { QuickViewMarkdownDiagram.describeUndrawn($0) },
                 diagramScale: QuickViewMarkdownDiagram.scale,
                 alertTitle: { QuickViewMarkdownAlerts.title($0) },
-                locateFile: locateFile ?? QuickViewMarkdownWikiLinks.onDisk(beside: url)
+                locateFile: locateFile ?? QuickViewMarkdownWikiLinks.onDisk(beside: url),
+                // A gantt's today line, in the Mac's own zone (PLAN.md §M39 ▸ Slice 15). An export
+                // keeps the line where it stood when the file was written.
+                now: Date(),
+                timeZone: .current
             )
             let render = MarkdownDocument.render(preview.text, options: options)
             return MarkdownScan(
