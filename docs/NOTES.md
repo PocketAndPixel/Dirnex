@@ -55,6 +55,24 @@ at build time.
     reads every `---` / `key:` / `---` block as a setext heading (1 869 files here). And after an
     indented code block it will not start an ordered list at `2.`, where GitHub's renderer does
     (asked 2026-11-14).
+  - **For a Mermaid rule, the oracle is Mermaid drawing on its own documentation page.** GitHub's
+    API leaves a mermaid fence as a placeholder its viewer draws later, so it answers nothing. Every
+    example on `mermaid.js.org/syntax/<type>.html` is an editable `code.editable-code` with a Run
+    button, and the page redraws the example in place. Set the code's `textContent`, dispatch an
+    `input` event (without it Run redraws the old text), click Run, and read the new
+    `svg[id^="mermaid"]` back out of the DOM: node ids name the start and end of each scope
+    (`root_start`, `First_end`), and `getBoundingClientRect` gives the positions. Importing the
+    library from a CDN into that page instead was refused by the permission classifier. Used
+    2026-11-15 for M39 Slice 13, it settled five rules the docs do not state (PLAN.md §M39 ▸
+    Slice 13). Mermaid 12 lays state diagrams out with ELK by default; the classic look, which
+    GitHub's older Mermaid draws, is the target.
+  - **To look at a diagram before the app does, screenshot a scratch page headlessly.** A scratch
+    package over `DirnexCore` can measure with the app's own font through AppKit
+    (`QuickViewMarkdownDiagram.metric`'s three lines) and write the render into a page carrying the
+    diagram rules. Then `Google Chrome --headless --screenshot=<png> --window-size=760,820 file://…`
+    draws it, one file per diagram so each fits. Slice 13's first look, before any test was written,
+    caught long transitions zig-zagging across the picture as each layer centered its dummies on its
+    own; the test that pins it now was written from that picture.
   - **When nothing on the Mac uses a construct, the corpus still says what the rule must not
     misread.** M39 Slice 7 found no definition list and no real wiki link outside Claude's memory
     notes in 12 603 distinct files, but it did find the prose each obvious rule breaks: a wrapped line

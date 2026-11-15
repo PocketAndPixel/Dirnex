@@ -63,6 +63,33 @@ enum MermaidSVG {
         """
     }
 
+    /// An edge's label on a plate, because the line runs through where the text sits. The plate's
+    /// class is the page background's, so it hides the line in either appearance.
+    ///
+    /// A loop's label sits beside its loop with no line under it, so it takes no plate: the plate is
+    /// sized from a character count and ran over the loop's own outer edge (§M39 ▸ Slice 13).
+    static func edgeLabel(_ label: String, at center: MermaidPoint, plated: Bool = true) -> String {
+        let plate = plated
+            ? rect(plate(around: center, text: label), classes: "mm-edge-label-plate", radius: 3)
+            : ""
+        return plate + text(label, at: center, classes: "mm-edge-label")
+    }
+
+    /// The plate is sized from the *character count* rather than from the metric, on purpose: it
+    /// only has to be about right, and threading the metric through the emitter would make the
+    /// drawing depend on it twice — once for the layout the caller already did, and once here,
+    /// where a disagreement between the two would be invisible until it looked wrong.
+    private static func plate(around center: MermaidPoint, text: String) -> MermaidRect {
+        let width = Double(text.count) * 6.6 + 8
+        let height = 15.0
+        return MermaidRect(
+            x: center.x - width / 2,
+            y: center.y - height / 2,
+            width: width,
+            height: height
+        )
+    }
+
     static func line(_ points: [MermaidPoint], classes: String) -> String {
         let path = points
             .map { "\(number($0.x)),\(number($0.y))" }

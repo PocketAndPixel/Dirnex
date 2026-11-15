@@ -2,7 +2,8 @@ import Foundation
 
 /// What a ```` ```mermaid ```` fence turned out to hold (PLAN.md §M18 ▸ Slice 4).
 ///
-/// The subset is **flowchart and sequence**, and this enum is where that boundary is stated. It is
+/// The subset is **flowchart, sequence and state** (state since §M39 ▸ Slice 13), and this enum is
+/// where that boundary is stated. It is
 /// deliberately a closed set with a named escape: every other diagram type lands in `.unsupported`
 /// carrying the word the file actually wrote, so a fence the renderer cannot draw shows its source
 /// *and says which type it was*. Silently rendering the source of a diagram somebody expected drawn
@@ -15,7 +16,8 @@ import Foundation
 enum MermaidDiagram: Equatable {
     case flowchart(MermaidFlowchart)
     case sequence(MermaidSequence)
-    /// A type this subset does not draw, named as the file spelled it (`stateDiagram-v2`).
+    case state(MermaidStateDiagram)
+    /// A type this subset does not draw, named as the file spelled it (`classDiagram`).
     case unsupported(String)
 }
 

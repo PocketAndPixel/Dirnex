@@ -67,12 +67,47 @@ struct MermaidLayoutTests {
         #expect(drawing.nodes.map(\.frame.y) == drawing.nodes.map(\.frame.y).sorted())
     }
 
-    @Test("a self-loop neither hangs nor draws a line from a node to itself")
+    @Test("a self-loop draws as a loop beside its node, and the node keeps its column")
     func selfLoop() {
-        let drawing = flowchart("graph TD\nA --> A\nA --> B")
+        // Drawn nothing from M18 to §M39 ▸ Slice 13, when the state diagram's loop was shared.
+        let drawing = flowchart("graph TD\nA --> A\nA -->|again| A\nA --> B")
         #expect(drawing.nodes.count == 2)
-        // A zero-length edge has no direction, so there is nothing to clip and no arrow to aim.
+        #expect(drawing.edges.count == 3)
+        let box = drawing.nodes[0].frame
+        let loops = drawing.edges.filter { $0.points.count == 4 }
+        #expect(loops.count == 2)
+        guard loops.count == 2 else { return }
+        for loop in loops {
+            #expect(loop.start.x == box.maxX)
+            #expect(loop.end.x == box.maxX)
+            #expect(loop.points[1].x > box.maxX)
+        }
+        // Nested, the second a step further out, with its label beyond it.
+        #expect(loops[1].points[1].x > loops[0].points[1].x)
+        #expect(loops[1].labelCenter.x > loops[1].points[1].x)
+        #expect(drawing.width >= loops[1].labelCenter.x + metric.width("again") / 2)
+        // The loops' room is kept on both sides, so the edge below stays straight.
+        #expect(drawing.nodes[0].frame.midX == drawing.nodes[1].frame.midX)
+    }
+
+    @Test("a loop leaves a rounded outline where the outline is, not the bounding box")
+    func loopOnTaperedShape() {
+        let drawing = flowchart("graph TD\nA{decide} --> A")
+        let diamond = drawing.nodes[0].frame
         #expect(drawing.edges.count == 1)
+        guard let loop = drawing.edges.first else { return }
+        // Off the middle, a rhombus's right side is inside its bounding box.
+        #expect(loop.start.x < diamond.maxX)
+        #expect(loop.start.x > diamond.midX)
+    }
+
+    @Test("in a horizontal chart a loop hangs below its node")
+    func horizontalLoop() {
+        let drawing = flowchart("graph LR\nA --> A\nA --> B")
+        let box = drawing.nodes[0].frame
+        let loop = drawing.edges.first { $0.points.count == 4 }
+        #expect(loop.map { $0.start.y == box.maxY && $0.points[1].y > box.maxY } == true)
+        #expect(drawing.nodes[0].frame.midY == drawing.nodes[1].frame.midY)
     }
 
     @Test("the four directions are two axes and a flip")

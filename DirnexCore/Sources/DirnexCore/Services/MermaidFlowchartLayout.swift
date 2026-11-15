@@ -13,7 +13,7 @@ struct MermaidFlowchartDrawing: Equatable {
         /// border and the last on the target's, which is where an arrowhead belongs.
         ///
         /// More than two points when the edge spans layers: it then bends through the dummies
-        /// `MermaidFlowchartRanking` reserved for it, which is what keeps a long edge out of the
+        /// `MermaidLayering` reserved for it, which is what keeps a long edge out of the
         /// boxes between its ends.
         let points: [MermaidPoint]
         let label: String?
@@ -21,6 +21,8 @@ struct MermaidFlowchartDrawing: Equatable {
         let stroke: MermaidFlowchart.Stroke
         let tail: MermaidFlowchart.Tip
         let head: MermaidFlowchart.Tip
+        /// A node's edge to itself, drawn as a loop beside it.
+        var isLoop = false
 
         var start: MermaidPoint { points[0] }
         var end: MermaidPoint { points[points.count - 1] }
@@ -34,16 +36,14 @@ struct MermaidFlowchartDrawing: Equatable {
 
 /// Turning a ranked flowchart into geometry (PLAN.md §M18 ▸ Slice 4).
 ///
-/// `MermaidFlowchartRanking` has already decided which layer everything is in and what order it
-/// sits in there, including the dummies that carry long edges. What is left is arithmetic: how big
-/// each box has to be, where each layer starts, and where a line crosses an outline.
+/// `MermaidLayering` has already decided which layer everything is in and what order it sits in
+/// there, including the dummies that carry long edges, and `MermaidLayered` stacks the layers. What
+/// is left is arithmetic: how big each box has to be and where a line crosses an outline.
 ///
 /// Pure, and its one outside fact — how wide a label is — comes from an injected metric, so every
 /// assertion in the tests is an exact number (`MarkdownTextMetric`).
 enum MermaidFlowchartLayout {
-    private static let rankGap = 46.0
-    private static let crossGap = 26.0
-    private static let margin = 10.0
+    private static let spacing = MermaidLayered.Spacing(rankGap: 46, crossGap: 26, margin: 10)
     private static let padX = 12.0
     private static let padY = 8.0
     private static let minimumWidth = 36.0
@@ -55,16 +55,55 @@ enum MermaidFlowchartLayout {
         let index = Dictionary(
             uniqueKeysWithValues: chart.nodes.enumerated().map { ($1.id, $0) }
         )
-        let ranking = MermaidFlowchartRanking.rank(chart, index: index)
+        let ranking = MermaidLayering.rank(
+            count: chart.nodes.count,
+            edges: chart.edges.map { edge in
+                guard let from = index[edge.from], let to = index[edge.to] else { return nil }
+                return (from: from, to: to)
+            }
+        )
+        let boxes = chart.nodes.map { size(of: $0, metric: metric) }
+        let loops = loopLabels(chart, index: index)
+        // A node with loops takes the room they need on both sides; every other node's slot is its
+        // box, so a chart with no `A --> A` in it lays out exactly as it did before loops existed.
+        var sizes = boxes.enumerated().map { node, box in
+            MermaidSelfLoops.slot(
+                box,
+                labels: loops[node] ?? [],
+                direction: chart.direction,
+                metric: metric
+            )
+        }
         // A dummy is a point the line passes through, so it takes no depth along the rank axis and
         // just enough across it that the line clears its neighbors.
-        var sizes = chart.nodes.map { size(of: $0, metric: metric) }
         sizes.append(contentsOf: repeatElement(
-            (width: 1.0, height: 0.0),
+            MermaidSize(width: 1, height: 0),
             count: ranking.layerOf.count - ranking.realCount
         ))
-        let frames = place(ranking.layers, sizes: sizes, direction: chart.direction)
-        return drawing(chart, ranking: ranking, frames: frames, index: index, metric: metric)
+        let slots = MermaidLayered.place(
+            ranking.layers,
+            sizes: sizes,
+            direction: chart.direction,
+            spacing: spacing
+        ).frames
+        let frames = slots.enumerated().map { node, slot in
+            node < boxes.count ? centered(boxes[node], in: slot) : slot
+        }
+        return drawing(
+            chart,
+            ranking: ranking,
+            placed: Placed(frames: frames, slots: slots, loops: loops),
+            index: index,
+            metric: metric
+        )
+    }
+
+    /// What placement produced, carried into the drawing as one value.
+    private struct Placed {
+        let frames: [MermaidRect]
+        let slots: [MermaidRect]
+        /// Each looping node's loop labels, in the order its loops were written.
+        let loops: [Int: [String?]]
     }
 
     // MARK: - Size
@@ -78,96 +117,44 @@ enum MermaidFlowchartLayout {
     private static func size(
         of node: MermaidFlowchart.Node,
         metric: MarkdownTextMetric
-    ) -> (width: Double, height: Double) {
+    ) -> MermaidSize {
         let text = metric.width(node.label)
         let width = max(text + 2 * padX, minimumWidth)
         let height = metric.lineHeight + 2 * padY
         switch node.shape {
         case .circle:
             let diameter = max(width, height) * 1.15
-            return (diameter, diameter)
+            return MermaidSize(width: diameter, height: diameter)
         case .diamond:
-            return (2 * (text + padX), 2 * (metric.lineHeight + padY))
+            return MermaidSize(width: 2 * (text + padX), height: 2 * (metric.lineHeight + padY))
         case .subroutine:
             // Room for the two inner bars the shape draws.
-            return (width + 16, height)
+            return MermaidSize(width: width + 16, height: height)
         case .rectangle, .rounded:
-            return (width, height)
+            return MermaidSize(width: width, height: height)
         }
     }
 
-    // MARK: - Position
-
-    /// Layers stacked along the rank axis, each centered against the widest.
-    ///
-    /// Written once in rank/cross terms and mapped to x/y at the end, because the four directions
-    /// are two axes and a flip rather than four layouts — which is what `Direction.isHorizontal`
-    /// and `.isReversed` exist to say.
-    private static func place(
-        _ layers: [[Int]],
-        sizes: [(width: Double, height: Double)],
-        direction: MermaidFlowchart.Direction
-    ) -> [MermaidRect] {
-        let horizontal = direction.isHorizontal
-        func rankExtent(_ node: Int) -> Double { horizontal ? sizes[node].width : sizes[node].height }
-        func crossExtent(_ node: Int) -> Double { horizontal ? sizes[node].height : sizes[node].width }
-
-        let depths = layers.map { layer in layer.map(rankExtent).max() ?? 0 }
-        let spans = layers.map { layer in
-            layer.map(crossExtent).reduce(0, +) + crossGap * Double(max(layer.count - 1, 0))
+    /// Each node's self-edges' labels, keyed by node, in the order the file wrote them.
+    private static func loopLabels(
+        _ chart: MermaidFlowchart,
+        index: [String: Int]
+    ) -> [Int: [String?]] {
+        var loops: [Int: [String?]] = [:]
+        for edge in chart.edges where edge.from == edge.to {
+            guard let node = index[edge.from] else { continue }
+            loops[node, default: []].append(edge.label)
         }
-        let widest = spans.max() ?? 0
-        let totalRank = depths.reduce(0, +) + rankGap * Double(max(depths.count - 1, 0))
-
-        var frames = [MermaidRect](
-            repeating: MermaidRect(x: 0, y: 0, width: 0, height: 0),
-            count: sizes.count
-        )
-        var rank = margin
-        for (depth, layer) in layers.enumerated() {
-            var cross = margin + (widest - spans[depth]) / 2
-            for node in layer {
-                let alongRank = rank + (depths[depth] - rankExtent(node)) / 2
-                let size = sizes[node]
-                frames[node] = horizontal
-                    ? MermaidRect(x: alongRank, y: cross, width: size.width, height: size.height)
-                    : MermaidRect(x: cross, y: alongRank, width: size.width, height: size.height)
-                cross += crossExtent(node) + crossGap
-            }
-            rank += depths[depth] + rankGap
-        }
-        return flipped(
-            frames,
-            direction: direction,
-            width: (horizontal ? totalRank : widest) + 2 * margin,
-            height: (horizontal ? widest : totalRank) + 2 * margin
-        )
+        return loops
     }
 
-    /// `RL` and `BT` are their twins mirrored on the rank axis. Doing it here rather than in the
-    /// placement loop is what keeps one placement for four directions.
-    private static func flipped(
-        _ frames: [MermaidRect],
-        direction: MermaidFlowchart.Direction,
-        width: Double,
-        height: Double
-    ) -> [MermaidRect] {
-        guard direction.isReversed else { return frames }
-        return frames.map { frame in
-            direction.isHorizontal
-                ? MermaidRect(
-                    x: width - frame.maxX,
-                    y: frame.y,
-                    width: frame.width,
-                    height: frame.height
-                )
-                : MermaidRect(
-                    x: frame.x,
-                    y: height - frame.maxY,
-                    width: frame.width,
-                    height: frame.height
-                )
-        }
+    private static func centered(_ size: MermaidSize, in slot: MermaidRect) -> MermaidRect {
+        MermaidRect(
+            x: slot.x + (slot.width - size.width) / 2,
+            y: slot.y + (slot.height - size.height) / 2,
+            width: size.width,
+            height: size.height
+        )
     }
 
     // MARK: - The drawing
@@ -175,35 +162,65 @@ enum MermaidFlowchartLayout {
     private static func drawing(
         _ chart: MermaidFlowchart,
         ranking: MermaidRanking,
-        frames: [MermaidRect],
+        placed: Placed,
         index: [String: Int],
         metric: MarkdownTextMetric
     ) -> MermaidFlowchartDrawing {
+        let frames = placed.frames
         let nodes = zip(chart.nodes, frames).map {
             MermaidFlowchartDrawing.Node(label: $0.label, shape: $0.shape, frame: $1)
         }
-        let edges = chart.edges.enumerated().compactMap { position, edge in
-            self.edge(
-                edge,
-                chain: ranking.chains[position],
-                chart: chart,
-                frames: frames,
-                index: index
+        var loops = placed.loops.mapValues { _ in [MermaidSelfLoops.Loop]() }
+        for (node, labels) in placed.loops {
+            loops[node] = MermaidSelfLoops(
+                frame: frames[node],
+                shape: chart.nodes[node].shape,
+                direction: chart.direction,
+                labels: labels
+            ).drawn(metric: metric)
+        }
+        var loopsUsed: [Int: Int] = [:]
+        let edges = chart.edges.enumerated().compactMap { position, edge
+            -> MermaidFlowchartDrawing.Edge? in
+            guard let from = index[edge.from], let to = index[edge.to] else { return nil }
+            guard from == to else {
+                return self.edge(
+                    edge,
+                    chain: ranking.chains[position],
+                    chart: chart,
+                    frames: frames,
+                    index: index
+                )
+            }
+            let used = loopsUsed[from, default: 0]
+            loopsUsed[from] = used + 1
+            guard let loop = loops[from]?[used] else { return nil }
+            return MermaidFlowchartDrawing.Edge(
+                points: loop.points,
+                label: edge.label,
+                labelCenter: loop.labelCenter ?? middle(of: loop.points),
+                stroke: edge.stroke,
+                tail: edge.tail,
+                head: edge.head,
+                isLoop: true
             )
         }
         // Measured over what is **drawn**, which is not the same as over the diagram's own nodes: a
         // routed edge bends through dummies that sit outside every box, and sizing the canvas from
         // the boxes alone sent a back edge off the right-hand side of the picture and back. An edge
-        // label reaches further still, since it is centered on a line rather than inside a shape.
+        // label reaches further still, since it is centered on a line rather than inside a shape,
+        // and a node's loops reach as far as its slot.
         let reach = edges.flatMap(\.points) + nodes.flatMap {
             [MermaidPoint(x: $0.frame.maxX, y: $0.frame.maxY)]
+        } + placed.loops.keys.map {
+            MermaidPoint(x: placed.slots[$0].maxX, y: placed.slots[$0].maxY)
         }
         return MermaidFlowchartDrawing(
             width: max(
-                reach.map(\.x).max().map { $0 + margin } ?? 0,
+                reach.map(\.x).max().map { $0 + spacing.margin } ?? 0,
                 labelReach(edges, metric: metric)
             ),
-            height: reach.map(\.y).max().map { $0 + margin } ?? 0,
+            height: reach.map(\.y).max().map { $0 + spacing.margin } ?? 0,
             nodes: nodes,
             edges: edges
         )
@@ -216,7 +233,7 @@ enum MermaidFlowchartLayout {
         frames: [MermaidRect],
         index: [String: Int]
     ) -> MermaidFlowchartDrawing.Edge? {
-        guard let from = index[edge.from], let to = index[edge.to], from != to else { return nil }
+        guard let from = index[edge.from], let to = index[edge.to] else { return nil }
         let waypoints = chain.map { frames[$0].center }
         let start = MermaidOutline.boundary(
             of: frames[from],
@@ -260,7 +277,7 @@ enum MermaidFlowchartLayout {
     ) -> Double {
         edges.reduce(0.0) { widest, edge in
             guard let label = edge.label else { return widest }
-            return max(widest, edge.labelCenter.x + metric.width(label) / 2 + margin)
+            return max(widest, edge.labelCenter.x + metric.width(label) / 2 + spacing.margin)
         }
     }
 }

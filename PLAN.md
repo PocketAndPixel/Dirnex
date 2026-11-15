@@ -657,7 +657,59 @@ Decided before Slice 1 (2026-11-12, Oleg, on the probes above):
    was seeded away from Home (docs/LIVE-VERIFICATION.md). **Not run live**: a server as source or
    destination, which reach Share's funnel and F5's queue; the sheet's inline errors, which the tests
    cover and which a background run could not type into; full window and full screen; a translation.
-13. **Mermaid: state diagrams.**
+13. **Mermaid: state diagrams.** **Landed 2026-11-15.** Oleg's three calls when it opened: a
+   **self-loop is shared**, so a flowchart's `A --> A`, which had drawn nothing since M18, now loops
+   too; **labels get a half-layer slot in state diagrams only**, so flowcharts stay as they were; and
+   a transition into another composite's state **crosses the border** to reach it, as Mermaid draws
+   it. **Probed first**, on Mermaid 12.3 drawing its own documentation page's editable examples
+   (docs/NOTES.md ▸ Working rhythm), since its docs state few rules. One start and one end per region
+   (`root_start`, `First_end`): the simple sample is five nodes. `s1 : a` then `s1 : b` draws "a" over
+   a rule with "b" under it. A state belongs to the **last composite block that mentions it**, and the
+   top level never claims it back: `x --> inner1` written before `state Outer { inner1 }` still puts
+   `inner1` inside, with the line crossing in. A composite's inside runs top to bottom whatever the
+   diagram's direction. Regions sit side by side, a fork bar lies across the flow, a note hangs on a
+   dashed line, a label is everything after the first colon, and a repeated transition is drawn twice.
+   The corpus holds one state diagram, undici's connection lifecycle (a fork, a composite with its own
+   start and end, labels), now a test fixture. **The parse** (`MermaidStateDiagram`,
+   `MermaidStateParser`, `MermaidStateBuilder`): both header spellings; one statement a line with no
+   `;` split, which the flowchart's splitter would have turned into a state called `y` in
+   `a --> b : x; y`; `state "…" as id`, `id : text`, `<<choice>>`, `<<fork>>` and `<<join>>` (or
+   `[[…]]`), blocks, `--` and `direction`; notes on one line or to `end note`; `:::class` stripped;
+   `classDef`, `class`, `style` and a floating note named in the caption; `accTitle` and `accDescr`
+   skipped; a block that would put a state inside itself refused. **The layout**: the flowchart's
+   ranking and placement moved out whole (`MermaidLayering`, `MermaidLayered`), and the state diagram
+   lays each region out on its own from the inside, so a composite takes part in its parent as one box
+   of its finished size. A crossing transition is ranked in the innermost region holding both ends,
+   between the states there that contain them, and drawn to the real ones. Every transition crosses a
+   half-layer of its own (`stride: 2`), where its dummy is sized to its label, so `A --> B : x` and
+   `B --> A : y` sit side by side. **The first look, headless before any test, showed long transitions
+   zig-zagging** as each layer centered its dummies on its own; so a state diagram is ordered by eight
+   sweeps down and up, keeping the fewest crossings, and placed by a balancing pass that sets each
+   layer as close to its neighbors as its order and gaps allow, which is isotonic regression and
+   exact. A note's state lines up by its own box, not its slot. **Loops** (`MermaidSelfLoops`) leave
+   the side across the flow, nest, and reserve their room on both sides so the column stays straight;
+   the live run found a loop's label plate hiding the loop's outer edge, so a loop's label has none.
+   Six new classes in the stylesheet, in both appearances through the existing variables. **Every
+   flowchart and sequence fence on this Mac (45 fences, 24 files) renders byte for byte as before**;
+   undici's fence went from its source to a drawing. 35 new core tests in four suites
+   (`MermaidStateParserTests`, `MermaidStateLayoutTests`, and in the renderer and flowchart layout
+   suites); the app's class sweep draws a state diagram with every construct. Negative controls, 13,
+   each failing its own test: one stride, no balancing, no anchors, one ordering sweep, the top level
+   claiming back (which also failed the two tests built on that rule), no cycle guard, the `;` split,
+   no loop room, crossing transitions drawn to the composite, an inside following the parent's
+   direction, flowcharts dropping loops, one start per diagram, and loop labels plated; the class
+   sweep failed with `.mm-state-bar` removed. **Cost**, release, best of 20: undici 0.43 ms, 100 states
+   9.8 ms, 300 states 66 ms against a 300-node flowchart's 9.6 ms, and 1 000 states 0.72 s, off the
+   main actor; counting crossings is quadratic per layer pair, which nothing real reaches. **Run live**
+   in `app.dirnex.Dirnex.live` at pane size, with the cloud probe in and seeded away from Home (no
+   provider prompt, and the copy never took the front). Dark: the simple sample, a composite with
+   labels, notes, three concurrent regions, loops with a crossing transition, undici, and the
+   flowchart's loops. Light: the flowchart's loops after the plate fix, the loops file, and undici at
+   full window. **Not run live**: full screen; the choice, fork, description, nesting, direction,
+   left-to-right and `classDef` fixtures, which were checked only in headless Chrome's drawing of the
+   same render with the app's metric; a server or archive location, which reach the same render
+   through the file's bytes. **Left as found**: a fence opening with Mermaid front matter
+   (`---` / `title:` / `---`) falls back for every type with "“---” is not drawn".
 14. **Mermaid: class and ER diagrams.**
 15. **Mermaid: gantt.**
 16. **The slideshow timer.**

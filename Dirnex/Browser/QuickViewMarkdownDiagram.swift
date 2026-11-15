@@ -109,6 +109,12 @@ enum QuickViewMarkdownDiagram {
         .mm-actor { stroke: currentColor; fill: none; stroke-width: 1.2; }
         .mm-note { fill: var(--code-fill); stroke: var(--faint); stroke-width: 1; }
         .mm-note-label { fill: currentColor; font-size: \(labelSize - 1)px; }
+        .mm-note-link { stroke: var(--faint); stroke-width: 1; stroke-dasharray: 3 3; }
+        .mm-state-dot { fill: currentColor; }
+        .mm-state-ring { fill: none; stroke: currentColor; stroke-width: 1.2; }
+        .mm-state-bar { fill: currentColor; }
+        .mm-state-rule { stroke: currentColor; stroke-width: 1; }
+        .mm-state-divider { stroke: var(--faint); stroke-width: 1; stroke-dasharray: 5 4; }
         figcaption.mermaid-note {
           margin-top: 0.3em;
           color: var(--muted);
