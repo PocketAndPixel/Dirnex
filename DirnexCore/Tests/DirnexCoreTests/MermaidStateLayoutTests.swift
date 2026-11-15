@@ -357,3 +357,52 @@ extension MermaidRect {
         point.x >= x && point.x <= maxX && point.y >= y && point.y <= maxY
     }
 }
+
+// MARK: - Routing through a border (§M39 ▸ Slice 14)
+
+extension MermaidStateLayoutTests {
+    @Test("a transition leaving a composite passes between the states inside it")
+    func crossingRoutesInside() {
+        // Before §M39 ▸ Slice 14 the line ran straight from `a` toward the outside, through `b`
+        // and `c`; now it reaches the composite's edge through a port the inside is ranked with.
+        let laid = lay("""
+        stateDiagram-v2
+          state Outer {
+            [*] --> a
+            a --> b
+            b --> c
+          }
+          a --> out : leave
+        """)
+        let leave = laid.1.edges.first { $0.label == "leave" }
+        for id in ["b", "c"] {
+            let box = frame(id, in: laid)
+            let points = leave?.points ?? []
+            #expect(!points.indices.dropLast().contains { index in
+                box.cuts(from: points[index], to: points[index + 1])
+            }, "the line crosses “\(id)”")
+        }
+        #expect(leave.map { onOutline($0.start, of: frame("a", in: laid)) } == true)
+        #expect(leave.map { onOutline($0.end, of: frame("out", in: laid)) } == true)
+    }
+
+    @Test("a transition back into a composite comes in from below, not over its top")
+    func backEdgeEntersFromBelow() {
+        // `x` is below `Outer`, so the line into `inner1` runs against the flow. With its port in
+        // the channel above the inside, it climbed the whole composite to come down onto `inner1`.
+        let laid = lay("""
+        stateDiagram-v2
+          [*] --> Outer
+          state Outer {
+            [*] --> inner1
+            inner1 --> [*]
+          }
+          Outer --> x
+          x --> inner1 : cross
+        """)
+        let cross = laid.1.edges.first { $0.label == "cross" }
+        let inner = frame("inner1", in: laid)
+        #expect(cross?.points.allSatisfy { $0.y >= inner.y - 0.01 } == true)
+        #expect(cross.map { onOutline($0.end, of: inner) } == true)
+    }
+}

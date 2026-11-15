@@ -22,10 +22,18 @@ enum MermaidRenderer {
         /// (`MarkdownRenderOptions.describeUndrawnDiagram`; docs/NOTES.md ▸ Localization: a
         /// presentation decision in the core is a string that can never be translated).
         let undrawn: [String]
+        /// The front matter's `title`, drawn above the diagram (`MermaidFrontMatter`).
+        var title: String?
     }
 
     /// The diagram in `source`, or `nil` when the whole fence has to fall back to its text.
     static func render(_ source: String, options: MarkdownRenderOptions) -> Output? {
+        var output = draw(source, options: options)
+        output?.title = MermaidFrontMatter.split(source).title
+        return output
+    }
+
+    private static func draw(_ source: String, options: MarkdownRenderOptions) -> Output? {
         switch MermaidParser.parse(source) {
         case let .flowchart(chart):
             let drawing = MermaidFlowchartLayout.lay(out: chart, metric: options.textMetric)
@@ -43,6 +51,18 @@ enum MermaidRenderer {
             let drawing = MermaidStateLayout.lay(out: diagram, metric: options.textMetric)
             return Output(
                 svg: MermaidStateSVG.svg(drawing, scale: options.diagramScale),
+                undrawn: diagram.undrawn
+            )
+        case let .classDiagram(diagram):
+            let drawing = MermaidClassLayout.lay(out: diagram, metric: options.textMetric)
+            return Output(
+                svg: MermaidClassSVG.svg(drawing, scale: options.diagramScale),
+                undrawn: diagram.undrawn
+            )
+        case let .entityRelationship(diagram):
+            let drawing = MermaidERLayout.lay(out: diagram, metric: options.textMetric)
+            return Output(
+                svg: MermaidERSVG.svg(drawing, scale: options.diagramScale),
                 undrawn: diagram.undrawn
             )
         case .unsupported:

@@ -19,7 +19,16 @@ extension MarkdownHTMLRenderer.Context {
             let name = MermaidRenderer.unsupportedType(in: code)
             return figure(fallback(code), notes: name.map { [$0] } ?? [])
         }
-        return figure(output.svg, notes: output.undrawn)
+        // A title is Mermaid's, from the fence's front matter, and sits above the drawing as
+        // Mermaid puts it. A fence that falls back shows it in its source instead.
+        let title = output.title.map {
+            MarkdownHTML.element(
+                "p",
+                MarkdownHTML.escaped($0),
+                attributes: " class=\"mermaid-title\""
+            )
+        } ?? ""
+        return figure(title + output.svg, notes: output.undrawn)
     }
 
     private func figure(_ body: String, notes: [String]) -> String {

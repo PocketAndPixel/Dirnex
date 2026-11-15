@@ -50,11 +50,18 @@ enum MermaidLayering {
     /// labeled edges between the same pair of nodes then sit side by side in that layer instead of
     /// on top of each other, which is dagre's answer and the state diagram's (`A --> B : x` and
     /// `B --> A : y` are the norm there). The flowchart keeps `1`, the layout it shipped with.
+    ///
+    /// `sources` and `sinks` are pinned to a layer of their own, one step above everything else
+    /// and one below — a channel along the region's edge. They are the ports a line crossing a
+    /// group's border runs through (§M39 ▸ Slice 14), so that inside the group it is routed between
+    /// the boxes like any other line rather than drawn straight across them.
     static func rank(
         count: Int,
         edges: [(from: Int, to: Int)?],
         stride: Int = 1,
-        sweeps: Int = 1
+        sweeps: Int = 1,
+        sources: Set<Int> = [],
+        sinks: Set<Int> = []
     ) -> MermaidRanking {
         let links = edges.enumerated().compactMap { position, edge -> Link? in
             guard let edge, edge.from != edge.to else { return nil }
@@ -62,6 +69,13 @@ enum MermaidLayering {
         }
         let forward = acyclic(links, count: count)
         var layerOf = longestPath(forward, count: count).map { $0 * max(stride, 1) }
+        if !sources.isEmpty || !sinks.isEmpty {
+            let lift = sources.isEmpty ? 0 : 1
+            for node in layerOf.indices where !sources.contains(node) { layerOf[node] += lift }
+            for node in sources where layerOf.indices.contains(node) { layerOf[node] = 0 }
+            let bottom = layerOf.indices.filter { !sinks.contains($0) }.map { layerOf[$0] }.max() ?? 0
+            for node in sinks where layerOf.indices.contains(node) { layerOf[node] = bottom + 1 }
+        }
         var chains = [[Int]](repeating: [], count: edges.count)
         var ordering: [(Int, Int)] = []
 

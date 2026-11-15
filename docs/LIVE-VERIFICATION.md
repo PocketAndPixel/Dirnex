@@ -105,6 +105,13 @@ so a trap goes here only if it can bite any live run; one tied to an area goes u
     Documents favorites reach the providers. Seeding both tabs at the fixture and `Dirnex.favorites` to
     the fixture alone (`-data`, with the copy quit) made a launch with no request in the log
     (`function=TCCAccessRequestIndirect` counts them).
+  - **With Oleg in a full-screen Space, the copy's menu reads as disabled and its verbs take the
+    front.** Seen 2026-11-15: the copy's window was off-Space and not main, so `app_menu` refused
+    View ▸ Quick View Panel as disabled, and `app_bring_to_current_space` cannot move a window into a
+    full-screen Space. `run operation "view.quickView"` worked and put the copy in front, and so did
+    a background click on the header's Page button and most `app_key down` presses on its file list.
+    Scrolling the preview did not. Read `lsappinfo front` after every step and put his app back with
+    `open -b`.
   - **`open -g` still put the copy in front.** Seen the same day, launched with `--env`: `lsappinfo
     front` named `app.dirnex.Dirnex.live`. So did a background double-click on a row, and F5's
     conflict dialog. Check the front after each, and put Oleg's app back with `open -b`.
