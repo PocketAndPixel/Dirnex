@@ -11,7 +11,9 @@ import Foundation
 /// too, because a diagram with no nodes is a blank rectangle, which is a worse answer than the
 /// source and a note.
 enum MermaidParser {
-    static func parse(_ fence: String) -> MermaidDiagram {
+    /// `clock` is asked by a gantt alone (`MermaidGanttClock`). Whether a gantt draws never
+    /// depends on it, so `MermaidRenderer.unsupportedType` asks without one.
+    static func parse(_ fence: String, clock: MermaidGanttClock = .none) -> MermaidDiagram {
         // Front matter first, so the type word is the one under it (`MermaidFrontMatter`).
         let source = MermaidFrontMatter.split(fence).body
         let lines = statements(in: source)
@@ -46,6 +48,15 @@ enum MermaidParser {
             return diagram.entities.isEmpty && diagram.groups.isEmpty
                 ? .unsupported(keyword)
                 : .entityRelationship(diagram)
+        case "gantt":
+            // A line per statement, as the gantt grammar has no `;` (`MermaidGanttParser`).
+            let unsplit = statements(in: source, separator: nil)
+            guard let parsed = MermaidGanttParser.parse(Array(unsplit.dropFirst())),
+                  !parsed.tasks.isEmpty,
+                  let gantt = try? MermaidGanttSchedule.resolve(parsed, clock: clock),
+                  gantt.tasks.contains(where: { $0.start != nil && $0.end != nil })
+            else { return .unsupported(keyword) }
+            return .gantt(gantt)
         default:
             return .unsupported(keyword)
         }

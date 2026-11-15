@@ -135,6 +135,7 @@ enum QuickViewMarkdownDiagram {
         .mm-marker-line { stroke: currentColor; stroke-width: 1.2; fill: none; }
         .mm-marker-hollow { fill: var(--background); stroke: currentColor; stroke-width: 1.2; }
         .mm-marker-filled { fill: currentColor; stroke: currentColor; stroke-width: 1.2; }
+        \(QuickViewMarkdownGantt.rules)
         p.mermaid-title { margin: 0 0 0.4em; font-weight: 600; text-align: center; }
         figcaption.mermaid-note {
           margin-top: 0.3em;

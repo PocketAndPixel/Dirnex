@@ -73,6 +73,17 @@ public struct MarkdownRenderOptions: Sendable {
     /// was written as.
     public var locateFile: @Sendable (String) -> String?
 
+    /// Now, for a gantt chart: its today line, and the date its tasks fall back on where Mermaid
+    /// takes today's (PLAN.md §M39 ▸ Slice 15).
+    ///
+    /// Handed in rather than read, so a render depends only on what it is given. The default is
+    /// none: no today line, and the chart drawn from the file's dates alone.
+    public var now: Date?
+
+    /// The zone whose wall clock `now`, a `Z` offset and a Unix timestamp are read in. A gantt's own
+    /// dates are wall clocks and never pass through it (`MermaidGanttTime`). UTC by default.
+    public var timeZone: TimeZone
+
     public init(
         resolveImageSource: @escaping @Sendable (String) -> String = { $0 },
         textMetric: MarkdownTextMetric = .fixedAdvance,
@@ -81,7 +92,9 @@ public struct MarkdownRenderOptions: Sendable {
         },
         diagramScale: Double = 1,
         alertTitle: @escaping @Sendable (MarkdownAlertKind) -> String = MarkdownRenderOptions.englishAlertTitle,
-        locateFile: @escaping @Sendable (String) -> String? = { _ in nil }
+        locateFile: @escaping @Sendable (String) -> String? = { _ in nil },
+        now: Date? = nil,
+        timeZone: TimeZone = TimeZone(secondsFromGMT: 0) ?? .current
     ) {
         self.resolveImageSource = resolveImageSource
         self.textMetric = textMetric
@@ -89,6 +102,8 @@ public struct MarkdownRenderOptions: Sendable {
         self.diagramScale = diagramScale
         self.alertTitle = alertTitle
         self.locateFile = locateFile
+        self.now = now
+        self.timeZone = timeZone
     }
 
     /// GitHub's own titles, which it draws in English whatever the reader's language.
