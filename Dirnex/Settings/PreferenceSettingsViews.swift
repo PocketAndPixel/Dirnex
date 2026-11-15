@@ -96,6 +96,8 @@ struct PanelsSettingsView: View {
 
             QuickViewFetchLimitSection(preferences: preferences)
 
+            SlideshowIntervalSection(preferences: preferences)
+
             RemoteRefreshSection(preferences: preferences)
 
             Section {

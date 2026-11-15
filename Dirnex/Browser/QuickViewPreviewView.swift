@@ -128,8 +128,8 @@ final class QuickViewPreviewView: NSView {
     /// The placeholder it was last showing, which is the *third* half of that identity — and the one
     /// the guard cannot do without once placeholders exist. Every un-fetched remote file resolves to
     /// a `nil` URL, so without this a step from one to the next is "already showing that" and the
-    /// card would go on naming the file the cursor has left.
-    private var loadedPlaceholder: RemotePreviewPlaceholder?
+    /// card would go on naming the file the cursor has left. Readable for `isAwaitingContent`.
+    private(set) var loadedPlaceholder: RemotePreviewPlaceholder?
     /// Set once the first `show` has run, so `show(nil)` on a fresh view still blanks the backends
     /// rather than being mistaken for "already showing nil".
     private var hasLoaded = false
@@ -168,6 +168,9 @@ final class QuickViewPreviewView: NSView {
     /// owns every rule about it. One stored property because a Swift extension cannot hold state,
     /// not because the concept belongs here.
     var flipGate = FlipGate()
+    /// Told each time a backend has put its content on screen (`contentDidLoad`), which is when a
+    /// slideshow's countdown may start (PLAN.md §M39 ▸ Slice 16). Set by the window's two surfaces.
+    var onContentDidLoad: (() -> Void)?
 
     /// `pageRecognizer` is what reads a PDF's scanned pages, handed on to the PDF surface when one
     /// is built. Defaulted, unlike `findOptions`, because it writes nothing outside the process —

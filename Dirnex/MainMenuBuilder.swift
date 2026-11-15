@@ -123,6 +123,7 @@ enum MainMenuBuilder {
             .command("view.sizeVisualization"), .subcommand("view.gitAwareSizes"), .separator,
             .command("view.quickLook"), .command("view.quickView"),
             .subcommand("view.quickViewFullWindow"), .subcommand("view.quickViewFullScreen"),
+            .subcommand("view.quickViewSlideshow"),
             .subcommand("view.quickViewSource"), .subcommand("view.quickViewRenderedPage"),
             .subcommand("view.downloadPreview"),
             .subcommand("view.quickViewZoomIn"), .keyAlias("view.quickViewZoomIn"),

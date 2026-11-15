@@ -644,6 +644,11 @@ so a trap goes here only if it can bite any live run; one tied to an area goes u
   thing.** Seen 2026-10-25 checking the compare window's quit prompt: ⌘Q came back "a system-level
   shortcut" needing the `systemKeyCombos` grant. The menu item runs the same `terminate:`, so
   `applicationShouldTerminate` asked exactly as the key would have.
+- **Under a full-size Quick View, background keys cannot reach the file list.** Seen 2026-11-15 on the
+  slideshow: `app_key right` aimed at the preview was refused (an `AXImage` that "cannot be sent that
+  key while Dirnex is in the background"), and the table that would take it is covered. ← / →, Tab and
+  Space are out of reach there; the size and slideshow verbs (`run operation`) and the header's buttons
+  are not, so drive those and pin the keys with a test.
 - **F-keys cannot be sent to a background app, and the function bar can be clicked instead.** `app_key
   f5` was refused outright (2026-10-23), while the bar's "F5 Copy" button took an `AXPress` and ran
   the shipped copy with no sheet. Put the cursor on the row with a click first.

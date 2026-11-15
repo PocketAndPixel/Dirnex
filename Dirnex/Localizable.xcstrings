@@ -101207,6 +101207,95 @@
         }
       }
     },
+    "Show each slideshow picture for (seconds)": {
+      "comment": "Settings ▸ Panels label for the field setting how long a Quick View slideshow shows each picture. The unit is inside the label so a translation can reorder the sentence.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Jedes Bild der Diashow zeigen für (Sekunden)"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Show each slideshow picture for (seconds)"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mostrar cada imagen del pase de diapositivas durante (segundos)"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Afficher chaque image du diaporama pendant (secondes)"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mostra ogni immagine della presentazione per (secondi)"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "スライドショーで各画像を表示する時間（秒）"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "슬라이드쇼에서 각 사진을 표시할 시간(초)"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Toon elke afbeelding van de diavoorstelling gedurende (seconden)"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pokazuj każdy obraz w pokazie slajdów przez (sekundy)"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mostrar cada imagem da apresentação por (segundos)"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Показывать каждое изображение слайд-шоу (секунд)"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Показувати кожне зображення слайд-шоу (секунд)"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "幻灯片放映中每张图片的显示时间（秒）"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "幻燈片秀中每張圖片的顯示時間（秒）"
+          }
+        }
+      }
+    },
     "Show every tag found while browsing": {
       "comment": "Tooltip on the sidebar's “All Tags…” row.",
       "localizations": {
@@ -102715,6 +102804,95 @@
           "stringUnit": {
             "state": "translated",
             "value": "略過備份"
+          }
+        }
+      }
+    },
+    "Slideshow": {
+      "comment": "Quick View header: shown beside the position while a slideshow runs.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diashow"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Slideshow"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pase de diapositivas"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diaporama"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Presentazione"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "スライドショー"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "슬라이드쇼"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diavoorstelling"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pokaz slajdów"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apresentação de Slides"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Слайд-шоу"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Слайд-шоу"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "幻灯片放映"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "幻燈片秀"
           }
         }
       }
@@ -104229,6 +104407,95 @@
           "stringUnit": {
             "state": "translated",
             "value": "停止"
+          }
+        }
+      }
+    },
+    "Stop Slideshow": {
+      "comment": "Quick View header: tooltip and accessibility label of the running slideshow's mark.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diashow beenden"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stop Slideshow"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Detener pase de diapositivas"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Arrêter le diaporama"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Interrompi presentazione"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "スライドショーを停止"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "슬라이드쇼 중단"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stop diavoorstelling"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zatrzymaj pokaz slajdów"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Parar Apresentação de Slides"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Остановить слайд-шоу"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Зупинити слайд-шоу"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "停止幻灯片放映"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "停止幻燈片秀"
           }
         }
       }
@@ -129520,6 +129787,95 @@
         }
       }
     },
+    "View ▸ Slideshow (⇧⌘S) steps through the pictures in the active pane, looping until you stop it. The time starts once a picture is on screen, so a large photo or one downloading from a server still gets all of it.": {
+      "comment": "Settings ▸ Panels footer under the slideshow interval field. ⇧⌘S is the command’s default shortcut.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Darstellung ▸ Diashow (⇧⌘S) zeigt die Bilder im aktiven Bereich nacheinander und beginnt am Ende von vorn, bis sie beendet wird. Die Zeit läuft ab dem Moment, in dem ein Bild zu sehen ist, sodass auch ein großes Foto oder eines, das von einem Server geladen wird, die volle Zeit bekommt."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "View ▸ Slideshow (⇧⌘S) steps through the pictures in the active pane, looping until you stop it. The time starts once a picture is on screen, so a large photo or one downloading from a server still gets all of it."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Visualización ▸ Pase de diapositivas (⇧⌘S) recorre las imágenes del panel activo y vuelve a empezar hasta que lo detengas. El tiempo empieza a contar cuando la imagen ya está en pantalla, así que una foto grande o una que se descarga de un servidor también lo tiene entero."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Présentation ▸ Diaporama (⇧⌘S) fait défiler les images du panneau actif, en boucle jusqu’à ce que vous l’arrêtiez. Le temps commence quand l’image est à l’écran : une grande photo ou une photo téléchargée depuis un serveur en profite donc entièrement."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vista ▸ Presentazione (⇧⌘S) scorre le immagini del pannello attivo, ripartendo dall’inizio finché non la interrompi. Il tempo parte quando l’immagine è sullo schermo, quindi anche una foto grande o scaricata da un server lo ha tutto."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "表示 ▸ スライドショー（⇧⌘S）は、アクティブなパネルの画像を順に表示し、停止するまで繰り返します。時間は画像が画面に表示されてから数えるので、大きな写真やサーバーからダウンロード中の画像でも全時間表示されます。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "보기 ▸ 슬라이드쇼(⇧⌘S)는 활성 패널의 사진을 차례로 보여 주며, 중단할 때까지 처음부터 반복합니다. 시간은 사진이 화면에 나타난 뒤부터 세므로, 큰 사진이나 서버에서 내려받는 사진도 정해진 시간을 모두 받습니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Weergave ▸ Diavoorstelling (⇧⌘S) toont de afbeeldingen in het actieve paneel na elkaar en begint opnieuw tot je hem stopt. De tijd loopt pas zodra een afbeelding in beeld is, dus ook een grote foto of een die van een server wordt gedownload krijgt de volle tijd."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Widok ▸ Pokaz slajdów (⇧⌘S) wyświetla po kolei obrazy z aktywnego panelu i zaczyna od nowa, dopóki go nie zatrzymasz. Czas liczy się od chwili, gdy obraz jest na ekranie, więc duże zdjęcie albo pobierane z serwera też dostaje go w całości."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Visualizar ▸ Apresentação de Slides (⇧⌘S) percorre as imagens do painel ativo e recomeça até você parar. O tempo começa a contar quando a imagem já está na tela, então uma foto grande ou uma baixada de um servidor também recebe o tempo todo."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Вид ▸ Слайд-шоу (⇧⌘S) по очереди показывает изображения активной панели и начинает сначала, пока его не остановить. Время отсчитывается с момента, когда изображение уже на экране, поэтому большое фото или загружаемое с сервера тоже получает его целиком."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Вигляд ▸ Слайд-шоу (⇧⌘S) по черзі показує зображення активної панелі й починає спочатку, доки його не зупинити. Час рахується від моменту, коли зображення вже на екрані, тож велике фото чи завантажуване із сервера теж отримує його повністю."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "显示 ▸ 幻灯片放映（⇧⌘S）会依次显示当前面板中的图片，循环播放直到你停止。计时从图片出现在屏幕上时开始，因此大照片或正从服务器下载的图片也能显示完整的时间。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "顯示 ▸ 幻燈片秀（⇧⌘S）會依序顯示目前面板中的圖片，循環播放直到你停止。計時從圖片出現在螢幕上時開始，因此大照片或正從伺服器下載的圖片也能顯示完整的時間。"
+          }
+        }
+      }
+    },
     "Waiting": {
       "comment": "Queue row status: the operation is queued but not yet started.",
       "localizations": {
@@ -152603,6 +152959,186 @@
           "stringUnit": {
             "state": "translated",
             "value": "重設縮放"
+          }
+        }
+      }
+    },
+    "command.view.quickViewSlideshow.keywords": {
+      "comment": "Extra command-palette search terms, comma-separated. Added to the English terms, not replacing them, so the English words keep working. Synonyms a user might type — not a translation of the title.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "diashow, fotos, bilder, abspielen, präsentation, folien, timer, schnellansicht, vorschau, shift cmd s"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "quick view, preview, photos, pictures, images, play, slides, timer, present, shift cmd s"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "presentación, diapositivas, fotos, imágenes, reproducir, temporizador, vista rápida, shift cmd s"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "diaporama, photos, images, lire, présentation, diapositives, minuteur, coup d’œil, shift cmd s"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "presentazione, diapositive, foto, immagini, riproduci, timer, anteprima rapida, shift cmd s"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "スライドショー, 写真, 画像, 再生, プレゼンテーション, タイマー, クイックビュー, shift cmd s"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "슬라이드쇼, 사진, 이미지, 재생, 프레젠테이션, 타이머, 빠른 보기, shift cmd s"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "diavoorstelling, foto’s, afbeeldingen, afspelen, presentatie, dia’s, timer, snelle weergave, shift cmd s"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "pokaz slajdów, slajdy, zdjęcia, obrazy, odtwórz, prezentacja, minutnik, szybki przegląd, shift cmd s"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "apresentação, slides, fotos, imagens, reproduzir, temporizador, visualização rápida, shift cmd s"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "слайд-шоу, слайды, фото, фотографии, изображения, картинки, показ, таймер, быстрый просмотр, shift cmd s"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "слайд-шоу, слайди, фото, фотографії, зображення, показ, таймер, швидкий перегляд, shift cmd s"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "幻灯片, 放映, 照片, 图片, 图像, 播放, 演示, 定时, 快速查看, shift cmd s"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "幻燈片, 播放, 照片, 圖片, 影像, 簡報, 計時, 快速查看, shift cmd s"
+          }
+        }
+      }
+    },
+    "command.view.quickViewSlideshow.title": {
+      "comment": "Menu and command-palette title for the “view.quickViewSlideshow” command.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diashow"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Slideshow"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pase de diapositivas"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diaporama"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Presentazione"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "スライドショー"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "슬라이드쇼"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diavoorstelling"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pokaz slajdów"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apresentação de Slides"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Слайд-шоу"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Слайд-шоу"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "幻灯片放映"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "幻燈片秀"
           }
         }
       }

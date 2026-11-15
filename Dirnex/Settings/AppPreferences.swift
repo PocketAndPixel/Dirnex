@@ -255,6 +255,12 @@ final class AppPreferences: ObservableObject {
         }
     }
 
+    /// Panels ▸ the seconds a Quick View slideshow shows each image (PLAN.md §M39 ▸ Slice 16); its
+    /// bookkeeping is in `AppPreferences+Slideshow`, for this file's length ceiling.
+    @Published var slideshowInterval: Int {
+        didSet { slideshowIntervalChanged(from: oldValue) }
+    }
+
     /// Panels ▸ the three colors the user owns (PLAN.md §M15 Slice 2), each as `#RRGGBB` or the
     /// empty string for **Follow System** — the default, so an untouched install renders exactly as
     /// it did before this setting existed and the default path stays AppKit's own drawing.
@@ -443,6 +449,7 @@ final class AppPreferences: ObservableObject {
             (defaults.object(forKey: Keys.remoteRefreshFloor) as? NSNumber)?.doubleValue
                 ?? RemoteRefreshPolicy.defaultFloor
         )
+        slideshowInterval = Self.storedSlideshowInterval(in: defaults)
         // Empty (never written) = the source, the shipped default, and so is anything an
         // older/newer build can't parse.
         quickViewRenderStyle = QuickViewRenderStyle(

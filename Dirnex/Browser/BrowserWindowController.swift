@@ -68,6 +68,10 @@ final class BrowserWindowController: NSWindowController, PanelHost, PaneKeyWindo
     /// `trackQuickViewSwipe`. `nil` whenever no gesture is being finished.
     var quickViewSwipeAmountAtLift: CGFloat?
 
+    /// The slideshow running in this window, if any (⇧⌘S, PLAN.md §M39 ▸ Slice 16). Driven from
+    /// `BrowserWindowController+Slideshow`.
+    var quickViewSlideshow: QuickViewSlideshow?
+
     /// Archive members extracted for preview (Quick Look ⌘Y / Quick View ⌃Q inside a browsed
     /// archive), shared across both panes and both surfaces (PLAN.md §M4 "Quick Look inside").
     let archivePreviewCache = ArchivePreviewCache()

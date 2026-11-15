@@ -668,6 +668,7 @@ the agent and adds a last-opened date, and it names a Live Photo's movie `.mov` 
 | Functionality | Local | Cloud mount | Archive | SFTP | FTP | WebDAV | S3 | S3 acct | Photos | Results | Trash |
 |---|---|---|---|---|---|---|---|---|---|---|---|
 | Quick View pane / full size (`⌃Q`) | yes | yes | yes, limited<sup>r, ddd</sup> | yes, limited<sup>s</sup> | yes, limited<sup>s</sup> | yes, limited<sup>s</sup> | yes, limited<sup>s</sup> | n/a | yes, limited<sup>s</sup> | yes | yes |
+| A slideshow through the active pane's pictures (View ▸ Slideshow, `⇧⌘S`)<sup>aav</sup> | yes | yes | yes, limited<sup>aav</sup> | yes, limited<sup>aav</sup> | yes, limited<sup>aav</sup> | yes, limited<sup>aav</sup> | yes, limited<sup>aav</sup> | n/a | yes, limited<sup>aav</sup> | yes | yes |
 | Quick Look (`⌘Y`) | yes | yes | yes, limited<sup>r, ddd</sup> | yes, limited<sup>s</sup> | yes, limited<sup>s</sup> | yes, limited<sup>s</sup> | yes, limited<sup>s</sup> | n/a | yes, limited<sup>s</sup> | yes | yes |
 | Syntax highlighting, Markdown, diagrams in preview | yes | yes | yes | yes | yes | yes | yes | n/a | n/a | yes | yes |
 | The images a Markdown file names beside it, drawn in its page<sup>aat</sup> | yes | yes | **no**<sup>aat</sup> | **no**<sup>aat</sup> | **no**<sup>aat</sup> | **no**<sup>aat</sup> | **no**<sup>aat</sup> | n/a | n/a | yes, limited<sup>aat</sup> | yes |
@@ -993,6 +994,15 @@ cloud mount, SFTP, FTP, WebDAV or S3 alike. A browsed archive or a results listi
 is refused before the sheet, since an export is a copy and not an add. HTML is one file with the preview's images inlined (<sup>aat</sup>); a PDF is that
 page printed on the user's paper in the light palette, with no remote image, as the preview draws none.
 The whole file is exported up to 64 MB, where the preview reads 4.
+
+<sup>aav</sup> Since 2026-11-15 (PLAN.md §M39 ▸ Slice 16). A timer that steps the pane's cursor to the next
+picture at full size, so it reaches every location the cursor and Quick View do: the pictures are
+chosen by name, with no request, and each is brought to the preview as a cursor step brings it. That is
+the limit: on a server each picture is downloaded as the show reaches it, up to the size Quick View
+fetches on its own (<sup>s</sup>), and in an archive extracted (<sup>r</sup>), and a picture's turn
+starts once it is on screen, so a slow link slows the show rather than skipping pictures. A picture over
+that size shows its card for its turn and the show goes on. A results listing walks its pictures across
+the folders they came from.
 
 ## 4. Find Files (`⌥F7`)
 

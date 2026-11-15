@@ -26,6 +26,7 @@ extension AppPreferences {
         static let syntaxTheme = "Dirnex.pref.syntaxTheme"
         static let quickViewFetchLimit = "Dirnex.pref.quickViewFetchLimit"
         static let remoteRefreshFloor = "Dirnex.pref.remoteRefreshFloor"
+        static let slideshowInterval = "Dirnex.pref.slideshowInterval"
         static let accentColorHex = "Dirnex.pref.accentColorHex"
         static let cursorColorHex = "Dirnex.pref.cursorColorHex"
         static let markColorHex = "Dirnex.pref.markColorHex"

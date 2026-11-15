@@ -18,6 +18,13 @@ extension QuickViewPreviewView {
         set { headerView?.onPickStyle = newValue }
     }
 
+    /// What a click on the header's slideshow indicator does: stop the show, as ⇧⌘S would. Set by the
+    /// window for its two surfaces; the pane's never shows the indicator (PLAN.md §M39 ▸ Slice 16).
+    var onStopSlideshow: (() -> Void)? {
+        get { headerView?.onStopSlideshow }
+        set { headerView?.onStopSlideshow = newValue }
+    }
+
     // MARK: - The floating header's fade
 
     /// How long the floating header stays up after the pointer last moved.
@@ -45,8 +52,10 @@ extension QuickViewPreviewView {
     }
 
     /// Fade the floating header in and arm its fade-out. Every movement restarts the delay, so the
-    /// strip stays up while the pointer is busy and goes away once it settles.
-    private func revealFloatingHeader() {
+    /// strip stays up while the pointer is busy and goes away once it settles. Internal, since a
+    /// slideshow starting or stopping brings it up too, so the change is seen
+    /// (`BrowserWindowController+Slideshow`). A no-op under a pinned header.
+    func revealFloatingHeader() {
         guard let headerView, headerStyle == .floating else { return }
         headerFadeGeneration += 1
         headerView.animator().alphaValue = 1
