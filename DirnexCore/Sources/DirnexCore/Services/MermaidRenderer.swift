@@ -39,6 +39,12 @@ enum MermaidRenderer {
                 svg: MermaidSequenceSVG.svg(drawing, scale: options.diagramScale),
                 undrawn: diagram.undrawn
             )
+        case let .state(diagram):
+            let drawing = MermaidStateLayout.lay(out: diagram, metric: options.textMetric)
+            return Output(
+                svg: MermaidStateSVG.svg(drawing, scale: options.diagramScale),
+                undrawn: diagram.undrawn
+            )
         case .unsupported:
             return nil
         }

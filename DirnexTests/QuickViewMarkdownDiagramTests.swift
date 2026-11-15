@@ -44,6 +44,27 @@ struct QuickViewMarkdownDiagramTests {
         Note over U,Robot: a note
         U-xRobot: cancel
     ```
+
+    ```mermaid
+    stateDiagram-v2
+        [*] --> Idle
+        Idle --> Idle : tick
+        state fork_state <<fork>>
+        state if_state <<choice>>
+        Idle --> fork_state : go
+        fork_state --> Active
+        Active --> if_state
+        if_state --> [*]
+        Busy : waiting
+        Busy : on a lock
+        if_state --> Busy
+        note right of Busy : a note
+        state Active {
+            [*] --> NumLockOff
+            --
+            [*] --> CapsLockOff
+        }
+    ```
     """
 
     private func render(_ source: String) -> String {
@@ -73,7 +94,9 @@ struct QuickViewMarkdownDiagramTests {
     ///
     /// A short, closed list on purpose. Exempting a class is then a deliberate edit here, which is
     /// the whole value of the sweep above: a class arriving with no rule and no entry fails.
-    private static let hooks: Set<String> = ["mermaid-flowchart", "mermaid-sequence"]
+    private static let hooks: Set<String> = [
+        "mermaid-flowchart", "mermaid-sequence", "mermaid-state"
+    ]
 
     @Test("the diagram rules reach the page the preview actually loads")
     func rulesAreInTheDocument() {
@@ -123,8 +146,8 @@ struct QuickViewMarkdownDiagramTests {
 
     @Test("an undrawn type is named, in the app's words rather than the core's")
     func undrawnTypeIsNamed() {
-        let output = render("```mermaid\nstateDiagram-v2\n[*] --> Still\n```")
-        #expect(output.contains(QuickViewMarkdownDiagram.describeUndrawn("stateDiagram-v2")))
+        let output = render("```mermaid\njourney\ntitle My day\n```")
+        #expect(output.contains(QuickViewMarkdownDiagram.describeUndrawn("journey")))
         // And the source is still there to read, which is what makes the fallback honest.
         #expect(output.contains("<pre>"))
     }

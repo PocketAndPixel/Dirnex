@@ -29,9 +29,11 @@ struct MermaidParserTests {
         }
         // The subset's boundary, and it is loud on purpose: the *word the file wrote* comes back,
         // so the page can name it rather than saying "unsupported diagram".
-        #expect(
-            MermaidParser.parse("stateDiagram-v2\n[*] --> Still") == .unsupported("stateDiagram-v2")
-        )
+        // The state dialect's own cases are in `MermaidStateParserTests`.
+        if case .state = MermaidParser.parse("stateDiagram-v2\n[*] --> Still") {} else {
+            Issue.record("stateDiagram-v2 did not route to the state parser")
+        }
+        #expect(MermaidParser.parse("journey\ntitle My day") == .unsupported("journey"))
         #expect(MermaidParser.parse("gantt\ntitle A") == .unsupported("gantt"))
         #expect(
             MermaidParser.parse("classDiagram\nAnimal <|-- Duck") == .unsupported("classDiagram")

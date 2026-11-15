@@ -27,21 +27,31 @@ enum MermaidParser {
         case "sequencediagram":
             let sequence = MermaidSequenceParser.parse(Array(lines.dropFirst()))
             return sequence.participants.isEmpty ? .unsupported(keyword) : .sequence(sequence)
+        case "statediagram", "statediagram-v2":
+            // Read again without the `;` split, which the state grammar does not have
+            // (`MermaidStateParser`).
+            let unsplit = statements(in: source, separator: nil)
+            let diagram = MermaidStateParser.parse(Array(unsplit.dropFirst()))
+            return diagram.states.isEmpty ? .unsupported(keyword) : .state(diagram)
         default:
             return .unsupported(keyword)
         }
     }
 
-    /// The fence's statements: comments and blank lines gone, indentation gone, and a line ending in
-    /// a `;` separator split into the statements it holds.
+    /// The fence's statements: comments and blank lines gone, indentation gone, and a line holding
+    /// a `separator` split into the statements it holds — `;` unless the dialect has none.
     ///
     /// `%%` is mermaid's comment and it is stripped **outside quotes**, so a node label reading
     /// `A["100%% done"]` keeps its text. The same care is why the split on `;` is not a plain
     /// `components(separatedBy:)`.
-    static func statements(in source: String) -> [String] {
+    static func statements(in source: String, separator: Character? = ";") -> [String] {
         source
             .split(whereSeparator: \.isNewline)
-            .flatMap { splitOutsideQuotes(stripComment(String($0)), on: ";") }
+            .flatMap { line -> [String] in
+                let text = stripComment(String(line))
+                guard let separator else { return [text] }
+                return splitOutsideQuotes(text, on: separator)
+            }
             .map { $0.trimmingCharacters(in: .whitespaces) }
             .filter { !$0.isEmpty }
     }
