@@ -24,6 +24,10 @@ struct QuickViewCaption: Equatable {
     /// its scripts simply shows less, with nothing to say why. Only meaningful alongside `style`,
     /// and only in `.rendered`, where scripts would otherwise have run.
     var javaScriptDisabled = false
+    /// Whether a slideshow is stepping through the pane (PLAN.md §M39 ▸ Slice 16), which the header
+    /// says beside the position so a picture that changes on its own does not look like a fault. Set
+    /// by the window, which runs the show.
+    var isSlideshowRunning = false
 
     /// "3 of 42" — the position half of the header, rendered beside the name.
     var positionText: String {
@@ -44,6 +48,14 @@ final class QuickViewHeaderView: NSVisualEffectView {
 
     private let nameLabel = NSTextField(labelWithString: "")
     private let positionLabel = NSTextField(labelWithString: "")
+    /// "▶ Slideshow" just before the position while a show runs, nothing otherwise; a click stops the
+    /// show, as ⇧⌘S does (PLAN.md §M39 ▸ Slice 16). Internal, for the tests.
+    let slideshowButton = NSButton()
+    /// What a click on `slideshowButton` does. Set by whoever owns the surface, like `onClose`.
+    var onStopSlideshow: (() -> Void)?
+    /// Keeps the close button clear of `slideshowButton`, and is active only while the mark is shown:
+    /// a hidden view still takes part in layout, and would cut a long name short for nothing.
+    private var closeClearsSlideshow: NSLayoutConstraint?
     /// "1 Source · 2 Page" for a file that offers both, nothing for every other file. The only place
     /// the two keys announce themselves, so it names *both* and dims the one you are not in rather
     /// than naming only the alternative — which reads as a label for what you are looking at.
@@ -76,6 +88,9 @@ final class QuickViewHeaderView: NSVisualEffectView {
             guard caption != oldValue else { return }
             nameLabel.stringValue = caption?.name ?? ""
             positionLabel.stringValue = caption?.positionText ?? ""
+            let showsSlideshow = caption?.isSlideshowRunning == true
+            slideshowButton.isHidden = !showsSlideshow
+            closeClearsSlideshow?.isActive = showsSlideshow
             showStyles(of: caption)
         }
     }
@@ -91,6 +106,7 @@ final class QuickViewHeaderView: NSVisualEffectView {
         buildStyleStrip()
         buildLabels()
         buildCloseButton()
+        buildSlideshowButton()
     }
 
     @available(*, unavailable)
@@ -165,6 +181,57 @@ final class QuickViewHeaderView: NSVisualEffectView {
 
     @objc private func closeClicked(_ sender: NSButton) {
         onClose?()
+    }
+
+    /// "▶ Slideshow", in the position's size and color with the play glyph ahead of it, hidden until
+    /// a caption says a show is running. A borderless button so a hand on the trackpad can stop the
+    /// show, which otherwise only a key does. The position stays where it always was, at the edge.
+    private func buildSlideshowButton() {
+        let label = String(
+            localized: "Slideshow",
+            comment: "Quick View header: shown beside the position while a slideshow runs."
+        )
+        let stop = String(
+            localized: "Stop Slideshow",
+            comment: "Quick View header: tooltip and accessibility label of the running slideshow's mark."
+        )
+        slideshowButton.attributedTitle = NSAttributedString(
+            string: label,
+            attributes: [
+                .font: NSFont.systemFont(ofSize: NSFont.smallSystemFontSize),
+                .foregroundColor: NSColor.secondaryLabelColor
+            ]
+        )
+        slideshowButton.image = NSImage(systemSymbolName: "play.fill", accessibilityDescription: nil)?
+            .withSymbolConfiguration(.init(pointSize: 8, weight: .regular))
+        slideshowButton.imagePosition = .imageLeading
+        slideshowButton.imageHugsTitle = true
+        slideshowButton.contentTintColor = .secondaryLabelColor
+        slideshowButton.isBordered = false
+        slideshowButton.toolTip = stop
+        slideshowButton.setAccessibilityLabel(stop)
+        // A click must not take focus: the arrow keys keep driving the file list under the preview.
+        slideshowButton.refusesFirstResponder = true
+        slideshowButton.target = self
+        slideshowButton.action = #selector(slideshowClicked(_:))
+        slideshowButton.isHidden = true
+        slideshowButton.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(slideshowButton)
+        NSLayoutConstraint.activate([
+            slideshowButton.trailingAnchor.constraint(
+                equalTo: positionLabel.leadingAnchor,
+                constant: -10
+            ),
+            slideshowButton.centerYAnchor.constraint(equalTo: centerYAnchor)
+        ])
+        closeClearsSlideshow = closeButton.trailingAnchor.constraint(
+            lessThanOrEqualTo: slideshowButton.leadingAnchor,
+            constant: -12
+        )
+    }
+
+    @objc private func slideshowClicked(_ sender: NSButton) {
+        onStopSlideshow?()
     }
 
     /// Keep the buttons out of reach while a floating header is faded out. A view at zero alpha is

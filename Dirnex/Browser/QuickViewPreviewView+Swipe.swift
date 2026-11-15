@@ -28,6 +28,15 @@ extension QuickViewPreviewView {
         flipGate.pending = nil
         flipGate.generation += 1
         waiting?()
+        onContentDidLoad?()
+    }
+
+    /// Whether the file handed over last is still on its way to the screen: a backend reading or
+    /// decoding it, or a placeholder card whose download is running. A slideshow counts a picture's
+    /// turn from when this goes false (PLAN.md §M39 ▸ Slice 16). A card that is not downloading is
+    /// all there will be, so it counts as there.
+    var isAwaitingContent: Bool {
+        flipGate.isLoading || loadedPlaceholder?.state == .downloading
     }
 
     /// Drop a page turn that is still waiting, so it cannot land on a surface that has moved on.

@@ -815,7 +815,60 @@ Decided before Slice 1 (2026-11-12, Oleg, on the probes above):
    Mermaid draws it** (Oleg's call after the slice): a chart within one day and no `axisFormat` writes
    the same date on every tick, since Mermaid's default format is `%Y-%m-%d` whatever the
    `dateFormat`; the file's author can name one.
-16. **The slideshow timer.**
+16. **The slideshow timer.** **Landed 2026-11-15.** Oleg's four calls when it opened: **the key works
+   from anywhere**, opening full screen when Quick View is off or at pane size, as Preview's does, and
+   running in full window when that is up; the interval is **a setting**, five seconds by default
+   (Settings ▸ Panels, 1–60, `Dirnex.pref.slideshowInterval`); the show **loops**; and a step of the
+   user's own (← / →, a swipe, Space) **carries on** from where it lands. Two more after trying it in full
+   screen: the key is **⇧⌘S**, not Preview's ⇧⌘F the first version took, and the second press **ends the
+   show only**, where the first version also put a show started from the list back in the list. **Probed
+   first**, Preview.app read from its own bundle: its menu nib binds Slideshow to ⇧⌘F, and its
+   `_startAutoplayTimer` schedules a repeating 5.0 s `NSTimer`, which is where the default comes from.
+   In the file table bare letters type into the filter and Space marks, so the key had to be a chord;
+   ⇧⌘S sits beside ⌘S (Save Search), ⌃⌘S and ⌥⌘S, and no window handles S itself.
+   `ProcessInfo.beginActivity(.idleDisplaySleepDisabled)` shows in `pmset -g assertions` as
+   PreventUserIdleDisplaySleep under its reason, so keeping the screen awake is measurable.
+   **The core** (`Slideshow`): a row is a slide when it is a file, or a link to one, whose name types as
+   `public.image` (the preview's own test, so RAW, SVG and HEIC are in, PDF and video out) or as a GoPro
+   RAW; by name, so choosing the next stop costs no request on a server or in an archive. `firstSlide`
+   opens on the cursor's own picture or the next one, `nextSlide` wraps, a lone picture is its own next.
+   **The app**: `QuickViewSlideshow` holds the countdown, which **starts once the picture is on screen**
+   (the surface's `isAwaitingContent`: a backend decoding, or a placeholder card whose download runs;
+   a card waiting to be asked counts as there, so a file over the fetch limit shows its card for its turn
+   and the show goes on), restarts on **any change of file** whoever made it, and reads the interval each
+   time it starts, so a new setting applies from the next picture. It holds the display-sleep activity
+   while it runs. The window (`BrowserWindowController+Slideshow`) follows every full-size delivery and the
+   surface's new `onContentDidLoad`; Tab to the other pane or a folder entered or left ends the show,
+   as do Esc and leaving full size; ⇧⌘S's stop and the header's mark end the show only, and Quick View
+   stays on the picture the show reached, at whatever size it opened from. The page turn is ← / →'s flip, always from the right, the wrap included. The header marks a running
+   show with "▶ Slideshow" before the position, a click on which stops it; View ▸ Slideshow checks itself
+   while it runs and is enabled when the active pane has a picture. Six strings in 14 languages, the
+   title Preview's own word in each (its `MainMenu.loctable`). LOCATION-SUPPORT.md <sup>aav</sup>. 13 core
+   tests and 15 app tests in two suites (`QuickViewSlideshowTests`, with a clock the test ends by hand
+   and the power manager's own assertion list; `QuickViewSlideshowSurfaceTests`). Negative controls, 17,
+   each failing its own tests: no wait for the picture, a restart on every delivery, none on a step, no
+   activity, a lone picture not counting again, the interval read once, the folder ignored, the download
+   card not awaited, no announcement on load, the mark never shown, `integer(forKey:)` for the setting,
+   no clamp; and in the core no wrap, no kind check, no GoPro name, no low clamp, and opening past the
+   cursor's own picture. One passed and went: lowercasing the extension, since `UTType` matches any
+   case. **Run live** in `app.dirnex.Dirnex.live`, full window, dark appearance, with the cloud guard
+   in and seeded at a fixture of five numbered pictures (PNG, JPEG, HEIC) between a text file, a
+   Markdown file and a folder named `d-folder.jpg`: View ▸ Slideshow listed under the three sizes;
+   `run operation "view.quickViewSlideshow"` in full window opened past the folder on picture 1, the
+   header read "▶ Slideshow  2 of 8", and `pmset -g assertions` named "Quick View slideshow" for the
+   copy's pid, display and system; the pictures came 1 to 5 and back to 1, never a document or the
+   folder; the Settings row stepped from the seeded 2 s to 8, was saved, and the next picture held for
+   7–10 s; a click on the mark stopped the show, released both assertions and left full window up;
+   started again, leaving full window ended it and released them, the cursor left on the picture it
+   reached; and from the other pane, an empty folder, the verb started nothing. Oleg ran the full-screen
+   path himself, from the list, which is what asked for the two later calls. **Run again after them**,
+   in full screen at Oleg's go, from the list with Quick View off: the verb entered the full-screen
+   Space (1728 × 1084 under the camera band), the show ran on black and took the display hold; the
+   second press released it and left full screen up on the picture reached, the header shown for a
+   moment with no mark, and nothing moved over the next 17 s; the size's own verb then left the Space.
+   **Not run live**: a manual step and Tab ending the show, since background keys cannot reach the table
+   under the preview (their tests cover them); a server or archive location, which reach the same
+   path through the cursor and its fetch; the light appearance; a translation.
 
 #### M40 — Everything else (M)
 

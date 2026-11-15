@@ -25,6 +25,7 @@ extension BrowserWindowController {
         preview.onPickStyle = { [weak self] in self?.setQuickViewRenderStyle($0) }
         preview.links.follow = { [weak self] in self?.followQuickViewLink($0, from: $1, on: $2) }
         preview.links.namesListed = { [weak self] in self?.quickViewNamesListed(beside: $0) ?? [] }
+        followSlideshow(on: preview)
         let panes = panesSplitViewController.view
         install(preview, pinnedTo: panes)
         fullWindowPreview = preview
@@ -47,6 +48,7 @@ extension BrowserWindowController {
         preview.onPickStyle = { [weak self] in self?.setQuickViewRenderStyle($0) }
         preview.links.follow = { [weak self] in self?.followQuickViewLink($0, from: $1, on: $2) }
         preview.links.namesListed = { [weak self] in self?.quickViewNamesListed(beside: $0) ?? [] }
+        followSlideshow(on: preview)
         guard let content = window?.contentView else { return preview }
         // Without this the fading header never appears: a window does not post mouse-moved events
         // by default, so the tracking area that reveals the strip is never told the pointer moved.
@@ -76,6 +78,16 @@ extension BrowserWindowController {
         let band = screen.frame.maxY - window.frame.maxY
         let menuBar = NSApp.mainMenu?.menuBarHeight ?? 0
         return max(0, menuBar - band)
+    }
+
+    /// Let a slideshow hear when `preview` has a picture on screen, and stop from its header's mark
+    /// (PLAN.md §M39 ▸ Slice 16). Only the two full sizes: a slideshow never runs at pane size.
+    private func followSlideshow(on preview: QuickViewPreviewView) {
+        preview.onContentDidLoad = { [weak self, weak preview] in
+            guard let self else { return }
+            quickViewSlideshowSurfaceDidUpdate(preview, from: focusedPanel)
+        }
+        preview.onStopSlideshow = { [weak self] in self?.stopQuickViewSlideshow() }
     }
 
     /// Add `preview` to the window's content view and pin it over `anchor`'s bounds. Added last so
@@ -333,12 +345,10 @@ extension BrowserWindowController {
 extension BrowserWindowController: NSMenuItemValidation {
     func validateMenuItem(_ menuItem: NSMenuItem) -> Bool {
         switch menuItem.action {
-        case #selector(toggleQuickViewPanel(_:)):
-            menuItem.state = quickViewMode == .pane ? .on : .off
-        case #selector(toggleQuickViewFullWindow(_:)):
-            menuItem.state = quickViewMode == .fullWindow ? .on : .off
-        case #selector(toggleQuickViewFullScreen(_:)):
-            menuItem.state = quickViewMode == .fullScreen ? .on : .off
+        // The three sizes and the slideshow, in one case for cyclomatic complexity (docs/NOTES.md).
+        case #selector(toggleQuickViewPanel(_:)), #selector(toggleQuickViewFullWindow(_:)),
+             #selector(toggleQuickViewFullScreen(_:)), #selector(toggleQuickViewSlideshow(_:)):
+            return validateQuickViewSizeItem(menuItem)
         case #selector(showQuickViewSource(_:)), #selector(showQuickViewRenderedPage(_:)):
             let style: QuickViewRenderStyle = menuItem.action == #selector(showQuickViewSource(_:))
                 ? .source : .rendered
@@ -371,6 +381,25 @@ extension BrowserWindowController: NSMenuItemValidation {
         default:
             break
         }
+        return true
+    }
+}
+
+extension BrowserWindowController {
+    /// The three sizes check themselves as one exclusive set, and Slideshow checks itself while a show
+    /// runs. The sizes are always enabled; Slideshow is enabled while it runs, so it can be stopped,
+    /// and otherwise when the active pane has a picture to show (PLAN.md §M39 ▸ Slice 16).
+    func validateQuickViewSizeItem(_ menuItem: NSMenuItem) -> Bool {
+        let on: Bool
+        switch menuItem.action {
+        case #selector(toggleQuickViewPanel(_:)): on = quickViewMode == .pane
+        case #selector(toggleQuickViewFullWindow(_:)): on = quickViewMode == .fullWindow
+        case #selector(toggleQuickViewFullScreen(_:)): on = quickViewMode == .fullScreen
+        default:
+            menuItem.state = quickViewSlideshow != nil ? .on : .off
+            return quickViewSlideshow != nil || canStartQuickViewSlideshow
+        }
+        menuItem.state = on ? .on : .off
         return true
     }
 }

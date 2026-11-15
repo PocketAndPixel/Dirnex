@@ -56,6 +56,8 @@ extension BrowserWindowController {
 
     func setQuickViewMode(_ mode: QuickViewMode) {
         guard mode != quickViewMode else { return }
+        // A slideshow runs at full size, so the pane size or none ends it (PLAN.md §M39 ▸ Slice 16).
+        if !mode.isFullSize { stopQuickViewSlideshow() }
         quickViewMode = mode
         // Before the surfaces are reconciled, so the window is already resizing into (or out of)
         // the full-screen space while the preview lays itself out at the size it will land at.
@@ -110,8 +112,8 @@ extension BrowserWindowController {
     /// Re-state the visible header, because the JavaScript mark lives in its caption and the reload
     /// above says nothing about it. Only the caption is touched: re-delivering would ask the surface
     /// to show a file it is already showing, which it rightly skips, and the page has just been
-    /// reloaded by the loop above anyway.
-    private func refreshQuickViewCaption() {
+    /// reloaded by the loop above anyway. Internal, since a slideshow's mark lives there too.
+    func refreshQuickViewCaption() {
         let preview = quickViewMode == .pane
             ? counterpart(of: focusedPanel).quickViewPreview
             : activeFullSizePreview
@@ -232,7 +234,10 @@ extension BrowserWindowController {
         // The full-size surfaces sit over the *focused* table, so anything a backend does with
         // first responder as it loads would silently turn ↑/↓ into document scrolling — the mode's
         // whole point, lost. Re-assert the table after every show.
-        if quickViewMode.isFullSize { restoreTableFocus(to: active) }
+        if quickViewMode.isFullSize {
+            restoreTableFocus(to: active)
+            quickViewSlideshowSurfaceDidUpdate(activeFullSizePreview, from: active)
+        }
     }
 
     /// What the placeholder card's controls do, bound to the pane whose cursor it is standing in for.
@@ -319,6 +324,7 @@ extension BrowserWindowController {
         from active: PanelViewController
     ) -> QuickViewCaption? {
         var caption = active.quickViewCaption
+        caption?.isSlideshowRunning = quickViewSlideshow != nil
         guard let url, let kind = QuickViewPreviewView.dualStyleKind(of: url) else {
             caption?.style = nil
             return caption
