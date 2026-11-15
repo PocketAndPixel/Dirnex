@@ -65,6 +65,37 @@ struct QuickViewMarkdownDiagramTests {
             [*] --> CapsLockOff
         }
     ```
+
+    ```mermaid
+    ---
+    title: Shapes
+    ---
+    classDiagram
+        namespace Geometry {
+            class Shape~T~ {
+                <<interface>>
+                +int id$
+                +area()* double
+            }
+        }
+        Shape "1" <|-- "*" Circle : is a
+        Circle *-- Point
+        Circle o-- Style
+        Circle ..> Canvas
+        Circle --() Drawable
+        note for Circle "round"
+    ```
+
+    ```mermaid
+    erDiagram
+        subgraph Sales
+            CUSTOMER ||--o{ ORDER : places
+        end
+        ORDER }|..|{ PROMO : uses
+        CUSTOMER {
+            string id PK "the key"
+        }
+    ```
     """
 
     private func render(_ source: String) -> String {
@@ -95,7 +126,7 @@ struct QuickViewMarkdownDiagramTests {
     /// A short, closed list on purpose. Exempting a class is then a deliberate edit here, which is
     /// the whole value of the sweep above: a class arriving with no rule and no entry fails.
     private static let hooks: Set<String> = [
-        "mermaid-flowchart", "mermaid-sequence", "mermaid-state"
+        "mermaid-flowchart", "mermaid-sequence", "mermaid-state", "mermaid-class", "mermaid-er"
     ]
 
     @Test("the diagram rules reach the page the preview actually loads")
@@ -130,6 +161,18 @@ struct QuickViewMarkdownDiagramTests {
             .contains(
                 ".mm-label { fill: currentColor; font-size: \(QuickViewMarkdownDiagram.labelSize)px; }"
             ))
+    }
+
+    @Test("a class name is measured in the bold face the stylesheet draws it in")
+    func boldMetricAgrees() {
+        // Measured bold and drawn regular would leave a box too wide; measured regular and drawn
+        // bold, a name spilling out of it. Both halves name the same face (§M39 ▸ Slice 14).
+        let metric = QuickViewMarkdownDiagram.metric
+        #expect(metric.boldWidth("CredentialDescription") > metric.width("CredentialDescription"))
+        let bold = NSFont.boldSystemFont(ofSize: QuickViewMarkdownDiagram.labelSize)
+        let expected = Double(("Shape" as NSString).size(withAttributes: [.font: bold]).width)
+        #expect(metric.boldWidth("Shape") == expected)
+        #expect(QuickViewMarkdownDiagram.rules.contains(".mm-class-name { font-weight: bold; }"))
     }
 
     @Test("measuring is safe off the main actor, which is where the render runs")

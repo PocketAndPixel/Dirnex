@@ -18,6 +18,10 @@ struct MermaidStateRegionLayout {
     /// Each member's notes' boxes, aligned with the state's own `notes`.
     let notes: [[MermaidRect]]
     let links: [Link]
+    /// Per crossing transition leaving this region, the path from its member out to its port, and
+    /// per one entering, from its port in to its member, the port included (`MermaidStatePort`).
+    var exitPaths: [Int: [MermaidPoint]] = [:]
+    var entryPaths: [Int: [MermaidPoint]] = [:]
 }
 
 /// One or more regions beside each other, under a title or not: a composite's inside, or the whole
@@ -42,7 +46,7 @@ struct MermaidStateSlot {
 }
 
 extension MermaidStatePass {
-    static let spacing = MermaidLayered.Spacing(rankGap: 16, crossGap: 20, margin: 10)
+    static let standardSpacing = MermaidLayered.Spacing(rankGap: 16, crossGap: 20, margin: 10)
     /// Ordering and balancing sweeps, alternating down and up.
     static let sweeps = 8
     static let padX = 12.0
@@ -124,15 +128,8 @@ extension MermaidStatePass {
         let local = Dictionary(uniqueKeysWithValues: members.enumerated().map { ($1, $0) })
         let slots = members.map { slot(for: $0, direction: direction) }
         let links = linksIn[scope] ?? []
-        let ranking = MermaidLayering.rank(
-            count: members.count,
-            edges: links.map { link in
-                guard let from = local[link.from], let to = local[link.to] else { return nil }
-                return (from: from, to: to)
-            },
-            stride: 2,
-            sweeps: Self.sweeps
-        )
+        let ports = portsIn[scope] ?? []
+        let ranking = Self.rank(members: members.count, local: local, links: links, ports: ports)
         var sizes = slots.map(\.size) + Array(
             repeating: MermaidSize(width: 1, height: 0),
             count: ranking.layerOf.count - members.count
@@ -161,7 +158,7 @@ extension MermaidStatePass {
             ranking.layers,
             sizes: sizes,
             direction: direction,
-            spacing: Self.spacing,
+            spacing: spacing,
             balance: MermaidLayered.Balance(
                 segments: ranking.segments,
                 anchors: anchors,
@@ -169,7 +166,7 @@ extension MermaidStatePass {
             )
         )
         let corners = placement.frames.map { MermaidPoint(x: $0.x, y: $0.y) }
-        let layout = MermaidStateRegionLayout(
+        var layout = MermaidStateRegionLayout(
             size: MermaidSize(width: placement.width, height: placement.height),
             members: members,
             frames: members.indices.map { slots[$0].node.offset(by: corners[$0]) },
@@ -184,8 +181,59 @@ extension MermaidStatePass {
                 )
             }
         )
+        for (offset, port) in ports.enumerated() {
+            let path = Self.path(
+                of: port,
+                chain: ranking.chains[links.count + offset].map { placement.frames[$0].center },
+                at: placement.frames[members.count + offset].center
+            )
+            if port.isExit {
+                layout.exitPaths[port.transition] = path
+            } else {
+                layout.entryPaths[port.transition] = path
+            }
+        }
         regionLayouts[scope] = layout
         return layout
+    }
+
+    /// A region's members and ports ranked, the transitions between members first and then one
+    /// edge for each port, which is one more node after the members, joined to the member that
+    /// holds its end.
+    private static func rank(
+        members: Int,
+        local: [Int: Int],
+        links: [MermaidStateLink],
+        ports: [MermaidStatePort]
+    ) -> MermaidRanking {
+        let portEdges = ports.enumerated().map { offset, port -> (from: Int, to: Int)? in
+            guard let member = local[port.member] else { return nil }
+            let node = members + offset
+            return port.isSink ? (from: member, to: node) : (from: node, to: member)
+        }
+        return MermaidLayering.rank(
+            count: members + ports.count,
+            edges: links.map { link in
+                guard let from = local[link.from], let to = local[link.to] else { return nil }
+                return (from: from, to: to)
+            } + portEdges,
+            stride: 2,
+            sweeps: sweeps,
+            sources: Set(ports.indices.filter { !ports[$0].isSink }.map { members + $0 }),
+            sinks: Set(ports.indices.filter { ports[$0].isSink }.map { members + $0 })
+        )
+    }
+
+    /// A port's path the way its line runs: out from the member for an exit, in to it for an entry.
+    /// The chain runs the way its ranking edge does — member to port into the far channel, port to
+    /// member out of the near one.
+    private static func path(
+        of port: MermaidStatePort,
+        chain: [MermaidPoint],
+        at node: MermaidPoint
+    ) -> [MermaidPoint] {
+        let outward = port.isSink ? chain + [node] : Array(([node] + chain).reversed())
+        return port.isExit ? outward : outward.reversed()
     }
 
     // MARK: - Slots
@@ -254,6 +302,7 @@ extension MermaidStatePass {
                 ? MermaidSize(width: Self.barThickness, height: Self.barLength)
                 : MermaidSize(width: Self.barLength, height: Self.barThickness)
         case .state:
+            if let box = boxes[index] { return box }
             guard state.isComposite else { return textBox(state.descriptions, id: state.id) }
             let body = layBody(
                 state.regions.indices.map { MermaidStateScope(owner: index, index: $0) },

@@ -66,6 +66,17 @@ at build time.
     2026-11-15 for M39 Slice 13, it settled five rules the docs do not state (PLAN.md §M39 ▸
     Slice 13). Mermaid 12 lays state diagrams out with ELK by default; the classic look, which
     GitHub's older Mermaid draws, is the target.
+    - **The redrawn SVG is the code block's container's previous sibling**, not a child of it
+      (`code.closest('div.language-mermaid').parentElement.previousElementSibling`). A first
+      reader searching the container's parent picked up the page's first diagram instead. Used
+      2026-11-15 for M39 Slice 14 on the class and ER pages, it settled the rules each model type
+      states (`MermaidClassDiagram`, `MermaidERDiagram`). Two of them inverted the obvious guess: an
+      ER entity belongs to the **first** subgraph naming it where a state belongs to the last
+      block, and a class relation's quoted label keeps its quotes where an ER one loses them.
+    - **Mermaid 12 draws ER diagrams with ELK and its new look by default.** Its docs page shows
+      the classic look only where an example's front matter asks for it, and GitHub's older
+      Mermaid draws classic, so read layout off a `look: classic` example and membership or
+      markers off any.
   - **To look at a diagram before the app does, screenshot a scratch page headlessly.** A scratch
     package over `DirnexCore` can measure with the app's own font through AppKit
     (`QuickViewMarkdownDiagram.metric`'s three lines) and write the render into a page carrying the

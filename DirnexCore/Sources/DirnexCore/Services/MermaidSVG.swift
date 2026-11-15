@@ -56,10 +56,17 @@ enum MermaidSVG {
         """
     }
 
-    static func text(_ value: String, at point: MermaidPoint, classes: String) -> String {
+    /// A line of text centered on `point` — or, with `anchor` `start`, beginning there, which is how
+    /// a class's members and an entity's columns line up.
+    static func text(
+        _ value: String,
+        at point: MermaidPoint,
+        classes: String,
+        anchor: String = "middle"
+    ) -> String {
         """
         <text class="\(classes)" x="\(number(point.x))" y="\(number(point.y))" \
-        text-anchor="middle" dominant-baseline="central">\(MarkdownHTML.escaped(value))</text>
+        text-anchor="\(anchor)" dominant-baseline="central">\(MarkdownHTML.escaped(value))</text>
         """
     }
 

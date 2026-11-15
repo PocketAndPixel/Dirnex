@@ -11,7 +11,9 @@ import Foundation
 /// too, because a diagram with no nodes is a blank rectangle, which is a worse answer than the
 /// source and a note.
 enum MermaidParser {
-    static func parse(_ source: String) -> MermaidDiagram {
+    static func parse(_ fence: String) -> MermaidDiagram {
+        // Front matter first, so the type word is the one under it (`MermaidFrontMatter`).
+        let source = MermaidFrontMatter.split(fence).body
         let lines = statements(in: source)
         guard let header = lines.first else { return .unsupported("") }
         let keyword = String(header.prefix(while: { !$0.isWhitespace }))
@@ -33,6 +35,17 @@ enum MermaidParser {
             let unsplit = statements(in: source, separator: nil)
             let diagram = MermaidStateParser.parse(Array(unsplit.dropFirst()))
             return diagram.states.isEmpty ? .unsupported(keyword) : .state(diagram)
+        case "classdiagram", "classdiagram-v2":
+            // No `;` split either: the corpus's members write `&lt;` (`MermaidClassParser`).
+            let unsplit = statements(in: source, separator: nil)
+            let diagram = MermaidClassParser.parse(Array(unsplit.dropFirst()))
+            return diagram.nodes.isEmpty ? .unsupported(keyword) : .classDiagram(diagram)
+        case "erdiagram":
+            let unsplit = statements(in: source, separator: nil)
+            let diagram = MermaidERParser.parse(Array(unsplit.dropFirst()))
+            return diagram.entities.isEmpty && diagram.groups.isEmpty
+                ? .unsupported(keyword)
+                : .entityRelationship(diagram)
         default:
             return .unsupported(keyword)
         }

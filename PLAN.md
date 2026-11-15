@@ -710,7 +710,60 @@ Decided before Slice 1 (2026-11-12, Oleg, on the probes above):
    same render with the app's metric; a server or archive location, which reach the same render
    through the file's bytes. **Left as found**: a fence opening with Mermaid front matter
    (`---` / `title:` / `---`) falls back for every type with "“---” is not drawn".
-14. **Mermaid: class and ER diagrams.**
+14. **Mermaid: class and ER diagrams.** **Landed 2026-11-15.** Oleg's two calls when it opened: **draw
+   both kinds of group**, a class diagram's namespaces (nested and dotted, as Mermaid 12.3 nests them)
+   and an ER diagram's subgraphs (Mermaid 11.17), on the state diagram's composite layout; and **read
+   front matter here**, for every type: `title` drawn above the diagram, `config` and the rest skipped
+   (M39's no-config rule), a block that never closes still falling back as `---`. **Probed first**, on
+   Mermaid 12.3 drawing its own class and ER pages (docs/NOTES.md ▸ Working rhythm). The first class or
+   entity a relation names is drawn above the second whatever the arrow says; a class is three bands
+   and an empty band is still drawn; a member is a method when it holds a `)` after its first
+   character, methods drawn under attributes; `$` underlines and `*` italicizes; `~T~` pairs from the
+   outside in; each lollipop is its own interface; a note for a class is a box above it on a dotted
+   line; a class relation's quoted label keeps its quotes and an ER one loses them; references are
+   decoded; an ER end reads either character order, the maximum touching the box; and **an entity
+   belongs to the first subgraph naming it**, where a state belongs to the last block. **The corpus**:
+   74 files with mermaid fences in the home folder, one class diagram (a NuGet README: five fences,
+   three namespaces, members written `&lt;&lt;rw&gt;&gt;`, `{ <<enum>>` on the brace line) and one ER
+   diagram (a Figma skill reference), both now drawn. **The parse** (`MermaidClassParser`,
+   `MermaidClassBuilder`, `MermaidClassRelationSyntax`, `MermaidERParser`, `MermaidText`): one
+   statement a line and no `;` split, since the README's `&lt;` would be cut; the line found outside
+   quotes, so `"0..1"` is no line; an `o` an aggregation only standing alone (`foo--bar` is two
+   classes); `click`, `link`, `callback`, `style`, `classDef` and `cssClass` named in the caption.
+   **The layout** (`MermaidBoxGraph`): both types lay out through the state diagram's region layout
+   whole, a group as a one-region composite and a box as a state of a size the caller chose
+   (`MermaidStateLayout.lay(out:metric:boxes:spacing:)`). Class names are bold, so the metric gained
+   `boldWidth`, measured in the bold system face the stylesheet names. **The first look, headless,
+   found lines between namespaces drawn straight through the boxes inside them**, on the README.
+   So a transition that crosses a border now runs through a **port** in each region it leaves or
+   enters (`MermaidStatePort`): one more node, pinned to a channel at the region's far or near edge
+   (`MermaidLayering.rank`'s `sinks` and `sources`), so the region routes the line between its boxes.
+   The side follows the direction the link really takes where it is ranked, worked out before any
+   region is laid out, since a back edge given a port above climbed the whole composite. This changes
+   Slice 13's crossing transitions too, for the better. **The drawing**: compartments, guillemets,
+   markers as polygons (`MermaidMarker`: hollow triangle and diamond filled with the background, filled
+   diamond, arrowhead, lollipop circle, crow's feet), a cardinality beside its line clear of the
+   marker, an entity's table with keys and comment columns only when some row has them, groups as
+   titled boxes. Ten new classes in the stylesheet, through the existing variables. **Every flowchart
+   and sequence fence on this Mac (51 and 19), and 17 of 18 state fences, render byte for byte as
+   before**; the eighteenth is Slice 13's cross-border fixture, rerouted by the ports; the six class and
+   ER fences went from source to drawings. 49 new core tests, in four new suites (`MermaidClassParserTests`,
+   `MermaidERParserTests`, `MermaidClassLayoutTests`, `MermaidClassRenderTests`) and two in
+   `MermaidStateLayoutTests`, and the app's class sweep draws both types and a title. Negative
+   controls, 14, each failing its own tests: no ports, ports always on the old side, the lone-`o`
+   rule, quotes not skipped (which first passed, because no case put a quoted `..` before the line),
+   the bold metric ignored, classifying after decoding, the last subgraph winning, an indented
+   `title`, a cardinality on its line, no empty bands, four columns always, the `;` split, the title
+   not drawn, and one lollipop shared. **Run live** in `app.dirnex.Dirnex.live` at pane size, dark
+   appearance, with the cloud probe in and seeded away from Home: Mermaid's Animal example under its
+   front-matter title, with its notes; members with every marker, cardinalities, a lollipop and a
+   loop; nested and dotted namespaces, the lines into Platform and Auth entering through their edges;
+   the NuGet README; ER tables with every crow's foot; subgraphs, `title2 → C2` entering `title3` from
+   its edge; a titled left-to-right ER diagram; the Figma ER file; Slice 13's cross-border fixture,
+   `cross` now coming up from below; a titled flowchart; a gantt under front matter named `gantt`; a
+   block that never closes named `---`. **Not run live**: the light appearance, full window and full
+   screen, an export, and a server or archive location, which reach the same render through the
+   file's bytes.
 15. **Mermaid: gantt.**
 16. **The slideshow timer.**
 

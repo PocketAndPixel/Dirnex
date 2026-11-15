@@ -7,13 +7,29 @@ extension MermaidStatePass {
     ///
     /// The ends are the transition's own states, not the ones that stood for them in the region it
     /// was ranked in, so a line into a state inside a composite carries on across the border.
+    ///
+    /// A transition that leaves or enters a composite on the way runs through that region's port,
+    /// so its waypoints are the paths from its real source out to the region it is ranked in, its
+    /// own there, and the paths in to its real target.
     func edge(
         _ link: MermaidStateRegionLayout.Link,
         origin: MermaidPoint,
+        origins: [MermaidStateScope: MermaidPoint],
         frames: [MermaidRect]
     ) -> MermaidStateDrawing.Edge {
         let transition = diagram.transitions[link.transition]
-        let waypoints = link.waypoints.map { $0.offset(by: origin) }
+        func path(_ scopes: [MermaidStateScope]?, exits: Bool) -> [MermaidPoint] {
+            (scopes ?? []).flatMap { scope -> [MermaidPoint] in
+                guard let layout = regionLayouts[scope], let corner = origins[scope] else { return [] }
+                let points = exits ? layout.exitPaths[link.transition] : layout.entryPaths[
+                    link.transition
+                ]
+                return (points ?? []).map { $0.offset(by: corner) }
+            }
+        }
+        let waypoints = path(exitScopes[link.transition], exits: true)
+            + link.waypoints.map { $0.offset(by: origin) }
+            + path(entryScopes[link.transition], exits: false)
         let start = MermaidOutline.boundary(
             of: frames[transition.from],
             shape: shape(of: transition.from),
@@ -28,7 +44,8 @@ extension MermaidStatePass {
         return MermaidStateDrawing.Edge(
             points: points,
             label: transition.label,
-            labelCenter: link.labelCenter?.offset(by: origin) ?? Self.middle(of: points)
+            labelCenter: link.labelCenter?.offset(by: origin) ?? Self.middle(of: points),
+            transition: link.transition
         )
     }
 
@@ -47,6 +64,7 @@ extension MermaidStatePass {
                     points: loop.points,
                     label: diagram.transitions[position].label,
                     labelCenter: loop.labelCenter ?? Self.middle(of: loop.points),
+                    transition: position,
                     isLoop: true
                 )
             }
@@ -71,7 +89,8 @@ extension MermaidStatePass {
             return MermaidStateDrawing.Edge(
                 points: points,
                 label: transition.label,
-                labelCenter: Self.middle(of: points)
+                labelCenter: Self.middle(of: points),
+                transition: position
             )
         }
     }
