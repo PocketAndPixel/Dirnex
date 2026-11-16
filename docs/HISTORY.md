@@ -21827,6 +21827,44 @@ Decided before Slice 1 (2026-11-12, Oleg, on the probes above):
    under the preview (their tests cover them); a server or archive location, which reach the same
    path through the cursor and its fetch; the light appearance; a translation.
 
+**2026-11-17: a pinned folder says where it lives** (Oleg's request for a folder on a server pinned to
+Favorites to show the folder and the server together, a mark in the folder's corner, and his calls on the
+scope, remote and local, and on WebDAV's glyph; core and app). Before, every SFTP, FTP, S3 and WebDAV pin drew
+the same `network` globe, and a pin inside an SMB share drew a plain folder, since a folder on a mounted share
+is a local path. Nothing told a pin on an unplugged drive, in a vault or in Dropbox from one on the boot disk.
+SF Symbols has no `folder.badge.` form for any of them, so the mark is drawn. Mockups rendered from the real
+symbols at sidebar size settled two things before any Swift: outline marks at 8.5 pt are too thin to read, so
+each mark is the filled form of its place's own glyph at two thirds of the folder's size; and at that size
+SFTP's `network` and WebDAV's `globe` were one shape. Oleg kept WebDAV on the outline `globe` its server row
+wears, which the filled marks around it keep apart from SFTP's.
+
+`LocationSource.ofPin` (core) says where a pin lives. `LocationSource.of` answers for a tab from the mount table
+as it is now, and a pin outlives its mount: Dirnex unmounts its shares on quit, a vault locks, a drive is
+unplugged, and the pin is then a path under `/Volumes` on the boot disk. So a pin that recorded its share is on
+the network, mounted or not, and a pin under a `/Volumes/<name>` with nothing mounted there is in the saved
+vault of that volume name, or else on a drive that is not here; `/Volumes/Macintosh HD` stays the boot disk. A
+share pinned before pins recorded theirs reads as a drive until its first pick records it. `BadgedGlyph` (app)
+draws the symbol and the mark into one template image, with a ring of clear pixels around the mark's own
+outline, so AppKit tints it and the sidebar's cursor color reaches it like any other glyph (docs/NOTES.md ▸
+Drawing rows and cells). The folder is drawn into the cell's 18 pt box exactly as the image view draws a plain
+one, so marked and unmarked folders line up. The standard folders keep their own glyphs unmarked, and a folder
+in an archive keeps its zipper, too narrow to read as a mark. Go ▸ Places draws the same glyph through
+`SidebarPlacePresentation.badgeSymbolName`. The ⌘F popup is unchanged, since it draws Finder's own icons.
+
+Seen live in the `app.dirnex.Dirnex.live` copy, cloud guard in, with twelve pins minted through the core's
+encoder: a plain local folder; a folder on the NAS share Oleg had mounted at `/Volumes/media`, and one on an
+unmounted share that recorded it, both marked with the connected drive; an unplugged drive; a locked vault,
+its saved row seeded beside it, with the shut padlock; Dropbox and iCloud, paths that nothing read; SFTP, FTP,
+S3 and WebDAV; and a folder in a zip, unmarked. Focus Sidebar and ↓ moved the cursor onto S3 without opening
+it, and the folder and the box went white together. The log held no `TCCAccessRequestIndirect`. 9 core
+and 10 app tests are new, and 2 negative controls failed theirs by name: `ofPin` answering with `of` alone failed
+the recorded share, the locked vault, the unknown volume and the unplugged drive, and drawing the folder at its
+own size rather than the box's fit moved 105 pixels where the mark cannot reach. 5 770 core and 2 640 app tests
+pass, the live suites skipped since nothing here reaches a server, and the defaults domain was compared
+unchanged. **Not run live**:
+the light appearance; Go ▸ Places opened by hand, whose build is under test; and a pin on a mounted external
+drive or an unlocked vault, both pinned by core tests.
+
 ### After M19 — the follow-on log (2026-08-07 → 2026-09-21)
 
 Ninety-one dated passes that landed outside a milestone of their own, between M18's close on
