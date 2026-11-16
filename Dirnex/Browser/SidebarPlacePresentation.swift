@@ -106,17 +106,55 @@ enum SidebarPlacePresentation {
     }
 
     /// The glyph for a pinned folder: its standard-place symbol when the path is one of the
-    /// well-known folders, otherwise a plain folder — or a protocol glyph for a pin that lives
-    /// outside the local filesystem, so a remote or in-archive favorite doesn't pretend to be a
-    /// local directory.
+    /// well-known folders, the archive's zipper for a folder inside one, and otherwise a folder, which
+    /// ``badgeSymbolName(for:in:)`` marks with where it lives when that is not this Mac's own disk.
     private static func favoriteSymbolName(for path: VFSPath) -> String {
         if let kind = SidebarLocations.standardKind(for: path) {
             return standardPlaceSymbolName(for: kind)
         }
-        guard path.backend == .local else {
-            return path.backend.isArchive ? symbolName(for: LocationSource.archive) : "network"
+        return path.backend.isArchive ? symbolName(for: LocationSource.archive) : "folder"
+    }
+
+    /// The mark in the corner of a pinned folder's glyph saying where the folder lives, or `nil` for
+    /// every other place, a standard folder, a folder inside an archive, and one on this Mac's own
+    /// disk.
+    ///
+    /// The well-known folders keep their own glyphs unmarked, since a house or a down arrow already
+    /// says which folder it is. A folder in an archive keeps the zipper it has always worn: the
+    /// zipper is too narrow to read as a badge.
+    static func badgeSymbolName(for place: SidebarPlace, in context: PinBadgeContext) -> String? {
+        guard case let .favorite(entry) = place,
+              SidebarLocations.standardKind(for: entry.path) == nil,
+              !entry.path.backend.isArchive
+        else { return nil }
+        let source = context.source(of: entry)
+        let isUnlocked = source == .vault
+            && VaultPrivacy.isInside(entry.path, mountPoints: context.vaultMountPoints)
+        return badgeSymbolName(for: source, isUnlockedVault: isUnlocked)
+    }
+
+    /// The mark for a pin on `source`: the glyph that kind of place wears in the sidebar and on a
+    /// tab chip, filled where SF Symbols has a filled form, since an outline at two thirds of the
+    /// folder's size is too thin to read. WebDAV keeps the outline globe its server row wears,
+    /// Oleg's call on 2026-11-17, which keeps it apart from SFTP's `network` once both are filled.
+    /// A vault's padlock is open or shut, as its own row is.
+    static func badgeSymbolName(for source: LocationSource, isUnlockedVault: Bool) -> String? {
+        switch source {
+        case .folder, .archive: nil
+        case .externalVolume: "externaldrive.fill"
+        case .networkVolume: "externaldrive.connected.to.line.below.fill"
+        case .vault: vaultSymbolName(isUnlocked: isUnlockedVault)
+        case .cloudStorage: "cloud.fill"
+        case .iCloudDrive: "icloud.fill"
+        case .photos: "photo.on.rectangle.angled.fill"
+        case .sftp: serverSymbolName(for: .sftp)
+        case .ftp: "arrow.up.arrow.down.circle.fill"
+        case .s3: "shippingbox.fill"
+        case .webdav: serverSymbolName(for: .webdav)
+        case .trash: "trash.fill"
+        case .recents: "clock.fill"
+        case .search: "magnifyingglass"
         }
-        return symbolName(for: LocationSource.folder)
     }
 
     /// A monochrome SF Symbol standing in for each standard folder, so Documents, Downloads,
@@ -154,5 +192,34 @@ enum SidebarPlacePresentation {
         // other four glyphs are already taken by things that are not.
         case .webdav: "globe"
         }
+    }
+}
+
+/// What a pin's badge is read against: the mount table and the saved vaults, read once for a whole
+/// sidebar pass or menu open, since every pin in it asks the same questions.
+struct PinBadgeContext {
+    let mounts: [MountTableEntry]
+    /// Where each unlocked vault is mounted, which only `hdiutil` knows, so it is handed in by the
+    /// sidebar that has just asked.
+    let vaultMountPoints: [String]
+    /// The volume name of every saved vault, which is all a pin inside a *locked* one has to go on.
+    let vaultVolumeNames: [String]
+
+    /// Read now, safe on the main thread with a share that has stopped answering (`LocationSource.of`).
+    static func current(vaults: [VaultLocation], vaultMountPoints: [String]) -> PinBadgeContext {
+        PinBadgeContext(
+            mounts: MountTable.current(),
+            vaultMountPoints: vaultMountPoints,
+            vaultVolumeNames: vaults.map(\.volumeName)
+        )
+    }
+
+    func source(of entry: FavoriteEntry) -> LocationSource {
+        LocationSource.ofPin(
+            entry,
+            mounts: mounts,
+            vaultMountPoints: vaultMountPoints,
+            vaultVolumeNames: vaultVolumeNames
+        )
     }
 }

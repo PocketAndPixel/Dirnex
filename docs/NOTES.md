@@ -2923,6 +2923,21 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
   - **Quick Look's picture of text says less than the type icon at row size**: at 16 pt a `.js`, `.json`,
     `.txt` or `.md` is a white square with grey lines, and audio is a note on a blank page. Images, movies
     and PDFs are the ones worth a thumbnail (`RowIcon.isPreviewed`).
+- **A badge on a template glyph stays a template if it is cut out rather than painted over.** Built
+  2026-11-17 for the Favorites marks (`BadgedGlyph`). Drawing the mark with `.destinationOut` sixteen
+  times around a 1.2 pt circle, then once normally, leaves a ring of clear pixels that follows its outline,
+  and the result is still one alpha mask. AppKit tints it, and the cursor's `.sourceAtop` paints it, like
+  any symbol. A filled disc behind the mark would need a second color, which a template cannot hold.
+  - **Draw the base the way the image view would**, into the view's own box: a 15 pt `folder` is
+    21 × 16 and `scaleProportionallyDown` fits it to 18 wide. Drawn at its own size in an 18 pt canvas, a
+    marked folder sat larger than the unmarked ones beside it, and 105 pixels moved in the bands the mark
+    cannot reach (`PinBadgeTests`). The mark's box is 13 pt of the 18, so a test comparing halves rather
+    than those bands fails on the mark itself.
+  - **SF Symbols has no `folder.badge.` form for a drive, a cloud or a protocol**, only `plus`, `minus`,
+    `questionmark`, `person.crop` and `gearshape`. And `globe.fill` exists, so "the filled form where there
+    is one" would have filled WebDAV's globe, which was kept as an outline on purpose. Name each mark.
+  - **Outline marks are too thin at two thirds of a 15 pt glyph.** Rendered beside filled ones at sidebar
+    size, outlines at 8.5 pt read as smudges, and SFTP's `network` and WebDAV's `globe` were one shape.
 
 #### Reloading and the row model
 

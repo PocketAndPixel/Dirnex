@@ -38,6 +38,10 @@ final class SidebarViewController: NSViewController {
     /// answer costs a `hdiutil` spawn and every row in one pass must agree about it.
     var vaultMountPoints: [String: String] = [:]
 
+    /// What each pinned folder's badge is read against, refreshed alongside `vaultMountPoints` so the
+    /// badges in one pass agree with the Volumes and Vaults sections drawn beside them.
+    var pinBadges: PinBadgeContext?
+
     /// Every place the last `rebuild` assembled, folded sections included — what Focus Sidebar
     /// searches for the pane's place (`SidebarViewController+Keyboard`). Kept rather than
     /// re-assembled on the keystroke, because assembling reads every store and looks inside each
