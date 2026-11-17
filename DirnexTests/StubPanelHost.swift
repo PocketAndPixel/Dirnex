@@ -56,11 +56,28 @@ final class StubPanelHost: PanelHost {
 
     func enqueue(
         _ operation: FileOperation,
+        id: OperationJobID,
         conflictPolicy: ConflictPolicy,
         resolveConflict: (@Sendable (ConflictContext) -> ConflictResolution)?,
         onError: (@Sendable (OperationErrorContext) -> ErrorResolution)?
     ) {
         enqueued.append(operation)
+        enqueuedIDs.append(id)
+    }
+
+    /// The id each queued job was given, beside ``enqueued``.
+    private(set) var enqueuedIDs: [OperationJobID] = []
+
+    /// Every F5 and F6 that reached the host, in order. A stub never asks: it starts each one at once
+    /// with an untracked tracker, which is the switch-off path, so a gesture's jobs land in
+    /// ``enqueued`` as they always did (PLAN.md §M41).
+    private(set) var transfers: [TransferSummary] = []
+    /// What a transfer's tracker was told, when a test hands one in through ``trackTransfers``.
+    var trackTransfers: (() -> TransferTracker)?
+
+    func runTransfer(_ summary: TransferSummary, start: @escaping (TransferTracker) -> Void) {
+        transfers.append(summary)
+        start(trackTransfers?() ?? .untracked)
     }
 
     func runToCompletion(

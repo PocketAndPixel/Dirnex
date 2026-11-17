@@ -124,7 +124,6 @@ struct QueueBarDetailReadoutTests {
         (59.6, 60.0)
     ])
     func timeLeftRoundsUp(estimate: TimeInterval, shown: TimeInterval) throws {
-        let bar = QueueBarView(frame: .init(x: 0, y: 0, width: 600, height: 64))
         let aggregate = AggregateProgress(
             totalJobs: 1,
             finishedJobs: 0,
@@ -134,7 +133,7 @@ struct QueueBarDetailReadoutTests {
             bytesPerSecond: 1_000_000,
             estimatedTimeRemaining: estimate
         )
-        let readout = bar.detailText(for: aggregate, paused: false)
+        let readout = QueueBarView.detailText(for: aggregate, paused: false)
         let rounded = try #require(QueueBarView.etaFormatter.string(from: shown))
         let truncated = try #require(QueueBarView.etaFormatter.string(from: estimate))
         #expect(readout.contains(rounded), "\(readout)")

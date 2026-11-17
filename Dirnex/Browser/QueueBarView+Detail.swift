@@ -35,7 +35,7 @@ extension QueueBarView {
         detailFlushTimer?.invalidate()
         detailFlushTimer = nil
         pendingDetail = nil
-        detailLabel.stringValue = detailText(for: aggregate, paused: paused)
+        detailLabel.stringValue = Self.detailText(for: aggregate, paused: paused)
         lastDetailRefresh = Date()
         lastPausedState = paused
     }
@@ -62,8 +62,10 @@ extension QueueBarView {
         detailFlushTimer = timer
     }
 
-    /// The byte/throughput/ETA readout beneath the status line, `·`-joined.
-    func detailText(for aggregate: AggregateProgress, paused: Bool) -> String {
+    /// The byte/throughput/ETA readout beneath the status line, `·`-joined. Static because the copy
+    /// and move dialog says the same thing about its own jobs, in the same translated words
+    /// (PLAN.md §M41).
+    static func detailText(for aggregate: AggregateProgress, paused: Bool) -> String {
         let done = Self.byteFormatter.string(fromByteCount: aggregate.completedBytes)
         let total = Self.byteFormatter.string(fromByteCount: aggregate.totalBytes)
         // The comment is repeated verbatim at the Quick View placeholder card, which keys the same

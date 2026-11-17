@@ -16,12 +16,24 @@ protocol PanelHost: ClosedTabHost {
     /// When `conflictPolicy` is `.ask`, `resolveConflict` fields each collision (TC's per-file
     /// conflict dialog) and `onError` fields each failure (skip/retry/abort); both run on the
     /// background copy thread, bridged to main-actor prompts (`ConflictPrompter`/`ErrorPrompter`).
+    ///
+    /// `id` is the job's id in the queue, chosen by the caller so whoever follows the job can know it
+    /// before it runs (``TransferTracker``). The overload without one, below, mints a fresh id.
     func enqueue(
         _ operation: FileOperation,
+        id: OperationJobID,
         conflictPolicy: ConflictPolicy,
         resolveConflict: (@Sendable (ConflictContext) -> ConflictResolution)?,
         onError: (@Sendable (OperationErrorContext) -> ErrorResolution)?
     )
+
+    /// Start a copy or move the user asked for with F5 or F6 (PLAN.md §M41).
+    ///
+    /// The window asks first and follows the jobs in a dialog when Settings ▸ Operations says to;
+    /// otherwise, and for a script, `start` runs at once with ``TransferTracker/untracked``. `start`
+    /// queues the jobs, taking each one's id from the tracker it is given, then calls `finish()` on
+    /// it. It does not run at all if the user cancels the question.
+    func runTransfer(_ summary: TransferSummary, start: @escaping (TransferTracker) -> Void)
 
     /// Queue `operations` in this order, then return once the window's queue has nothing left to do.
     /// A sync's record is kept after its copies have landed, and `enqueue` cannot say when that is.
@@ -194,4 +206,23 @@ protocol PanelHost: ClosedTabHost {
         _ entries: [FileEntry],
         then: @escaping @MainActor (OperationReport) -> Void
     )
+}
+
+extension PanelHost {
+    /// ``enqueue(_:id:conflictPolicy:resolveConflict:onError:)`` for a job nobody needs to know
+    /// before it runs, under a fresh id.
+    func enqueue(
+        _ operation: FileOperation,
+        conflictPolicy: ConflictPolicy,
+        resolveConflict: (@Sendable (ConflictContext) -> ConflictResolution)?,
+        onError: (@Sendable (OperationErrorContext) -> ErrorResolution)?
+    ) {
+        enqueue(
+            operation,
+            id: OperationJobID(),
+            conflictPolicy: conflictPolicy,
+            resolveConflict: resolveConflict,
+            onError: onError
+        )
+    }
 }
