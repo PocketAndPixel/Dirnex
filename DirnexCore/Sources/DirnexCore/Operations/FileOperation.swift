@@ -255,21 +255,28 @@ public struct OperationProgress: Sendable, Equatable {
     public let completedBytes: Int64
     public let totalItems: Int
     public let completedItems: Int
-    /// The top-level source currently being transferred, for the "Copying X…" label.
+    /// What is being transferred, for the queue bar's "Copying X…" label: the top-level source,
+    /// though the copy engine names the file inside one when it reports partway through a file.
+    /// ``files`` is the level below, kept apart so this label behaves as it always has.
     public let currentItem: VFSPath?
+    /// The job file by file, below its top-level sources (PLAN.md §M41): the file being written
+    /// now and how many are done. `nil` for every kind of job but a copy or a move.
+    public let files: TransferFiles?
 
     public init(
         totalBytes: Int64,
         completedBytes: Int64,
         totalItems: Int,
         completedItems: Int,
-        currentItem: VFSPath?
+        currentItem: VFSPath?,
+        files: TransferFiles? = nil
     ) {
         self.totalBytes = totalBytes
         self.completedBytes = completedBytes
         self.totalItems = totalItems
         self.completedItems = completedItems
         self.currentItem = currentItem
+        self.files = files
     }
 
     /// Fraction complete in `0...1`, or `0` before any bytes are known.
