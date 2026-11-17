@@ -19,7 +19,7 @@ closed simply reads differently — it is not explained here.
 |---|---|
 | **yes** | Fully done. Behaves as it does on the local disk. |
 | **yes, limited** | Fully done for what the technology allows. The remaining difference **cannot** be closed from our side — the protocol, the service or macOS does not expose it. |
-| **yes, partially** | Done, and the gap **could** be narrowed to look more local. What is left of the parity backlog is planned as M39–M40 at PLAN.md §4 ▸ *Next*, plus the short list at §4 ▸ *Still open*. |
+| **yes, partially** | Done, and the gap **could** be narrowed to look more local. What is left of the parity backlog is planned as M40 at PLAN.md §4 ▸ *Next*, plus the short list at §4 ▸ *Still open*. |
 | **no** | Not implemented, and nothing structural prevents it — so it is backlog too, and its footnote names the milestone. A "no" with no route to a yes is written **n/a** instead. |
 | **n/a** | The concept does not exist there (a Trash inside the Trash, a checksum of a bucket list). |
 
@@ -331,6 +331,7 @@ tests (`RowIconTests`) and not exercised live.
 | Put Back (restore from Trash, or a share's `#recycle`) | yes, limited<sup>iii</sup> | n/a | n/a | yes, limited<sup>iii</sup> | yes, limited<sup>iii</sup> | yes, limited<sup>iii</sup> | n/a | n/a | n/a | n/a | yes, limited<sup>o</sup> |
 | Undo `⌘Z` | yes | yes | yes, limited<sup>qq</sup> | yes, partially<sup>p</sup> | yes, partially<sup>p</sup> | yes, partially<sup>p</sup> | yes, partially<sup>p</sup> | yes, partially | n/a | yes | no |
 | Background queue, progress bar, Stop | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes |
+| `F5`/`F6` ask first, then a progress dialog<sup>aaw</sup> | yes | yes | no<sup>aaw</sup> | yes | yes | yes | yes | no<sup>h</sup> | yes | yes | yes |
 | Per-file conflict dialog | yes | yes | yes | yes | yes | yes | yes | n/a | yes | yes | yes |
 | Preserve permissions / dates / xattrs on copy | yes | yes | yes, limited | yes, limited<sup>q</sup> | yes, limited<sup>q</sup> | yes, limited<sup>q</sup> | n/a<sup>q</sup> | n/a | yes, limited<sup>lll</sup> | yes | yes |
 | Copy a symlink as a symlink | yes | yes | yes | yes, limited<sup>pp</sup> | n/a<sup>pp</sup> | n/a<sup>pp</sup> | n/a | n/a | n/a | yes | yes |
@@ -422,6 +423,14 @@ permanently. Finder refuses the same gesture.
 reversible: ⌘Z swaps the container back (▸ <sup>qq</sup>), and the confirmation says which
 it will be before it runs.
 Top-level archives only.
+
+<sup>aaw</sup> Since 2026-11-17 (PLAN.md §M41 Slice 2), on by default and turned off by the dialog's
+"Don't ask again" or Settings ▸ Operations. It is a second view of the same queued job, so every
+column that has the queue has the dialog, for `F5`, `F6`, `⇧F5` and Move Keeping Folders. **Not** for
+`F5` into or out of an archive, which add or extract by their own route and keep the queue bar alone,
+nor for `⌘V`, a drag or a script. Pinned by tests (`TransferDialogTests`), and run live on 2026-11-17
+for local copies and moves onto a disk image (§M41 Slice 3); not yet run live with a server at either
+end.
 
 <sup>aac</sup> Gated per **row**, like <sup>ee</sup>: each hit deletes the way the folder it lives in
 does (`DeleteRouting`), so a local hit goes to the Trash and a hit on a server is the confirmed
@@ -668,12 +677,18 @@ the agent and adds a last-opened date, and it names a Live Photo's movie `.mov` 
 | Functionality | Local | Cloud mount | Archive | SFTP | FTP | WebDAV | S3 | S3 acct | Photos | Results | Trash |
 |---|---|---|---|---|---|---|---|---|---|---|---|
 | Quick View pane / full size (`⌃Q`) | yes | yes | yes, limited<sup>r, ddd</sup> | yes, limited<sup>s</sup> | yes, limited<sup>s</sup> | yes, limited<sup>s</sup> | yes, limited<sup>s</sup> | n/a | yes, limited<sup>s</sup> | yes | yes |
+| A slideshow through the active pane's pictures (View ▸ Slideshow, `⇧⌘S`)<sup>aav</sup> | yes | yes | yes, limited<sup>aav</sup> | yes, limited<sup>aav</sup> | yes, limited<sup>aav</sup> | yes, limited<sup>aav</sup> | yes, limited<sup>aav</sup> | n/a | yes, limited<sup>aav</sup> | yes | yes |
 | Quick Look (`⌘Y`) | yes | yes | yes, limited<sup>r, ddd</sup> | yes, limited<sup>s</sup> | yes, limited<sup>s</sup> | yes, limited<sup>s</sup> | yes, limited<sup>s</sup> | n/a | yes, limited<sup>s</sup> | yes | yes |
 | Syntax highlighting, Markdown, diagrams in preview | yes | yes | yes | yes | yes | yes | yes | n/a | n/a | yes | yes |
-| Office, iWork and rich-text documents in preview, zoomable and selectable<sup>rrr</sup> | yes | yes | yes | yes | yes | yes | yes | n/a | n/a | yes | yes |
+| The images a Markdown file names beside it, drawn in its page<sup>aat</sup> | yes | yes | **no**<sup>aat</sup> | **no**<sup>aat</sup> | **no**<sup>aat</sup> | **no**<sup>aat</sup> | **no**<sup>aat</sup> | n/a | n/a | yes, limited<sup>aat</sup> | yes |
+| A Markdown file exported as an HTML or PDF page of its own (File ▸ Export…)<sup>aau</sup> | yes | yes | yes | yes | yes | yes | yes | n/a | n/a | yes | yes |
+| Office, iWork and rich-text documents in preview, zoomable and selectable, and an RTF file's source beside its page<sup>rrr</sup> | yes | yes | yes | yes | yes | yes | yes | n/a | n/a | yes | yes |
 | CSV and TSV as a sortable, zoomable, filterable table in preview, with the selected row in full in a resizable strip<sup>sss</sup> | yes | yes | yes | yes | yes | yes | yes | n/a | n/a | yes | yes |
 | JSON as a zoomable, filterable tree in preview, a list of records (JSON Lines, an array of objects) as the table above, with the selected value's path and text in a resizable strip<sup>ttt</sup> | yes | yes | yes | yes | yes | yes | yes | n/a | n/a | yes | yes |
 | XML and property lists as the same tree, attributes as `@` rows and a plist as its keys and values, a root of like elements as the table above<sup>uuu</sup> | yes | yes | yes | yes | yes | yes | yes | n/a | n/a | yes | yes |
+| Saved web pages (`.webarchive`, `.mhtml`, `.mht`) drawn as the page in preview, from the archive alone<sup>aaq</sup> | yes | yes | yes | yes | yes | yes | yes | n/a | n/a | yes | yes |
+| A link clicked in a rendered page: a file moves the pane's cursor onto it and its heading is scrolled to, a web link opens in the browser<sup>aar</sup> | yes | yes | yes | yes | yes | yes | yes | n/a | n/a | yes | yes |
+| A wiki link (`[[name]]`) in a Markdown page drawn as a link to the file it names, and its own text when there is none<sup>aas</sup> | yes | yes | yes, limited<sup>aas</sup> | yes, limited<sup>aas</sup> | yes, limited<sup>aas</sup> | yes, limited<sup>aas</sup> | yes, limited<sup>aas</sup> | n/a | n/a | yes | yes |
 | Open in the default app (`⏎`) | yes | yes | yes, limited<sup>t, ddd</sup> | yes, limited<sup>u</sup> | yes, limited<sup>u</sup> | yes, limited<sup>u</sup> | yes, limited<sup>u</sup> | n/a | yes, limited<sup>mmm</sup> | yes | yes |
 | Edit `F4`, with save written back | yes | yes | yes, limited<sup>v, ddd</sup> | yes | yes | yes | yes | n/a | no<sup>jjj</sup> | yes | yes |
 | Open With… / Share sheet | yes | yes | yes, limited<sup>yy</sup> | yes, limited<sup>yy</sup> | yes, limited<sup>yy</sup> | yes, limited<sup>yy</sup> | yes, limited<sup>yy</sup> | n/a | yes, limited<sup>yy</sup> | yes | yes |
@@ -911,6 +926,10 @@ row, through the local copy Quick View already works from (<sup>s</sup> for a se
 come from the generator, not from a location: a spreadsheet shows at most **4 096 rows** of each
 sheet, with nothing on the page to say so, and a file the generator declines (corrupt,
 password-protected) falls back to Quick Look's own view. Rich text above 32 MB does too.
+Since 2026-11-12 (PLAN.md §M39) an RTF file also offers its source (`1`), colored, from the same decoded
+text the text preview reads, and still opens on the document (`2`); the source has the text preview's
+limit, the first **4 MB** with the notice saying so. An RTFD or OpenDocument file has one style, the
+document: neither is text.
 
 <sup>sss</sup> Parsed in-process from the same decoded text the source view shows, so every location
 reaches it through the local copy Quick View already works from (<sup>s</sup> for a server). The hard
@@ -936,6 +955,63 @@ and a binary property list whose XML would pass 4 MB goes to Quick Look. Comment
 instructions and the document type are not rows; an entity the DTD declares is shown as written. A
 list of like elements one level below the root stays a tree. The filter (⌥⌘F) searches names or
 values, with the JSON tree's rules.
+
+<sup>aaq</sup> Since 2026-11-12 (PLAN.md §M39). Read, converted when it is MHTML, and **sealed** in-process
+before WebKit sees it: every origin the page was saved from moves to a scheme nothing serves, so the
+page draws from the archive and nothing it lacks can be fetched, whatever the file says. Every location
+reaches it through the local copy Quick View already works from (<sup>s</sup> for a server). The hard
+limits: a file over **64 MB** keeps Quick Look's own view, which draws a webarchive and not an MHTML
+file; a reference the seal cannot find in a resource's text (one escaped inside a script, a host
+written with its default port) is not drawn; a frame inside a frame of an MHTML file, which Chrome
+writes flat, draws empty; and the page's scripts follow the JavaScript setting, off by default, which
+a saved page needs least, being a snapshot of what was on screen.
+
+<sup>aar</sup> Since 2026-11-13 (PLAN.md §M39). In a Markdown page, an HTML file and a saved page, at every
+Quick View size. A link resolves against the file's own location, so on a server or inside an archive it
+leads to a file there: the active pane's cursor lands on it, entering its folder when that is elsewhere,
+the preview follows, and the pane's Back is the way back; from a results listing (search, Recents, the
+Trash) the folder opens in a new tab and the results stay. `http`, `https` and `mailto` open in the app
+the user chose; anything else is refused by name, as is a link to another computer, a `file:` link in a
+document that is not on this disk, and a file that is not there. A saved page's links go to the real
+URL its author wrote, and a converted office document's to the web only. The hard limits: `..` past the
+top of a location stops at its top, as a browser's does, rather than leading out of the archive or off
+the server; and in an HTML file **on this disk** a link to a file that does not exist, or outside the
+file's own folder, does nothing and says nothing, because WebKit never asks about it. A server's or an
+archive's HTML file is drawn from its bytes, so its links all reach Dirnex.
+
+<sup>aas</sup> Since 2026-11-14 (PLAN.md §M39). `[[name]]`, `[[name|text]]` and `[[name#Heading]]` name a
+file beside the document, `.md` added when the name has none, and are drawn as a link only when that
+file is there, so `[[Prototype]]` in a JavaScript README stays text. A click then follows it as any link
+above. On this disk the disk is asked, a path in the name included, and a name in another case finds
+the file on a volume that ignores case. On a server or in an archive the page is drawn from a local copy,
+so the names are those the active pane lists in the document's folder, which costs no request: a name
+in a subfolder stays text there. Obsidian's search of a whole vault for a name is not made.
+
+<sup>aat</sup> Written down 2026-11-14 (PLAN.md §M39 ▸ Slice 11), and true since M18. A page carries an image
+only when the preview can read it beside the document on this disk, in the document's own folder or
+below it, up to 32 MB a page; anything else keeps its reference and is not drawn. On a server or in an
+archive the preview reads a copy of the one file, alone in a temp folder, so no image beside it is there
+to read, and a results listing is local or remote as each row's file is. A page exported to HTML holds
+what the preview drew, so it carries the same images (Oleg's call that day). Ours to close, for the
+preview and the export together: the images could be read through the document's own backend.
+
+<sup>aau</sup> Since 2026-11-14 (PLAN.md §M39 ▸ Slice 12). The Markdown file under the cursor, wherever it
+is: a file on a server or in an archive is brought down first, and a cloud placeholder downloaded, as
+Share brings them down. The page lands where F5 would put a file, in the other pane's folder or one
+typed in the sheet on that pane's backend, with F5's conflict question and undo, so on this disk, a
+cloud mount, SFTP, FTP, WebDAV or S3 alike. A browsed archive or a results listing in the other pane
+is refused before the sheet, since an export is a copy and not an add. HTML is one file with the preview's images inlined (<sup>aat</sup>); a PDF is that
+page printed on the user's paper in the light palette, with no remote image, as the preview draws none.
+The whole file is exported up to 64 MB, where the preview reads 4.
+
+<sup>aav</sup> Since 2026-11-15 (PLAN.md §M39 ▸ Slice 16). A timer that steps the pane's cursor to the next
+picture at full size, so it reaches every location the cursor and Quick View do: the pictures are
+chosen by name, with no request, and each is brought to the preview as a cursor step brings it. That is
+the limit: on a server each picture is downloaded as the show reaches it, up to the size Quick View
+fetches on its own (<sup>s</sup>), and in an archive extracted (<sup>r</sup>), and a picture's turn
+starts once it is on screen, so a slow link slows the show rather than skipping pictures. A picture over
+that size shows its card for its turn and the show goes on. A results listing walks its pictures across
+the folders they came from.
 
 ## 4. Find Files (`⌥F7`)
 
@@ -1107,6 +1183,12 @@ the app holds and goes in, under whatever mount point the share gets. A pin made
 tries the saved SMB servers in sidebar order and keeps the one that mounted. It stays partial in two ways: a
 share Finder mounted is recorded only once Dirnex has connected to it, and an account with no saved password is
 passed over rather than prompted for.
+
+A pin inside a **vault** is a local path too, and records nothing. Picking one while the vault is locked unlocks
+the saved vault of that volume name, with the passphrase on file or by asking for it, and goes in under whatever
+mount point the volume gets (`PinnedVault`, since 2026-11-17). That is the place its padlock mark names, and it
+comes ahead of the saved servers, which before then were asked for a share of the vault's name. A pin that
+recorded a share stays on the share.
 
 A **tab** inside a share is written down with the share the same way, and comes back even though Dirnex
 unmounted the share on quit. Its first navigation mounts the share by the rules a restored server tab
@@ -1335,8 +1417,8 @@ download ends within 1 ms of the cancel, without one it runs to the end (docs/NO
 The two milestones this list was written for have closed: **M24** (every local-only feature, on a
 file that is not local) on 2026-08-28 and **M25** (what a remote write carries, and what a remote
 delete costs) on 2026-08-29, both archived in [HISTORY.md](HISTORY.md). What is left of the **"no"**
-and **"yes, partially"** cells that are *ours* to close is planned as M39–M40 at
-[PLAN.md](../PLAN.md) §4 ▸ *Next*, plus the short list at §4 ▸ *Still open* — the cells that were too small to be a slice of either. This file is the status;
+and **"yes, partially"** cells that are *ours* to close is planned as M40 at
+[PLAN.md](../PLAN.md) §4 ▸ *Next*, plus the short list at §4 ▸ *Still open* — the cells that were too small to be a slice of it. This file is the status;
 the plan is the work. Nothing that has already shipped is argued here — a closed gap is simply a
 changed cell, and why it changed is in [HISTORY.md](HISTORY.md).
 

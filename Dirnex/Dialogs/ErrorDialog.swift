@@ -46,13 +46,18 @@ enum ErrorDialog {
 
     /// Show the alert as a sheet on the window, or app-modal if there is none (window closed
     /// mid-operation — a rare fallback, never the common path).
+    ///
+    /// Hung on ``NSAlert/sheetHost(over:)``, which is the copy dialog when one is up (PLAN.md §M41):
+    /// on the window itself, behind that sheet, macOS 14 and 15 queue a second sheet out of sight,
+    /// and the copy would wait for an answer nobody can see (docs/NOTES.md ▸ Alerts, sheets and
+    /// dialogs).
     private static func runAlert(
         _ alert: NSAlert,
         in window: NSWindow?
     ) async -> NSApplication.ModalResponse {
-        guard let window else { return alert.runModal() }
+        guard let host = NSAlert.sheetHost(over: window) else { return alert.runModal() }
         return await withCheckedContinuation { continuation in
-            alert.beginSheetModal(for: window) { continuation.resume(returning: $0) }
+            alert.beginSheet(on: host) { continuation.resume(returning: $0) }
         }
     }
 

@@ -168,11 +168,29 @@ extension PanelViewController {
         // selection that sits entirely at this pane's own level is a single group with no relative
         // path, which is every list-mode transfer and takes the single-job path either way.
         let groups = TreeSelection.transferGroups(landing, relativeTo: panel.path)
-        if !keepingFolders || (groups.count == 1 && groups[0].relativeComponents.isEmpty) {
-            submitTransfer(kind: kind, sources: landing, destination: destination)
-            consumeTransferMarks()
-        } else {
-            submitBranchTransfer(kind: kind, groups: groups, destination: destination)
+        let isFlat = !keepingFolders || (groups.count == 1 && groups[0].relativeComponents.isEmpty)
+        // The host asks first and follows the jobs in a dialog, or starts this at once (PLAN.md §M41).
+        // Nothing below runs if the user cancels the question, so the marks stay for another try.
+        let summary = TransferSummary(kind: kind, sources: landing, destination: destination)
+        host?.runTransfer(summary) { [weak self] tracker in
+            guard let self else { return tracker.finish() }
+            if isFlat {
+                submitTransfer(
+                    kind: kind,
+                    sources: landing,
+                    destination: destination,
+                    tracker: tracker
+                )
+                tracker.finish()
+                consumeTransferMarks()
+            } else {
+                submitBranchTransfer(
+                    kind: kind,
+                    groups: groups,
+                    destination: destination,
+                    tracker: tracker
+                )
+            }
         }
     }
 
@@ -199,7 +217,8 @@ extension PanelViewController {
     private func submitBranchTransfer(
         kind: FileOperation.Kind,
         groups: [TreeTransferGroup],
-        destination: VFSPath
+        destination: VFSPath,
+        tracker: TransferTracker
     ) {
         let backend = backend
         let directories = intermediateDirectories(for: groups, under: destination)
@@ -217,6 +236,7 @@ extension PanelViewController {
                     }
                 }.get()
             } catch {
+                tracker.finish() // nothing was queued, so a dialog following this has nothing to wait for
                 presentOperationFailure(
                     message: transferFailureTitle(kind),
                     detail: describe(error)
@@ -227,9 +247,11 @@ extension PanelViewController {
                 submitTransfer(
                     kind: kind,
                     sources: group.sources,
-                    destination: group.destination(under: destination)
+                    destination: group.destination(under: destination),
+                    tracker: tracker
                 )
             }
+            tracker.finish()
             consumeTransferMarks()
         }
     }
@@ -274,17 +296,21 @@ extension PanelViewController {
     /// "apply to all" choice for the rest of this operation). A sibling `ErrorPrompter` fields
     /// per-file *failures* the same way — TC's Skip / Retry / Abort. Shared by F5/F6 (destination
     /// = the other pane) and drag-drop (`PanelViewController+Drop`, destination = the drop target).
+    ///
+    /// `tracker` is F5's and F6's, when a dialog follows the job (PLAN.md §M41); a drop has none.
     func submitTransfer(
         kind: FileOperation.Kind,
         sources: [FileEntry],
-        destination: VFSPath
+        destination: VFSPath,
+        tracker: TransferTracker? = nil
     ) {
         submit(
             FileOperation(
                 kind: kind,
                 sources: sources,
                 destinationDirectory: destination
-            )
+            ),
+            tracker: tracker
         )
     }
 
@@ -293,11 +319,12 @@ extension PanelViewController {
     /// (`PanelViewController+RenameQueue`) is a job whose destination *name* differs from its
     /// source's, which only ``FileOperation/init(renaming:to:in:)`` can express — and having two
     /// spellings of "enqueue with the conflict and error prompters" is how the two drift.
-    func submit(_ operation: FileOperation) {
+    func submit(_ operation: FileOperation, tracker: TransferTracker? = nil) {
         let conflictPrompter = ConflictPrompter(window: view.window)
         let errorPrompter = ErrorPrompter(window: view.window)
         host?.enqueue(
             operation,
+            id: tracker?.nextID() ?? OperationJobID(),
             conflictPolicy: .ask,
             resolveConflict: { context in
                 // A source landing exactly on itself — Cmd+C then Cmd+V into its own folder —

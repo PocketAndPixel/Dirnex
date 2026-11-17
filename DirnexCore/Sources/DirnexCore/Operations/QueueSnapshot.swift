@@ -13,7 +13,8 @@ public struct OperationJobID: Hashable, Sendable, CustomStringConvertible {
 }
 
 /// Where a job is in its lifecycle. A job goes `waiting → running → finished`, may be
-/// `paused` while running, and can reach `canceled` from any non-terminal state.
+/// `paused` while running, or before it starts when paused on its own
+/// (``FileOperationQueue/pause(_:)``), and can reach `canceled` from any non-terminal state.
 public enum JobStatus: Sendable, Equatable {
     case waiting
     case running
@@ -31,19 +32,25 @@ public struct JobSnapshot: Sendable, Equatable, Identifiable {
     public let progress: OperationProgress?
     /// The final report, present once the job has finished or been canceled mid-flight.
     public let report: OperationReport?
+    /// Paused on its own by ``FileOperationQueue/pause(_:)`` (PLAN.md §M41), as opposed to parked by
+    /// the queue-wide pause, which `QueueSnapshot.isPaused` reports. A job can be both, and stays
+    /// paused until each is undone.
+    public let isHeld: Bool
 
     public init(
         id: OperationJobID,
         kind: FileOperation.Kind,
         status: JobStatus,
         progress: OperationProgress?,
-        report: OperationReport?
+        report: OperationReport?,
+        isHeld: Bool = false
     ) {
         self.id = id
         self.kind = kind
         self.status = status
         self.progress = progress
         self.report = report
+        self.isHeld = isHeld
     }
 }
 

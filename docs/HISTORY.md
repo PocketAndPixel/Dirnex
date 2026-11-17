@@ -1,4 +1,4 @@
-# Dirnex — build history (M0 → M36)
+# Dirnex — build history (M0 → M39, and M41)
 
 The shipped record of Dirnex's milestones: the milestone checklists as they were completed,
 plus the per-pass progress log — what was probed, what was decided, what was rejected and why.
@@ -29,7 +29,11 @@ Nextcloud in a container as well as Apache. **M33** (copying a change across, an
 undo and save are its; M33 closed 10-26 and M34 10-27. **M35** (an SMB server's shares, as a
 pane) was planned 11-04 and closed 11-05, its last live check waiting a day for the NAS. **M36** (drag
 and paste, where M23 stopped) was planned 11-07 and closed 11-08, the first of five that take up what
-earlier milestones left undone by choice.
+earlier milestones left undone by choice. **M37** (compare and merge, past M31 and M34) closed
+11-09 and **M38** (remote: what M8, M22, M24, M25 and M32 left) 11-11, each two days after it opened, and
+**M39** (Quick View) opened 11-12 and closed 11-15, in sixteen slices. **M41** (copy and move dialogs)
+was asked for by users coming from Total Commander and opened and closed 11-17, ahead of M40, which was
+planned first and is still open, so M41 follows M39 here and M40 will take the slot between them.
 **After M19** carries the thirty-one dated passes from 2026-08-07 → 08-25 that landed outside a
 milestone of their own — it sits at the end rather than in date order, because it is the file's
 catch-all rather than a numeric slot. Two sections frame them, both handed over by the plan on
@@ -21072,6 +21076,1061 @@ after the change, and set back to VLC, the clip was VLC's current playlist item.
 12 core and 10 app tests are new; 5 negative controls failed theirs by name (the application check, the extension
 check, the underlying-error walk, the refresh on coming to the front, and opening after a change). 5 395 core and 2 538 app tests
 pass, the live suites skipped since nothing here reaches a server, and the defaults domain was compared unchanged.
+
+### M39 — Quick View (L)
+
+**Closed 2026-11-15**, three days after it opened, in sixteen slices. A saved web page, `.webarchive` or
+`.mhtml`, draws in Quick View as the page, sealed in the core so it asks the network for nothing. An RTF file
+offers its source beside the document. A link in a Markdown or HTML page moves the pane's cursor onto the file
+it names, entering its folder, with the pane's Back as the way back, and a web link opens in the browser.
+Markdown draws GitHub's alerts, footnotes, emoji shortcodes, wiki links, definition lists and math, the math
+as MathML. The source view colors JSON keys, setext headings and indented code in Markdown, and Ruby's
+`=begin`, in one of three themes picked in Settings ▸ Panels. File ▸ Export… writes a Markdown file as one
+self-contained HTML file or a paginated PDF in the light palette, through F5's queue. Mermaid draws state,
+class, ER and gantt diagrams beside flowcharts and sequences. And ⇧⌘S steps the pane's cursor through the
+folder's pictures on a timer, at full size.
+
+Six findings are worth not re-deriving. **WebKit draws a `.webarchive` from its own subresources, but asks
+the network for anything the archive lacks**, and re-admitting each archived URL still let a misnamed frame
+reach the server; so every archived origin moves to `x-dirnex-archive:` before WebKit sees it, and a miss has
+no network path at all. WebKit has no MHTML, and a frame finds resources only in its own subframe archive.
+**WebKit hands `decidePolicyFor` only the URL it resolved, never the `href`**, clamps `..` at the root, and
+on a `file:` page asks only about a file that exists inside the read access, so a server's or an archive's
+HTML is drawn from its bytes under its location's base URL. **GitHub writes down few of the Markdown rules it
+renders by**: shortcodes, alerts, footnotes and math were each read off its own renderer, math only in
+`mode=gfm` (docs/NOTES.md ▸ Working rhythm). **A dynamic `NSColor` asks its provider at every resolution**,
+so a theme change is a repaint walk and nothing rebuilds a document. **Printing is light by itself and a CSS
+mask is not applied on paper**, while `createPDF` of a dark view comes out dark. And **APFS limits a name to
+255 UTF-16 units**, not bytes, where ext4 counts bytes.
+
+Some paths were not exercised by the close, and are recorded rather than argued: full screen, apart from
+following a link and the slideshow; the light appearance for alerts, footnotes and shortcodes, wiki links,
+highlighting, class and ER diagrams, and the slideshow; a server as the location for most slices, which reach
+the same render through the file's bytes (links ran on a server, and links, wiki links and export inside a
+zip); a web link opening the browser, and a saved page's link; an export to or from a server, and the export
+sheet's inline errors; the compare and merge windows under a new theme or the new highlighting; a manual step
+and Tab ending a slideshow; and a translation anywhere.
+
+Left deliberately undone: **a thumbnail filmstrip**, a second file list, which is M15's grid under PLAN.md's
+*Still open*; **a second style for `.rtfd` and `.odt`**, neither of which is text; **a history of the
+preview's own**, since a followed link moves the pane and its Back is the way back; **anything Mermaid reads
+as config**, so front matter's `config`, the today marker's style, `classDef`, `style` and `click` are skipped
+or named in the caption; **an Obsidian vault search** for a wiki link, which looks only in the document's
+folder; and **a sibling image in an export** of a server's or an archive's document, since the export holds
+what the preview drew. Two departures from GitHub are recorded: math keeps its TeX as written, on purpose,
+and a footnote reference in a heading adds nothing to its anchor.
+
+The section as the plan carried it through the milestone:
+
+- **RTF** (M16, M18), with a source and a page view. It is `NSAttributedString`'s job and shares
+  nothing with the Markdown renderer.
+- **`.webarchive` and `.mhtml`** (M16), which need `loadData` rather than a file load.
+- **Markdown: math, footnotes, definition lists, emoji shortcodes and wiki links** (M18). A wiki
+  link names another file, so it depends on following a link, the item below.
+- **More mermaid diagram types** (M18). Only flowchart and sequence draw today. A class diagram,
+  gantt, state chart or ER diagram falls back to a code fence naming itself.
+- **Following a link to another file** (M18). A preview that follows links is a browser, and needs
+  its own history and its own way back.
+- **Exporting the rendered page** to HTML or PDF (M18). That is a file operation, so it goes through
+  the operation engine with a destination and a conflict policy.
+- **Syntax highlighting** (M17): a theme picker, since the colors are a fixed light and dark table;
+  JSON keys colored apart from values; setext headings and indented code blocks in a Markdown file's
+  source; and Ruby's `=begin` block comment. The JSON and Markdown items need a lookahead or a
+  previous line that the single pass does not keep.
+- **A slideshow timer or a thumbnail filmstrip** (M11). Left because that is an image viewer, and the
+  point of full-size Quick View is that the file list stays the navigation.
+
+Inherited from M17's and M18's risk rows (§6): the highlighter stays one pass with no state stack, and
+only ever adds color. Markdown is judged against a corpus of real files rather than the spec, an
+unreadable construct falls back to its own text, and the generated page stays inert. Mermaid gains
+diagram types, never a config surface read from the diagram's source.
+
+**Opened 2026-11-12.** Probed on macOS 26.7.1 with the system WebKit, Chrome headless and a throwaway
+`http.server` whose access log was the network instrument:
+
+- **WebKit renders a `.webarchive` from its own subresources and asks the network for nothing it holds.**
+  A real archive written by `createWebArchiveData` loaded by `load(_:mimeType:"application/x-webarchive"…)`
+  and by `loadFileURL` alike (so M16's "needs `loadData`" was only half right), CSS and image applied,
+  and the server saw no request. The page's `location` is the archive's own `http://` URL, and
+  `decidePolicyFor` sees one main-frame navigation, to the base URL passed in.
+- **The shipped rule list blanks an archive.** Block `.*` then re-admit `^file://` blocks the archive's
+  *own* subresources, since their URLs are the originals: heading unstyled, image 0×0.
+- **An archive asks the network for what it lacks.** With no rules and scripts on, a missing image, a
+  `fetch` and a `new Image()` pixel each reached the server. A `fetch` of a URL the archive holds did
+  not.
+- **Re-admitting each archived URL looked like the answer and is not.** Block `.*`, re-admit
+  `^file://`, then each archived URL exactly, for the `document`, `image`, `style-sheet`, `script`,
+  `font`, `media` and `svg-document` types: with scripts on the archive rendered whole, the missing
+  image and both script requests were blocked, and nothing reached the server (compiling cost 1.2 ms
+  for 3 URLs, 15 ms for 1 000; one non-ASCII character fails the whole list). **But an allowed URL is
+  a request WebKit may make.** A subframe whose archived name did not match the one WebKit generates
+  (`<!--frame1-->`) was fetched from the server, and its image after it. WebKit's own archives carry
+  the right names and stayed silent, frames included; a crafted file controls both the names and the
+  HTML.
+- **So an archive is sealed instead: every archived origin moves to a scheme of ours.**
+  `http://127.0.0.1:8765/…` became `x-dirnex-archive://o1/…`, in each resource's URL and in the bytes
+  of every text resource, paths untouched so relative references still resolve. Under one constant
+  rule (re-admit `^x-dirnex-archive:`) WebKit's archive drew its script, web font, CSS background,
+  SVG and subframe from itself, with zero requests. With the frame's name deliberately wrong the
+  frame came up empty, still with zero requests: a miss has no network path, not even DNS, which an
+  `http://o1.dirnex.invalid` host (which also worked) would have had. A reference the rewrite misses
+  keeps its real origin, which the rules block, so every miss fails closed.
+- **WebKit has no MHTML.** A Chrome `Page.captureSnapshot` file loaded as `multipart/related` or
+  `message/rfc822` drew its raw headers as text, and `loadFileURL` failed ("Frame load interrupted").
+  Converted to a webarchive and sealed, it rendered whole with zero requests: windows-1252 text by its
+  own `<meta>` (a main resource with no encoding name honours it), an image at a path with spaces and
+  `é`, and the iframe. Chrome writes CRLF, every reference as an absolute URL, quoted-printable HTML
+  and CSS, base64 images, an iframe as `src="cid:frame-…@mhtml.blink"`, a frame's `<style>` as a
+  `text/css` part whose `Content-Location` is itself a `cid:`, and no scripts. **A frame finds
+  resources only in its own archive**, not its parent's: the frame drew unstyled until the parts it
+  names were copied into its subframe archive.
+- **Quick Look has a webarchive generator and none for MHTML** (`qlmanage -m`); `-p -o` wrote no
+  bundle for either. Both UTIs exist: `com.apple.webarchive`, `org.ietf.mhtml`.
+- **WebKit's MathML is good enough to be the target.** With scripts off it drew a fraction, nested
+  roots, sub- and superscripts, `∑` with limits, an integral, a matrix and double-struck letters. A
+  plain `(` stretches unless it says `stretchy="false"`.
+- **PDF**: `createPDF` gives one 800 × 10 420 pt page of a long page in 73 ms. A headless
+  `printOperation` (`runModal(for:)` on an unshown window, `jobDisposition = .save`) gives 17 A4 pages
+  in 781 ms, text selectable. The dark appearance leaks into the PDF, so an export renders light.
+- **The corpus.** 1 440 distinct `.md` files of Oleg's own and 5 411 in dependencies on this Mac. A
+  relative link to another file: **35 %** of his own (25 % to another `.md`). GitHub alerts
+  (`> [!NOTE]`), which Dirnex draws as a blockquote with `[!NOTE]` in it: **5.7 %**. Everything else
+  M39 names is under 0.5 %: definition lists 7 files, emoji shortcodes 3, math 2, footnotes 1, wiki
+  links 0 (the hits were `[[String]]` in prose). Every mermaid fence is `graph`, `flowchart` or
+  `sequenceDiagram`, which already draw; one `stateDiagram-v2` sits in a dependency.
+
+Decided before Slice 1 (2026-11-12, Oleg, on the probes above):
+
+- **A link to a local file moves the pane**: its cursor lands on the target, entering the target's
+  folder when it is elsewhere, the preview follows the cursor, and the pane's own Back is the way
+  back. So the file list stays the navigation (M11's reason) and the preview gains no history. A
+  `#fragment` scrolls once the target renders. A web link opens in the user's browser, since a
+  click is a deliberate act where a cursor step is not.
+- **Mermaid: all four types**, state, class and ER on the flowchart's layered layout, gantt on a time
+  axis of its own.
+- **A slideshow timer, no filmstrip.** In the two full sizes a key starts a timer that steps the pane's
+  cursor through the folder's images. The filmstrip goes back to *undone*: it is a second file list,
+  which is M15's grid under *Still open*.
+- **Export lands like F5**: a sheet with the name and the other pane's folder, both editable, then a
+  queued copy from a temp file, with F5's conflict policy, undo and remote targets. HTML is one
+  self-contained file, images inlined. PDF is paginated through the print path, in the light palette.
+- **Web archives** are sealed in the core and loaded under one constant rule: a `.webarchive` is read,
+  an `.mhtml` is converted to one, and either has every origin moved to `x-dirnex-archive:` before
+  WebKit sees it. Both are one style, the page, with the user's JavaScript switch.
+- **RTF** gains its source as a fifth dual-style family, opening on the page and remembered apart, so
+  today's rendering stays the default. `.rtfd` and `.odt` keep one style: neither is text.
+- **GitHub alerts join M39**, on the corpus. Not asked; drop them if unwanted.
+- **Themes: VS Code (today's), Xcode and GitHub**, each a light and dark pair held to 4.5:1 on the
+  system text background, for the source view and rendered fences alike. Asked at Slice 10
+  (2026-11-14): all three, picked in Settings ▸ Panels over a code sample.
+
+#### Slices
+
+1. **Web archives in the core** (additive). The webarchive plist read and written, subframes
+   included; an MHTML parse (MIME headers, the boundary, quoted-printable and base64, charsets) into a
+   webarchive, frames named as WebKit names them and given the parts they reference; and the seal.
+   Tested against the Chrome and WebKit files the probe wrote. **Landed 2026-11-12**: `WebArchive`,
+   `MIMEEntity`, `MHTMLArchive` and `WebArchiveSeal`, 47 tests over five captures in
+   `Fixtures/WebArchive` (the `types` capture taken again without its `@font-face`, which had copied a
+   system font into it). The core's own sealed output, written by a scratch package and loaded under
+   the one rule with scripts on, drew all five whole with zero requests in the server's log, frames
+   included and the archived responses dropped. Sealing costs 0.1–0.7 ms. A WebKit archive names its
+   frames in creation order, not document order: the `<object>` before the iframe is `<!--frame2-->`.
+2. **Web archives in the app.** Routing for both UTIs and `.mht`, a page case under the sealed-scheme
+   rule, find, LOCATION-SUPPORT.md, and a live run against a server log. **Landed 2026-11-12**:
+   `QuickViewPreviewView+WebArchive` reads, converts and seals off the main actor (a 65 MB webarchive
+   in 19 ms, an 88 MB MHTML in 232 ms, release build), up to 64 MB; the shipped rule list gained one
+   rule, re-admitting the sealed scheme; and the web view's `.archive` page lets its frames load in
+   the scheme but never follow a click, and takes its `#anchor`s against the archive's own document.
+   The navigation delegate moved to `QuickViewWebView+Navigation.swift` to stay under the length
+   ceiling. 8 app tests, one of which drew a sealed image under the shipped rules and failed with the
+   third rule removed. **Run live** in `app.dirnex.Dirnex.live`, full window, scripts on: WebKit's
+   own archive (script, CSS background, SVG, iframe), Chrome's MHTML with its frame, and a crafted
+   archive carrying the probe's leak (a misnamed frame at the server's real URL, a missing image, a
+   `fetch`, a pixel) all drew as designed, the crafted frame empty, and the server logged **no
+   request** across the three. Find and zoom come with the web surface, which picks the visible
+   backend. Not run live: a server or a zip as the location, which reach the same code through the
+   local copy.
+3. **RTF source and page.** `QuickViewDualStyleKind.richText`, a small control-word scanner, the
+   header, 14 languages. **Landed 2026-11-12**: `SyntaxRTFScanner` colors a control word as a keyword
+   and its parameter as a number, `\'hh`, `\\`, `\{`, `\}`, `\~`, `\-` and `\_` as the characters they
+   are, a backslash before a line break (Cocoa's paragraph mark) as a keyword, braces as tags, and a
+   `{\*…}` group, which the spec lets a reader skip whole, as one comment: most of a Word file and none
+   of its text. One saved depth while such a group is skipped is all it remembers; `\bin` and a
+   picture's hex are left as text and say why. The family opens on the document and remembers apart
+   (`Dirnex.pref.quickViewRichTextStyle`), and the header calls it **Document** rather than Page, whose
+   Chinese is a *web* page. The corpus: 1 779 distinct RTF files on this Mac, all Cocoa's but 16 of
+   Word's and 1 of Aspose's, none with `\bin`; all of them scanned in 90 ms in a release build, the
+   largest (1.37 MB) in 6.4 ms. 16 core tests and 5 app tests, and the two older RTF tests now ask for
+   the document. **Run live** in `app.dirnex.Dirnex.live`, full window: TextEdit-shaped, Word and
+   1.37 MB files in both styles, `1` on RTF leaving Markdown on its page and `2` on Markdown leaving
+   RTF on its source, and an RTFD drawn as its document with no style offered. Seven RTF files here,
+   six of them Software Update's Portuguese and Hindi legal texts, carry raw UTF-8 under
+   `\ansicpg1252`: the document reads them as code page 1252 ("estÃ¡"), as the spec says to, and the
+   source shows what the bytes say ("está").
+4. **Following a link, core.** An `href` resolved against the document's location on its own backend:
+   percent-decoding, the fragment split off, a target outside the backend refused by name. **Landed
+   2026-11-12**: `DocumentLink.resolve(_:from:)` answers `.sameDocument(fragment:)`, `.location(VFSPath,
+   fragment:)` on the document's own backend, `.external(URL)` for `http`, `https` and `mailto`, or
+   `.refused` with a fact and no sentence (the app words it): another host, a `file:` URL from a
+   document not on this disk, any other scheme by name (`javascript`, `ftp`, `shortcuts`, a drive
+   letter), or a name that decodes to hold `/` or NUL. **Probed first**, because WebKit hands
+   `decidePolicyFor` only the URL it resolved, never the `href`: a generated page loaded under
+   `DocumentLink.baseURL(for:)`, the document's own path in `x-dirnex-document:///`, delivered every
+   synthetic click there with the backend path as its path, `#anchor` against the document (and it
+   scrolled), `""` as the document and `.` as its folder, names with a space, `é` and `#` round-tripped,
+   and `//host/x` with `host` as the host. So the resolver reads the `href` as written and WebKit's URL
+   alike, and 25 probed pairs pin both to one answer. **One departure from the line above**: `..` past
+   the root stops at the root rather than being refused, as RFC 3986 and WebKit both do, since WebKit
+   clamps before the app sees the click. RFC 3986's steps are written out rather than asked of
+   `URL(string:relativeTo:)`, which re-encodes every `%` in a string once it meets one invalid
+   character (`My%20Docs/100%.md` read back as a folder named `My%20Docs`). 17 tests, 87 cases. **For
+   Slice 5**: the generated page moves to that base URL (today's `file://` folder resolves `""`, `.` and
+   `#anchor` all to the folder); the preview needs the document's `VFSPath`, which it does not hold
+   today; and an HTML file from a server is loaded from its local copy, so its links come back as
+   `file:` URLs there and this resolver refuses them, which Slice 5 either maps or leaves to local HTML.
+5. **Following a link, app.** The click moves the pane, the fragment scrolls after the render, a web
+   link opens in the browser; at all three sizes and on a server. **Landed 2026-11-13**: a Markdown
+   page loads under `DocumentLink.baseURL(for:)` of the file's own location, which the window now hands
+   every surface with the file (`PanelViewController.quickViewSourceLocation`). A click the navigation
+   policy refuses is resolved and handed to the window (`QuickViewWebView+Links`,
+   `BrowserWindowController+QuickViewLinks`), which moves the **active** pane at every size: a target the
+   listing shows takes a cursor step with no request, anything else is `stat`ed and then entered with the
+   cursor on it (`PanelViewController+LinkTarget`), and from a results listing it opens in a new tab so
+   the results stay. A heading waits on the surface (`QuickViewLinks.pendingFragment`), survives a
+   server file's download card, and is scrolled to after the load. `http`, `https` and `mailto` go to
+   `NSWorkspace`; a refusal is an alert naming its reason, in 14 languages, and so is a file that is not
+   there ("There's no “nope.md” in “docs”."). HTML files follow links too: a local one resolves its
+   `file:` URLs; **a server's or an archive's is now drawn from its bytes under its location's base URL**
+   (`Page.copied`), because the live run found every link on one dead. On a `file:` page WebKit asks the
+   delegate only about a file that exists inside the read access, and the copy sits alone in a temp
+   folder (docs/NOTES.md ▸ Previews: web views). That made Slice 4's copy-relative helper unneeded, and it
+   went. A saved page's sealed links go back to their real URL (`WebArchiveSeal.originalURL(for:origins:)`,
+   the seal's table kept beside the page), and a converted office document follows web links only. The
+   `Page` enum moved to `QuickViewWebView+Page.swift` to keep the class under the length ceiling. 16 app
+   tests in three suites: what each kind of page resolves against, the policy, the pending heading, the
+   wording; real clicks in a real page, including the server HTML case; and a real pane landing. Negative
+   controls: without the scroll call, with the old `file://` folder base, without the existence check,
+   and with server HTML loaded from its copy, each failed exactly its own test. **Run live** in
+   `app.dirnex.Dirnex.live`. At pane size on this disk: an anchor scrolled in place; a sibling, a sibling
+   carrying `#far-section`, `../top.md`, `sub/deep.md#part-two` and both links in an HTML file moved the
+   pane and scrolled; Go ▸ Back came home on the row it left; and missing, `//nas.example` and `ftp:`
+   each raised their alert. At full window: an HTML link and a Markdown link with a heading. On a
+   throwaway `sshd`: the cross-folder link with a heading cost 3 sessions (stat, listing, download) and
+   opened scrolled; a same-folder link cost no listing; the server HTML file's link worked after the
+   fix and not before; a missing file got its sentence. Inside a zip: the cross-folder link with a
+   heading. At full screen (run 2026-11-13, at Oleg's go): `sub/deep.md#part-two` entered `sub` and put
+   the heading at the top, just under the strip the header drops into; Go ▸ Back came home and a second
+   click did the same; a sibling took a cursor step; an anchor scrolled in place; and the missing file's
+   alert came up over the full-screen window and left it there. **Not run live**: a web link opening
+   the browser; a saved page's link; a link from a results listing, which its test covers.
+6. **Markdown: GitHub alerts, footnotes and emoji shortcodes** (core and stylesheet). The shortcode
+   table's source is asked when the slice opens. **Landed 2026-11-13**. Oleg chose GitHub's gemoji:
+   v4.1.0's `db/emoji.json` (MIT, 1 913 names) is reduced by `scripts/generate_emoji_shortcodes.py`
+   to one string literal, `MarkdownEmojiTable.swift`, and its notice is in NOTICE. GitHub writes none
+   of these rules down, so each was read off GitHub's own renderer: its `/markdown` API, and real files
+   served with `Accept: application/vnd.github.html` (docs/NOTES.md ▸ Working rhythm).
+   **Shortcodes** (`MarkdownEmoji`) do not follow a word boundary. Within one run of text, which is
+   the text between two elements with soft breaks included, the first `:word:` decides. If it opens
+   the run or follows ASCII whitespace, every known name in the run is drawn; if not, none is. So
+   `10:30:00 :smile:` stays text, and `requestOpenLink(source:link:)` keeps the selector that a
+   plain search for names turned into `source🔗`. Shortcodes are drawn at render time, so
+   `## :bulb: Highlights` draws 💡 and anchors as `#bulb-highlights`, as GitHub served nodelib's
+   README; an image's alt keeps its shortcode. **Alerts** (`MarkdownAlert`): the marker in any case,
+   alone on a quote's first line with something under it, inside a list item too (eslint-plugin-
+   import's `order.md`); a second marker in the same quote stays text in the first alert, as GitHub
+   draws baseline-browser-mapping's README. GitHub's classes and palette, which scores 4.87–6.60:1 on
+   this page's own backgrounds, SF Symbols as CSS masks where GitHub draws Octicons, and titles in 14
+   languages (`QuickViewMarkdownAlerts`). **Footnotes** (`MarkdownFootnotes`): a label holds no
+   whitespace and matches in any case, and the first definition wins. Footnotes are numbered by first
+   reference, with `fn-1` and `fnref-1-2` anchors percent-encoded as GitHub's are, and a `↩` back to
+   every reference. A definition interrupts a paragraph and may sit inside a quote or an item; it
+   continues lazily or at four columns. One departure: a reference in a heading adds nothing to its
+   anchor, where GitHub gives `#heading3`. A block that draws nothing now leaves no line behind, which
+   also took the stray newline off an empty `[[_TOC_]]`. 28 core tests and 7 app tests; the app's
+   follow a footnote down and back in a real page, an encoded label included. **The corpus**: all
+   27 756 `.md` files in the home folder render. 297 alerts are drawn where a text search finds 299
+   markers, and the two are the baseline-browser-mapping case above. 14 files have footnotes. The
+   shortcode pass cost 5–7 % of the whole render until a byte-level check went ahead of it; the corpus
+   now renders within noise of before (23.9 s against 23.8 s, release build). **Run live** in
+   `app.dirnex.Dirnex.live`, full window, dark appearance: emoji in a heading, its TOC entry and
+   prose; `:smile:` kept in code and after `10:30:00`; the five alerts in their colors with their
+   icons; footnote numbers 1, 2, 1. A click on the first jumped to the notes, which drew `↩ ↩²` and a
+   two-paragraph note. `↩²` went nowhere visible, because its target was already in view: a probe in
+   a real page read the hash as `#fnref-1-2` with the scroll unchanged, which is WebKit's behavior
+   (docs/NOTES.md ▸ Previews: web views). **Not run live**: the light appearance, a translated title,
+   and a server or archive location, which reach the same render through the file's bytes.
+7. **Markdown: wiki links and definition lists.** Wiki links go through Slice 4's resolver. **Landed
+   2026-11-14.** **The corpus first**: 12 603 distinct `.md` files in the home folder hold no definition
+   list and no real wiki link outside Claude's memory notes (`[[dirnex-project-goal]]`, each naming a
+   sibling `.md`), but they hold the prose each obvious rule misreads: JavaScript READMEs writing
+   `[[Prototype]]` and `[[Get]]s`, changelogs writing `[[#4995]](url)`, HISTORY.md writing
+   `[[swift-testing-…]]-adjacent`, and a wrapped HISTORY.md line opening with `: "conflicts"` inside a
+   paragraph. Oleg's two calls on that: **a wiki link is a link only when its file is there**, and is
+   its own text otherwise, as a footnote reference with no definition is; and **it looks in the
+   document's folder**, the name or the path written in it, with no Obsidian vault search.
+   **Wiki links** (`MarkdownWikiLink`): Obsidian's order, `[[name]]`, `[[name|text]]`, `[[name#Heading]]`
+   and `[[#Heading]]`, `.md` tried before the name as written; the `href` is a percent-encoded relative
+   path (`:` encoded, so `Notes: May` is no scheme) and the heading becomes its GitHub anchor, so a
+   click takes Slice 5's road unchanged. A link whose text is in brackets, a code span and an escape win,
+   no wiki link is read inside a link's text, and a heading anchors from its text as written, as GitHub
+   would. Which files exist is the app's to say (`MarkdownRenderOptions.locateFile`, default none),
+   answered as the file spells it: on this disk the disk beside the document, so `[[Note]]` finds
+   `note.md` on a volume that ignores case and the click lands on that row
+   (`QuickViewMarkdownWikiLinks`); anywhere else the files the active pane lists in the document's
+   folder (`PanelViewController.namesListed(beside:)`), which costs no request. **Definition lists**
+   (`MarkdownDefinitionLists`): Pandoc's rules where PHP Markdown Extra agrees, a one-line term over
+   `: ` definitions, loose per definition after a blank line, continuing lazily or at four columns; a
+   `:` line never interrupts a paragraph, which keeps HISTORY.md's line prose, no `~` marker and no
+   several terms over one definition. Drawn in GitHub's `dl` style. `plainText` moved from
+   `MarkdownInlineParser` to `MarkdownInline` when the parser reached `type_body_length`. 20 core tests
+   and 5 app tests (one a real click handed on as the file and its heading). Negative controls: without
+   the `(` exclusion, without the existence check, with the disk asked for a server's document, and
+   without the disk's spelling, each failed exactly its own test. **The corpus after**: with the app's
+   default options 0 of 12 603 files render differently, and with a real existence check exactly 25
+   do, all memory notes, every link in them resolved. **Run live** in `app.dirnex.Dirnex.live`, dark
+   appearance. At pane size on this disk: the four links drawn and `[[Prototype]]`, `[[Get]]s` and the
+   code span left as text; `[[#Definitions]]` scrolled in place; `[[Note|…]]` put the cursor on
+   `note.md`, whose `[[index]]` came back; `[[sub/deep#Part Two|…]]` entered `sub` with the heading at
+   the top; the definition list drew with its italic terms. Inside a zip at pane size and full window:
+   `[[note]]` and `[[index]]` linked and moved the cursor, `[[Note|…]]` and `[[sub/deep…]]` stayed
+   text as the listing says. **Not run live**: a server, which takes the zip's path through its
+   listing; full screen; the light appearance.
+8. **Markdown: math.** GitHub's four spellings, a TeX subset to MathML, an unknown command left as its
+   text. **Landed 2026-11-14.** **Probed first**, three ways. GitHub's renderer, with synthetic
+   samples and two real files served as HTML: math is off in `mode=markdown` and on in `mode=gfm`
+   (docs/NOTES.md ▸ Working rhythm). A `$` opens at the start of a run of text or after ASCII
+   whitespace or `(`, with no whitespace after it, and closes at the next `$` with no whitespace
+   before it and no ASCII letter, digit or `_` after it, so `$5 and $10`, `word$x$` and `"$x$"` are
+   text; `` $`…`$ `` has no boundary rules; a ```` ```math ```` fence is math and ```` ```Math ```` is
+   code; `${a}, which is (${b})` is text (a closer before `{` closes nothing when the content opened
+   with `{`); a `$` inside a later code span closes nothing; and none is read in a link's text. **The
+   corpus**: 12 600 distinct `.md` files in the home folder, whose real math is a Hugging Face paper
+   template, opentelemetry's `ieee_754.md`, three llama.cpp READMEs and a math-olympiad prompt, from
+   which the subset was sized. And **WebKit**, construct by construct in an offscreen `WKWebView`
+   (docs/NOTES.md ▸ Previews: web views): a plain `(` stretches unless told not to, `columnalign` works
+   only on an `<mtd>`, a superscript prime draws tiny, `&#x2061;` gives `sin` no space, accents need
+   chosen glyphs and no operator spacing, and `<math display="block">` will not scroll.
+   **The spellings** (`MarkdownMath`, read in the inline pass): `$…$`, `$$…$$` inline or alone between
+   lines, `` $`…`$ `` and the fence. **One departure from GitHub, on purpose**: the TeX is kept as
+   written. GitHub reads Markdown's escapes first, so the paper template's `$X = \{x_1, …\}$` draws
+   with no braces there, and `*` pairs into emphasis across two formulas; here, as in pandoc, VS Code
+   and GitHub's own `` $`…`$ ``, the braces are drawn and emphasis never reaches inside. **The
+   converter** (`TeXMath`, `TeXMathParser`, `TeXMathSymbols`, `TeXMathFont`): letters, numbers,
+   operators with TeX's sign rule; scripts and primes; `\frac`, `\sqrt`, `\binom`, `\over`; Greek and
+   some 350 commands by name; large operators with their limits under and over in display and beside
+   inline (`movablelimits`); the named functions with TeX's thin spaces; `\left…\right`, `\middle`, the
+   `\big` family; `\mathbb`, `\mathcal`, `\mathbf` and the rest as Unicode's math letters; `\text`; the
+   accents; spacing; `\not`; the style and size switches; and the matrix, `cases`, `aligned`,
+   `gathered` and `array` environments. An unknown command draws as its own text in GitHub's danger
+   red (5.24:1 light, 4.97:1 dark), and what follows it is read as usual. A brace, `\left` or `\begin`
+   that does not close, or a missing argument, fails the formula, which then draws as the text it was
+   written as (a fence as its code block); nesting past 64 fails rather than exhausting the stack. A
+   formula's heading anchors by its TeX, as GitHub's does (`## The $x^2$ term` → `#the-x2-term`). The
+   app's half is three rules (`QuickViewMarkdownMath`): display math scrolls in its own box, an
+   `aligned` pair sits close, an unknown command is red. 34 core tests and 3 app tests. Negative
+   controls, each failing exactly its own test: without the code-span stop, without the template rule,
+   with math allowed straight after math, with plain delimiters stretching, without a function's thin
+   space, without the display box's scrolling (the page widened to 1 169 points in a 420-point window)
+   and without the `aligned` padding rule (6.1 points between `a` and its `=`). **The corpus after**: 8
+   of 12 600 files render differently, the six with real math and two bcrypt READMEs whose `$2a$` and
+   `$2b$` GitHub also draws as math; the first pass changed 16, and the eight it should not have were
+   the template and code-span rules above, both then read off GitHub. Rendering the corpus took
+   14.97 s against 14.84 s before (release, warm). `ComparedDocumentPropertyTests` samples every seventh file
+   of `Services`, so the new files moved its seeded edits onto a README case its loop bound did not
+   allow for; the bound is now twice the changes (docs/NOTES.md ▸ Testing). **Run live** in
+   `app.dirnex.Dirnex.live`, at pane size and full window in the dark appearance and at pane size in
+   the light: math in a heading; inline formulas with `sin x + log n` spaced, `f′(x)`, a sign after
+   `=`, the set's braces and a bold `O(n log n)`; prices and `${…}` templates left as text; `\foo` in
+   red; a broken formula as its text; a `$$` block, `cases`, `aligned`, matrices with `\left|…\right|`,
+   braces, limits, accents, a root and a binomial. A 20-term sum ended at the pane's edge in its own
+   box and stood whole and centred at full window. **Not run live**: scrolling that box sideways,
+   which the app test measures; full screen; a server or an archive, which reach the same render
+   through the file's bytes.
+9. **Highlighting: JSON keys, setext headings and indented code in a Markdown source, Ruby's
+   `=begin`** (core). **Landed 2026-11-14.** **Probed first**: `ruby` itself for `=begin`, which counts
+   only at a line's start with whitespace or the line's end after it (`  =begin` and `=beginning` are
+   syntax errors, an indented `=end` or an `=endx` closes nothing, the closing line's rest is
+   ignored); and GitHub's highlighter, which gives a JSON key the class of an HTML tag's name,
+   comments `=begin` … `=end` whole, and draws an indented `# line` in Markdown as code.
+   **JSON** (`LanguageGrammar.keysBeforeColon`): a closed string with a colon after it, across
+   whitespace, is a key and takes `.typeOrTag`, since JSON spends `.keyword` on `true`, `false` and
+   `null`; JSON5's bare names too. No other row can have it (`c ? "a" : "b"`, `if x == "a":`).
+   **Ruby** (`LanguageGrammar.lineBlockComment`): a field for one language, which M17 called too rare
+   to carry. Perl's POD is the same shape and stays out, since it opens on any `=word`. **Markdown**
+   (`SyntaxMarkdownScanner`, with its line constructs moved to `+Constructs` to stay under
+   `type_body_length`): an underlined paragraph is a heading on every line, its inline colors taken
+   back; an indented block colors nothing, as an undecorated fence does, so a `# comment` inside one
+   is no longer a heading. Between lines the scanner keeps the open paragraph, the latest list item's
+   content column (one, not a stack, which errs toward missing code) and a code block's indent. The
+   corpus asked for four more rules. Front matter is found by `MarkdownFrontMatter`'s rule: its lines
+   color as before, but its closing `---` is no underline (1 869 files would have gained a heading).
+   A GFM delimiter row makes the paragraph a table, which takes no underline. A bare `-` is an empty
+   item, so a column of them is no heading. And **fences close by CommonMark's rule**, which the
+   renderer already used: a closer at least as long as the opener, with no info string, fewer than
+   four columns in, and no backtick in a backtick fence's info string. Without it the old any-run
+   closer fell out of step with indented code: a ```` block closed on the ``` inside it, and the rest
+   of the file flipped. A `markdown` fence recurses three levels and no further
+   (`SyntaxMarkdownScanner.maxNesting`), since the length rule no longer bounds the depth.
+   **Scored against an oracle each.** micromark (`mdast-util-from-markdown` with GFM, already in
+   `dirnex-home`) over the 12 562 distinct `.md` files in the home folder, every line given what
+   micromark says it is and scored before and after: indented-code lines right went from 1 551 to
+   1 911 of 1 920, and headings, rules and fence lines from 278 466 to 293 276 of 293 453. No
+   paragraph line became a heading. 18 lines got worse, all in three copies of zod's README, where an
+   HTML comment holds a fence. Neither the scanner nor the renderer models HTML blocks, so there the
+   source now agrees with the page where it used to differ. The remaining misses are micromark's own
+   (after indented code it will not start a list at `2.`, which GitHub does) and lists the one column
+   cannot follow. Ruby's Ripper over the 127 of 11 673 system Ruby files that hold a `=begin`: 146 of
+   146 blocks, against 0 before. A JSON lexer that keeps its container stack, over 17 089 JSON files:
+   5 910 096 keys, none missed and none extra, against all missed before. 22 core tests in two new
+   suites (`SyntaxJSONAndRubyTests`, `SyntaxMarkdownBlockTests`), and the old JSON test asks for keys.
+   Negative controls, 16 of them, each failing exactly its own tests: every rule above taken out in
+   turn, plus the column-zero check, empty items withheld under any paragraph, and indented code read
+   as blocks or as inline text. The first version of the last one passed, because nothing in the test
+   colored inline; the test gained a `*y*` inside the code. **Cost**, release build, three runs each:
+   Markdown 1.33 s to 1.37 s for the 97 MB of `.md`, JSON 2.04 s to 2.42 s for 517 MB, which is
+   0.7 ms a megabyte and about 3 ms at the preview's 4 MB. The `=begin` check, run at every position
+   of every language, cost JSON a further 7 % until a `Bool` went ahead of it. The key lookahead is
+   the rest, and not by reading whitespace twice: resuming past it changed nothing. **Run live** in
+   `app.dirnex.Dirnex.live`, full window, dark appearance, source style: a `.md` with front matter, a
+   setext heading, a two-line paragraph underlined with `---`, indented code at the top level and in
+   a list item, a ```` fence holding a ```swift one, and a table with `---` under it, each drawn as
+   above; a `.json` with its keys teal apart from salmon strings, nested and in an object on one
+   line; a `.rb` with its `=begin` block one comment and an indented `=begin` left as code. **Not run
+   live**: the light appearance, a rendered page's ```` ```json ```` fence, and the compare and merge
+   windows, which color through the same scanner.
+10. **The theme picker** (app). Settings, the source view and the rendered fences. **Landed 2026-11-14.**
+   Oleg's call on the probe: all three themes, in Settings ▸ Panels over a code sample. **Probed first**:
+   Xcode's `Default (Light)` and `Default (Dark)` `.xccolortheme` files inside Xcode.app, and GitHub's
+   `--color-prettylights-syntax-*` values from its own Markdown stylesheet, every value measured on the
+   system text background (`#FFFFFF`, `#1E1E1E`), which every theme keeps. Two needed a decision: Xcode's
+   dark comment `#6C7986` scores 3.74:1 (it fails in Xcode too) and is lightened along its hue to
+   `#7C8996`, 4.66:1; GitHub's light palette gives a tag the constant's blue (`#0550AE` for both), so
+   `typeOrTag` takes its `entity` purple. Xcode colors no diff: a removed line takes its string red and
+   an added one the teal of `identifier.function`. VS Code stays the default, M17's table value for value
+   (`SyntaxColorTheme`, `Dirnex.pref.syntaxTheme`, an unknown value reading as the default). **The
+   mechanism**: `SyntaxTheme`'s colors stay one `NSColor` per kind and now resolve through the selected
+   theme at draw time, since a dynamic color asks its provider on every resolution (probed, `cgColor`
+   included; docs/NOTES.md ▸ Color and contrast). So nothing anywhere rebuilds a document: the shared
+   preferences alone move `SyntaxTheme.current`, and `SyntaxThemeRepaint` walks every window marking each
+   view for display, which reaches the source view, the JSON and XML tree, a CSV's columns and the
+   compare and merge windows without listing them. A Markdown page's token colors sit in a `<style>` of
+   their own, rewritten in place by a client-world script (page scripts off), so the page keeps its
+   scroll; a page loaded later is generated in the new theme. The sample is three lines of Swift through
+   the real grammar, its comment translated; three new strings in 14 languages. **Tests**:
+   `SyntaxThemeTests` now holds every theme to 4.5:1 in both appearances, its pairs apart, its code kinds
+   distinct and VS Code unchanged, and a following color to its source; `SyntaxThemeChoiceTests` (8)
+   covers the preference, the sample, the page's stylesheet, a real page restyled twice in place with
+   its scroll kept, the walk finding that page inside its surface, and an HTML page left alone. Negative
+   controls, each failing exactly its own tests: a scratch instance moving the screen's theme, the walk
+   not descending, a following color ignoring its source, and the token colors back in the main
+   `<style>`. **Run live** in `app.dirnex.Dirnex.live` at pane size. Dark: the Swift source, the Markdown
+   source, a rendered page scrolled to its last fence (it stayed there), the JSON tree and the CSV source
+   each took the new theme the moment a segment was pressed, nothing reopened; a relaunch came back in
+   the saved theme. Light: all three on the rendered page and in the sample. Two controls in the running
+   app: with the text view's layout no longer invalidated it still recolored, so that code went; with the
+   walk switched off it kept the old colors. One thing seen: Xcode's dark keyword (`#FC5FA3`) and string
+   (`#FC6A5D`) are near hues, so a CSV's second and third columns read close there, as they do in Xcode.
+   **Not run live**: the compare and merge windows, which the same walk reaches; full window and full
+   screen; a 4 MB file; a translated Settings tab.
+11. **Export, core.** The self-contained HTML document and the names. **Landed 2026-11-14.** Oleg's three
+   calls when it opened: a link to another file stays as written, relative, as pandoc and GitHub leave
+   it; a remote image keeps its URL, for the browser to fetch; and the file holds what the preview drew,
+   so a server's or an archive's document carries no sibling image, since its preview draws none (now
+   written down, LOCATION-SUPPORT.md <sup>aat</sup>). **Probed first.** APFS limits a name to 255
+   **UTF-16 units**, not bytes (255 `é` created, 128 `😀` refused), where ext4 counts 255 bytes. A
+   `<meta>` Content-Security-Policy in a `file://` page, in `WKWebView` and headless Chrome beside a
+   throwaway server: scripts, an `onerror` and a `javascript:` link stopped, and `data:`, sibling and
+   remote images all drew (docs/NOTES.md ▸ Previews: web views). And the corpus, 5 655 distinct `.md`
+   files: 4 302 open on a level-1 heading, 18 have one only later (release changelogs), 467 a
+   front-matter `title`. **`MarkdownExport`**: `fileName(forSource:as:)` drops the last extension by
+   `NSString`'s rule (`.md` gives `.md.html`) and, when the name outgrows a limit, trims whole
+   characters off the stem until it fits every limit the source fitted, units always and bytes when
+   the source kept to them; `htmlDocument(title:stylesheet:body:)` is the file's UTF-8 bytes, charset
+   first, then the policy (`script-src`, `object-src`, `base-uri` and `form-action` all `'none'`, and
+   nothing on images or styles), the escaped title, the app's stylesheet and the page verbatim.
+   **`MarkdownRender.title`** (`MarkdownTitle`): front matter's `title` in any case (`''` and a YAML
+   block scalar name none), else the first heading when it is level 1, else, at export, the file's
+   stem. The first version's corpus run found 305 titles carrying markup or a badge (`PostCSS Lab
+   Function <img … align="right">`, `is-bigint <sup>Version Badge</sup>`); in the dependencies 500 of
+   3 651 first headings hold an image and 247 a raw tag, against 1 each of Oleg's 511. So a title is the
+   heading's words less its images and less any run CommonMark reads as a tag (§6.6's open tag, closing
+   tag and comment), which GitHub draws as nothing; a code span and a formula keep every character, and
+   shortcodes are drawn run by run as the heading draws them. After: 28 flagged, all real words but two
+   badges whose references the file never defines, which the page draws as typed too. `MarkdownHeadings`'
+   walk is one `visit` that the anchors and the title share, so they agree on the first heading. 21
+   tests, 40 cases. Negative controls, each failing its own test: bytes never counted, trimming by
+   scalar, any first heading, no block-scalar check, a case-sensitive key, the title unescaped or
+   uncollapsed, `default-src 'none'`, an image's alt kept, no tag stripping, stripping run by run (only
+   the tag that emphasis splits), a code span read as prose, shortcodes over the whole title, the walk
+   skipping quotes (the anchors' test too) and comments unread; bytes always counted also failed the
+   emoji and combining-mark names, which rely on it. Rendering the corpus: 7.14 s against 7.30 s.
+   **For Slice 12**: the app's two `<style>`s become one string, a `max-width` for a browser window,
+   the light palette for the PDF, and whether a source past the preview's 4 MB exports whole.
+12. **Export, app.** The sheet, the PDF through the print path, the queued copy. **Landed 2026-11-14.**
+   Oleg's three calls when it opened: **one File ▸ Export…** (`file.export`, in ⌘K and the `.sdef`, no
+   key) whose sheet holds a format popup, remembered (`Dirnex.exportFormat`), above the name and the
+   folder; it acts on **the cursor's Markdown file in either pane, Quick View on or off**; and it
+   exports **the whole file**, up to 64 MB, where the preview reads 4 (`MarkdownExport.sourceByteLimit`,
+   checked on the file's size before a byte is read). **Probed first**, a page printed headlessly
+   through `WKWebView.printOperation` (docs/NOTES.md ▸ Previews: web views): pages of selectable text
+   on the user's paper in under 0.1 s, the callback off the main thread; **a CSS mask is not applied
+   on paper**, so an alert's icon printed as a square of its color with the black symbol over it,
+   where a pre-tinted symbol printed right; backgrounds print only with `shouldPrintBackgrounds`;
+   `@media print` and the margins apply; `scalingFactor` laid a page sideways across sheets. And
+   **print is light by itself**: a view drawing the dark palette printed the light one, while
+   `createPDF` of it came out dark, which is what the M39 probe had seen. **The page**
+   (`MarkdownExportFile`) is the preview's render, so it holds what the preview drew, under one
+   stylesheet (`QuickViewMarkdownStyle.exportStylesheet`): the preview's palettes and the theme's token
+   colors, then `QuickViewMarkdownExportStyle`, a 980 px reading width in a browser and, for paper,
+   11 pt text, wrapping code, nothing that scrolls, and each alert's symbol drawn in its light color
+   (`QuickViewMarkdownAlerts.iconMask(_:tint:)`), which a browser printing the HTML file reads too.
+   **The PDF** (`MarkdownExportPDF`) is that file printed in a window never shown, under the preview's
+   block-remote rules (`QuickViewWebView.contentRules`), scripts off and no navigation past the page,
+   with ¾-inch margins. **The flow** (`PanelViewController+Export`): a refusal before the sheet when
+   the other pane cannot be written to (a browsed archive or a results listing included, since an
+   export is a copy and not an add); the sheet's name follows the format
+   (`MarkdownExport.renamed`), its folder is typed on the other pane's backend (`~` on this disk
+   only), and a bad name or a missing or read-only folder is said under the form with the sheet still
+   up; then the source is brought down through Share's funnel (`RemoteFetchPurpose.export`, on the
+   open row), the page is staged under its real name in a folder of its own
+   (`MarkdownExportStaging`), and **the queue copies it** with F5's `.ask` policy, conflict dialog and
+   undo, into any backend F5 writes to. The staged file is kept for the session and purged at launch,
+   since a redo of the copy reads it again. 16 strings in 14 languages, three of them shared with Pack
+   and create-file. 4 core tests and 18 app tests in two suites
+   (`MarkdownExportPageTests`, `MarkdownExportGestureTests`), the PDF's checked by its own pixels:
+   more than one page, the title at the margin, under 10 % dark inside the margins, and the note's icon
+   blue with no black. Negative controls, each failing exactly its own test: no print backgrounds, the
+   default margins, the mask left on for paper, the preview's 4 MB read, the name not following the
+   format, a file taken for a folder, `~` expanded on a server and no write check before the sheet. One
+   did not fail, and that is the finding above: with the web view set dark the PDF still printed light,
+   and the measure was shown able to see a dark page by printing colors set without the media query.
+   **Run live** in `app.dirnex.Dirnex.live`, dark appearance, pane size: File ▸ Export… lit on
+   `guide.md` and the sheet drew as designed; HTML landed in the other pane through the queue, titled
+   from front matter, its image inlined and its link as written, and headless Chrome drew it at the
+   reading width in both appearances; PDF landed as 4 A4 pages titled "Export check", light, both
+   alert icons in their colors; a second HTML export raised F5's conflict dialog, Keep Both landed
+   `guide copy.html`, Edit ▸ Undo Copy removed it and Redo Copy brought it back from the staged file;
+   from inside a zip the member was extracted and exported, its image left as `pic.png` as
+   LOCATION-SUPPORT.md <sup>aat</sup> says. The run cost Oleg two cloud-provider prompts before the copy
+   was seeded away from Home (docs/LIVE-VERIFICATION.md). **Not run live**: a server as source or
+   destination, which reach Share's funnel and F5's queue; the sheet's inline errors, which the tests
+   cover and which a background run could not type into; full window and full screen; a translation.
+13. **Mermaid: state diagrams.** **Landed 2026-11-15.** Oleg's three calls when it opened: a
+   **self-loop is shared**, so a flowchart's `A --> A`, which had drawn nothing since M18, now loops
+   too; **labels get a half-layer slot in state diagrams only**, so flowcharts stay as they were; and
+   a transition into another composite's state **crosses the border** to reach it, as Mermaid draws
+   it. **Probed first**, on Mermaid 12.3 drawing its own documentation page's editable examples
+   (docs/NOTES.md ▸ Working rhythm), since its docs state few rules. One start and one end per region
+   (`root_start`, `First_end`): the simple sample is five nodes. `s1 : a` then `s1 : b` draws "a" over
+   a rule with "b" under it. A state belongs to the **last composite block that mentions it**, and the
+   top level never claims it back: `x --> inner1` written before `state Outer { inner1 }` still puts
+   `inner1` inside, with the line crossing in. A composite's inside runs top to bottom whatever the
+   diagram's direction. Regions sit side by side, a fork bar lies across the flow, a note hangs on a
+   dashed line, a label is everything after the first colon, and a repeated transition is drawn twice.
+   The corpus holds one state diagram, undici's connection lifecycle (a fork, a composite with its own
+   start and end, labels), now a test fixture. **The parse** (`MermaidStateDiagram`,
+   `MermaidStateParser`, `MermaidStateBuilder`): both header spellings; one statement a line with no
+   `;` split, which the flowchart's splitter would have turned into a state called `y` in
+   `a --> b : x; y`; `state "…" as id`, `id : text`, `<<choice>>`, `<<fork>>` and `<<join>>` (or
+   `[[…]]`), blocks, `--` and `direction`; notes on one line or to `end note`; `:::class` stripped;
+   `classDef`, `class`, `style` and a floating note named in the caption; `accTitle` and `accDescr`
+   skipped; a block that would put a state inside itself refused. **The layout**: the flowchart's
+   ranking and placement moved out whole (`MermaidLayering`, `MermaidLayered`), and the state diagram
+   lays each region out on its own from the inside, so a composite takes part in its parent as one box
+   of its finished size. A crossing transition is ranked in the innermost region holding both ends,
+   between the states there that contain them, and drawn to the real ones. Every transition crosses a
+   half-layer of its own (`stride: 2`), where its dummy is sized to its label, so `A --> B : x` and
+   `B --> A : y` sit side by side. **The first look, headless before any test, showed long transitions
+   zig-zagging** as each layer centered its dummies on its own; so a state diagram is ordered by eight
+   sweeps down and up, keeping the fewest crossings, and placed by a balancing pass that sets each
+   layer as close to its neighbors as its order and gaps allow, which is isotonic regression and
+   exact. A note's state lines up by its own box, not its slot. **Loops** (`MermaidSelfLoops`) leave
+   the side across the flow, nest, and reserve their room on both sides so the column stays straight;
+   the live run found a loop's label plate hiding the loop's outer edge, so a loop's label has none.
+   Six new classes in the stylesheet, in both appearances through the existing variables. **Every
+   flowchart and sequence fence on this Mac (45 fences, 24 files) renders byte for byte as before**;
+   undici's fence went from its source to a drawing. 35 new core tests in four suites
+   (`MermaidStateParserTests`, `MermaidStateLayoutTests`, and in the renderer and flowchart layout
+   suites); the app's class sweep draws a state diagram with every construct. Negative controls, 13,
+   each failing its own test: one stride, no balancing, no anchors, one ordering sweep, the top level
+   claiming back (which also failed the two tests built on that rule), no cycle guard, the `;` split,
+   no loop room, crossing transitions drawn to the composite, an inside following the parent's
+   direction, flowcharts dropping loops, one start per diagram, and loop labels plated; the class
+   sweep failed with `.mm-state-bar` removed. **Cost**, release, best of 20: undici 0.43 ms, 100 states
+   9.8 ms, 300 states 66 ms against a 300-node flowchart's 9.6 ms, and 1 000 states 0.72 s, off the
+   main actor; counting crossings is quadratic per layer pair, which nothing real reaches. **Run live**
+   in `app.dirnex.Dirnex.live` at pane size, with the cloud probe in and seeded away from Home (no
+   provider prompt, and the copy never took the front). Dark: the simple sample, a composite with
+   labels, notes, three concurrent regions, loops with a crossing transition, undici, and the
+   flowchart's loops. Light: the flowchart's loops after the plate fix, the loops file, and undici at
+   full window. **Not run live**: full screen; the choice, fork, description, nesting, direction,
+   left-to-right and `classDef` fixtures, which were checked only in headless Chrome's drawing of the
+   same render with the app's metric; a server or archive location, which reach the same render
+   through the file's bytes. **Left as found**: a fence opening with Mermaid front matter
+   (`---` / `title:` / `---`) falls back for every type with "“---” is not drawn".
+14. **Mermaid: class and ER diagrams.** **Landed 2026-11-15.** Oleg's two calls when it opened: **draw
+   both kinds of group**, a class diagram's namespaces (nested and dotted, as Mermaid 12.3 nests them)
+   and an ER diagram's subgraphs (Mermaid 11.17), on the state diagram's composite layout; and **read
+   front matter here**, for every type: `title` drawn above the diagram, `config` and the rest skipped
+   (M39's no-config rule), a block that never closes still falling back as `---`. **Probed first**, on
+   Mermaid 12.3 drawing its own class and ER pages (docs/NOTES.md ▸ Working rhythm). The first class or
+   entity a relation names is drawn above the second whatever the arrow says; a class is three bands
+   and an empty band is still drawn; a member is a method when it holds a `)` after its first
+   character, methods drawn under attributes; `$` underlines and `*` italicizes; `~T~` pairs from the
+   outside in; each lollipop is its own interface; a note for a class is a box above it on a dotted
+   line; a class relation's quoted label keeps its quotes and an ER one loses them; references are
+   decoded; an ER end reads either character order, the maximum touching the box; and **an entity
+   belongs to the first subgraph naming it**, where a state belongs to the last block. **The corpus**:
+   74 files with mermaid fences in the home folder, one class diagram (a NuGet README: five fences,
+   three namespaces, members written `&lt;&lt;rw&gt;&gt;`, `{ <<enum>>` on the brace line) and one ER
+   diagram (a Figma skill reference), both now drawn. **The parse** (`MermaidClassParser`,
+   `MermaidClassBuilder`, `MermaidClassRelationSyntax`, `MermaidERParser`, `MermaidText`): one
+   statement a line and no `;` split, since the README's `&lt;` would be cut; the line found outside
+   quotes, so `"0..1"` is no line; an `o` an aggregation only standing alone (`foo--bar` is two
+   classes); `click`, `link`, `callback`, `style`, `classDef` and `cssClass` named in the caption.
+   **The layout** (`MermaidBoxGraph`): both types lay out through the state diagram's region layout
+   whole, a group as a one-region composite and a box as a state of a size the caller chose
+   (`MermaidStateLayout.lay(out:metric:boxes:spacing:)`). Class names are bold, so the metric gained
+   `boldWidth`, measured in the bold system face the stylesheet names. **The first look, headless,
+   found lines between namespaces drawn straight through the boxes inside them**, on the README.
+   So a transition that crosses a border now runs through a **port** in each region it leaves or
+   enters (`MermaidStatePort`): one more node, pinned to a channel at the region's far or near edge
+   (`MermaidLayering.rank`'s `sinks` and `sources`), so the region routes the line between its boxes.
+   The side follows the direction the link really takes where it is ranked, worked out before any
+   region is laid out, since a back edge given a port above climbed the whole composite. This changes
+   Slice 13's crossing transitions too, for the better. **The drawing**: compartments, guillemets,
+   markers as polygons (`MermaidMarker`: hollow triangle and diamond filled with the background, filled
+   diamond, arrowhead, lollipop circle, crow's feet), a cardinality beside its line clear of the
+   marker, an entity's table with keys and comment columns only when some row has them, groups as
+   titled boxes. Ten new classes in the stylesheet, through the existing variables. **Every flowchart
+   and sequence fence on this Mac (51 and 19), and 17 of 18 state fences, render byte for byte as
+   before**; the eighteenth is Slice 13's cross-border fixture, rerouted by the ports; the six class and
+   ER fences went from source to drawings. 49 new core tests, in four new suites (`MermaidClassParserTests`,
+   `MermaidERParserTests`, `MermaidClassLayoutTests`, `MermaidClassRenderTests`) and two in
+   `MermaidStateLayoutTests`, and the app's class sweep draws both types and a title. Negative
+   controls, 14, each failing its own tests: no ports, ports always on the old side, the lone-`o`
+   rule, quotes not skipped (which first passed, because no case put a quoted `..` before the line),
+   the bold metric ignored, classifying after decoding, the last subgraph winning, an indented
+   `title`, a cardinality on its line, no empty bands, four columns always, the `;` split, the title
+   not drawn, and one lollipop shared. **Run live** in `app.dirnex.Dirnex.live` at pane size, dark
+   appearance, with the cloud probe in and seeded away from Home: Mermaid's Animal example under its
+   front-matter title, with its notes; members with every marker, cardinalities, a lollipop and a
+   loop; nested and dotted namespaces, the lines into Platform and Auth entering through their edges;
+   the NuGet README; ER tables with every crow's foot; subgraphs, `title2 → C2` entering `title3` from
+   its edge; a titled left-to-right ER diagram; the Figma ER file; Slice 13's cross-border fixture,
+   `cross` now coming up from below; a titled flowchart; a gantt under front matter named `gantt`; a
+   block that never closes named `---`. **Not run live**: the light appearance, full window and full
+   screen, an export, and a server or archive location, which reach the same render through the
+   file's bytes.
+15. **Mermaid: gantt.** **Landed 2026-11-15.** Oleg's four calls when it opened: a **fixed width**, a
+   700-point time line shrunk to the pane like every other diagram, since Mermaid takes the page's
+   width when it draws and the preview draws once; the **today line drawn**, from a clock the app hands
+   the render (`MarkdownRenderOptions.now` and `timeZone`), with `todayMarker off` honored and its style
+   string skipped under M39's no-config rule; **the page's palette** for the states rather than
+   Mermaid's; and **English** month and day names on the axis, as Mermaid writes them. **Probed first**,
+   from Mermaid 12.3's own `ganttDb.js`, `ganttRenderer.js` and `gantt.jison`, then on its docs page,
+   whose bars read back as Mermaid's dates (docs/NOTES.md ▸ Working rhythm). Rows keep the file's order,
+   and Mermaid sorts by start only to paint; a statement `title` beats the front matter's; a name goes
+   in its bar, after it, or before it when after would run half the right margin past the time line;
+   `vert` takes no row; and two rules the docs get wrong: with no `dateFormat` Mermaid hands dates to
+   JavaScript's `Date` and drops an end date, and an `until` end is pushed past excluded days like a
+   duration. **The corpus**: the only gantt charts on this Mac are two fences in a Figma skill's
+   reference file, both now drawn; the other 70 fences render byte for byte as before. **The parse**
+   (`MermaidGanttParser`): keywords in any case, a value cut at `#` or `;`, `click` named in the
+   caption, accessibility lines skipped, and a line Mermaid could not parse falls back. **The schedule**
+   (`MermaidGanttSchedule`, `MermaidGanttScheduler`) is Mermaid's own loop, up to eleven passes in
+   order, because that loop decides what a forward reference in an `after` list draws; with tags, ids,
+   `after`/`until`, durations by dayjs's `add` (`1.5d` is two days, `1.5M` one month), `excludes` and
+   `includes`, `weekend friday` and `inclusiveEndDates`. Times are wall clocks with no zone
+   (`MermaidGanttTime`), so a day is always 24 hours and nothing moves with the Mac's zone; only `Z`, a
+   Unix timestamp and the today line pass through one. Dates parse strictly as dayjs parses them
+   (`MermaidGanttDateFormat`), and a start that fails gets JavaScript's ISO reading
+   (`MermaidGanttScriptDate`), a bare date at midnight in UTC as there. The axis is d3's
+   (`MermaidGanttTicks`, `MermaidGanttAxisFormat`): its eighteen steps, `every` by the next unit's field,
+   a named `tickInterval` and `weekday`, and d3's `en-US` specifiers. **Departures**, each said where it
+   is made: no `dateFormat` reads `YYYY-MM-DD` as the docs promise; tick labels that would touch are
+   thinned to every `k`th, all grid lines kept, since d3's ten ticks ran into one another at 700 points
+   (the first headless look found it); a label past either edge widens the drawing where Mermaid cuts
+   it; a section column fits its longest name where Mermaid's 75 px lets it run under the bars; a
+   section named again further down is a block of its own; and an excluded run at the very end is
+   shaded, which Mermaid's loop forgets. **The app** (`QuickViewMarkdownGantt`): each state's fill is
+   `color-mix` of a page color into the background, so a name keeps the text color on it: 9.9–18.2:1 in
+   both appearances, outlines 3.9–5.9:1, held to 4.5 and 3 by a test. 61 core tests in six suites, 2 app
+   tests, and the class sweep draws a gantt. Negative controls, 17, each failing its own tests: thinning
+   off, the strict check off, one pass, bars to the pushed end, `after` taking its first task, dated ends
+   pushed, `weekend friday` as Saturday, today off the chart, labels always after, a fixed section
+   column, the front matter's title winning, bare dates local, day ticks counted by days, no trailing
+   run, and in the app the gantt rules left out, a fill at 100 % and a misspelt color space. Four
+   first passed and taught something: the results reader missed parameterized tests, the Friday case
+   gave the same date under both weekends, a fill at 60 % still clears 4.5:1, and a guard on section
+   blocks was redundant, so it went. **Run
+   live** in `app.dirnex.Dirnex.live` at pane size, with the cloud guard in and seeded at the fixture:
+   dark, Mermaid's excludes example, the today line at this evening over the active slice, and the
+   edge file (front matter title, a long name left of its bar, Monday ticks, `click` captioned, a broken
+   fence falling back); light, the same example and a time-only chart with a top axis. **Not run
+   live**: full window and full screen; an export, whose PDF would carry the today line as it stood;
+   a server or archive location, which reach the same render through the file's bytes. **Kept as
+   Mermaid draws it** (Oleg's call after the slice): a chart within one day and no `axisFormat` writes
+   the same date on every tick, since Mermaid's default format is `%Y-%m-%d` whatever the
+   `dateFormat`; the file's author can name one.
+16. **The slideshow timer.** **Landed 2026-11-15.** Oleg's four calls when it opened: **the key works
+   from anywhere**, opening full screen when Quick View is off or at pane size, as Preview's does, and
+   running in full window when that is up; the interval is **a setting**, five seconds by default
+   (Settings ▸ Panels, 1–60, `Dirnex.pref.slideshowInterval`); the show **loops**; and a step of the
+   user's own (← / →, a swipe, Space) **carries on** from where it lands. Two more after trying it in full
+   screen: the key is **⇧⌘S**, not Preview's ⇧⌘F the first version took, and the second press **ends the
+   show only**, where the first version also put a show started from the list back in the list. **Probed
+   first**, Preview.app read from its own bundle: its menu nib binds Slideshow to ⇧⌘F, and its
+   `_startAutoplayTimer` schedules a repeating 5.0 s `NSTimer`, which is where the default comes from.
+   In the file table bare letters type into the filter and Space marks, so the key had to be a chord;
+   ⇧⌘S sits beside ⌘S (Save Search), ⌃⌘S and ⌥⌘S, and no window handles S itself.
+   `ProcessInfo.beginActivity(.idleDisplaySleepDisabled)` shows in `pmset -g assertions` as
+   PreventUserIdleDisplaySleep under its reason, so keeping the screen awake is measurable.
+   **The core** (`Slideshow`): a row is a slide when it is a file, or a link to one, whose name types as
+   `public.image` (the preview's own test, so RAW, SVG and HEIC are in, PDF and video out) or as a GoPro
+   RAW; by name, so choosing the next stop costs no request on a server or in an archive. `firstSlide`
+   opens on the cursor's own picture or the next one, `nextSlide` wraps, a lone picture is its own next.
+   **The app**: `QuickViewSlideshow` holds the countdown, which **starts once the picture is on screen**
+   (the surface's `isAwaitingContent`: a backend decoding, or a placeholder card whose download runs;
+   a card waiting to be asked counts as there, so a file over the fetch limit shows its card for its turn
+   and the show goes on), restarts on **any change of file** whoever made it, and reads the interval each
+   time it starts, so a new setting applies from the next picture. It holds the display-sleep activity
+   while it runs. The window (`BrowserWindowController+Slideshow`) follows every full-size delivery and the
+   surface's new `onContentDidLoad`; Tab to the other pane or a folder entered or left ends the show,
+   as do Esc and leaving full size; ⇧⌘S's stop and the header's mark end the show only, and Quick View
+   stays on the picture the show reached, at whatever size it opened from. The page turn is ← / →'s flip, always from the right, the wrap included. The header marks a running
+   show with "▶ Slideshow" before the position, a click on which stops it; View ▸ Slideshow checks itself
+   while it runs and is enabled when the active pane has a picture. Six strings in 14 languages, the
+   title Preview's own word in each (its `MainMenu.loctable`). LOCATION-SUPPORT.md <sup>aav</sup>. 13 core
+   tests and 15 app tests in two suites (`QuickViewSlideshowTests`, with a clock the test ends by hand
+   and the power manager's own assertion list; `QuickViewSlideshowSurfaceTests`). Negative controls, 17,
+   each failing its own tests: no wait for the picture, a restart on every delivery, none on a step, no
+   activity, a lone picture not counting again, the interval read once, the folder ignored, the download
+   card not awaited, no announcement on load, the mark never shown, `integer(forKey:)` for the setting,
+   no clamp; and in the core no wrap, no kind check, no GoPro name, no low clamp, and opening past the
+   cursor's own picture. One passed and went: lowercasing the extension, since `UTType` matches any
+   case. **Run live** in `app.dirnex.Dirnex.live`, full window, dark appearance, with the cloud guard
+   in and seeded at a fixture of five numbered pictures (PNG, JPEG, HEIC) between a text file, a
+   Markdown file and a folder named `d-folder.jpg`: View ▸ Slideshow listed under the three sizes;
+   `run operation "view.quickViewSlideshow"` in full window opened past the folder on picture 1, the
+   header read "▶ Slideshow  2 of 8", and `pmset -g assertions` named "Quick View slideshow" for the
+   copy's pid, display and system; the pictures came 1 to 5 and back to 1, never a document or the
+   folder; the Settings row stepped from the seeded 2 s to 8, was saved, and the next picture held for
+   7–10 s; a click on the mark stopped the show, released both assertions and left full window up;
+   started again, leaving full window ended it and released them, the cursor left on the picture it
+   reached; and from the other pane, an empty folder, the verb started nothing. Oleg ran the full-screen
+   path himself, from the list, which is what asked for the two later calls. **Run again after them**,
+   in full screen at Oleg's go, from the list with Quick View off: the verb entered the full-screen
+   Space (1728 × 1084 under the camera band), the show ran on black and took the display hold; the
+   second press released it and left full screen up on the picture reached, the header shown for a
+   moment with no mark, and nothing moved over the next 17 s; the size's own verb then left the Space.
+   **Not run live**: a manual step and Tab ending the show, since background keys cannot reach the table
+   under the preview (their tests cover them); a server or archive location, which reach the same
+   path through the cursor and its fetch; the light appearance; a translation.
+
+**2026-11-17: a pinned folder says where it lives** (Oleg's request for a folder on a server pinned to
+Favorites to show the folder and the server together, a mark in the folder's corner, and his calls on the
+scope, remote and local, and on WebDAV's glyph; core and app). Before, every SFTP, FTP, S3 and WebDAV pin drew
+the same `network` globe, and a pin inside an SMB share drew a plain folder, since a folder on a mounted share
+is a local path. Nothing told a pin on an unplugged drive, in a vault or in Dropbox from one on the boot disk.
+SF Symbols has no `folder.badge.` form for any of them, so the mark is drawn. Mockups rendered from the real
+symbols at sidebar size settled two things before any Swift: outline marks at 8.5 pt are too thin to read, so
+each mark is the filled form of its place's own glyph at two thirds of the folder's size; and at that size
+SFTP's `network` and WebDAV's `globe` were one shape. Oleg kept WebDAV on the outline `globe` its server row
+wears, which the filled marks around it keep apart from SFTP's.
+
+`LocationSource.ofPin` (core) says where a pin lives. `LocationSource.of` answers for a tab from the mount table
+as it is now, and a pin outlives its mount: Dirnex unmounts its shares on quit, a vault locks, a drive is
+unplugged, and the pin is then a path under `/Volumes` on the boot disk. So a pin that recorded its share is on
+the network, mounted or not, and a pin under a `/Volumes/<name>` with nothing mounted there is in the saved
+vault of that volume name, or else on a drive that is not here; `/Volumes/Macintosh HD` stays the boot disk. A
+share pinned before pins recorded theirs reads as a drive until its first pick records it. `BadgedGlyph` (app)
+draws the symbol and the mark into one template image, with a ring of clear pixels around the mark's own
+outline, so AppKit tints it and the sidebar's cursor color reaches it like any other glyph (docs/NOTES.md ▸
+Drawing rows and cells). The folder is drawn into the cell's 18 pt box exactly as the image view draws a plain
+one, so marked and unmarked folders line up. The standard folders keep their own glyphs unmarked, and a folder
+in an archive keeps its zipper, too narrow to read as a mark. Go ▸ Places draws the same glyph through
+`SidebarPlacePresentation.badgeSymbolName`. The ⌘F popup is unchanged, since it draws Finder's own icons.
+
+Seen live in the `app.dirnex.Dirnex.live` copy, cloud guard in, with twelve pins minted through the core's
+encoder: a plain local folder; a folder on the NAS share Oleg had mounted at `/Volumes/media`, and one on an
+unmounted share that recorded it, both marked with the connected drive; an unplugged drive; a locked vault,
+its saved row seeded beside it, with the shut padlock; Dropbox and iCloud, paths that nothing read; SFTP, FTP,
+S3 and WebDAV; and a folder in a zip, unmarked. Focus Sidebar and ↓ moved the cursor onto S3 without opening
+it, and the folder and the box went white together. The log held no `TCCAccessRequestIndirect`. 9 core
+and 10 app tests are new, and 2 negative controls failed theirs by name: `ofPin` answering with `of` alone failed
+the recorded share, the locked vault, the unknown volume and the unplugged drive, and drawing the folder at its
+own size rather than the box's fit moved 105 pixels where the mark cannot reach. 5 770 core and 2 640 app tests
+pass, the live suites skipped since nothing here reaches a server, and the defaults domain was compared
+unchanged. **Not run live**:
+the light appearance; Go ▸ Places opened by hand, whose build is under test; and a pin on a mounted external
+drive or an unlocked vault, both pinned by core tests.
+
+**2026-11-17: row icons stop blinking under memory pressure** (Oleg's report: after he locked a vault, the
+pane on Documents had its thumbnails blinking very fast, and so did both My Drive folders on Home, and a
+rebuild the next morning would not do it). The log of that night's process held it: from the eject at 02:20:12
+to 02:23:39, the same four of Home's folders, both My Drive among them, loaded about 8 times a second each, in
+a steady 62 ms beat that is `RowIconLoader`'s 50 ms notify delay plus a load. The morning's process was the
+same binary (one `Dirnex.debug.dylib`, dated 01:48). What had changed was the memory pressure, at `warning`
+from at least 01:42 until 11:04. `RowIconLoader` kept its images only in an `NSCache`, which lets go under
+pressure, and each arrival made every pane ask again for all its rows, so a row whose image had been let go
+got its placeholder back and a new load, and that load's arrival asked again. The eject only put a pane on
+rows that draw a loaded icon; a plain folder's loaded icon is its placeholder, so only pictures and custom
+icons showed the blink.
+
+The fix has two parts, and the tests needed both. An arrival now carries its images and puts them in
+before it asks for anything. The loader also answers from a weak table of the images it handed out, so a
+row that still draws one gets it back when asked again (on an arrival, on coming to the front, on a reload),
+whatever the cache has let go of. Asking again on an arrival stays, because the loader's queue drops its
+oldest requests and that is how a dropped row gets asked for again. The appearance change, which used to
+post the arrival notification, has one of its own (`keysDidChangeNotification`). Not chosen: a plain
+dictionary in place of the `NSCache`, which would hold every icon ever drawn through any pressure.
+
+4 app tests are new (`RowIconArrivalTests`), driving a real pane in a window over real folders with the
+cache made to forget. 4 negative controls each failed their tests: no weak table, the old behaviour, an
+arrival that carried nothing, and an arrival that did not ask for the other rows. A test could not raise
+memory pressure (docs/NOTES.md ▸ Drawing rows and cells), so the live check was a probe, behind an
+environment variable, that dropped each image as soon as it was stored, in the `app.dirnex.Dirnex.live`
+copy, with both panes on a fixture of four PNGs, a custom-icon folder and two plain folders. Over 8 s, the
+old code made 874 loads of the 7 rows and was still climbing, the fix made 14 and none after the first 4 s,
+and the old code with no probe made 7. 5 770 core and 2 644 app tests pass. The live suites skipped, since
+nothing here reaches a server, and the defaults domain was compared unchanged. **Not run live**: real
+memory pressure, since `memory_pressure -S` sets the level for every app on the Mac, and Oleg's own vault.
+
+**2026-11-17: a pin inside a locked vault unlocks the vault** (Oleg's report, with a screenshot: picking the
+Docs pin in Favorites while his Documents vault was locked raised "Couldn't connect to “nas”. “nas” doesn't
+offer a shared folder named “Documents” to “olegasd”."). A vault's pin is a local path under
+`/Volumes/<volume>` and records nothing, so with the vault locked `jumpToFavorite` found the folder missing and
+took the share route: a pin with no recorded share asks every saved SMB server for a share named after the
+volume. The pin's own mark, drawn the same morning, already said vault: `LocationSource.ofPin` puts a pin on an
+unmounted volume in the saved vault of that name. The pick never learned the rule the mark is drawn by.
+
+`PinnedVault.vault(for:volume:among:)` (core) is that rule for the pick: a pin that recorded a share stays on
+the share, and any other pin on an unmounted volume is in the first saved vault of that volume name. A core
+test runs seven pins through both `ofPin` and the pick and asks that they agree. In the app,
+`missingPinRoute` decides unlock, mount or unpin in that order, from the saved vaults and servers handed in, and
+`openPinnedVault` asks the window's unlock funnel through a new `PanelHost.panelRequestsUnlockedVault`. So the
+Keychain's passphrase, the prompt, `VaultPrivacy` and the double-click guard are the vault row's own. It then
+lands on the pinned folder under wherever the volume mounted (`PinnedShare.path`), or offers to unpin if the
+unlocked vault does not hold it. A pane that moved on while the vault unlocked stays where it went, as one does
+while a pinned share mounts. No new strings.
+
+6 core and 6 app tests are new, and 3 negative controls failed theirs by name: a pick that never finds a
+vault (4 core tests, the mark agreement among them), the old order with the servers asked first (the reported
+route), and a landing with no `loadToken` guard. Seen live in the `app.dirnex.Dirnex.live` copy, cloud guard
+in, with a throwaway encrypted sparsebundle whose volume held `Work/note.txt`, its saved row, a pin on
+`/Volumes/DirnexPinCheck/Work` and a saved SMB server on a `.invalid` host. The pin wore the padlock mark;
+Focus Sidebar, ↑↑ and Return unlocked the vault (its passphrase handed in through an env-gated in-memory
+secret store, so the login Keychain was never asked) and the left pane opened on `Work` with `note.txt`, the
+vault row open with its eject button, and no alert. 5 776 core and 2 650 app tests pass, the live suites
+skipped since nothing here reaches a server, and the defaults domain was compared unchanged. Four earlier full
+app runs each failed one of two timing tests that pass alone: `EditFileRouteTests`' created-file case, which also
+failed with the new suite skipped and takes 45–61 s against a 30 s wait even when it passes, and
+`RowIconArrivalTests`, which passed beside the new suite alone, twice. **Not run live**: Oleg's own vault and
+NAS, the passphrase prompt, and a ⌘ pick into a new tab, which no test covers either; it takes
+`navigate(to:inNewTab:)`, the path the vault row's own ⌘ pick takes.
+
+**2026-11-17 — Full-suite failures in ⇧F4 and row icon tests.** The create test waited 19.1 s for
+its task to start and 17.2 s for the main actor to resume after the first `stat`. It now awaits the
+edit through route selection and checks both backend counts and the status token. In the icon test,
+a late cloud badge snapshot reloaded the table after eviction. The windowed fixture keeps its icon
+observers and excludes unrelated badge and style updates. With the local edit route restored, both
+route tests saw the editor status token rise. Removing the weak image lookup loaded each folder
+twice. Removing images from arrivals sent each folder from 534 to 543 loads in the final half second.
+Three consecutive full app runs passed (87.9 s, 100.3 s, 99.3 s), with 109 live tests skipped each
+time. All 73 defaults keys matched across each run. All 5,776 core tests and both linters passed.
+
+### M41 — Copy and move dialogs (M)
+
+**Closed 2026-11-17**, the day it was asked for, in three slices. F5, F6, ⇧F5 and ⇧F6 ask first, in a sheet
+that names what goes where, and OK turns the same sheet into the progress dialog: the file being written,
+with a bar of its own when more than one file is going, the job's bar, and a readout of bytes, rate, time
+left and files, under Background, Pause and Cancel. Background hands the job to the queue bar, which is
+unchanged, since the dialog is a second view of the same queued job. Pause holds this job alone. Cancel
+pauses it behind "Stop copying?", and whatever a Stop leaves, a folder caught partway included, ⌘Z takes
+away. So Return, Return starts a copy and sends it to the background, and Escape, Return stops one. One
+switch turns both dialogs off, from the question's "Don't ask again" or from Settings ▸ Operations, and an
+AppleScript copy never sees them.
+
+Five findings are worth not re-deriving. **The dialog has to know its job before the job exists**: a clone
+ends in the turn it starts and the queue drops a finished job once it drains, so the caller now hands
+`enqueue` the job's id. **Bytes alone never name a small file**, since a folder of 3 000 of them moved fewer
+than 8 MiB between two reports; a 0.1 s clock does, and reading `systemUptime` costs 14 ns. **AppKit already
+answers Return and Escape with Shift held**, while a ⌃, ⌥ or ⌘ still down from the chord that raised the
+sheet is refused, which is what the key catcher is for. **A progress bar that has been indeterminate keeps
+sweeping after it turns determinate, for as long as its value keeps changing** (docs/NOTES.md ▸ Progress
+and status displays), so the dialog's bars never are. And **Stop partway through a folder left no undo
+record**, because the engine recorded an item only once it was whole; the item caught partway now rides
+apart from `outcomes` as `stoppedPartway`, since a search row reads an outcome as a file that left, and a
+move's source is still whole.
+
+Some paths were not exercised by the close, and are recorded rather than argued: ⇧F5 and ⇧F6, and Copy
+rebound to a ⌃, ⌥ or ⌘ chord, all pinned by tests; a transfer to or from a server, which reaches the dialog
+through the same queued job; a keeping-folders transfer across tree levels, whose several jobs one dialog
+sums; the queue bar's own Pause while the dialog is up; the error dialog on the progress sheet, where only
+the conflict question was seen; the light appearance; and a translation.
+
+Left deliberately undone: **drag and drop and ⌘V**, which keep the queue bar alone, since the gesture names
+the destination and Finder does not ask, and which can take the progress half later; **F5 into or out of an
+archive**, which adds or extracts by its own route (LOCATION-SUPPORT.md <sup>aaw</sup>); **a count of the
+jobs ahead**, since a snapshot does not say which disks a job shares, so the line says "Waiting for its turn
+in the queue…"; and **an undo record for a folder left by an error dialog's Abort**, which nothing promises.
+
+The section as the plan carried it through the milestone:
+
+Asked 2026-11-17 by users coming from Total Commander, who want F5 and F6 to show a dialog with a
+progress bar rather than only the queue bar. Oleg keeps today's behaviour for himself, so the dialogs
+come with a "Don't ask again" box and a switch in Settings. The queue bar is unchanged: the dialogs
+are a view of the same queued job, and §1's "file operations never block the UI" still holds,
+because the progress dialog is one Return away from the background.
+
+Decided 2026-11-17 (Oleg):
+
+- **F5, F6, ⇧F5 and ⇧F6 ask first.** A sheet names what goes where, with OK (Return) and Cancel
+  (Esc). Cancel copies nothing.
+- **OK turns the same sheet into the progress dialog**: what is being copied and where, the file
+  being written now with a bar of its own, the job's bar, a line like "1.8 GB of 3.7 GB · 120 MB/s ·
+  15 s left · file 34 of 340", and Background (Return), Pause and Cancel (Esc).
+- **Background closes the sheet**, and the job goes on in the queue bar exactly as it does today.
+- **Pause pauses this job only**, and asks nothing.
+- **Cancel pauses the job and asks** "Stop copying?", with Stop (Return) and Continue (Esc). The
+  question says what stays: what was already copied or moved stays where it is, and ⌘Z undoes it.
+  Continue resumes the job, unless it had been paused before Cancel.
+- So **Return, Return** gets rid of both dialogs, **Esc** closes the confirmation, and **Esc, Return**
+  stops a running job.
+- **One switch for both dialogs**, on by default, since the box can only be offered by the dialog
+  showing. "Don't ask again" on the confirmation turns it off, F5 then goes straight to the queue as
+  today, and Settings ▸ Operations turns it back on.
+
+Proposed with them the same day, and taken with "okay" rather than asked one by one; open until
+Slice 2:
+
+- **The sheet stays up at least a second after OK.** A copy that finishes at once (an APFS clone)
+  would otherwise close it under the second Return, which then lands on the file list and opens
+  whatever is under the cursor.
+- **A job waiting its turn says so** ("Waiting for 1 job ahead"): jobs on one pair of disks run one
+  at a time, so an F5 behind a background copy can sit in the queue.
+- **A sheet, not a free window.** Esc and Return have to reach it, and a free window loses the
+  keyboard to the first click on a pane, after which Esc clears the pane's filter or marks instead.
+- **The conflict and error dialogs attach through `NSAlert.sheetHost(over:)`**, so onto the progress
+  sheet while it is up. `ConflictDialog` and `ErrorDialog` attach to the browser window today, where
+  macOS 14 and 15 queue a second sheet out of sight (NOTES.md ▸ Alerts, sheets and dialogs) and the
+  copy would wait for an answer nobody can see.
+- **Drag and drop and ⌘V keep today's behaviour**: the gesture names the destination, and Finder
+  does not ask. They can take the progress half later.
+- **AppleScript copies skip both dialogs**, since a script cannot press Return, and the app test
+  suite runs with the switch off.
+
+#### Slices
+
+1. **Core: per-job pause and per-file progress** (additive). `FileOperationQueue.pause(_:)` and
+   `resume(_:)` for one job, running or waiting, apart from the queue-wide pause; the queue-wide
+   resume leaves a job paused on its own as it was. `OperationProgress` carries the file being
+   written now at any depth, its bytes and size, and the job's files done and total, counted by the
+   pre-scan, emitted on a clock as well as by bytes so a slow link and a folder of small files both
+   move the dialog. **Landed 2026-11-17.** Probed first with a scratch package running the shipped
+   engine, cloning refused, over a folder of 3 000 4 KB files and one of 200 MB: 29 updates, none
+   naming a small file, 0.45–0.61 s between two of them, and `totalItems` 1 for the whole folder.
+   Reading `systemUptime` costs 14 ns, so a clock is free. Landed as `TransferFiles` on
+   `OperationProgress` (the file being written at any depth, its bytes and size, files done and
+   total), counted by a new `DirectorySizeMeasurement.files` so the file count and the byte bar come
+   from one walk under one rule, and reported every 8 MiB *or* every 0.1 s through an injectable
+   `uptime`. The tally and its pacing moved out of `CopyEngine.swift` into `CopyProgressTally`,
+   which had taken `CopyRun` past both lint ceilings. `FileOperationQueue.pause(_:)` and `resume(_:)`
+   keep a set of held jobs beside the queue-wide flag, and `JobSnapshot.isHeld` tells the two
+   apart; pause, resume and cancel moved to `FileOperationQueue+Control.swift`. A held job that never
+   started reads `.paused`, the scheduler skips it, and `cancel` drops it itself, since there is no
+   engine to unwind. Twelve tests in two new suites, plus file counts in two sizer tests; green 3/3
+   under `LIBDISPATCH_COOPERATIVE_POOL_STRICT=1`. Each rule has a negative control that fails it:
+   without the clock the naming test fails all five checks, without the rollback a skipped folder
+   leaves 2 files counted where 1 landed, and a queue-wide resume that releases held jobs, or a pause
+   that ignores a waiting one, fails on the transfer's own step count rather than on a status. The
+   app is untouched, and nothing in it calls `DirectorySizeMeasurement.init`, the one signature that
+   changed. **For Slice 2:** the queue bar counts any
+   `.paused` job as active and reads "Paused" only from `QueueSnapshot.isPaused`, so a job held in its
+   dialog shows as running there.
+2. **The dialogs** (app). The confirmation, the progress sheet, the Stop question, the switch and the
+   box, the conflict and error prompts through `sheetHost`, the queue bar reading a job paused on its
+   own, and 14 languages. Esc and Return pinned by tests beside `EscapeToDismissTests`, since computer
+   use cannot send Escape. **Landed 2026-11-17**, with the live run still to come. One sheet in two
+   phases: `TransferDialogController` retitles the same two buttons (OK becomes Background, Cancel
+   stays), so Return, Return and Escape, Return hold across the switch. `TransferDialog` asks, starts,
+   follows and closes, and `TransferDialogState` reads the jobs as a pure value. F5 and F6 now go
+   through `PanelHost.runTransfer`, which asks only when the setting is on, no automation verb is
+   running, and no sheet is up. The setting is `confirmTransfers`, a computed property over the
+   defaults in `AppPreferences+Transfers`, since the class file sits at the length ceiling.
+   `Scripting.automating` is set by the AppleScript and App Intents doors, not by `runCommand`, which a
+   click on the function bar also takes. `StubPanelHost` starts every transfer at once, so no existing
+   test changed what it measures. Findings worth keeping:
+   - **The dialog has to know its job before the job exists.** A clone ends in the turn it starts,
+     and the queue drops finished jobs once it drains, so an id learned from `enqueue`'s answer can
+     arrive after the only snapshot that ever showed the job. `FileOperationQueue.enqueue(_:id:)` now
+     takes the caller's id (one tested core parameter), `TransferTracker` hands it to the dialog
+     before the queue sees it, and the window passes each snapshot to the dialog before it dispatches
+     `clearFinished`.
+   - **AppKit already forgives Shift on Return and Escape.** The catcher's negative control found a
+     plain button answering ⇧⏎ and ⇧⎋ with nothing held, so ⇧F5 needed no help. The catcher stays for
+     Copy rebound to a ⌃, ⌥ or ⌘ chord, which is refused without it; both directions are tested.
+   - "Waiting for 1 job ahead" became **"Waiting for its turn in the queue…"**: a snapshot does not
+     say which disks a job shares, so a count would be a guess. A job also reads `.waiting` for an
+     instant between being queued and starting, so the line shows only while another job is running,
+     and in a paused queue the job reads Paused.
+   - The question's default button is **OK**, as asked, rather than a verb. "Don't ask again" answers
+     the copy at hand too: ticked, OK starts it with no progress dialog.
+   - The conflict and error dialogs hang on `sheetHost`. The queue bar names a running job over a
+     held one and reads "Paused" when nothing it holds is running.
+
+   Twenty-one new app tests and one core test. Negative controls: without the one-second hold the
+   hold test fails, a queue bar reading only the queue-wide flag fails its test, and a chord with
+   nothing held is refused. Eighteen new strings in 14 languages, with plural forms for the two
+   counted questions, rendered from each `.lproj` in a test; `check_localization_keys.py` is clean.
+   The full app suite (2 672 tests) passed twice in a row. The first full run before them reported
+   one issue that its filtered log does not name, and the new suites then passed 5 of 5 on their
+   own, so it is recorded here as unexplained rather than as fixed. Not covered: how the sheet looks, and how it grows when the progress rows appear, which Slice 3
+   checks live. F5 into or out of an archive keeps the queue bar alone (LOCATION-SUPPORT.md
+   <sup>aaw</sup>).
+3. **Live run**: a cross-volume copy onto a disk image (§M2's setup), so the progress sheet stays up
+   long enough to drive. **Landed 2026-11-17**, in the `app.dirnex.Dirnex.live` copy, with a 12 GB
+   file and a folder of three 2 GB files and 400 small ones copied from the boot volume onto a sparse
+   APFS image at about 1.2 GB/s. Driven by clicking the buttons from the background, with an
+   env-gated log of each button and the event behind it; Oleg pressed the keys.
+   - **Seen working**: the question and Cancel, which copied nothing; the progress sheet, with the file
+     being written, both bars and a readout like "11,67 GB of 19,33 GB · 1,23 GB/s · 7s left · Files:
+     403 of 404"; Pause, which held the bytes on disk for 3 s; Cancel pausing the job behind "Stop
+     copying?", Continue resuming it, and a job paused before Cancel staying paused; Stop, which
+     removed a half-written file and, for a move, left the source whole; Background; "Waiting for its
+     turn in the queue…" behind a running copy; the one-second hold on an empty folder; the conflict
+     question attached on top of the progress sheet; F6's wording; an AppleScript copy with no
+     dialog; "Don't ask again", and Settings ▸ Operations turning it back on. Oleg's keys reached the
+     dialog as key-downs on every path: Return and Escape on the question, Escape on the progress,
+     Return and Escape on the Stop question, and Return, Return 0.25 s apart on a file that copied at
+     once, where the second Return pressed Background.
+   - **The job bar swept for the whole copy.** A bar that has been indeterminate keeps its sweep after
+     it turns determinate while its value keeps changing, measured in a scratch program on the
+     layer's animation keys (docs/NOTES.md ▸ Progress and status displays). Neither bar is
+     indeterminate now, as the queue bar never was; a test pins it, and fails on the old `render` at
+     Preparing and at a waiting job that reads as Preparing. Rebuilt, both bars filled from the left.
+   - **Stop on a folder left no undo record**, under a question that said "⌘Z undoes it". The engine
+     recorded an outcome only once a top-level item was whole, so the finished files of a folder
+     stopped partway stayed with nothing in the journal, and a cross-volume move, which removes its
+     source only after the last byte, left the same partial copy beside a whole source. Oleg chose to
+     journal it: `OperationReport.stoppedPartway` names the item and what of it landed, only when
+     something did (a lone file's half-written bytes are already gone), and
+     `UndoRecord.transfer(kind:report:)` undoes it with `removeCopy`, for a move as for a copy. It is
+     kept out of `outcomes`, because `SearchSnapshot.changes` reads an outcome as a file that left.
+     Redo copies the whole item again. Five core tests, each rule with a negative control: without
+     the engine's record or the builder's step the three stopped cases fail, and without the
+     existence check the lone file gets a record that would undo nothing. Live, Undo Copy and Undo
+     Move each removed only the partial folder, and the source kept all 403 files. The `.abort` of an
+     error dialog still leaves a partial folder unrecorded, since nothing promises otherwise there.
+   - **One bar for one file**, asked by Oleg during the run: the file's bar shows only when more than
+     one file is going, decided before the pre-scan from the marked set (one non-folder is one file)
+     and after it from the count, and the readout drops "Files: 0 of 1". Tested both ways with a
+     negative control, and seen live: a lone 12 GB file drew one bar, a folder two.
+   - Full suites after the changes: DirnexCore 5 802 tests in 571 suites, the app 2 675 in 414 (one
+     known issue, declared by its test), both linters clean, and `app.dirnex.Dirnex` unchanged by
+     content across the run.
 
 ### After M19 — the follow-on log (2026-08-07 → 2026-09-21)
 

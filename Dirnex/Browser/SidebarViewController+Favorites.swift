@@ -19,7 +19,7 @@ extension SidebarViewController {
         let cell = reuse(SidebarCellView.identifier) as? SidebarCellView ?? SidebarCellView()
         cell.configure(
             name: SidebarPlacePresentation.title(for: .favorite(entry)),
-            image: Self.favoriteIcon(for: entry),
+            image: favoriteIcon(for: entry),
             canEject: false,
             tooltip: entry.path.path,
             isBusy: SidebarRowActivity.shared.isWorking(entry.path.path)
@@ -29,12 +29,21 @@ extension SidebarViewController {
     }
 
     /// The glyph for a pinned folder, rendered at the source list's size. *Which* symbol it is —
-    /// a standard place's own, a plain folder, or a protocol glyph for a pin outside the local
-    /// filesystem — is `SidebarPlacePresentation`'s, so the Go ▸ Places menu marks the same pin
-    /// the same way (PLAN.md §M20).
-    private static func favoriteIcon(for entry: FavoriteEntry) -> NSImage {
-        let symbol = SidebarPlacePresentation.symbolName(for: .favorite(entry)) ?? "folder"
-        return templateSymbol(symbol, pointSize: 15)
+    /// a standard place's own, the archive's zipper, or a folder marked with where it lives — is
+    /// `SidebarPlacePresentation`'s, so the Go ▸ Places menu marks the same pin the same way
+    /// (PLAN.md §M20).
+    private func favoriteIcon(for entry: FavoriteEntry) -> NSImage {
+        let place = SidebarPlace.favorite(entry)
+        let context = pinBadges ?? .current(
+            vaults: VaultStore.load().vaults,
+            vaultMountPoints: Array(vaultMountPoints.values)
+        )
+        return BadgedGlyph.image(
+            symbol: SidebarPlacePresentation.symbolName(for: place) ?? "folder",
+            pointSize: 15,
+            badge: SidebarPlacePresentation.badgeSymbolName(for: place, in: context),
+            canvas: NSSize(width: SidebarCellView.iconSide, height: SidebarCellView.iconSide)
+        )
     }
 
     // MARK: - Right-click menu

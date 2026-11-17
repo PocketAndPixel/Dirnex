@@ -148,6 +148,18 @@ extension CommandCatalog {
             shortcut: CommandShortcut(key: "q", modifiers: [.control, .option])
         ),
         Command(
+            id: "view.quickViewSlideshow",
+            title: "Slideshow",
+            category: .view,
+            keywords: [
+                "quick view", "preview", "photos", "pictures", "images", "play", "slides", "timer",
+                "present", "shift cmd s"
+            ],
+            // ⇧⌘S, Oleg's choice beside ⌘S, ⌃⌘S and ⌥⌘S. A ⌘ chord, since bare letters type into the
+            // pane's filter and Space marks (PLAN.md §M39 ▸ Slice 16).
+            shortcut: CommandShortcut(key: "s", modifiers: [.command, .shift])
+        ),
+        Command(
             id: "view.quickViewSource",
             title: "View Source",
             category: .view,

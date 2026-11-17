@@ -56,11 +56,28 @@ final class StubPanelHost: PanelHost {
 
     func enqueue(
         _ operation: FileOperation,
+        id: OperationJobID,
         conflictPolicy: ConflictPolicy,
         resolveConflict: (@Sendable (ConflictContext) -> ConflictResolution)?,
         onError: (@Sendable (OperationErrorContext) -> ErrorResolution)?
     ) {
         enqueued.append(operation)
+        enqueuedIDs.append(id)
+    }
+
+    /// The id each queued job was given, beside ``enqueued``.
+    private(set) var enqueuedIDs: [OperationJobID] = []
+
+    /// Every F5 and F6 that reached the host, in order. A stub never asks: it starts each one at once
+    /// with an untracked tracker, which is the switch-off path, so a gesture's jobs land in
+    /// ``enqueued`` as they always did (PLAN.md §M41).
+    private(set) var transfers: [TransferSummary] = []
+    /// What a transfer's tracker was told, when a test hands one in through ``trackTransfers``.
+    var trackTransfers: (() -> TransferTracker)?
+
+    func runTransfer(_ summary: TransferSummary, start: @escaping (TransferTracker) -> Void) {
+        transfers.append(summary)
+        start(trackTransfers?() ?? .untracked)
     }
 
     func runToCompletion(
@@ -146,6 +163,24 @@ final class StubPanelHost: PanelHost {
         quickViewStylePicks.append(style)
     }
 
+    /// Every link a pane's preview handed on, with the document it was clicked in (PLAN.md §M39): in
+    /// ⌃Q the click lands in the covered pane's surface, which has to pass it to the window.
+    private(set) var quickViewLinks: [(link: DocumentLink, location: VFSPath)] = []
+    func followQuickViewLink(
+        _ link: DocumentLink,
+        from location: VFSPath,
+        on surface: QuickViewPreviewView
+    ) {
+        quickViewLinks.append((link, location))
+    }
+
+    /// What a page's wiki links find beside a document that is not on this disk: none, unless a
+    /// test says otherwise.
+    var quickViewListedNames: Set<String> = []
+    func quickViewNamesListed(beside location: VFSPath) -> Set<String> {
+        quickViewListedNames
+    }
+
     /// Every flip a pane asked for, and every scroll. Recorded since the ⇧-arrows learned to scroll
     /// the preview (2026-10-18): at full size the same arrow key flips or scrolls depending on ⇧, and
     /// which of the two calls a key made is the table's whole answer.
@@ -184,6 +219,26 @@ final class StubPanelHost: PanelHost {
         inNewTab: Bool
     ) {
         vaultOpenRequests.append(vault)
+    }
+
+    /// Every vault a pane asked to have unlocked without being shown it, in order.
+    private(set) var vaultUnlockRequests: [VaultLocation] = []
+    /// Where each of those unlocks is said to have mounted at once. `nil` holds them in
+    /// `unansweredVaultUnlocks` instead, for a test to answer later or never, as a passphrase prompt
+    /// that is still up or was cancelled would.
+    var vaultMountPoint: String?
+    private(set) var unansweredVaultUnlocks: [@MainActor (String) -> Void] = []
+
+    func panelRequestsUnlockedVault(
+        _ vault: VaultLocation,
+        then body: @escaping @MainActor (String) -> Void
+    ) {
+        vaultUnlockRequests.append(vault)
+        if let vaultMountPoint {
+            body(vaultMountPoint)
+        } else {
+            unansweredVaultUnlocks.append(body)
+        }
     }
 
     /// The one requirement that records rather than shrugging, because it is the seam a whole

@@ -31,15 +31,22 @@ public actor FileOperationQueue {
     private let now: @Sendable () -> Date
     private let plainPackWriter: (any PlainPackWriting)?
 
+    // The scheduler's state is `internal` rather than `private` only because pause, resume and
+    // cancel live in `FileOperationQueue+Control.swift`, and Swift's `private` does not cross files
+    // (docs/NOTES.md ▸ Lint ceilings and file splitting).
+
     /// Every job ever enqueued, keyed by id; finished and canceled jobs stay so the
     /// snapshot can show their outcome until the caller clears them.
-    private var jobs: [OperationJobID: Job] = [:]
+    var jobs: [OperationJobID: Job] = [:]
     /// Enqueue order — the FIFO the scheduler scans, and the render order of the snapshot.
-    private var order: [OperationJobID] = []
+    var order: [OperationJobID] = []
     /// The cancel/pause handle for each job that is currently running.
-    private var controls: [OperationJobID: JobControl] = [:]
-    private var runningIDs: Set<OperationJobID> = []
-    private var isPausedFlag = false
+    var controls: [OperationJobID: JobControl] = [:]
+    var runningIDs: Set<OperationJobID> = []
+    var isPausedFlag = false
+    /// Jobs paused on their own by `pause(_:)`, apart from the queue-wide pause (PLAN.md §M41).
+    /// The queue-wide `resume()` leaves these where they are.
+    var heldJobs: Set<OperationJobID> = []
 
     /// When the current batch of work first started moving bytes, for the throughput
     /// average behind the ETA. Reset to `nil` whenever the queue drains, so a later batch
@@ -84,14 +91,22 @@ public actor FileOperationQueue {
     /// `onError` is consulted when a source fails to transfer — TC's per-file "Skip / Retry /
     /// Abort" dialog. Like `resolveConflict` it runs on the copy thread; a missing one leaves
     /// the engine's default (collect the failure and carry on).
+    ///
+    /// `id` lets a caller name the job before it exists (PLAN.md §M41). The copy dialog has to know
+    /// its job before the job can report: a clone finishes in the turn it starts, and the queue
+    /// forgets finished jobs once it drains, so an id learned from the return value can arrive after
+    /// the only snapshot that ever showed the job (docs/NOTES.md ▸ Swift 6 and concurrency, the handle
+    /// that only exists after the work has started). An id already in the queue is not reused: the job
+    /// gets a fresh one, which is what this returns.
     @discardableResult
     public func enqueue(
         _ operation: FileOperation,
+        id requested: OperationJobID = OperationJobID(),
         conflictPolicy: ConflictPolicy = .fail,
         resolveConflict: (@Sendable (ConflictContext) -> ConflictResolution)? = nil,
         onError: (@Sendable (OperationErrorContext) -> ErrorResolution)? = nil
     ) -> OperationJobID {
-        let id = OperationJobID()
+        let id = jobs[requested] == nil ? requested : OperationJobID()
         jobs[id] = Job(
             operation: operation,
             policy: conflictPolicy,
@@ -126,7 +141,7 @@ public actor FileOperationQueue {
 
     /// Launch as many waiting jobs as the volume rule and the concurrency cap allow.
     /// Called after every state change that could free a slot (enqueue, completion, resume).
-    private func pump() {
+    func pump() {
         guard !isPausedFlag else { return } // paused: start nothing new (running jobs park)
         while let id = nextRunnable() { launch(id) }
     }
@@ -223,64 +238,10 @@ public actor FileOperationQueue {
         jobs[id] = job
         runningIDs.remove(id)
         controls[id] = nil
+        heldJobs.remove(id)
         publish()
         pump()
         checkIdle()
-    }
-
-    // MARK: - Pause / resume
-
-    /// Stop starting new jobs and park the ones already running. A parked transfer resumes
-    /// exactly where it left off; nothing is thrown away.
-    public func pause() {
-        guard !isPausedFlag else { return }
-        isPausedFlag = true
-        for id in runningIDs {
-            controls[id]?.setPaused(true)
-            if var job = jobs[id], job.status == .running {
-                job.status = .paused
-                jobs[id] = job
-            }
-        }
-        publish()
-    }
-
-    public func resume() {
-        guard isPausedFlag else { return }
-        isPausedFlag = false
-        for id in runningIDs {
-            controls[id]?.setPaused(false)
-            if var job = jobs[id], job.status == .paused {
-                job.status = .running
-                jobs[id] = job
-            }
-        }
-        publish()
-        pump()
-    }
-
-    // MARK: - Cancel
-
-    /// Cancel one job. A waiting job is dropped before it starts; a running (or paused) job
-    /// is told to unwind — the engine cleans up any half-written file and reports back with
-    /// `wasCancelled`, at which point `complete` marks it canceled.
-    public func cancel(_ id: OperationJobID) {
-        guard var job = jobs[id] else { return }
-        switch job.status {
-        case .waiting:
-            job.status = .cancelled
-            jobs[id] = job
-            publish()
-            checkIdle()
-        case .running, .paused:
-            controls[id]?.cancel() // completion arrives via the engine's canceled report
-        case .finished, .cancelled:
-            break
-        }
-    }
-
-    public func cancelAll() {
-        for id in order { cancel(id) }
     }
 
     // MARK: - Housekeeping
@@ -305,7 +266,7 @@ public actor FileOperationQueue {
 
     /// The actor's private, mutable view of a job. The `Sendable` outward shape is
     /// `JobSnapshot`; this stays inside the actor.
-    private struct Job {
+    struct Job {
         let operation: FileOperation
         let policy: ConflictPolicy
         /// The per-file conflict resolver, only used when `policy` is `.ask` (see `enqueue`).
@@ -378,7 +339,8 @@ extension FileOperationQueue {
                 kind: job.operation.kind,
                 status: job.status,
                 progress: job.progress,
-                report: job.report
+                report: job.report,
+                isHeld: heldJobs.contains(id)
             )
         }
         return QueueSnapshot(
@@ -429,44 +391,5 @@ extension FileOperationQueue {
             bytesPerSecond: bytesPerSecond,
             estimatedTimeRemaining: eta
         )
-    }
-}
-
-// MARK: - Job control
-
-/// The shared cancel/pause handle between the actor and a job's detached engine run.
-///
-/// The engine polls one closure — its `isCancelled` — between chunks and items. We route
-/// that through `checkpoint`, which does double duty: it reports cancellation, and while
-/// the queue is paused it *blocks the copy thread* on a condition variable until the job
-/// is resumed or canceled. That gives a real mid-flight pause without the engine needing
-/// to know the queue exists. A plain lock-guarded flag pair, safe to touch from the actor
-/// and the copy thread alike.
-private final class JobControl: @unchecked Sendable {
-    private let condition = NSCondition()
-    private var canceled = false
-    private var paused = false
-
-    func cancel() {
-        condition.lock()
-        canceled = true
-        condition.broadcast() // wake a parked checkpoint so it can unwind
-        condition.unlock()
-    }
-
-    func setPaused(_ value: Bool) {
-        condition.lock()
-        paused = value
-        if !value { condition.broadcast() } // resume: release any parked checkpoint
-        condition.unlock()
-    }
-
-    /// Called by the engine between chunks/items. Blocks while the job is paused; returns
-    /// `true` once it should abort, so the engine throws `CancellationError` and cleans up.
-    func checkpoint() -> Bool {
-        condition.lock()
-        defer { condition.unlock() }
-        while paused, !canceled { condition.wait() }
-        return canceled
     }
 }

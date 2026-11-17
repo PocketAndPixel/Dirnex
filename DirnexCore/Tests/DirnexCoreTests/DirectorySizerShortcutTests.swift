@@ -62,6 +62,10 @@ struct DirectorySizerShortcutTests {
         )
 
         #expect(shortcut.bytes == walked.bytes)
+        // A copy's "file 34 of 340" counts by this (PLAN.md §M41), so the two routes must agree on
+        // the files as well as the bytes: the four `.bin`s, and no directory.
+        #expect(walked.files == 4)
+        #expect(shortcut.files == walked.files)
         // And they are *not* the same cost, which is what says the first one took the shortcut.
         #expect(shortcut.requestsMade == 1)
         #expect(walked.requestsMade == 4, "the root plus docs, docs/api and build")
@@ -139,6 +143,8 @@ struct DirectorySizerShortcutTests {
         // `docs/api/ref.bin` gone — the nested one is what a per-entry filter would have kept.
         #expect(shortcut.bytes == 1005)
         #expect(shortcut.bytes == walked.bytes)
+        #expect(shortcut.files == 2, "the top-level file and build/out.bin")
+        #expect(shortcut.files == walked.files)
     }
 
     /// A set whose allowance is spent must stop spending, and the shortcut is a request like any

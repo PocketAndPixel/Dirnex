@@ -255,21 +255,28 @@ public struct OperationProgress: Sendable, Equatable {
     public let completedBytes: Int64
     public let totalItems: Int
     public let completedItems: Int
-    /// The top-level source currently being transferred, for the "Copying X…" label.
+    /// What is being transferred, for the queue bar's "Copying X…" label: the top-level source,
+    /// though the copy engine names the file inside one when it reports partway through a file.
+    /// ``files`` is the level below, kept apart so this label behaves as it always has.
     public let currentItem: VFSPath?
+    /// The job file by file, below its top-level sources (PLAN.md §M41): the file being written
+    /// now and how many are done. `nil` for every kind of job but a copy or a move.
+    public let files: TransferFiles?
 
     public init(
         totalBytes: Int64,
         completedBytes: Int64,
         totalItems: Int,
         completedItems: Int,
-        currentItem: VFSPath?
+        currentItem: VFSPath?,
+        files: TransferFiles? = nil
     ) {
         self.totalBytes = totalBytes
         self.completedBytes = completedBytes
         self.totalItems = totalItems
         self.completedItems = completedItems
         self.currentItem = currentItem
+        self.files = files
     }
 
     /// Fraction complete in `0...1`, or `0` before any bytes are known.
@@ -325,6 +332,16 @@ public struct OperationReport: Sendable, Equatable {
     /// Per-item disposition for the sources that completed, in the order they finished —
     /// the raw material the undo journal turns into a reversal (see `UndoRecord.transfer`).
     public let outcomes: [OperationItemOutcome]
+    /// The source a Stop caught partway, and where what had been written of it lies: a folder with
+    /// the files that finished, since a half-written file is removed. `nil` when nothing of it was
+    /// left, and for a job that was not stopped.
+    ///
+    /// Apart from ``outcomes`` because it did not complete, which readers of that list rely on: a
+    /// move removes its source only once the whole item is written, so this one's source is still
+    /// there, and a search row reading it as moved would drop a file that never left. The undo
+    /// journal reads both (``UndoRecord/transfer(kind:report:date:)``), so ⌘Z can take this away
+    /// as well, which is what the Stop question promises (PLAN.md §M41 Slice 3).
+    public let stoppedPartway: OperationItemOutcome?
     /// What a `.checksum` job produced — the digests it wrote, or its verdict on a manifest.
     /// `nil` for every other kind.
     ///
@@ -389,6 +406,7 @@ public struct OperationReport: Sendable, Equatable {
         failures: [OperationItemFailure],
         wasCancelled: Bool,
         outcomes: [OperationItemOutcome] = [],
+        stoppedPartway: OperationItemOutcome? = nil,
         checksum: ChecksumOutcome? = nil,
         attributeApply: AttributeApplyOutcome? = nil,
         pack: PackOutcome? = nil,
@@ -402,6 +420,7 @@ public struct OperationReport: Sendable, Equatable {
         self.failures = failures
         self.wasCancelled = wasCancelled
         self.outcomes = outcomes
+        self.stoppedPartway = stoppedPartway
         self.checksum = checksum
         self.attributeApply = attributeApply
         self.pack = pack

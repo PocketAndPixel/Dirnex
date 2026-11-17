@@ -38,9 +38,15 @@ extension QuickViewPreviewView {
         standDownText()
         loadToken += 1
         let token = loadToken
+        // Taken now, with the file: by the time the render lands the cursor may have moved on, and
+        // the token then discards both.
+        let location = documentLocation(for: url)
+        let fragment = takePendingFragment(for: location)
+        // Taken now too: a server's listing is the pane's, read on the main actor.
+        let locateFile = wikiLinkFiles(for: url, at: location)
         Task { [weak self] in
             let scan = await BlockingWork.run {
-                MarkdownScan.read(url)
+                MarkdownScan.read(url, locateFile: locateFile)
             }
             guard let self, token == loadToken else { return }
             guard let scan else {
@@ -54,7 +60,7 @@ extension QuickViewPreviewView {
                     return
                 }
                 surface.isHidden = false
-                surface.showMarkdown(scan, source: url)
+                surface.showMarkdown(scan, source: url, location: location, fragment: fragment)
             }
         }
     }
@@ -75,11 +81,22 @@ extension QuickViewPreviewView {
         /// where the appearance is known.
         let html: String
         let isTruncated: Bool
+        /// The document's own title (``DirnexCore/MarkdownRender/title``), which only an export draws.
+        var title: String?
 
         /// Blocking; call it off the main thread — which is also where the images are read, since
-        /// the resolver runs inside the render (`QuickViewMarkdownImages`).
-        static func read(_ url: URL) -> MarkdownScan? {
-            guard let preview = TextPreview.read(contentsOf: url) else { return nil }
+        /// the resolver runs inside the render (`QuickViewMarkdownImages`), and where a wiki link's
+        /// file is looked for. `locateFile` defaults to the disk beside `url`, which is right for a
+        /// file on this disk (`QuickViewMarkdownWikiLinks`). `byteLimit` is the preview's 4 MB unless
+        /// an export reads the whole file (PLAN.md §M39 ▸ Slice 12).
+        static func read(
+            _ url: URL,
+            byteLimit: Int = TextPreview.byteLimit,
+            locateFile: (@Sendable (String) -> String?)? = nil
+        ) -> MarkdownScan? {
+            guard let preview = TextPreview.read(contentsOf: url, byteLimit: byteLimit) else {
+                return nil
+            }
             let options = MarkdownRenderOptions(
                 resolveImageSource: QuickViewMarkdownImages.resolver(for: url),
                 // Both are safe here, off the main actor: the metric was probed against four
@@ -87,11 +104,19 @@ extension QuickViewPreviewView {
                 // sentence is a catalog lookup.
                 textMetric: QuickViewMarkdownDiagram.metric,
                 describeUndrawnDiagram: { QuickViewMarkdownDiagram.describeUndrawn($0) },
-                diagramScale: QuickViewMarkdownDiagram.scale
+                diagramScale: QuickViewMarkdownDiagram.scale,
+                alertTitle: { QuickViewMarkdownAlerts.title($0) },
+                locateFile: locateFile ?? QuickViewMarkdownWikiLinks.onDisk(beside: url),
+                // A gantt's today line, in the Mac's own zone (PLAN.md §M39 ▸ Slice 15). An export
+                // keeps the line where it stood when the file was written.
+                now: Date(),
+                timeZone: .current
             )
+            let render = MarkdownDocument.render(preview.text, options: options)
             return MarkdownScan(
-                html: MarkdownDocument.render(preview.text, options: options).html,
-                isTruncated: preview.isTruncated
+                html: render.html,
+                isTruncated: preview.isTruncated,
+                title: render.title
             )
         }
     }
@@ -111,7 +136,7 @@ extension QuickViewPreviewView {
         return type.conforms(to: markdownType)
     }
 
-    private static let markdownExtensions: Set<String> = ["md", "markdown", "mdown", "mkd"]
+    static let markdownExtensions: Set<String> = ["md", "markdown", "mdown", "mkd"]
 
     /// Left **optional** rather than given a fallback: every plausible stand-in is a type this
     /// backend must not claim, and `?? .plainText` would quietly hand it every `.txt` on the Mac.

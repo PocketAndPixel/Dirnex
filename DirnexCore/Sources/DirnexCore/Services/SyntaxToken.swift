@@ -8,8 +8,9 @@ import Foundation
 /// AppKit-shaped decision the core does make is the unit its offsets are measured in.
 public struct SyntaxToken: Equatable, Sendable {
     /// What a span *is*, semantically. Six kinds and no more, which is the milestone's one open
-    /// question closed at open (PLAN.md §7): a small vocabulary maps onto system dynamic colors,
-    /// which resolve in both appearances for free, and keeps the whole feature out of Settings.
+    /// question closed at open (PLAN.md §7): a small vocabulary maps onto a small table of colors
+    /// that resolve in both appearances for free. M17 kept the whole feature out of Settings; M39
+    /// added a choice of whose table it is (VS Code's, Xcode's or GitHub's), and not of the kinds.
     ///
     /// The scanner never emits `.plain` — an unclaimed run of text already renders in the text
     /// view's own `.textColor`, so a token for it would be a span that changes nothing. It exists
@@ -30,8 +31,8 @@ public struct SyntaxToken: Equatable, Sendable {
         ///
         /// The two kinds PLAN.md's "six and no more" grew by, added with Slice 2's diff scanner and
         /// **not** a reopening of the question §7 closed — that question was how much of a theme the
-        /// *user* owns, and the answer is unchanged: system dynamic colors, no Settings surface.
-        /// These are two more entries in the same dictionary.
+        /// *user* owns, and the answer then was no Settings surface (since M39 the user picks whose
+        /// table, never the kinds). These are two more entries in the same dictionary.
         ///
         /// The alternative was to borrow — color an added line `.comment` and a removed one
         /// `.string`, which renders correctly against the colors Slice 3 is likely to pick. It is

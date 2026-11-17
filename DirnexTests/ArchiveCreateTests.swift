@@ -356,7 +356,7 @@ struct ArchiveCreateReachTests {
         window.contentViewController = pane
         pane.loadViewIfNeeded()
 
-        pane.editFile(named: "TWO.TXT", in: root)
+        await pane.editFile(named: "TWO.TXT", in: root)
 
         try await settleUntil(within: .seconds(60)) { window.attachedSheet != nil }
         #expect(sheetButtonCount(in: window) == 1, "expected a lone report, not a question")

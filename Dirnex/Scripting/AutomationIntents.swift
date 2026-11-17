@@ -60,7 +60,7 @@ struct CopySelectionInDirnexIntent: AppIntent {
     @MainActor
     func perform() async throws -> some IntentResult {
         guard let window = Scripting.activeWindow else { throw DirnexIntentError.noWindow }
-        guard window.runCommand(id: "file.copy") else {
+        guard Scripting.automating({ window.runCommand(id: "file.copy") }) else {
             // The registry's own translated title, not a second English copy of it — a display
             // string that exists twice gets localized once (docs/NOTES.md).
             throw DirnexIntentError.couldNotRun(
@@ -92,7 +92,7 @@ struct RunDirnexOperationIntent: AppIntent {
         guard let window = Scripting.activeWindow else { throw DirnexIntentError.noWindow }
         // The id came from the picker, so it was real when the shortcut was built; it can still
         // have gone stale since (a deleted user script), which `runCommand` reports as `false`.
-        guard window.runCommand(id: operation.id) else {
+        guard Scripting.automating({ window.runCommand(id: operation.id) }) else {
             throw DirnexIntentError.couldNotRun(operation.name)
         }
         return .result()

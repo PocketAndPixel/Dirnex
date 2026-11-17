@@ -95,14 +95,14 @@ public enum DirectorySizer {
         guard budget.allows(directoriesListed: 0) else {
             throw DirectorySizeBudgetExceeded(directoriesListed: 0)
         }
-        if let bytes = try shortcutTotal(
+        if let found = try shortcutTotal(
             of: path, using: backend, excluding: isExcluded, isCancelled: isCancelled
         ) {
             // One request, whatever the tree holds. The shortcut is deliberately outside `budget`,
             // which counts *listings made*: bounding one request by a thousand-directory allowance
             // would refuse the cheap answer for the expensive one's reason. Each backend bounds its
             // own shortcut instead — `S3Backend.pageLimit` and `SFTPBackend.subtreeRowLimit`.
-            return DirectorySizeMeasurement(bytes: bytes, requestsMade: 1)
+            return DirectorySizeMeasurement(bytes: found.bytes, files: found.files, requestsMade: 1)
         }
         return try walk(
             of: path,
@@ -120,7 +120,7 @@ public enum DirectorySizer {
         using backend: some VFSBackend,
         excluding isExcluded: (VFSPath) -> Bool,
         isCancelled: () -> Bool
-    ) throws -> Int64? {
+    ) throws -> (bytes: Int64, files: Int)? {
         let listing: VFSSubtreeListing?
         do {
             listing = try backend.subtreeListing(at: path, isCancelled: isCancelled)
@@ -134,8 +134,8 @@ public enum DirectorySizer {
     }
 
     /// A flat subtree summed under the same rules the walk applies, which is the whole of what
-    /// makes the two interchangeable: only non-directories carry bytes, a symlink counts as its own
-    /// link size, and an excluded **directory** takes its subtree with it.
+    /// makes the two interchangeable: only non-directories carry bytes and count as files, a symlink
+    /// counts as its own link size, and an excluded **directory** takes its subtree with it.
     ///
     /// Pruning is done in two passes rather than by trusting the listing's order. A walk never
     /// pushes an excluded directory, so nothing beneath one is ever seen; a flat listing contains
@@ -144,16 +144,18 @@ public enum DirectorySizer {
     private static func total(
         of entries: [FileEntry],
         excluding isExcluded: (VFSPath) -> Bool
-    ) -> Int64 {
+    ) -> (bytes: Int64, files: Int) {
         var prunedRoots: [VFSPath] = []
         for entry in entries where isExcluded(entry.path) { prunedRoots.append(entry.path) }
         var total: Int64 = 0
+        var files = 0
         for entry in entries where entry.kind != .directory {
             if !prunedRoots.isEmpty,
                prunedRoots.contains(where: { entry.path.isSelfOrDescendant(of: $0) }) { continue }
             total += entry.byteSize
+            files += 1
         }
-        return total
+        return (total, files)
     }
 
     /// The original directory-at-a-time walk, unchanged but for reporting what it listed.
@@ -165,6 +167,7 @@ public enum DirectorySizer {
         isCancelled: () -> Bool
     ) throws -> DirectorySizeMeasurement {
         var total: Int64 = 0
+        var files = 0
         var stack: [VFSPath] = [path]
         var listed = 0
         while let directory = stack.popLast() {
@@ -188,10 +191,11 @@ public enum DirectorySizer {
                     stack.append(entry.path)
                 } else {
                     total += entry.byteSize
+                    files += 1
                 }
             }
         }
-        return DirectorySizeMeasurement(bytes: total, requestsMade: listed)
+        return DirectorySizeMeasurement(bytes: total, files: files, requestsMade: listed)
     }
 }
 
@@ -205,6 +209,10 @@ public enum DirectorySizer {
 public struct DirectorySizeMeasurement: Sendable, Equatable {
     /// The recursive byte total.
     public let bytes: Int64
+    /// How many entries carry those bytes: every file, symlink and other non-directory beneath the
+    /// root, at any depth. A copy's progress counts its files by this (PLAN.md §M41), so "file 34 of
+    /// 340" and the byte bar are measured by one walk under one rule.
+    public let files: Int
     /// How many **requests** reaching the backend it took.
     ///
     /// Requests rather than directories, because the two part company the moment a backend can
@@ -214,8 +222,9 @@ public struct DirectorySizeMeasurement: Sendable, Equatable {
     /// 19.24 s for the walk, 1 session and 0.156 s for the shortcut, identical totals.
     public let requestsMade: Int
 
-    public init(bytes: Int64, requestsMade: Int) {
+    public init(bytes: Int64, files: Int, requestsMade: Int) {
         self.bytes = bytes
+        self.files = files
         self.requestsMade = requestsMade
     }
 }

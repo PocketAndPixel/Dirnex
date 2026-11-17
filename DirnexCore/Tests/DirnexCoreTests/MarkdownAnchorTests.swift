@@ -146,7 +146,9 @@ struct MarkdownAnchorTests {
 
     @Test("a marker in a document with no headings renders as nothing")
     func tocWithoutHeadings() {
-        #expect(html("[[_TOC_]]\n\nJust prose.") == "\n<p>Just prose.</p>")
+        // Not even the line it stood on: a block that draws nothing is left out of the join
+        // (M39 Slice 6, which made a footnote's definition such a block).
+        #expect(html("[[_TOC_]]\n\nJust prose.") == "<p>Just prose.</p>")
     }
 
     // MARK: - Colored fences

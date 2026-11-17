@@ -36,6 +36,7 @@ enum Unit {
     static let question: UInt16 = 0x3F
     static let upperA: UInt16 = 0x41
     static let upperE: UInt16 = 0x45
+    static let upperF: UInt16 = 0x46
     static let upperP: UInt16 = 0x50
     static let upperZ: UInt16 = 0x5A
     static let openBracket: UInt16 = 0x5B
@@ -46,9 +47,11 @@ enum Unit {
     static let backtick: UInt16 = 0x60
     static let lowerA: UInt16 = 0x61
     static let lowerE: UInt16 = 0x65
+    static let lowerF: UInt16 = 0x66
     static let lowerP: UInt16 = 0x70
     static let lowerZ: UInt16 = 0x7A
     static let openBrace: UInt16 = 0x7B
+    static let pipe: UInt16 = 0x7C
     static let closeBrace: UInt16 = 0x7D
     static let tilde: UInt16 = 0x7E
     static let openParen: UInt16 = 0x28
@@ -61,6 +64,10 @@ enum Unit {
     // MARK: - Classification
 
     static func isDigit(_ unit: UInt16) -> Bool { unit >= zero && unit <= nine }
+
+    static func isHexDigit(_ unit: UInt16) -> Bool {
+        isDigit(unit) || (unit >= lowerA && unit <= lowerF) || (unit >= upperA && unit <= upperF)
+    }
 
     static func isASCIILetter(_ unit: UInt16) -> Bool {
         (unit >= upperA && unit <= upperZ) || (unit >= lowerA && unit <= lowerZ)

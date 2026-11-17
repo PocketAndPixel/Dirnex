@@ -40,6 +40,28 @@ public struct LanguageGrammar: Equatable, Sendable {
     /// Swift nests block comments and C does not, which is the difference between `/* /* */ */`
     /// ending where the file says it does and coloring the rest of the file as a comment.
     public var blockCommentsNest: Bool
+    /// A block comment written as whole lines: Ruby's `=begin` … `=end` (PLAN.md §M39 ▸ Slice 9).
+    ///
+    /// Each delimiter counts only at the very start of a line, with whitespace or the line's end
+    /// after it, which is Ruby's own rule measured with `ruby` itself: `  =begin` and `=beginning`
+    /// are code, `=begin notes` opens. The comment runs to the end of the closing line, whose rest
+    /// Ruby ignores too, or to the end of the file when nothing closes it.
+    ///
+    /// One language holds it, which §M17 gave as the reason not to have it. The cost it named is
+    /// one unset field in every other row, which is nothing. Perl's POD is the same shape and is
+    /// not here: it opens on *any* `=word` at a line's start and closes on `=cut`, so one rule
+    /// would be loose for Ruby or wrong for Perl.
+    public var lineBlockComment: BlockComment?
+    /// Whether a string followed by `:` is an object's key, colored `.typeOrTag` apart from the
+    /// string values (PLAN.md §M39 ▸ Slice 9). JSON's, and JSON5's unquoted names with it.
+    ///
+    /// A lookahead past the closing quote over whitespace, and nothing remembered, since in JSON
+    /// only a key can stand before a colon. No other row can have it: a colon also follows a
+    /// string in JavaScript's `c ? "a" : "b"` and Python's `if x == "a":`. `.typeOrTag` rather
+    /// than the `.keyword` a dotenv key or an attribute name takes, because JSON spends `.keyword`
+    /// on `true`, `false` and `null`, which are values. GitHub's highlighter agrees: it gives a
+    /// key the class of an HTML tag's name.
+    public var keysBeforeColon: Bool
 
     public init(
         lineComments: [String] = [],
@@ -50,7 +72,9 @@ public struct LanguageGrammar: Equatable, Sendable {
         annotationSigil: String? = nil,
         preprocessorSigil: String? = nil,
         keywordsAreCaseInsensitive: Bool = false,
-        blockCommentsNest: Bool = false
+        blockCommentsNest: Bool = false,
+        lineBlockComment: BlockComment? = nil,
+        keysBeforeColon: Bool = false
     ) {
         self.lineComments = lineComments
         self.blockComment = blockComment
@@ -61,6 +85,8 @@ public struct LanguageGrammar: Equatable, Sendable {
         self.preprocessorSigil = preprocessorSigil
         self.keywordsAreCaseInsensitive = keywordsAreCaseInsensitive
         self.blockCommentsNest = blockCommentsNest
+        self.lineBlockComment = lineBlockComment
+        self.keysBeforeColon = keysBeforeColon
     }
 
     /// `/* … */`, and whether the language lets one sit inside another.

@@ -47,7 +47,15 @@ enum QuickViewMarkdownStyle {
     /// obligation — "a preview that silently ends early is a preview that lies" — and a *rendered*
     /// document is where that lie is easiest to tell, because a page has no visible end for the
     /// reader to notice missing. The source view draws the same sentence as a floating strip.
-    static func document(body: String, isTruncated: Bool = false) -> String {
+    ///
+    /// The token colors are `theme`'s, in a `<style>` of their own (`syntaxStyleAttribute`), so a
+    /// change of theme can replace that one element in a page already on screen and keep the
+    /// reader's place (`SyntaxThemeRepaint`).
+    static func document(
+        body: String,
+        isTruncated: Bool = false,
+        theme: SyntaxColorTheme = SyntaxTheme.current
+    ) -> String {
         """
         <!doctype html>
         <html>
@@ -55,11 +63,10 @@ enum QuickViewMarkdownStyle {
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <style>
-        \(palette(for: .aqua, selector: ":root"))
-        @media (prefers-color-scheme: dark) {
-        \(palette(for: .darkAqua, selector: ":root"))
-        }
-        \(rules)
+        \(pageStylesheet)
+        </style>
+        <style \(syntaxStyleAttribute)>
+        \(syntaxPalette(theme))
         </style>
         </head>
         <body>
@@ -67,6 +74,26 @@ enum QuickViewMarkdownStyle {
         \(isTruncated ? truncationNotice : "")
         </body>
         </html>
+        """
+    }
+
+    /// An exported page's whole stylesheet as one string (PLAN.md §M39 ▸ Slice 12): the preview's, in
+    /// both appearances and `theme`'s token colors, then what a page of its own needs on a wide screen
+    /// and on paper (`QuickViewMarkdownExportStyle`). One string, since nothing will restyle an
+    /// exported file in place the way a theme change restyles a page on screen.
+    static func exportStylesheet(theme: SyntaxColorTheme = SyntaxTheme.current) -> String {
+        [pageStylesheet, syntaxPalette(theme), QuickViewMarkdownExportStyle.rules]
+            .joined(separator: "\n")
+    }
+
+    /// Both palettes and every rule: the content of a page's first `<style>`.
+    private static var pageStylesheet: String {
+        """
+        \(palette(for: .aqua, selector: ":root"))
+        @media (prefers-color-scheme: dark) {
+        \(palette(for: .darkAqua, selector: ":root"))
+        }
+        \(rules)
         """
     }
 
@@ -90,7 +117,7 @@ enum QuickViewMarkdownStyle {
     private static func palette(for appearance: NSAppearance.Name, selector: String) -> String {
         guard let appearance = NSAppearance(named: appearance) else { return "" }
         let background = resolved(.textBackgroundColor, in: appearance)
-        var lines = [
+        let lines = [
             "--background: \(hex(background));",
             "--text: \(hex(resolved(.textColor, in: appearance)));",
             "--muted: \(hex(flattened(.secondaryLabelColor, over: background, in: appearance)));",
@@ -99,17 +126,41 @@ enum QuickViewMarkdownStyle {
             "--link: \(hex(resolved(.linkColor, in: appearance)));",
             "--code-fill: \(hex(flattened(.quaternaryLabelColor, over: background, in: appearance)));"
         ]
-        // One rule per token kind, from the core's own class name rather than a second spelling of
-        // it — the whole reason `MarkdownDocument.tokenClass` is public. A kind added later arrives
-        // here automatically, and `SyntaxTheme.color(for:)` is a compiler-checked switch, so it
-        // cannot arrive uncolored.
-        for kind in SyntaxToken.Kind.allCases {
-            guard let name = MarkdownDocument.tokenClass(for: kind),
-                  let color = SyntaxTheme.color(for: kind)
-            else { continue }
-            lines.append("--\(name): \(hex(resolved(color, in: appearance)));")
-        }
         return selector + " {\n" + lines.map { "  " + $0 }.joined(separator: "\n") + "\n}"
+    }
+
+    /// The attribute that marks the page's token-color `<style>`. An attribute on an element in
+    /// `<head>` rather than an `id`, because a heading's anchor is an `id` made from its text, and
+    /// the fragment never writes into `<head>`.
+    static let syntaxStyleAttribute = "data-dirnex-syntax"
+
+    /// `theme`'s token colors for both appearances, as custom properties: the whole content of the
+    /// page's syntax `<style>`.
+    static func syntaxPalette(_ theme: SyntaxColorTheme) -> String {
+        """
+        \(tokenPalette(theme, for: .aqua))
+        @media (prefers-color-scheme: dark) {
+        \(tokenPalette(theme, for: .darkAqua))
+        }
+        """
+    }
+
+    /// One property per token kind, from the core's own class name rather than a second spelling of
+    /// it — the whole reason `MarkdownDocument.tokenClass` is public. A kind added later arrives here
+    /// automatically, and `SyntaxColorTheme.pair(for:)` is a compiler-checked switch, so it cannot
+    /// arrive uncolored.
+    private static func tokenPalette(
+        _ theme: SyntaxColorTheme,
+        for appearance: NSAppearance.Name
+    ) -> String {
+        guard let appearance = NSAppearance(named: appearance) else { return "" }
+        let lines = SyntaxToken.Kind.allCases.compactMap { kind -> String? in
+            guard let name = MarkdownDocument.tokenClass(for: kind),
+                  let color = SyntaxTheme.color(for: kind, in: theme)
+            else { return nil }
+            return "  --\(name): \(hex(resolved(color, in: appearance)));"
+        }
+        return ":root {\n" + lines.joined(separator: "\n") + "\n}"
     }
 
     /// `color` as it resolves in `appearance`, in sRGB.
@@ -199,6 +250,10 @@ enum QuickViewMarkdownStyle {
         ul.task-list ul { list-style: disc; padding-left: 1.6em; }
         li.task { list-style: none; }
         li.task input { margin-right: 0.4em; }
+        dl { margin: 0 0 0.85em; }
+        dt { margin-top: 0.85em; font-style: italic; font-weight: 600; }
+        dd { margin: 0.15em 0 0 1.6em; }
+        dd > :last-child { margin-bottom: 0; }
         code {
           font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
           font-size: \(small)px;
@@ -242,6 +297,8 @@ enum QuickViewMarkdownStyle {
         }
         \(tokenRules)
         \(QuickViewMarkdownDiagram.rules)
+        \(QuickViewMarkdownAlerts.rules)
+        \(QuickViewMarkdownMath.rules)
         """
     }
 

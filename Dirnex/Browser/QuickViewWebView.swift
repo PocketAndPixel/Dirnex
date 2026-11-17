@@ -1,5 +1,6 @@
 import AppKit
 import DirnexCore
+import UniformTypeIdentifiers
 import WebKit
 
 /// The web view a Quick View *rendered* HTML preview draws into. A named subclass because two places
@@ -39,7 +40,8 @@ final class QuickViewDocumentWebView: WKWebView {}
 /// (`AppPreferences.quickViewJavaScriptEnabled`). The store is non-persistent so nothing a preview
 /// touches outlives it, the file load is scoped to the file's own directory, and `decidePolicyFor`
 /// refuses every navigation but the first, so a link cannot take the preview somewhere the user
-/// never asked to go.
+/// never asked to go. A refused click is handed on instead, and moves the *pane* to the file it
+/// names, which the preview then follows (`QuickViewWebView+Links`, §M39).
 ///
 /// The rule list is a **precondition, not a decoration**: compiling it is asynchronous, so this view
 /// cannot be built until it exists (`withContentRules`). A build that starts before the rules land
@@ -47,62 +49,11 @@ final class QuickViewDocumentWebView: WKWebView {}
 /// looks right, and only a server somewhere else knows.
 @MainActor
 final class QuickViewWebView: NSView {
-    /// What this surface is showing, which is two different things and only one of them is a file.
-    ///
-    /// A `.md` has no HTML on disk — the page is generated from it (PLAN.md §M18) — so there is no
-    /// URL to re-load and the body has to be kept in order to draw it again. An enum rather than a
-    /// second pair of optionals because the two cases answer *every* question differently: what a
-    /// reload re-issues, and which URL `decidePolicyFor` measures a link against.
-    private enum Page {
-        /// An HTML file, loaded from disk with read access scoped to its own directory (§M16).
-        case file(URL)
-        /// A document rendered from a file's bytes, loaded with that file's **directory** as the
-        /// base URL — the page's identity, not its read access (see `showMarkdown`). The scan's
-        /// fragment is wrapped afresh on every load, so the stylesheet is the one the current
-        /// appearance calls for.
-        case generated(QuickViewPreviewView.MarkdownScan, directory: URL)
-        /// An office document converted by macOS's own Quick Look generator
-        /// (`QuickViewPreviewView+Document`): `page` inside the bundle directory `bundle`, which is
-        /// also the read access, since a workbook's sheets and a document's images are its siblings.
-        /// `allowsJavaScript` is the **generator's** answer, not the user's preference — the only
-        /// scripts such a page carries are the generator's own tab strip (``DirnexCore/QuickLookPreviewBundle/Content``).
-        /// `fitWidth` is the width to scale the page to the surface from, when the generator allows it.
-        case converted(page: URL, bundle: URL, allowsJavaScript: Bool, fitWidth: Double?)
-
-        /// The one navigation `decidePolicyFor` allows, fragments aside. For a generated page that
-        /// is the base URL, because that is what the page's own links resolve against — measured:
-        /// a `#anchor` click arrives as `<directory>#anchor` and really moves the reading position.
-        var permittedURL: URL {
-            switch self {
-            case let .file(url): url
-            case let .generated(_, directory): directory
-            case let .converted(page, _, _, _): page
-            }
-        }
-
-        /// Whether scripts run on this page: the user's switch for a file somebody wrote, the
-        /// generator's own request for a page it wrote.
-        @MainActor var allowsJavaScript: Bool {
-            switch self {
-            case .file, .generated: AppPreferences.quickViewJavaScriptValue
-            case let .converted(_, _, allowsJavaScript, _): allowsJavaScript
-            }
-        }
-
-        /// The directory an *embedded frame* may load from — a converted workbook shows each sheet
-        /// in an iframe the tab strip re-points. `nil` for everything else, which keeps the rule a
-        /// file-backed page has always had: nothing but the page itself.
-        var frameDirectory: URL? {
-            if case let .converted(_, bundle, _, _) = self { return bundle }
-            return nil
-        }
-    }
-
     /// Internal, not private: `QuickViewWebView+Find` reads the page through it, and Swift's
     /// `private` does not cross files.
     let webView: QuickViewDocumentWebView
     /// What is on screen, which is the *one* navigation `decidePolicyFor` allows.
-    private var page: Page?
+    private(set) var page: Page?
     /// Whether the web view has faded in. A new one starts transparent over the surface's own
     /// backing, and fades in when its first load ends (`fadeInOnce`).
     private var hasFadedIn = false
@@ -133,13 +84,28 @@ final class QuickViewWebView: NSView {
     /// Where the keyboard goes when the bar lets go of it: the file list the arrows walk.
     var returnKeyboard: (() -> Void)?
 
+    // Following a link (`QuickViewWebView+Links`, PLAN.md §M39).
+
+    /// What a click on a link that leaves the page does, given where it leads and the location of
+    /// the document it was clicked in. The preview surface's, which hands it to the window.
+    var onFollowLink: ((DocumentLink, VFSPath) -> Void)?
+    /// The heading to scroll to once the page loading now has finished, when a link named one.
+    var scrollTarget: String?
+
     /// Block everything, then put `file://` back — the order matters, since
     /// `ignore-previous-rules` is what re-admits the page's own bytes and its local siblings.
     /// `data:` URIs are unaffected by either rule (probed), so inlined images survive.
+    ///
+    /// The third rule re-admits the scheme a sealed web archive's every URL is in (PLAN.md §M39).
+    /// Nothing serves that scheme but the archive WebKit was handed, so a resource the archive lacks
+    /// has no network path at all, and a plain page naming it gets nothing. Measured 2026-11-12: a
+    /// sealed archive drew whole under exactly these three rules with scripts on, and the server
+    /// saw no request.
     private static let blockRemoteRules = """
     [
       { "trigger": { "url-filter": ".*" }, "action": { "type": "block" } },
-      { "trigger": { "url-filter": "^file://" }, "action": { "type": "ignore-previous-rules" } }
+      { "trigger": { "url-filter": "^file://" }, "action": { "type": "ignore-previous-rules" } },
+      { "trigger": { "url-filter": "^\(WebArchiveSeal.scheme):" }, "action": { "type": "ignore-previous-rules" } }
     ]
     """
 
@@ -179,8 +145,16 @@ final class QuickViewWebView: NSView {
         findOptions: QuickViewFindOptionsStore,
         _ completion: @escaping (QuickViewWebView?) -> Void
     ) {
+        contentRules { rules in
+            completion(rules.map { QuickViewWebView(rules: $0, findOptions: findOptions) })
+        }
+    }
+
+    /// The block-remote rules, compiled once for the process. Also what an exported page is printed
+    /// under (`MarkdownExportPDF`), so the PDF reaches no further than the preview did.
+    static func contentRules(_ completion: @escaping (WKContentRuleList?) -> Void) {
         if let compiledRules {
-            completion(QuickViewWebView(rules: compiledRules, findOptions: findOptions))
+            completion(compiledRules)
             return
         }
         guard let store = WKContentRuleListStore.default() else {
@@ -197,13 +171,12 @@ final class QuickViewWebView: NSView {
             MainActor.assumeIsolated {
                 if let list {
                     compiledRules = list
-                    completion(QuickViewWebView(rules: list, findOptions: findOptions))
                 } else {
                     NSLog(
                         "Quick View: content rules failed to compile — \(String(describing: error))"
                     )
-                    completion(nil)
                 }
+                completion(list)
             }
         }
     }
@@ -212,9 +185,18 @@ final class QuickViewWebView: NSView {
 
     /// Render `url`. The read access is scoped to the file's own directory, so a page reaches the
     /// sibling stylesheet and images that make it a saved page, and nothing above it.
-    func show(_ url: URL) {
-        startNewPage()
-        load(.file(url.standardizedFileURL))
+    ///
+    /// `location` is the file's place on its own backend, which its links lead from, and `fragment`
+    /// the heading a link to it named, scrolled to once it has loaded (PLAN.md §M39). A file on this
+    /// disk is its own location. A file elsewhere is a local copy, and is drawn from its bytes under
+    /// its location's base URL (``Page/copied(_:base:location:)``).
+    func show(_ url: URL, location: VFSPath? = nil, fragment: String? = nil) {
+        startNewPage(scrollingTo: fragment)
+        guard let location, location.backend != .local else {
+            load(.file(url.standardizedFileURL, location: location ?? .local(url.path)))
+            return
+        }
+        load(.copied(url, base: DocumentLink.baseURL(for: location), location: location))
     }
 
     /// Render a document generated from `source`'s bytes — Markdown, today (PLAN.md §M18).
@@ -222,14 +204,23 @@ final class QuickViewWebView: NSView {
     /// The scan's fragment is `DirnexCore`'s; the wrapper and the stylesheet are added here, at load
     /// time, so a page always carries the palette for the appearance it is being drawn in.
     ///
-    /// The base URL is the file's **directory**, and it is not what reaches the file's images —
+    /// The base URL is the document's own path on its own backend, in a scheme nothing serves
+    /// (``DirnexCore/DocumentLink/baseURL(for:)``), and it is not what reaches the file's images —
     /// measured, `loadHTMLString(_:baseURL:)` grants no filesystem access at all, which is why the
-    /// images arrive already inlined (`QuickViewMarkdownImages`). What it is for is *identity*: it
-    /// gives the page a real URL, so a `#anchor` click resolves against something `isPermitted` can
-    /// compare exactly and a link to a sibling file resolves to a path it can refuse by name.
-    func showMarkdown(_ scan: QuickViewPreviewView.MarkdownScan, source: URL) {
-        startNewPage()
-        load(.generated(scan, directory: source.deletingLastPathComponent().standardizedFileURL))
+    /// images arrive already inlined (`QuickViewMarkdownImages`). What it is for is *identity*: a
+    /// `#anchor` click arrives against the document, and a link to another file arrives as that
+    /// file's path on the same backend, which is what lets a click move the pane there (§M39). The
+    /// file's `file://` folder, the base before §M39, resolved `#anchor`, `""` and `.` all to the
+    /// folder.
+    func showMarkdown(
+        _ scan: QuickViewPreviewView.MarkdownScan,
+        source: URL,
+        location: VFSPath? = nil,
+        fragment: String? = nil
+    ) {
+        startNewPage(scrollingTo: fragment)
+        let location = location ?? .local(source.path)
+        load(.generated(scan, base: DocumentLink.baseURL(for: location), location: location))
     }
 
     /// Render a page Quick Look's generator wrote for an office document, from inside its bundle.
@@ -241,6 +232,27 @@ final class QuickViewWebView: NSView {
             allowsJavaScript: allowsJavaScript,
             fitWidth: fitWidth
         ))
+    }
+
+    /// Render a saved page: `archive` is the sealed property list, `document` the sealed URL of its
+    /// page, `origins` the seal's table, and `source` the file it was read from, whose place on its
+    /// own backend is `location`.
+    func showArchive(
+        _ archive: Data,
+        document: URL,
+        source: URL,
+        origins: [String: String] = [:],
+        location: VFSPath? = nil,
+        fragment: String? = nil
+    ) {
+        startNewPage(scrollingTo: fragment)
+        load(.archive(SavedArchive(
+            data: archive,
+            directory: source.deletingLastPathComponent().standardizedFileURL,
+            document: document,
+            origins: origins,
+            location: location ?? .local(source.path)
+        )))
     }
 
     // MARK: - Zoom
@@ -269,7 +281,8 @@ final class QuickViewWebView: NSView {
         setZoomLevel(1)
     }
 
-    private func startNewPage() {
+    private func startNewPage(scrollingTo fragment: String? = nil) {
+        scrollTarget = fragment
         zoomLevel = 1
         webView.magnification = 1
         // The matches were in the page being replaced, and the new one carries no highlight to take
@@ -347,14 +360,31 @@ final class QuickViewWebView: NSView {
         self.page = page
         applyZoom()
         switch page {
-        case let .file(url):
+        case let .file(url, _):
             webView.loadFileURL(url, allowingReadAccessTo: url.deletingLastPathComponent())
+        case let .copied(url, base, _):
+            // The type's MIME type rather than `text/html` for all of them: XHTML parsed as HTML is
+            // a different document. No encoding is named, so the page's own `<meta charset>` decides.
+            let mimeType = UTType(filenameExtension: url.pathExtension)?.preferredMIMEType ?? "text/html"
+            webView.load(
+                (try? Data(contentsOf: url)) ?? Data(),
+                mimeType: mimeType,
+                characterEncodingName: "",
+                baseURL: base
+            )
         case let .converted(page, bundle, _, _):
             webView.loadFileURL(page, allowingReadAccessTo: bundle)
-        case let .generated(scan, directory):
+        case let .generated(scan, base, _):
             webView.loadHTMLString(
                 QuickViewMarkdownStyle.document(body: scan.html, isTruncated: scan.isTruncated),
-                baseURL: directory
+                baseURL: base
+            )
+        case let .archive(saved):
+            webView.load(
+                saved.data,
+                mimeType: DirnexCore.WebArchive.mimeType,
+                characterEncodingName: "",
+                baseURL: saved.directory
             )
         }
     }
@@ -388,7 +418,7 @@ final class QuickViewWebView: NSView {
     /// four launches, where ease-out reached `#63`–`#76`. A fade begun when the surface appears would
     /// be most of the way opaque by then. The first load only, so stepping between files stays
     /// instant, and a failed one fades in too, so a view is never left invisible.
-    private func fadeInOnce() {
+    func fadeInOnce() {
         guard !hasFadedIn else { return }
         hasFadedIn = true
         NSAnimationContext.runAnimationGroup { context in
@@ -399,96 +429,4 @@ final class QuickViewWebView: NSView {
     }
 
     private static let fadeInDuration: TimeInterval = 0.15
-}
-
-// MARK: - Navigation
-
-extension QuickViewWebView: WKNavigationDelegate {
-    /// Allow the file this preview was pointed at, and nothing else.
-    ///
-    /// The rule list already stops a remote *load*; refusing the navigation covers a different
-    /// case. A click on a link in a previewed page would otherwise replace what the header names
-    /// with something else — a preview that has quietly become a browser, showing a document the
-    /// user never selected. An in-page anchor (`#top`) is the one exception, since it moves the
-    /// reading position rather than the document.
-    /// This is also where the JavaScript preference is applied, and it has to be here rather than
-    /// on the configuration: `WKWebViewConfiguration` is copied at init, so a view built with
-    /// scripts enabled keeps them for life. Probed on one live view over four loads — the delegate's
-    /// `preferences` re-gated it off and on again each time, while assigning
-    /// `webView.configuration.defaultWebpagePreferences.allowsContentJavaScript` did nothing at all
-    /// **and read back as `false` afterwards**, which is the shape of an edit that looks applied and
-    /// is not.
-    func webView(
-        _ webView: WKWebView,
-        decidePolicyFor navigationAction: WKNavigationAction,
-        preferences: WKWebpagePreferences
-    ) async -> (WKNavigationActionPolicy, WKWebpagePreferences) {
-        preferences.allowsContentJavaScript = page?.allowsJavaScript
-            ?? AppPreferences.quickViewJavaScriptValue
-        guard let url = navigationAction.request.url else { return (.cancel, preferences) }
-        let inFrame = navigationAction.targetFrame.map { !$0.isMainFrame } ?? false
-        let allowed = isPermitted(url, inFrame: inFrame)
-        // The one place a `WKFrameInfo` for a child frame can be had, and the only way to search a
-        // converted workbook's sheet: a `file://` frame is a different origin, so no script running
-        // in the page can reach into it (`QuickViewWebView+Find`).
-        if allowed, inFrame, let frame = navigationAction.targetFrame {
-            childFrames.append(frame)
-        }
-        return (allowed ? .allow : .cancel, preferences)
-    }
-
-    /// A load finished. The DOM a reload rebuilds carries none of the highlights the search drew, so
-    /// they go back on rather than the user having to retype.
-    func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
-        fadeInOnce()
-        redrawFindAfterReload()
-    }
-
-    func webView(
-        _ webView: WKWebView,
-        didFailProvisionalNavigation navigation: WKNavigation!,
-        withError error: any Error
-    ) {
-        fadeInOnce()
-    }
-
-    func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: any Error) {
-        fadeInOnce()
-    }
-
-    /// The empty document `clearPage` loads, and the page this preview is showing — compared
-    /// without the fragment, so an in-page anchor still works.
-    ///
-    /// For a generated document that comparison is against the file's *directory*, which is what
-    /// the page's links resolve against. Probed, so the difference is stated rather than assumed: a
-    /// `#anchor` is allowed and scrolls; a sibling `other.md` is refused; a remote URL is refused;
-    /// `../` is never even attempted. A link to `.` or `""` does compare equal and is allowed — and
-    /// measured harmless, since WebKit leaves the generated document on screen. A tightening that
-    /// admitted only fragments was written and measured to change nothing else, so it was dropped
-    /// rather than carried: it would have had to carve out the initial load and the reload, both of
-    /// which arrive here too.
-    ///
-    /// An embedded frame is the one other thing a *converted* page may load: a sheet page from inside
-    /// its own bundle, and nothing outside it — a link in a workbook cell must no more replace a sheet
-    /// with a web page than it may replace the document.
-    private func isPermitted(_ url: URL, inFrame: Bool) -> Bool {
-        if url.absoluteString.hasPrefix("about:") { return true }
-        guard let page else { return false }
-        if inFrame, let directory = page.frameDirectory, url.isFileURL {
-            let candidate = url.standardizedFileURL.deletingFragment
-            return candidate.deletingLastPathComponent().path == directory.path
-        }
-        return url.standardizedFileURL.deletingFragment == page.permittedURL
-    }
-}
-
-private extension URL {
-    /// This URL with any `#fragment` removed, for comparing "the same document" against a link.
-    var deletingFragment: URL {
-        guard var components = URLComponents(url: self, resolvingAgainstBaseURL: false) else {
-            return self
-        }
-        components.fragment = nil
-        return components.url ?? self
-    }
 }

@@ -12,6 +12,16 @@ import DirnexCore
 /// Whole sentences per branch rather than a verb spliced into a template: a language that inflects
 /// the object or reorders the clause cannot build "Copying <name>" from a bare verb.
 extension QueueBarView {
+    /// Whether the bar says "Paused": the whole queue is, or nothing it holds is running and
+    /// something is paused. The second half is a job paused in the copy dialog (PLAN.md §M41), which
+    /// the queue-wide flag does not know about. The pause button still follows the queue-wide flag
+    /// alone, since that is the pause it toggles.
+    static func readsPaused(_ snapshot: QueueSnapshot) -> Bool {
+        if snapshot.isPaused { return true }
+        let active = snapshot.jobs.filter { $0.status == .running || $0.status == .paused }
+        return !active.isEmpty && !active.contains { $0.status == .running }
+    }
+
     /// What a running job is doing, named by kind.
     ///
     /// Whole sentences per branch rather than a verb spliced into a template: a language that

@@ -1,4 +1,5 @@
 import AppKit
+import DirnexCore
 import PDFKit
 import Quartz
 import UniformTypeIdentifiers
@@ -127,11 +128,14 @@ final class QuickViewPreviewView: NSView {
     /// The placeholder it was last showing, which is the *third* half of that identity — and the one
     /// the guard cannot do without once placeholders exist. Every un-fetched remote file resolves to
     /// a `nil` URL, so without this a step from one to the next is "already showing that" and the
-    /// card would go on naming the file the cursor has left.
-    private var loadedPlaceholder: RemotePreviewPlaceholder?
+    /// card would go on naming the file the cursor has left. Readable for `isAwaitingContent`.
+    private(set) var loadedPlaceholder: RemotePreviewPlaceholder?
     /// Set once the first `show` has run, so `show(nil)` on a fresh view still blanks the backends
     /// rather than being mistaken for "already showing nil".
     private var hasLoaded = false
+    /// Where the file on screen is on its own backend, a heading a followed link is waiting to scroll
+    /// to, and what a click on a link does (`QuickViewPreviewView+Links`, PLAN.md §M39).
+    var links = QuickViewLinks()
 
     /// Where `content` starts below the top edge under a `.floating` header, `nil` under any other.
     /// Moved by `QuickViewPreviewView+TopStrip`, which owns every rule about it.
@@ -164,6 +168,9 @@ final class QuickViewPreviewView: NSView {
     /// owns every rule about it. One stored property because a Swift extension cannot hold state,
     /// not because the concept belongs here.
     var flipGate = FlipGate()
+    /// Told each time a backend has put its content on screen (`contentDidLoad`), which is when a
+    /// slideshow's countdown may start (PLAN.md §M39 ▸ Slice 16). Set by the window's two surfaces.
+    var onContentDidLoad: (() -> Void)?
 
     /// `pageRecognizer` is what reads a PDF's scanned pages, handed on to the PDF surface when one
     /// is built. Defaulted, unlike `findOptions`, because it writes nothing outside the process —
@@ -206,10 +213,15 @@ final class QuickViewPreviewView: NSView {
     /// The style is part of what is being shown, not a setting beside it: the guard below skips a
     /// re-drive of the file already on screen, and pressing `2` on the file you are looking at is
     /// exactly that call with a different answer expected (PLAN.md §M16).
+    ///
+    /// `location` is where `url` is on its own backend — the server's file or the archive member a
+    /// local copy stands for — which a rendered page's links lead from (§M39). `nil` is the file
+    /// itself, on this disk.
     func show(
         _ url: URL?,
         style: QuickViewRenderStyle,
-        placeholder: RemotePreviewPlaceholder? = nil
+        placeholder: RemotePreviewPlaceholder? = nil,
+        location: VFSPath? = nil
     ) {
         guard url != loadedURL || style != loadedStyle || placeholder != loadedPlaceholder
             || !hasLoaded else { return }
@@ -217,6 +229,7 @@ final class QuickViewPreviewView: NSView {
         loadedStyle = style
         loadedPlaceholder = placeholder
         hasLoaded = true
+        links.location = location
         showsPicture = url.map(Self.isImage) == true
         // The table and the tree are put away here rather than by every other backend, for the reason
         // the card below is: a sixth hand-written list is six chances to forget one. Each stays up while
@@ -252,9 +265,13 @@ final class QuickViewPreviewView: NSView {
             showRenderedHTML(url)
         } else if let url, Self.isRenderableMarkdown(url), style == .rendered {
             showRenderedMarkdown(url)
+        } else if let url, Self.isWebArchive(url) {
+            showWebArchive(url)
+        } else if let url, Self.isRichTextSource(url), style == .rendered {
+            showRichText(url)
         } else if let url, Self.isText(url) || Self.offersBothStyles(url) {
-            // HTML reaches the text backend only here, in `.source` — `isText` still refuses it, so
-            // that a file which is *only* ever text keeps the one rule it always had. Markdown
+            // HTML and RTF reach the text backend only here, in `.source` — `isText` still refuses
+            // both, so that a file which is *only* ever text keeps the one rule it always had. Markdown
             // needs no such exception: `isText` takes it already, which is what made `1` work on a
             // `.md` before this milestone existed.
             showText(url)
@@ -280,6 +297,7 @@ final class QuickViewPreviewView: NSView {
         loadedStyle = .default
         loadedPlaceholder = nil
         hasLoaded = false
+        links.pendingFragment = nil
         standDownPlaceholder()
         cancelDocumentConversion()
         previewView?.previewItem = nil

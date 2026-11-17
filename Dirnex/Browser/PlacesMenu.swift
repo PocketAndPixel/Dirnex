@@ -71,7 +71,15 @@ final class PlacesMenu: NSObject {
     /// Takes the assembled groups rather than reading them, so the whole rendering is exercisable
     /// from a test without touching the stores — which in a target that runs *inside the app* are
     /// the sidebar the person running the tests is looking at.
-    func build(_ menu: NSMenu, groups: [SidebarPlaceGroup], unlockedVaults: Set<String> = []) {
+    ///
+    /// `pins` is what a pinned folder's badge is read against; `nil`, as a test passes, draws every
+    /// pin's folder unmarked.
+    func build(
+        _ menu: NSMenu,
+        groups: [SidebarPlaceGroup],
+        unlockedVaults: Set<String> = [],
+        pins: PinBadgeContext? = nil
+    ) {
         menu.removeAllItems()
         for group in groups {
             guard let section = group.section else {
@@ -79,11 +87,15 @@ final class PlacesMenu: NSObject {
                 // each set off from the sections between them.
                 menu.addItem(.separator())
                 for place in group.places {
-                    items(for: place, unlockedVaults: unlockedVaults).forEach(menu.addItem)
+                    items(for: place, unlockedVaults: unlockedVaults, pins: pins).forEach(
+                        menu.addItem
+                    )
                 }
                 continue
             }
-            menu.addItem(sectionItem(section, group.places, unlockedVaults: unlockedVaults))
+            menu.addItem(
+                sectionItem(section, group.places, unlockedVaults: unlockedVaults, pins: pins)
+            )
         }
         // The separator the leading headerless group added has nothing above it to divide from.
         if menu.items.first?.isSeparatorItem == true { menu.removeItem(at: 0) }
@@ -95,7 +107,8 @@ final class PlacesMenu: NSObject {
     private func sectionItem(
         _ section: SidebarSection,
         _ places: [SidebarPlace],
-        unlockedVaults: Set<String>
+        unlockedVaults: Set<String>,
+        pins: PinBadgeContext?
     ) -> NSMenuItem {
         let title = LocalizedCatalog.title(for: section)
         let header = NSMenuItem(title: title, action: nil, keyEquivalent: "")
@@ -113,7 +126,7 @@ final class PlacesMenu: NSObject {
             submenu.addItem(empty)
         }
         for place in places {
-            items(for: place, unlockedVaults: unlockedVaults).forEach(submenu.addItem)
+            items(for: place, unlockedVaults: unlockedVaults, pins: pins).forEach(submenu.addItem)
         }
         // Its digits are handed out when it opens and taken back when it closes; see `PlacesDigits`.
         submenu.delegate = sectionDelegate
@@ -133,10 +146,14 @@ final class PlacesMenu: NSObject {
     /// AppKit pairs an alternate with the item above it by key equivalent, and tells them apart by
     /// modifier mask alone. So the plain item's mask is set to none here, because an item's default
     /// is ⌘ and the two would then be identical. The digits `PlacesDigits` hands out go on both.
-    private func items(for place: SidebarPlace, unlockedVaults: Set<String>) -> [NSMenuItem] {
+    private func items(
+        for place: SidebarPlace,
+        unlockedVaults: Set<String>,
+        pins: PinBadgeContext?
+    ) -> [NSMenuItem] {
         let opens = item(for: place, action: #selector(BrowserWindowController.openPlace(_:)))
         opens.keyEquivalentModifierMask = []
-        opens.image = image(for: place, unlockedVaults: unlockedVaults)
+        opens.image = image(for: place, unlockedVaults: unlockedVaults, pins: pins)
         let opensInNewTab = item(
             for: place,
             action: #selector(BrowserWindowController.openPlaceInNewTab(_:))
@@ -158,9 +175,14 @@ final class PlacesMenu: NSObject {
         return item
     }
 
-    /// A 16 pt template glyph, the size AppKit draws menu images at — or the tag's colored dot,
-    /// which is drawn by the same `TagDotStyle` the sidebar row and the ⌃T menu use.
-    private func image(for place: SidebarPlace, unlockedVaults: Set<String>) -> NSImage? {
+    /// A 16 pt template glyph, the size AppKit draws menu images at, marked in its corner for a
+    /// pinned folder the way its sidebar row is — or the tag's colored dot, which is drawn by the
+    /// same `TagDotStyle` the sidebar row and the ⌃T menu use.
+    private func image(
+        for place: SidebarPlace,
+        unlockedVaults: Set<String>,
+        pins: PinBadgeContext?
+    ) -> NSImage? {
         if case let .tag(tag) = place {
             return TagDotStyle.menuImage(for: tag.color, diameter: 12)
         }
@@ -168,9 +190,10 @@ final class PlacesMenu: NSObject {
             for: place,
             unlockedVaults: unlockedVaults
         ) else { return nil }
-        return SidebarViewController.templateSymbol(
-            symbol,
+        return BadgedGlyph.image(
+            symbol: symbol,
             pointSize: 14,
+            badge: pins.flatMap { SidebarPlacePresentation.badgeSymbolName(for: place, in: $0) },
             describedAs: SidebarPlacePresentation.title(for: place)
         )
     }
@@ -198,7 +221,8 @@ extension PlacesMenu: NSMenuDelegate {
         build(
             menu,
             groups: SidebarPlaces.groups(from: sidebar.placeSources()),
-            unlockedVaults: Set(sidebar.vaultMountPoints.keys)
+            unlockedVaults: Set(sidebar.vaultMountPoints.keys),
+            pins: sidebar.pinBadges
         )
         // The top level's own destinations — Recents and the Trash — hold the digits until the user
         // steps into a section, which takes them (`PlacesDigits`).

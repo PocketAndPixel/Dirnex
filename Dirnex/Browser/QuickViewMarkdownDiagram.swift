@@ -43,15 +43,26 @@ enum QuickViewMarkdownDiagram {
     /// font inside the closure instead would pay a lookup per label to avoid a claim that is true.
     private struct Face: @unchecked Sendable {
         let font: NSFont
+        /// A class diagram's class names are drawn bold (`.mm-class-name`), and measured so.
+        let bold: NSFont
     }
 
     /// The metric handed to the core's layout.
     static var metric: MarkdownTextMetric {
-        let face = Face(font: .systemFont(ofSize: labelSize))
+        let face = Face(
+            font: .systemFont(ofSize: labelSize),
+            bold: .boldSystemFont(ofSize: labelSize)
+        )
         let lineHeight = ceil(face.font.ascender - face.font.descender)
-        return MarkdownTextMetric(lineHeight: lineHeight) { text in
-            Double((text as NSString).size(withAttributes: [.font: face.font]).width)
-        }
+        return MarkdownTextMetric(
+            lineHeight: lineHeight,
+            boldWidth: { text in
+                Double((text as NSString).size(withAttributes: [.font: face.bold]).width)
+            },
+            width: { text in
+                Double((text as NSString).size(withAttributes: [.font: face.font]).width)
+            }
+        )
     }
 
     /// What the page says about a diagram type or construct it did not draw.
@@ -109,6 +120,23 @@ enum QuickViewMarkdownDiagram {
         .mm-actor { stroke: currentColor; fill: none; stroke-width: 1.2; }
         .mm-note { fill: var(--code-fill); stroke: var(--faint); stroke-width: 1; }
         .mm-note-label { fill: currentColor; font-size: \(labelSize - 1)px; }
+        .mm-note-link { stroke: var(--faint); stroke-width: 1; stroke-dasharray: 3 3; }
+        .mm-state-dot { fill: currentColor; }
+        .mm-state-ring { fill: none; stroke: currentColor; stroke-width: 1.2; }
+        .mm-state-bar { fill: currentColor; }
+        .mm-state-rule { stroke: currentColor; stroke-width: 1; }
+        .mm-state-divider { stroke: var(--faint); stroke-width: 1; stroke-dasharray: 5 4; }
+        .mm-group { fill: var(--code-fill); stroke: var(--faint); stroke-width: 1; }
+        .mm-group-label { fill: var(--muted); font-size: \(labelSize)px; }
+        .mm-box-rule { stroke: currentColor; stroke-width: 1; }
+        .mm-class-name { font-weight: bold; }
+        .mm-class-static { text-decoration: underline; }
+        .mm-class-abstract { font-style: italic; }
+        .mm-marker-line { stroke: currentColor; stroke-width: 1.2; fill: none; }
+        .mm-marker-hollow { fill: var(--background); stroke: currentColor; stroke-width: 1.2; }
+        .mm-marker-filled { fill: currentColor; stroke: currentColor; stroke-width: 1.2; }
+        \(QuickViewMarkdownGantt.rules)
+        p.mermaid-title { margin: 0 0 0.4em; font-weight: 600; text-align: center; }
         figcaption.mermaid-note {
           margin-top: 0.3em;
           color: var(--muted);

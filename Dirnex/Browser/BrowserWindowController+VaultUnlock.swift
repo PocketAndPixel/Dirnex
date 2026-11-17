@@ -42,6 +42,13 @@ extension BrowserWindowController {
         }
     }
 
+    func panelRequestsUnlockedVault(
+        _ vault: VaultLocation,
+        then body: @escaping @MainActor (String) -> Void
+    ) {
+        withUnlockedVault(vault, then: body)
+    }
+
     // MARK: - Commands
 
     /// Unlock the vault image under the cursor — how an image that is not in the sidebar yet gets

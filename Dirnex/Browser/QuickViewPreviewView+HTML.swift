@@ -22,6 +22,8 @@ extension QuickViewPreviewView {
         standDownText()
         loadToken += 1
         let token = loadToken
+        let location = documentLocation(for: url)
+        let fragment = takePendingFragment(for: location)
         ensureWebSurface { [weak self] surface in
             guard let self, token == loadToken else { return }
             guard let surface else {
@@ -29,7 +31,7 @@ extension QuickViewPreviewView {
                 return
             }
             surface.isHidden = false
-            surface.show(url)
+            surface.show(url, location: location, fragment: fragment)
         }
     }
 
@@ -44,8 +46,8 @@ extension QuickViewPreviewView {
     /// probed, `.xhtml` is `public.xhtml` and does **not** conform to `public.html`, so a
     /// `conforms(to: .html)` gate would silently exclude it — which is exactly how it ended up
     /// previewing as source before this milestone, unnoticed. `.mhtml` and `.webarchive` conform to
-    /// neither and are left with Quick Look: they are archives of a page, and rendering one needs a
-    /// `loadData` path rather than a file load.
+    /// neither: they are archives of a page, with a backend of their own since M39
+    /// (`QuickViewPreviewView+WebArchive`), which seals them before WebKit sees them.
     static func isRenderableHTML(_ url: URL) -> Bool {
         guard let type = htmlContentType(of: url) else { return false }
         return type.conforms(to: .html) || type.conforms(to: UTType("public.xhtml") ?? .html)
@@ -73,6 +75,7 @@ extension QuickViewPreviewView {
                 return
             }
             pin(surface, inside: content)
+            routeLinks(of: surface)
             webSurface = surface
             completion(surface)
         }

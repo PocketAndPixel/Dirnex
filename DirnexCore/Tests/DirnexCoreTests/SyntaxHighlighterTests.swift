@@ -58,17 +58,18 @@ struct SyntaxHighlighterTests {
         ])
     }
 
-    @Test("JSON colors its three literals and nothing else")
+    @Test("JSON colors a key apart from its value, and its three literals")
     func json() {
+        // Keys are M39 ▸ Slice 9's; `SyntaxJSONAndRubyTests` has the edges of the rule.
         let source = #"{"on": true, "off": false, "gone": null, "n": -1.5e3}"#
         #expect(spans(source, .json) == [
-            Span("\"on\"", .string),
+            Span("\"on\"", .typeOrTag),
             Span("true", .keyword),
-            Span("\"off\"", .string),
+            Span("\"off\"", .typeOrTag),
             Span("false", .keyword),
-            Span("\"gone\"", .string),
+            Span("\"gone\"", .typeOrTag),
             Span("null", .keyword),
-            Span("\"n\"", .string),
+            Span("\"n\"", .typeOrTag),
             // The sign is not part of the literal: a number starts at a digit, because deciding
             // whether a leading `-` is a sign or an operator needs the token before it.
             Span("1.5e3", .number)

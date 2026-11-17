@@ -6,8 +6,14 @@ public struct MarkdownRender: Equatable, Sendable {
     /// `<style>` and the appearance they carry are the app's (PLAN.md §M18 ▸ Slice 3).
     public let html: String
 
-    public init(html: String) {
+    /// The document's own title: its front matter's `title`, or its first heading when that is
+    /// level 1; `nil` when it names none (`MarkdownTitle`). What an exported page carries in its
+    /// `<title>` (PLAN.md §M39 ▸ Slice 11).
+    public let title: String?
+
+    public init(html: String, title: String? = nil) {
         self.html = html
+        self.title = title
     }
 }
 
@@ -50,18 +56,65 @@ public struct MarkdownRenderOptions: Sendable {
     /// exact number is written against.
     public var diagramScale: Double
 
+    /// The title a GitHub alert draws above its text, `Note` for `[!NOTE]`.
+    ///
+    /// A closure for `describeUndrawnDiagram`'s reason: the title is a word on the page, so it is the
+    /// app's to translate. The default is GitHub's English.
+    public var alertTitle: @Sendable (MarkdownAlertKind) -> String
+
+    /// The file at `path`, written relative to the document's folder with nothing left to decode:
+    /// `path` itself, or spelled as the file is when a disk that ignores case found it under
+    /// another; `nil` when there is none. It decides whether `[[name]]` is a link, and where to
+    /// (`MarkdownWikiLink`), and it is asked once per path per render.
+    ///
+    /// A closure for `resolveImageSource`'s reason: the render does no I/O, and only the app knows
+    /// whether the document is on this disk or on a server it holds a listing of. The default
+    /// finds nothing, so a page rendered without the app's say draws every `[[name]]` as the text it
+    /// was written as.
+    public var locateFile: @Sendable (String) -> String?
+
+    /// Now, for a gantt chart: its today line, and the date its tasks fall back on where Mermaid
+    /// takes today's (PLAN.md §M39 ▸ Slice 15).
+    ///
+    /// Handed in rather than read, so a render depends only on what it is given. The default is
+    /// none: no today line, and the chart drawn from the file's dates alone.
+    public var now: Date?
+
+    /// The zone whose wall clock `now`, a `Z` offset and a Unix timestamp are read in. A gantt's own
+    /// dates are wall clocks and never pass through it (`MermaidGanttTime`). UTC by default.
+    public var timeZone: TimeZone
+
     public init(
         resolveImageSource: @escaping @Sendable (String) -> String = { $0 },
         textMetric: MarkdownTextMetric = .fixedAdvance,
         describeUndrawnDiagram: @escaping @Sendable (String) -> String = {
             "“\($0)” is not drawn in this preview."
         },
-        diagramScale: Double = 1
+        diagramScale: Double = 1,
+        alertTitle: @escaping @Sendable (MarkdownAlertKind) -> String = MarkdownRenderOptions.englishAlertTitle,
+        locateFile: @escaping @Sendable (String) -> String? = { _ in nil },
+        now: Date? = nil,
+        timeZone: TimeZone = TimeZone(secondsFromGMT: 0) ?? .current
     ) {
         self.resolveImageSource = resolveImageSource
         self.textMetric = textMetric
         self.describeUndrawnDiagram = describeUndrawnDiagram
         self.diagramScale = diagramScale
+        self.alertTitle = alertTitle
+        self.locateFile = locateFile
+        self.now = now
+        self.timeZone = timeZone
+    }
+
+    /// GitHub's own titles, which it draws in English whatever the reader's language.
+    public static func englishAlertTitle(_ kind: MarkdownAlertKind) -> String {
+        switch kind {
+        case .note: "Note"
+        case .tip: "Tip"
+        case .important: "Important"
+        case .warning: "Warning"
+        case .caution: "Caution"
+        }
     }
 }
 
@@ -81,10 +134,11 @@ public enum MarkdownDocument {
         _ text: String,
         options: MarkdownRenderOptions = MarkdownRenderOptions()
     ) -> MarkdownRender {
-        MarkdownRender(html: MarkdownHTMLRenderer.render(
-            MarkdownBlockParser.scan(text),
-            options: options
-        ))
+        let scan = MarkdownBlockParser.scan(text)
+        return MarkdownRender(
+            html: MarkdownHTMLRenderer.render(scan, options: options),
+            title: MarkdownTitle.of(scan)
+        )
     }
 
     /// The class a colored run inside a fence carries, or `nil` for a run the scanner made no

@@ -10,6 +10,7 @@ extension BrowserWindowController {
 
     func enqueue(
         _ operation: FileOperation,
+        id: OperationJobID,
         conflictPolicy: ConflictPolicy,
         resolveConflict: (@Sendable (ConflictContext) -> ConflictResolution)?,
         onError: (@Sendable (OperationErrorContext) -> ErrorResolution)?
@@ -18,6 +19,7 @@ extension BrowserWindowController {
         Task {
             await queue.enqueue(
                 operation,
+                id: id,
                 conflictPolicy: conflictPolicy,
                 resolveConflict: resolveConflict,
                 onError: onError
@@ -64,6 +66,9 @@ extension BrowserWindowController {
         // idle included, so there is one call site and nothing to remember to do on the way out.
         setQueueBar(visible: !snapshot.isIdle)
         queueBar.update(with: snapshot)
+        // Before `clearFinished` below, which is what makes the dialog's terminal snapshot certain:
+        // the jobs it follows are dropped only after this has shown it their end (PLAN.md §M41).
+        transferDialog?.handle(snapshot)
 
         // Batch drained: forget it so the next batch's bar starts from zero rather than
         // inheriting the finished jobs' bytes.
@@ -97,9 +102,10 @@ extension BrowserWindowController {
             }
             refreshPanes()
             guard let report = job.report else { continue }
-            // Journal whatever landed (even a canceled job's partial work) so Cmd+Z can
-            // reverse it; `transfer` returns nil when nothing is reversible.
-            if let record = UndoRecord.transfer(kind: job.kind, outcomes: report.outcomes) {
+            // Journal whatever landed, a stopped job's finished items and the one it stopped partway
+            // through included, so Cmd+Z can reverse it; `transfer` returns nil when nothing is
+            // reversible.
+            if let record = UndoRecord.transfer(kind: job.kind, report: report) {
                 undoController.record(record)
             }
             // A checksum job's answer arrives here rather than through a completion closure, so it

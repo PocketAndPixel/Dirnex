@@ -79,15 +79,40 @@ struct MermaidRendererTests {
 
     @Test("a type outside the subset shows its source and names itself")
     func unsupportedFallsBack() {
-        let output = fence("stateDiagram-v2\n[*] --> Still")
+        let output = fence("journey\ntitle My day\nsection Go\n  Make tea --> 5: Me")
         // The whole argument for shipping a subset: the boundary is *loud*, so pressure to widen it
         // arrives as somebody asking rather than as a silently wrong drawing.
         #expect(!output.contains("<svg"))
         #expect(output.contains("<pre>"))
-        #expect(output.contains("stateDiagram-v2"))
+        #expect(output.contains("journey"))
         #expect(output.contains("mermaid-note"))
         // The source survives intact, which is what makes the fallback honest.
-        #expect(output.contains("[*] --&gt; Still"))
+        #expect(output.contains("Make tea --&gt; 5: Me"))
+    }
+
+    @Test("a state fence draws, and says what styling it left out")
+    func stateDraws() {
+        let output = fence("""
+        stateDiagram-v2
+            classDef hot fill:#f00
+            [*] --> Still:::hot
+            Still --> [*]
+        """)
+        #expect(output.contains("mermaid-state"))
+        #expect(!output.contains("<pre>"))
+        #expect(output.contains(">Still<"))
+        #expect(output.contains("mermaid-note"))
+        #expect(output.contains("classDef"))
+    }
+
+    @Test("a loop's label has no plate, since no line runs under it")
+    func loopLabelsAreUnplated() {
+        // The plate is sized from a character count, so it reaches past the text, and beside a loop
+        // it hid the loop's own outer edge.
+        #expect(!fence("graph TD\nA -->|again| A").contains("mm-edge-label-plate"))
+        #expect(!fence("stateDiagram-v2\nA --> A : again").contains("mm-edge-label-plate"))
+        #expect(fence("graph TD\nA -->|go| B").contains("mm-edge-label-plate"))
+        #expect(fence("stateDiagram-v2\nA --> B : go").contains("mm-edge-label-plate"))
     }
 
     @Test("a drawn diagram still says what it left out")
@@ -108,8 +133,8 @@ struct MermaidRendererTests {
         // A sentence in DirnexCore is a sentence nobody can translate (docs/NOTES.md), so the core
         // hands over the bare name and the app writes the sentence.
         let options = MarkdownRenderOptions(describeUndrawnDiagram: { "NOT DRAWN: \($0)" })
-        let output = html("```mermaid\nstateDiagram-v2\nA --> B\n```", options: options)
-        #expect(output.contains("NOT DRAWN: stateDiagram-v2"))
+        let output = html("```mermaid\njourney\ntitle A\n```", options: options)
+        #expect(output.contains("NOT DRAWN: journey"))
     }
 
     @Test("a fence that is not mermaid is untouched")
@@ -164,7 +189,26 @@ struct MermaidRendererTests {
             "class", "viewBox", "xmlns", "role", "points", "fill", "x", "y", "width", "height",
             "rx", "ry", "cx", "cy", "r", "x1", "y1", "x2", "y2", "text-anchor", "dominant-baseline"
         ]
-        for tag in MermaidRendererTests.tags(in: output) {
+        let state = fence("""
+        stateDiagram-v2
+            s1 : </text><script>x</script>
+            s1 : second
+            state f <<fork>>
+            state c <<choice>>
+            [*] --> s1
+            s1 --> f : "onerror=alert(1)"
+            f --> c
+            c --> c : <img src=x>
+            c --> [*]
+            state Box {
+                a --> b
+                --
+                d --> e
+            }
+            note right of a : <b>bold</b>
+        """)
+        #expect(state.contains("mermaid-state"))
+        for tag in MermaidRendererTests.tags(in: output) + MermaidRendererTests.tags(in: state) {
             #expect(elements.contains(tag.name), "unexpected element <\(tag.name)>")
             for attribute in tag.attributes {
                 #expect(attributes.contains(attribute), "unexpected attribute \(attribute)")

@@ -29,14 +29,21 @@ struct MermaidParserTests {
         }
         // The subset's boundary, and it is loud on purpose: the *word the file wrote* comes back,
         // so the page can name it rather than saying "unsupported diagram".
-        #expect(
-            MermaidParser.parse("stateDiagram-v2\n[*] --> Still") == .unsupported("stateDiagram-v2")
-        )
+        // The state dialect's own cases are in `MermaidStateParserTests`.
+        if case .state = MermaidParser.parse("stateDiagram-v2\n[*] --> Still") {} else {
+            Issue.record("stateDiagram-v2 did not route to the state parser")
+        }
+        // Class and ER since §M39 ▸ Slice 14; their own cases are in `MermaidClassParserTests` and
+        // `MermaidERParserTests`.
+        if case .classDiagram = MermaidParser.parse("classDiagram\nAnimal <|-- Duck") {} else {
+            Issue.record("classDiagram did not route to the class parser")
+        }
+        if case .entityRelationship = MermaidParser.parse("erDiagram\nA ||--o{ B : has") {} else {
+            Issue.record("erDiagram did not route to the ER parser")
+        }
+        #expect(MermaidParser.parse("journey\ntitle My day") == .unsupported("journey"))
         #expect(MermaidParser.parse("gantt\ntitle A") == .unsupported("gantt"))
-        #expect(
-            MermaidParser.parse("classDiagram\nAnimal <|-- Duck") == .unsupported("classDiagram")
-        )
-        #expect(MermaidParser.parse("erDiagram\nA ||--o{ B : has") == .unsupported("erDiagram"))
+        #expect(MermaidParser.parse("pie\n\"a\" : 1") == .unsupported("pie"))
     }
 
     @Test("a supported type with nothing readable in it falls back too")

@@ -14,42 +14,38 @@ import Foundation
 /// while this produces text. Grapheme clusters are also the unit the flanking rules want — "is the
 /// character before this `*` whitespace" is a question about what the reader sees.
 enum MarkdownInlineParser {
+    /// `footnotes` holds the key of every footnote the document defines, since `[^label]` is a
+    /// reference only when its definition exists, and text otherwise. `wikiLinks` is what a
+    /// `[[name]]` is checked against, for the same reason; without it every one stays text, which
+    /// is what a heading's anchor is made from (`MarkdownWikiLink`). `readsMath` is off inside a
+    /// link's text, where GitHub reads no math either (`MarkdownMath`).
     static func parse(
         _ source: String,
-        references: [String: MarkdownLinkReference] = [:]
+        references: [String: MarkdownLinkReference] = [:],
+        footnotes: Set<String> = [],
+        wikiLinks: MarkdownWikiLink.Lookup? = nil,
+        readsMath: Bool = true
     ) -> [MarkdownInline] {
         guard !source.isEmpty else { return [] }
-        var scanner = Scanner(characters: Array(source), references: references)
+        var scanner = Scanner(
+            characters: Array(source),
+            references: references,
+            footnotes: footnotes,
+            wikiLinks: wikiLinks,
+            readsMath: readsMath
+        )
         return MarkdownInlineEmphasis.resolve(scanner.run())
-    }
-
-    /// The literal text of `source` — every construct flattened away, which is what an image's
-    /// `alt` and a heading's anchor need.
-    static func plainText(_ nodes: [MarkdownInline]) -> String {
-        nodes.map { node in
-            switch node {
-            case let .text(text): text
-            case let .code(code): code
-            case let .emphasis(children), let .strong(children), let .strikethrough(children):
-                plainText(children)
-            case let .link(_, _, children): plainText(children)
-            case let .image(_, _, alt): alt
-            case .lineBreak, .softBreak: " "
-            }
-        }.joined()
     }
 
     struct Scanner {
         let characters: [Character]
         let references: [String: MarkdownLinkReference]
+        let footnotes: Set<String>
+        let wikiLinks: MarkdownWikiLink.Lookup?
+        let readsMath: Bool
         private var items: [MarkdownInlineEmphasis.Item] = []
         private var pending = ""
         private var index = 0
-
-        init(characters: [Character], references: [String: MarkdownLinkReference]) {
-            self.characters = characters
-            self.references = references
-        }
 
         mutating func run() -> [MarkdownInlineEmphasis.Item] {
             while index < characters.count {
@@ -61,6 +57,7 @@ enum MarkdownInlineParser {
                 case "!": takeImageOrText()
                 case "[": takeLink()
                 case "&": takeEntity()
+                case "$" where readsMath: takeMath()
                 case "\n": takeNewline()
                 case "*", "_", "~": takeDelimiterRun(character)
                 default:
@@ -110,23 +107,13 @@ enum MarkdownInlineParser {
                     continue
                 }
                 flushPending()
-                items.append(.node(.code(codeSpanText(from: index + opening, to: cursor))))
+                let text = String(characters[(index + opening)..<cursor])
+                items.append(.node(.code(MarkdownInline.codeSpanContent(text))))
                 index = cursor + closing
                 return
             }
             pending.append(String(repeating: "`", count: opening))
             index += opening
-        }
-
-        /// A code span's content: newlines become spaces, and one space is stripped from each end
-        /// when both are present — the rule that lets `` ` `` be written as `` `` ` `` ``.
-        private func codeSpanText(from start: Int, to end: Int) -> String {
-            var text = String(characters[start..<end]).replacingOccurrences(of: "\n", with: " ")
-            if text.count > 2, text.hasPrefix(" "), text.hasSuffix(" "),
-               text.contains(where: { $0 != " " }) {
-                text = String(text.dropFirst().dropLast())
-            }
-            return text
         }
 
         /// `<https://…>` and `<name@example.com>`. Anything else beginning with `<` is literal —
@@ -161,8 +148,41 @@ enum MarkdownInlineParser {
             takeBracketed(isImage: true)
         }
 
+        /// A footnote's reference is tested before a link, as GitHub does: `[x][^1]` is the text
+        /// `[x]` and then the reference, never a reference link labelled `^1`. A wiki link is tested
+        /// before both, and is one only when what it names is there.
         private mutating func takeLink() {
-            takeBracketed(isImage: false)
+            if let wikiLinks,
+               let (link, end) = MarkdownWikiLink.take(in: characters, at: index, lookup: wikiLinks) {
+                flushPending()
+                items.append(.node(link))
+                index = end
+                return
+            }
+            guard let (key, end) = MarkdownFootnotes.reference(
+                in: characters,
+                at: index,
+                footnotes: footnotes
+            )
+            else {
+                takeBracketed(isImage: false)
+                return
+            }
+            flushPending()
+            items.append(.node(.footnoteReference(key)))
+            index = end
+        }
+
+        private mutating func takeMath() {
+            let mayOpen = MarkdownMath.mayOpen(after: pending.last, item: items.last)
+            let (node, end) = MarkdownMath.take(in: characters, at: index, mayOpen: mayOpen)
+            if let node {
+                flushPending()
+                items.append(.node(node))
+            } else {
+                pending += String(characters[index..<end])
+            }
+            index = end
         }
 
         private mutating func takeEntity() {
@@ -227,14 +247,21 @@ enum MarkdownInlineParser {
             destination: String,
             title: String?
         ) -> MarkdownInline {
-            let children = MarkdownInlineParser.parse(label, references: references)
+            // No wiki links in a link's text, which would put an `<a>` inside an `<a>`, and no math,
+            // as on GitHub. An image's alt is text, so it reads neither.
+            let children = MarkdownInlineParser.parse(
+                label,
+                references: references,
+                footnotes: footnotes,
+                readsMath: false
+            )
             guard isImage else {
                 return .link(destination: destination, title: title, children: children)
             }
             return .image(
                 source: destination,
                 title: title,
-                alt: MarkdownInlineParser.plainText(children)
+                alt: MarkdownInline.plainText(children)
             )
         }
 
@@ -285,11 +312,7 @@ enum MarkdownInlineParser {
         // MARK: Primitives
 
         private func runLength(of character: Character, from start: Int) -> Int {
-            var length = 0
-            while start + length < characters.count, characters[start + length] == character {
-                length += 1
-            }
-            return length
+            MarkdownInline.runLength(of: character, in: characters, from: start)
         }
 
         private mutating func flushPending() {

@@ -33,6 +33,7 @@ extension SidebarViewController {
         // is enumerated here exactly like any other mount (verified).
         let vaults = VaultStore.load().vaults
         vaultMountPoints = Self.mountPoints(of: vaults)
+        pinBadges = .current(vaults: vaults, vaultMountPoints: Array(vaultMountPoints.values))
         return SidebarPlaceSources(
             searches: SavedSearchStore.load().searches,
             favorites: FavoritesStore.load().entries,
