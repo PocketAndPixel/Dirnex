@@ -3861,6 +3861,23 @@ Measured 2026-11-08 for M37's byte view, whose table has a row for every 16 byte
     state machine: put the reset in the funnel, and make the test's argument the *exit*, since a
     single-exit test passes against the half-fix (measured — the `.stopped` case passed while the
     show-a-file case failed at 1.0).
+- **A bar that has been indeterminate keeps sweeping after it turns determinate, for as long as its
+  value keeps changing.** Measured 2026-11-17 in a scratch program by walking the bar's layer tree
+  for animation keys: after `startAnimation`, then `isIndeterminate = false` and `stopAnimation`
+  (in either order), `overallIndeterminateAnimation` ended 1.6 s later when nothing else was set,
+  and was still there 4 s later with `doubleValue` set every 0.1 s. Hiding and showing the bar, or
+  toggling `isIndeterminate` again, changed nothing; reassigning `style` (`.spinning`, then `.bar`)
+  ended it, which is behaviour seen rather than documented. Live, the copy dialog's job bar swept
+  across the whole of a 19 GB copy while the readout beside it counted up (PLAN.md §M41 Slice 3).
+  - **The tell is a fill that does not start at the left edge.** A determinate bar always fills from
+    the left, so a blue segment with empty track on both sides, or one sliding between captures, is
+    the indeterminate animation, whatever `isIndeterminate` says.
+  - **A capture of an inactive window draws the bar without it.** The same dialog read as correct grey
+    fills while the app was in the background and swept whenever it was in front, which made the
+    first reading look like a stale frame. Compare a capture against the readout before believing it.
+  - The dialog's answer was to never be indeterminate, as the queue bar never was, and let "Preparing…"
+    say it in words. A test pins `isIndeterminate` false in every phase, which is the rule; the layer
+    walk is the instrument for the symptom.
 
 ### File-system events (FSEvents)
 

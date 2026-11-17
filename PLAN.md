@@ -4,7 +4,7 @@ A dual-pane, keyboard-first file manager for macOS in the spirit of Total Comman
 built native (Swift), with macOS-only superpowers TC never had: Quick Look, Spotlight
 search, APFS clones, Finder tags, a command palette, and universal undo.
 
-Status: **M0–M39 shipped**, **M40 planned**, **M41 open** (14 languages; M29's licensing is on in betas, off in stable until the
+Status: **M0–M39 and M41 shipped**, **M40 planned** (14 languages; M29's licensing is on in betas, off in stable until the
 store opens; M30's Report a Bug is in every release built while `DIRNEX_BUG_REPORT_URL` is set) ·
 Created: 2026-07-05 ·
 Log: [docs/HISTORY.md](docs/HISTORY.md) · What works where:
@@ -99,9 +99,9 @@ Dirnex/
 Sizes are relative (S ≈ days, M ≈ 1–2 weeks, L ≈ 3+ weeks of focused work).
 Each milestone ends in something runnable; no milestone depends on a later one.
 
-### Shipped: M0 → M39 (2026-07-05 → 2026-11-15)
+### Shipped: M0 → M39, and M41 (2026-07-05 → 2026-11-17)
 
-Every milestone is closed. The checklists and the full per-pass progress log — what was probed,
+Every milestone in the table is closed; M40, planned earlier, is still under *Next*. The checklists and the full per-pass progress log — what was probed,
 decided, and rejected — live in **[docs/HISTORY.md](docs/HISTORY.md)**; source comments citing
 `PLAN.md §M5` and the like refer to those sections.
 
@@ -147,6 +147,7 @@ decided, and rejected — live in **[docs/HISTORY.md](docs/HISTORY.md)**; source
 | M37 | Compare and merge, past M31 and M34 | 11-09 | **Aligning a byte comparison across insertions**, which needs gaps in the rows and a size limit, and has no oracle; **whitespace in a merge's regions**, labelled and offered as a take instead, so no edit goes missing in silence; **a sync's record with a side on a server**, **since shipped** 2026-11-11 with M38 Slices 8–9, keeping only what each sync copied; Go to Offset, copying bytes and Swap Sides in the byte view |
 | M38 | Remote: what M8, M22, M24, M25 and M32 left | 11-11 | **WebDAV locks of our own**, since a lock around the save cannot see a write made before it, and one held from the download on would lock everyone else out while an editor is open; **OAuth for WebDAV**, which needs a sign-in flow and a token store; **a faster Find Files walk in Photos**, which saves about 1 ms a month while a name costs 2.0 ms an asset; **a quota over SFTP**, which the protocol does not carry. **Not run live**: real AWS, IIS, a Windows domain and a hosted Nextcloud; root over GNU coreutils; a password pin reconnecting through the Keychain itself; and the NAS for Open in Terminal, whose accounts may not run a command |
 | M39 | Quick View | 11-15 | **A thumbnail filmstrip**, a second file list, which is M15's grid under *Still open*; **a second style for `.rtfd` and `.odt`**, neither of which is text; **a history of the preview's own**, since a followed link moves the pane and its Back is the way back; **anything Mermaid reads as config** — front matter's `config`, the today marker's style, `classDef`, `style` and `click` are skipped or named in the caption; **an Obsidian vault search** for a wiki link, which looks only in the document's folder; **a sibling image in an export** of a server's or an archive's document, since the export holds what the preview drew. **Not run live**: full screen, apart from following a link and the slideshow; the light appearance for several slices; a server as the location for most, which reach the same render through the file's bytes; a web link opening the browser; an export to or from a server; the compare and merge windows under a new theme; and a translation |
+| M41 | Copy and move dialogs | 11-17 | **Drag and drop and ⌘V**, which keep the queue bar alone, since the gesture names the destination and Finder does not ask; **F5 into or out of an archive**, which adds or extracts by its own route; **a count of the jobs ahead**, since a snapshot does not say which disks a job shares; **an undo record for a folder an error dialog's Abort leaves**, which nothing promises. **Not run live**: ⇧F5, ⇧F6 and a Copy rebound to a chord, all pinned by tests; a server at either end; a keeping-folders transfer across tree levels; the queue bar's Pause while the dialog is up; the error dialog on the progress sheet; the light appearance; and a translation |
 
 ### Next
 
@@ -160,7 +161,8 @@ found.
 
 M36 (drag and paste, where M23 stopped) closed 2026-11-08, M37 (compare and merge, past M31 and M34)
 2026-11-09, M38 (remote: what M8, M22, M24, M25 and M32 left) 2026-11-11 and M39 (Quick View) 2026-11-15,
-and all four are archived in [docs/HISTORY.md](docs/HISTORY.md).
+and all four are archived in [docs/HISTORY.md](docs/HISTORY.md). M41 (copy and move dialogs), asked by
+users coming from Total Commander, opened and closed 2026-11-17, ahead of M40, and is archived there too.
 
 #### M40 — Everything else (M)
 
@@ -188,122 +190,6 @@ and all four are archived in [docs/HISTORY.md](docs/HISTORY.md).
   `EnumerateShares` already returns; and a way up from a share Finder mounted, which keeps `..` →
   `/Volumes`.
 
-#### M41 — Copy and move dialogs (M)
-
-Asked 2026-11-17 by users coming from Total Commander, who want F5 and F6 to show a dialog with a
-progress bar rather than only the queue bar. Oleg keeps today's behaviour for himself, so the dialogs
-come with a "Don't ask again" box and a switch in Settings. The queue bar is unchanged: the dialogs
-are a view of the same queued job, and §1's "file operations never block the UI" still holds,
-because the progress dialog is one Return away from the background.
-
-Decided 2026-11-17 (Oleg):
-
-- **F5, F6, ⇧F5 and ⇧F6 ask first.** A sheet names what goes where, with OK (Return) and Cancel
-  (Esc). Cancel copies nothing.
-- **OK turns the same sheet into the progress dialog**: what is being copied and where, the file
-  being written now with a bar of its own, the job's bar, a line like "1.8 GB of 3.7 GB · 120 MB/s ·
-  15 s left · file 34 of 340", and Background (Return), Pause and Cancel (Esc).
-- **Background closes the sheet**, and the job goes on in the queue bar exactly as it does today.
-- **Pause pauses this job only**, and asks nothing.
-- **Cancel pauses the job and asks** "Stop copying?", with Stop (Return) and Continue (Esc). The
-  question says what stays: what was already copied or moved stays where it is, and ⌘Z undoes it.
-  Continue resumes the job, unless it had been paused before Cancel.
-- So **Return, Return** gets rid of both dialogs, **Esc** closes the confirmation, and **Esc, Return**
-  stops a running job.
-- **One switch for both dialogs**, on by default, since the box can only be offered by the dialog
-  showing. "Don't ask again" on the confirmation turns it off, F5 then goes straight to the queue as
-  today, and Settings ▸ Operations turns it back on.
-
-Proposed with them the same day, and taken with "okay" rather than asked one by one; open until
-Slice 2:
-
-- **The sheet stays up at least a second after OK.** A copy that finishes at once (an APFS clone)
-  would otherwise close it under the second Return, which then lands on the file list and opens
-  whatever is under the cursor.
-- **A job waiting its turn says so** ("Waiting for 1 job ahead"): jobs on one pair of disks run one
-  at a time, so an F5 behind a background copy can sit in the queue.
-- **A sheet, not a free window.** Esc and Return have to reach it, and a free window loses the
-  keyboard to the first click on a pane, after which Esc clears the pane's filter or marks instead.
-- **The conflict and error dialogs attach through `NSAlert.sheetHost(over:)`**, so onto the progress
-  sheet while it is up. `ConflictDialog` and `ErrorDialog` attach to the browser window today, where
-  macOS 14 and 15 queue a second sheet out of sight (NOTES.md ▸ Alerts, sheets and dialogs) and the
-  copy would wait for an answer nobody can see.
-- **Drag and drop and ⌘V keep today's behaviour**: the gesture names the destination, and Finder
-  does not ask. They can take the progress half later.
-- **AppleScript copies skip both dialogs**, since a script cannot press Return, and the app test
-  suite runs with the switch off.
-
-#### Slices
-
-1. **Core: per-job pause and per-file progress** (additive). `FileOperationQueue.pause(_:)` and
-   `resume(_:)` for one job, running or waiting, apart from the queue-wide pause; the queue-wide
-   resume leaves a job paused on its own as it was. `OperationProgress` carries the file being
-   written now at any depth, its bytes and size, and the job's files done and total, counted by the
-   pre-scan, emitted on a clock as well as by bytes so a slow link and a folder of small files both
-   move the dialog. **Landed 2026-11-17.** Probed first with a scratch package running the shipped
-   engine, cloning refused, over a folder of 3 000 4 KB files and one of 200 MB: 29 updates, none
-   naming a small file, 0.45–0.61 s between two of them, and `totalItems` 1 for the whole folder.
-   Reading `systemUptime` costs 14 ns, so a clock is free. Landed as `TransferFiles` on
-   `OperationProgress` (the file being written at any depth, its bytes and size, files done and
-   total), counted by a new `DirectorySizeMeasurement.files` so the file count and the byte bar come
-   from one walk under one rule, and reported every 8 MiB *or* every 0.1 s through an injectable
-   `uptime`. The tally and its pacing moved out of `CopyEngine.swift` into `CopyProgressTally`,
-   which had taken `CopyRun` past both lint ceilings. `FileOperationQueue.pause(_:)` and `resume(_:)`
-   keep a set of held jobs beside the queue-wide flag, and `JobSnapshot.isHeld` tells the two
-   apart; pause, resume and cancel moved to `FileOperationQueue+Control.swift`. A held job that never
-   started reads `.paused`, the scheduler skips it, and `cancel` drops it itself, since there is no
-   engine to unwind. Twelve tests in two new suites, plus file counts in two sizer tests; green 3/3
-   under `LIBDISPATCH_COOPERATIVE_POOL_STRICT=1`. Each rule has a negative control that fails it:
-   without the clock the naming test fails all five checks, without the rollback a skipped folder
-   leaves 2 files counted where 1 landed, and a queue-wide resume that releases held jobs, or a pause
-   that ignores a waiting one, fails on the transfer's own step count rather than on a status. The
-   app is untouched, and nothing in it calls `DirectorySizeMeasurement.init`, the one signature that
-   changed. **For Slice 2:** the queue bar counts any
-   `.paused` job as active and reads "Paused" only from `QueueSnapshot.isPaused`, so a job held in its
-   dialog shows as running there.
-2. **The dialogs** (app). The confirmation, the progress sheet, the Stop question, the switch and the
-   box, the conflict and error prompts through `sheetHost`, the queue bar reading a job paused on its
-   own, and 14 languages. Esc and Return pinned by tests beside `EscapeToDismissTests`, since computer
-   use cannot send Escape. **Landed 2026-11-17**, with the live run still to come. One sheet in two
-   phases: `TransferDialogController` retitles the same two buttons (OK becomes Background, Cancel
-   stays), so Return, Return and Escape, Return hold across the switch. `TransferDialog` asks, starts,
-   follows and closes, and `TransferDialogState` reads the jobs as a pure value. F5 and F6 now go
-   through `PanelHost.runTransfer`, which asks only when the setting is on, no automation verb is
-   running, and no sheet is up. The setting is `confirmTransfers`, a computed property over the
-   defaults in `AppPreferences+Transfers`, since the class file sits at the length ceiling.
-   `Scripting.automating` is set by the AppleScript and App Intents doors, not by `runCommand`, which a
-   click on the function bar also takes. `StubPanelHost` starts every transfer at once, so no existing
-   test changed what it measures. Findings worth keeping:
-   - **The dialog has to know its job before the job exists.** A clone ends in the turn it starts,
-     and the queue drops finished jobs once it drains, so an id learned from `enqueue`'s answer can
-     arrive after the only snapshot that ever showed the job. `FileOperationQueue.enqueue(_:id:)` now
-     takes the caller's id (one tested core parameter), `TransferTracker` hands it to the dialog
-     before the queue sees it, and the window passes each snapshot to the dialog before it dispatches
-     `clearFinished`.
-   - **AppKit already forgives Shift on Return and Escape.** The catcher's negative control found a
-     plain button answering ⇧⏎ and ⇧⎋ with nothing held, so ⇧F5 needed no help. The catcher stays for
-     Copy rebound to a ⌃, ⌥ or ⌘ chord, which is refused without it; both directions are tested.
-   - "Waiting for 1 job ahead" became **"Waiting for its turn in the queue…"**: a snapshot does not
-     say which disks a job shares, so a count would be a guess. A job also reads `.waiting` for an
-     instant between being queued and starting, so the line shows only while another job is running,
-     and in a paused queue the job reads Paused.
-   - The question's default button is **OK**, as asked, rather than a verb. "Don't ask again" answers
-     the copy at hand too: ticked, OK starts it with no progress dialog.
-   - The conflict and error dialogs hang on `sheetHost`. The queue bar names a running job over a
-     held one and reads "Paused" when nothing it holds is running.
-
-   Twenty-one new app tests and one core test. Negative controls: without the one-second hold the
-   hold test fails, a queue bar reading only the queue-wide flag fails its test, and a chord with
-   nothing held is refused. Eighteen new strings in 14 languages, with plural forms for the two
-   counted questions, rendered from each `.lproj` in a test; `check_localization_keys.py` is clean.
-   The full app suite (2 672 tests) passed twice in a row. The first full run before them reported
-   one issue that its filtered log does not name, and the new suites then passed 5 of 5 on their
-   own, so it is recorded here as unexplained rather than as fixed. Not covered: how the sheet looks, and how it grows when the progress rows appear, which Slice 3
-   checks live. F5 into or out of an archive keeps the queue bar alone (LOCATION-SUPPORT.md
-   <sup>aaw</sup>).
-3. **Live run**: a cross-volume copy onto a disk image (§M2's setup), so the progress sheet stays up
-   long enough to drive.
-
 The app's share of selling Dirnex (the private companion repo `dirnex-home`, milestones C1–C15) was
 two milestones, **M29** (a license, and the reminder it removes) and **M30** (Report a Bug), both
 shipped and archived in [docs/HISTORY.md](docs/HISTORY.md). Neither changed what Dirnex *is*: it
@@ -314,7 +200,7 @@ your key?" link in Settings ▸ License.
 
 ### Still open
 
-Everything through M39 is shipped, and the record of it — the milestone checklists, the dated
+Everything through M39, and M41, is shipped, and the record of it — the milestone checklists, the dated
 passes that landed outside a milestone of their own, and the reasoning behind every decision — is in
 **[docs/HISTORY.md](docs/HISTORY.md)**, which also tells how everything else on this list came off
 it (HISTORY.md ▸ the follow-on log). What is still open, rather than merely imaginable, is M40

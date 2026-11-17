@@ -125,11 +125,17 @@ final class TransferDialogController: NSViewController {
 
     /// Draw `state`. `detail` is the readout under the bars, which the dialog refreshes on its own
     /// clock so the rate stays readable; `nil` leaves it as it is.
+    ///
+    /// **Both bars stay determinate, even while the transfer is measured.** An indeterminate bar
+    /// switched to determinate keeps sweeping for as long as its value keeps changing: measured
+    /// 2026-11-17, `overallIndeterminateAnimation` was still on the layer 4 s after
+    /// `stopAnimation` with the value set every 0.1 s, and ended 1.6 s after it only when nothing
+    /// was set. Live, the job bar swept across the whole of a 19 GB copy. "Preparing…" says in
+    /// words what the sweep said, and the queue bar has never swept either (docs/NOTES.md ▸
+    /// Progress and status displays).
     func render(_ state: TransferDialogState, detail: String?) {
         statusLabel.stringValue = TransferDialogText.status(state)
-        let measuring = state.phase == .preparing
-        totalBar.isIndeterminate = measuring
-        if measuring { totalBar.startAnimation(nil) } else { totalBar.stopAnimation(nil) }
+        fileBar.isHidden = !Self.showsFileBar(state, sources: summary.sources)
         totalBar.doubleValue = state.fraction
         fileBar.doubleValue = state.currentFile == nil ? (state.phase == .done ? 1 : 0) : state.currentFileFraction
         if let detail { detailLabel.stringValue = detail }
@@ -143,6 +149,16 @@ final class TransferDialogController: NSViewController {
                 comment: "Queue-bar button that pauses all running file operations."
             )
         pauseButton.isEnabled = state.phase != .done
+    }
+
+    /// Whether the file's own bar earns its place above the job's: only when more than one file is
+    /// going, since with one the two bars draw the same fraction (asked 2026-11-17). Hidden, it
+    /// leaves the stack, so the sheet is one bar shorter rather than showing a gap.
+    static func showsFileBar(_ state: TransferDialogState, sources: [FileEntry]) -> Bool {
+        // Counted by the pre-scan once a job has reported…
+        if state.totalFiles > 0 { return state.totalFiles > 1 }
+        // …and before that, one marked file is known to be one file, while a folder may hold many.
+        return !(sources.count == 1 && sources[0].kind != .directory)
     }
 
     // MARK: - Building

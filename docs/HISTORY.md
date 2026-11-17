@@ -1,4 +1,4 @@
-# Dirnex — build history (M0 → M39)
+# Dirnex — build history (M0 → M39, and M41)
 
 The shipped record of Dirnex's milestones: the milestone checklists as they were completed,
 plus the per-pass progress log — what was probed, what was decided, what was rejected and why.
@@ -31,7 +31,9 @@ pane) was planned 11-04 and closed 11-05, its last live check waiting a day for 
 and paste, where M23 stopped) was planned 11-07 and closed 11-08, the first of five that take up what
 earlier milestones left undone by choice. **M37** (compare and merge, past M31 and M34) closed
 11-09 and **M38** (remote: what M8, M22, M24, M25 and M32 left) 11-11, each two days after it opened, and
-**M39** (Quick View) opened 11-12 and closed 11-15, in sixteen slices.
+**M39** (Quick View) opened 11-12 and closed 11-15, in sixteen slices. **M41** (copy and move dialogs)
+was asked for by users coming from Total Commander and opened and closed 11-17, ahead of M40, which was
+planned first and is still open, so M41 follows M39 here and M40 will take the slot between them.
 **After M19** carries the thirty-one dated passes from 2026-08-07 → 08-25 that landed outside a
 milestone of their own — it sits at the end rather than in date order, because it is the file's
 catch-all rather than a numeric slot. Two sections frame them, both handed over by the plan on
@@ -21938,6 +21940,197 @@ route tests saw the editor status token rise. Removing the weak image lookup loa
 twice. Removing images from arrivals sent each folder from 534 to 543 loads in the final half second.
 Three consecutive full app runs passed (87.9 s, 100.3 s, 99.3 s), with 109 live tests skipped each
 time. All 73 defaults keys matched across each run. All 5,776 core tests and both linters passed.
+
+### M41 — Copy and move dialogs (M)
+
+**Closed 2026-11-17**, the day it was asked for, in three slices. F5, F6, ⇧F5 and ⇧F6 ask first, in a sheet
+that names what goes where, and OK turns the same sheet into the progress dialog: the file being written,
+with a bar of its own when more than one file is going, the job's bar, and a readout of bytes, rate, time
+left and files, under Background, Pause and Cancel. Background hands the job to the queue bar, which is
+unchanged, since the dialog is a second view of the same queued job. Pause holds this job alone. Cancel
+pauses it behind "Stop copying?", and whatever a Stop leaves, a folder caught partway included, ⌘Z takes
+away. So Return, Return starts a copy and sends it to the background, and Escape, Return stops one. One
+switch turns both dialogs off, from the question's "Don't ask again" or from Settings ▸ Operations, and an
+AppleScript copy never sees them.
+
+Five findings are worth not re-deriving. **The dialog has to know its job before the job exists**: a clone
+ends in the turn it starts and the queue drops a finished job once it drains, so the caller now hands
+`enqueue` the job's id. **Bytes alone never name a small file**, since a folder of 3 000 of them moved fewer
+than 8 MiB between two reports; a 0.1 s clock does, and reading `systemUptime` costs 14 ns. **AppKit already
+answers Return and Escape with Shift held**, while a ⌃, ⌥ or ⌘ still down from the chord that raised the
+sheet is refused, which is what the key catcher is for. **A progress bar that has been indeterminate keeps
+sweeping after it turns determinate, for as long as its value keeps changing** (docs/NOTES.md ▸ Progress
+and status displays), so the dialog's bars never are. And **Stop partway through a folder left no undo
+record**, because the engine recorded an item only once it was whole; the item caught partway now rides
+apart from `outcomes` as `stoppedPartway`, since a search row reads an outcome as a file that left, and a
+move's source is still whole.
+
+Some paths were not exercised by the close, and are recorded rather than argued: ⇧F5 and ⇧F6, and Copy
+rebound to a ⌃, ⌥ or ⌘ chord, all pinned by tests; a transfer to or from a server, which reaches the dialog
+through the same queued job; a keeping-folders transfer across tree levels, whose several jobs one dialog
+sums; the queue bar's own Pause while the dialog is up; the error dialog on the progress sheet, where only
+the conflict question was seen; the light appearance; and a translation.
+
+Left deliberately undone: **drag and drop and ⌘V**, which keep the queue bar alone, since the gesture names
+the destination and Finder does not ask, and which can take the progress half later; **F5 into or out of an
+archive**, which adds or extracts by its own route (LOCATION-SUPPORT.md <sup>aaw</sup>); **a count of the
+jobs ahead**, since a snapshot does not say which disks a job shares, so the line says "Waiting for its turn
+in the queue…"; and **an undo record for a folder left by an error dialog's Abort**, which nothing promises.
+
+The section as the plan carried it through the milestone:
+
+Asked 2026-11-17 by users coming from Total Commander, who want F5 and F6 to show a dialog with a
+progress bar rather than only the queue bar. Oleg keeps today's behaviour for himself, so the dialogs
+come with a "Don't ask again" box and a switch in Settings. The queue bar is unchanged: the dialogs
+are a view of the same queued job, and §1's "file operations never block the UI" still holds,
+because the progress dialog is one Return away from the background.
+
+Decided 2026-11-17 (Oleg):
+
+- **F5, F6, ⇧F5 and ⇧F6 ask first.** A sheet names what goes where, with OK (Return) and Cancel
+  (Esc). Cancel copies nothing.
+- **OK turns the same sheet into the progress dialog**: what is being copied and where, the file
+  being written now with a bar of its own, the job's bar, a line like "1.8 GB of 3.7 GB · 120 MB/s ·
+  15 s left · file 34 of 340", and Background (Return), Pause and Cancel (Esc).
+- **Background closes the sheet**, and the job goes on in the queue bar exactly as it does today.
+- **Pause pauses this job only**, and asks nothing.
+- **Cancel pauses the job and asks** "Stop copying?", with Stop (Return) and Continue (Esc). The
+  question says what stays: what was already copied or moved stays where it is, and ⌘Z undoes it.
+  Continue resumes the job, unless it had been paused before Cancel.
+- So **Return, Return** gets rid of both dialogs, **Esc** closes the confirmation, and **Esc, Return**
+  stops a running job.
+- **One switch for both dialogs**, on by default, since the box can only be offered by the dialog
+  showing. "Don't ask again" on the confirmation turns it off, F5 then goes straight to the queue as
+  today, and Settings ▸ Operations turns it back on.
+
+Proposed with them the same day, and taken with "okay" rather than asked one by one; open until
+Slice 2:
+
+- **The sheet stays up at least a second after OK.** A copy that finishes at once (an APFS clone)
+  would otherwise close it under the second Return, which then lands on the file list and opens
+  whatever is under the cursor.
+- **A job waiting its turn says so** ("Waiting for 1 job ahead"): jobs on one pair of disks run one
+  at a time, so an F5 behind a background copy can sit in the queue.
+- **A sheet, not a free window.** Esc and Return have to reach it, and a free window loses the
+  keyboard to the first click on a pane, after which Esc clears the pane's filter or marks instead.
+- **The conflict and error dialogs attach through `NSAlert.sheetHost(over:)`**, so onto the progress
+  sheet while it is up. `ConflictDialog` and `ErrorDialog` attach to the browser window today, where
+  macOS 14 and 15 queue a second sheet out of sight (NOTES.md ▸ Alerts, sheets and dialogs) and the
+  copy would wait for an answer nobody can see.
+- **Drag and drop and ⌘V keep today's behaviour**: the gesture names the destination, and Finder
+  does not ask. They can take the progress half later.
+- **AppleScript copies skip both dialogs**, since a script cannot press Return, and the app test
+  suite runs with the switch off.
+
+#### Slices
+
+1. **Core: per-job pause and per-file progress** (additive). `FileOperationQueue.pause(_:)` and
+   `resume(_:)` for one job, running or waiting, apart from the queue-wide pause; the queue-wide
+   resume leaves a job paused on its own as it was. `OperationProgress` carries the file being
+   written now at any depth, its bytes and size, and the job's files done and total, counted by the
+   pre-scan, emitted on a clock as well as by bytes so a slow link and a folder of small files both
+   move the dialog. **Landed 2026-11-17.** Probed first with a scratch package running the shipped
+   engine, cloning refused, over a folder of 3 000 4 KB files and one of 200 MB: 29 updates, none
+   naming a small file, 0.45–0.61 s between two of them, and `totalItems` 1 for the whole folder.
+   Reading `systemUptime` costs 14 ns, so a clock is free. Landed as `TransferFiles` on
+   `OperationProgress` (the file being written at any depth, its bytes and size, files done and
+   total), counted by a new `DirectorySizeMeasurement.files` so the file count and the byte bar come
+   from one walk under one rule, and reported every 8 MiB *or* every 0.1 s through an injectable
+   `uptime`. The tally and its pacing moved out of `CopyEngine.swift` into `CopyProgressTally`,
+   which had taken `CopyRun` past both lint ceilings. `FileOperationQueue.pause(_:)` and `resume(_:)`
+   keep a set of held jobs beside the queue-wide flag, and `JobSnapshot.isHeld` tells the two
+   apart; pause, resume and cancel moved to `FileOperationQueue+Control.swift`. A held job that never
+   started reads `.paused`, the scheduler skips it, and `cancel` drops it itself, since there is no
+   engine to unwind. Twelve tests in two new suites, plus file counts in two sizer tests; green 3/3
+   under `LIBDISPATCH_COOPERATIVE_POOL_STRICT=1`. Each rule has a negative control that fails it:
+   without the clock the naming test fails all five checks, without the rollback a skipped folder
+   leaves 2 files counted where 1 landed, and a queue-wide resume that releases held jobs, or a pause
+   that ignores a waiting one, fails on the transfer's own step count rather than on a status. The
+   app is untouched, and nothing in it calls `DirectorySizeMeasurement.init`, the one signature that
+   changed. **For Slice 2:** the queue bar counts any
+   `.paused` job as active and reads "Paused" only from `QueueSnapshot.isPaused`, so a job held in its
+   dialog shows as running there.
+2. **The dialogs** (app). The confirmation, the progress sheet, the Stop question, the switch and the
+   box, the conflict and error prompts through `sheetHost`, the queue bar reading a job paused on its
+   own, and 14 languages. Esc and Return pinned by tests beside `EscapeToDismissTests`, since computer
+   use cannot send Escape. **Landed 2026-11-17**, with the live run still to come. One sheet in two
+   phases: `TransferDialogController` retitles the same two buttons (OK becomes Background, Cancel
+   stays), so Return, Return and Escape, Return hold across the switch. `TransferDialog` asks, starts,
+   follows and closes, and `TransferDialogState` reads the jobs as a pure value. F5 and F6 now go
+   through `PanelHost.runTransfer`, which asks only when the setting is on, no automation verb is
+   running, and no sheet is up. The setting is `confirmTransfers`, a computed property over the
+   defaults in `AppPreferences+Transfers`, since the class file sits at the length ceiling.
+   `Scripting.automating` is set by the AppleScript and App Intents doors, not by `runCommand`, which a
+   click on the function bar also takes. `StubPanelHost` starts every transfer at once, so no existing
+   test changed what it measures. Findings worth keeping:
+   - **The dialog has to know its job before the job exists.** A clone ends in the turn it starts,
+     and the queue drops finished jobs once it drains, so an id learned from `enqueue`'s answer can
+     arrive after the only snapshot that ever showed the job. `FileOperationQueue.enqueue(_:id:)` now
+     takes the caller's id (one tested core parameter), `TransferTracker` hands it to the dialog
+     before the queue sees it, and the window passes each snapshot to the dialog before it dispatches
+     `clearFinished`.
+   - **AppKit already forgives Shift on Return and Escape.** The catcher's negative control found a
+     plain button answering ⇧⏎ and ⇧⎋ with nothing held, so ⇧F5 needed no help. The catcher stays for
+     Copy rebound to a ⌃, ⌥ or ⌘ chord, which is refused without it; both directions are tested.
+   - "Waiting for 1 job ahead" became **"Waiting for its turn in the queue…"**: a snapshot does not
+     say which disks a job shares, so a count would be a guess. A job also reads `.waiting` for an
+     instant between being queued and starting, so the line shows only while another job is running,
+     and in a paused queue the job reads Paused.
+   - The question's default button is **OK**, as asked, rather than a verb. "Don't ask again" answers
+     the copy at hand too: ticked, OK starts it with no progress dialog.
+   - The conflict and error dialogs hang on `sheetHost`. The queue bar names a running job over a
+     held one and reads "Paused" when nothing it holds is running.
+
+   Twenty-one new app tests and one core test. Negative controls: without the one-second hold the
+   hold test fails, a queue bar reading only the queue-wide flag fails its test, and a chord with
+   nothing held is refused. Eighteen new strings in 14 languages, with plural forms for the two
+   counted questions, rendered from each `.lproj` in a test; `check_localization_keys.py` is clean.
+   The full app suite (2 672 tests) passed twice in a row. The first full run before them reported
+   one issue that its filtered log does not name, and the new suites then passed 5 of 5 on their
+   own, so it is recorded here as unexplained rather than as fixed. Not covered: how the sheet looks, and how it grows when the progress rows appear, which Slice 3
+   checks live. F5 into or out of an archive keeps the queue bar alone (LOCATION-SUPPORT.md
+   <sup>aaw</sup>).
+3. **Live run**: a cross-volume copy onto a disk image (§M2's setup), so the progress sheet stays up
+   long enough to drive. **Landed 2026-11-17**, in the `app.dirnex.Dirnex.live` copy, with a 12 GB
+   file and a folder of three 2 GB files and 400 small ones copied from the boot volume onto a sparse
+   APFS image at about 1.2 GB/s. Driven by clicking the buttons from the background, with an
+   env-gated log of each button and the event behind it; Oleg pressed the keys.
+   - **Seen working**: the question and Cancel, which copied nothing; the progress sheet, with the file
+     being written, both bars and a readout like "11,67 GB of 19,33 GB · 1,23 GB/s · 7s left · Files:
+     403 of 404"; Pause, which held the bytes on disk for 3 s; Cancel pausing the job behind "Stop
+     copying?", Continue resuming it, and a job paused before Cancel staying paused; Stop, which
+     removed a half-written file and, for a move, left the source whole; Background; "Waiting for its
+     turn in the queue…" behind a running copy; the one-second hold on an empty folder; the conflict
+     question attached on top of the progress sheet; F6's wording; an AppleScript copy with no
+     dialog; "Don't ask again", and Settings ▸ Operations turning it back on. Oleg's keys reached the
+     dialog as key-downs on every path: Return and Escape on the question, Escape on the progress,
+     Return and Escape on the Stop question, and Return, Return 0.25 s apart on a file that copied at
+     once, where the second Return pressed Background.
+   - **The job bar swept for the whole copy.** A bar that has been indeterminate keeps its sweep after
+     it turns determinate while its value keeps changing, measured in a scratch program on the
+     layer's animation keys (docs/NOTES.md ▸ Progress and status displays). Neither bar is
+     indeterminate now, as the queue bar never was; a test pins it, and fails on the old `render` at
+     Preparing and at a waiting job that reads as Preparing. Rebuilt, both bars filled from the left.
+   - **Stop on a folder left no undo record**, under a question that said "⌘Z undoes it". The engine
+     recorded an outcome only once a top-level item was whole, so the finished files of a folder
+     stopped partway stayed with nothing in the journal, and a cross-volume move, which removes its
+     source only after the last byte, left the same partial copy beside a whole source. Oleg chose to
+     journal it: `OperationReport.stoppedPartway` names the item and what of it landed, only when
+     something did (a lone file's half-written bytes are already gone), and
+     `UndoRecord.transfer(kind:report:)` undoes it with `removeCopy`, for a move as for a copy. It is
+     kept out of `outcomes`, because `SearchSnapshot.changes` reads an outcome as a file that left.
+     Redo copies the whole item again. Five core tests, each rule with a negative control: without
+     the engine's record or the builder's step the three stopped cases fail, and without the
+     existence check the lone file gets a record that would undo nothing. Live, Undo Copy and Undo
+     Move each removed only the partial folder, and the source kept all 403 files. The `.abort` of an
+     error dialog still leaves a partial folder unrecorded, since nothing promises otherwise there.
+   - **One bar for one file**, asked by Oleg during the run: the file's bar shows only when more than
+     one file is going, decided before the pre-scan from the marked set (one non-folder is one file)
+     and after it from the count, and the readout drops "Files: 0 of 1". Tested both ways with a
+     negative control, and seen live: a lone 12 GB file drew one bar, a folder two.
+   - Full suites after the changes: DirnexCore 5 802 tests in 571 suites, the app 2 675 in 414 (one
+     known issue, declared by its test), both linters clean, and `app.dirnex.Dirnex` unchanged by
+     content across the run.
 
 ### After M19 — the follow-on log (2026-08-07 → 2026-09-21)
 

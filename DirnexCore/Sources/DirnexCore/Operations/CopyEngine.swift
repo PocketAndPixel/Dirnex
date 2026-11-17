@@ -32,8 +32,9 @@ public enum CopyEngine {
     ///   caller. The clock is what names a small file (PLAN.md §M41): bytes alone left a folder of
     ///   3 000 small files unnamed. Each update carries ``OperationProgress/files``.
     /// - `isCancelled` is polled between chunks and items; canceling leaves a report with
-    ///   `wasCancelled == true` and cleans up any half-written file (a partially copied
-    ///   directory tree is left in place for the user to remove).
+    ///   `wasCancelled == true` and cleans up any half-written file. A partially copied
+    ///   directory tree is left in place, with the files that finished, and named in
+    ///   ``OperationReport/stoppedPartway`` so that undo can remove it.
     /// - `uptime` is the clock behind that tenth of a second, in seconds from any fixed point.
     ///   Injectable so a test can make every file start report, or none.
     public static func run(
@@ -85,6 +86,8 @@ private final class CopyRun {
     private var skipped: [VFSPath] = []
     private var failures: [OperationItemFailure] = []
     private var outcomes: [OperationItemOutcome] = []
+    /// The source a Stop caught partway, with what of it was left (``OperationReport/stoppedPartway``).
+    private var stoppedPartway: OperationItemOutcome?
     /// What each account this job touches had already failed to carry when the job started
     /// (PLAN.md §M25 Slice 5b).
     ///
@@ -212,7 +215,22 @@ private final class CopyRun {
             tally.finishItem(bytes: source.bytes, files: source.files)
             outcomes.append(.init(source: entry.path, landedAt: nil, replacedExisting: false))
         case let .proceed(target):
-            try perform(source, to: target)
+            do {
+                try perform(source, to: target)
+            } catch is CancellationError {
+                // The target was free, so whatever is there now is this job's, and undo may remove
+                // it. Nothing is there after a lone file, whose half-written bytes the backend
+                // removes, and then there is nothing to record. A move's source is still whole: it
+                // is removed only after the last byte (`perform`).
+                if (try? backend.stat(at: target)) != nil {
+                    stoppedPartway = .init(
+                        source: entry.path,
+                        landedAt: target,
+                        replacedExisting: false
+                    )
+                }
+                throw CancellationError()
+            }
             tally.finishItem(bytes: 0, files: 0) // both were tallied inside `perform`
             outcomes.append(.init(source: entry.path, landedAt: target, replacedExisting: false))
         case let .overwrite(temp, existing, final):
@@ -346,6 +364,7 @@ private final class CopyRun {
             failures: failures,
             wasCancelled: canceled,
             outcomes: outcomes,
+            stoppedPartway: stoppedPartway,
             metadataLoss: metadataLoss()
         )
     }

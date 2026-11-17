@@ -428,8 +428,9 @@ Top-level archives only.
 "Don't ask again" or Settings ▸ Operations. It is a second view of the same queued job, so every
 column that has the queue has the dialog, for `F5`, `F6`, `⇧F5` and Move Keeping Folders. **Not** for
 `F5` into or out of an archive, which add or extract by their own route and keep the queue bar alone,
-nor for `⌘V`, a drag or a script. Pinned by tests (`TransferDialogTests`); not yet exercised live
-(Slice 3).
+nor for `⌘V`, a drag or a script. Pinned by tests (`TransferDialogTests`), and run live on 2026-11-17
+for local copies and moves onto a disk image (§M41 Slice 3); not yet run live with a server at either
+end.
 
 <sup>aac</sup> Gated per **row**, like <sup>ee</sup>: each hit deletes the way the folder it lives in
 does (`DeleteRouting`), so a local hit goes to the Trash and a hit on a server is the confirmed

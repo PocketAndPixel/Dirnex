@@ -102,9 +102,10 @@ extension BrowserWindowController {
             }
             refreshPanes()
             guard let report = job.report else { continue }
-            // Journal whatever landed (even a canceled job's partial work) so Cmd+Z can
-            // reverse it; `transfer` returns nil when nothing is reversible.
-            if let record = UndoRecord.transfer(kind: job.kind, outcomes: report.outcomes) {
+            // Journal whatever landed, a stopped job's finished items and the one it stopped partway
+            // through included, so Cmd+Z can reverse it; `transfer` returns nil when nothing is
+            // reversible.
+            if let record = UndoRecord.transfer(kind: job.kind, report: report) {
                 undoController.record(record)
             }
             // A checksum job's answer arrives here rather than through a completion closure, so it

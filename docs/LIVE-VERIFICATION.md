@@ -115,6 +115,10 @@ so a trap goes here only if it can bite any live run; one tied to an area goes u
   - **`open -g` still put the copy in front.** Seen the same day, launched with `--env`: `lsappinfo
     front` named `app.dirnex.Dirnex.live`. So did a background double-click on a row, and F5's
     conflict dialog. Check the front after each, and put Oleg's app back with `open -b`.
+    - **So did a background `AXPress` that raised or answered a sheet.** Seen 2026-11-17 driving the
+      copy dialog: after the function bar's F5 and the sheet's OK, Pause or Stop, `lsappinfo front`
+      named the copy more often than not, though not every time. Batch a sheet's presses into one
+      `app_batch` and put Oleg's app back after each batch rather than after each press.
 - **A measurement at scale needs a Release build, and an ad-hoc signed one needs the hardened runtime
   off.** A Debug `DirnexCore` is `-Onone`, far too slow to say anything about a 256 MiB comparison.
   Seen 2026-11-08: `xcodebuild -configuration Release CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual
