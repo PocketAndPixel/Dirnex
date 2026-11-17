@@ -148,6 +148,15 @@ protocol PanelHost: ClosedTabHost {
         inNewTab: Bool
     )
 
+    /// Make sure `vault` is unlocked through the same funnel, then hand `body` where it is mounted,
+    /// leaving every pane where it is: the caller is going somewhere *inside* the vault (a pin in a
+    /// locked one, `PanelViewController+PinnedVault`). `body` runs only on success, so a cancelled
+    /// passphrase ends the gesture there.
+    func panelRequestsUnlockedVault(
+        _ vault: VaultLocation,
+        then body: @escaping @MainActor (String) -> Void
+    )
+
     /// The window's shared cache of archive members extracted for preview (Quick Look / Quick
     /// View inside a browsed archive). Owned by the window so both panes and both preview
     /// surfaces resolve the same extracted temp file.

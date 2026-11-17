@@ -204,6 +204,26 @@ final class StubPanelHost: PanelHost {
         vaultOpenRequests.append(vault)
     }
 
+    /// Every vault a pane asked to have unlocked without being shown it, in order.
+    private(set) var vaultUnlockRequests: [VaultLocation] = []
+    /// Where each of those unlocks is said to have mounted at once. `nil` holds them in
+    /// `unansweredVaultUnlocks` instead, for a test to answer later or never, as a passphrase prompt
+    /// that is still up or was cancelled would.
+    var vaultMountPoint: String?
+    private(set) var unansweredVaultUnlocks: [@MainActor (String) -> Void] = []
+
+    func panelRequestsUnlockedVault(
+        _ vault: VaultLocation,
+        then body: @escaping @MainActor (String) -> Void
+    ) {
+        vaultUnlockRequests.append(vault)
+        if let vaultMountPoint {
+            body(vaultMountPoint)
+        } else {
+            unansweredVaultUnlocks.append(body)
+        }
+    }
+
     /// The one requirement that records rather than shrugging, because it is the seam a whole
     /// milestone's gestures run through: a test hands back `materializeReport` and asserts on what
     /// was asked for. Nothing here transfers anything — `MaterializeRunner` is tested in the core

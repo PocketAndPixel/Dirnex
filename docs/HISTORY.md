@@ -21896,6 +21896,39 @@ and the old code with no probe made 7. 5 770 core and 2 644 app tests pass. The 
 nothing here reaches a server, and the defaults domain was compared unchanged. **Not run live**: real
 memory pressure, since `memory_pressure -S` sets the level for every app on the Mac, and Oleg's own vault.
 
+**2026-11-17: a pin inside a locked vault unlocks the vault** (Oleg's report, with a screenshot: picking the
+Docs pin in Favorites while his Documents vault was locked raised "Couldn't connect to “nas”. “nas” doesn't
+offer a shared folder named “Documents” to “olegasd”."). A vault's pin is a local path under
+`/Volumes/<volume>` and records nothing, so with the vault locked `jumpToFavorite` found the folder missing and
+took the share route: a pin with no recorded share asks every saved SMB server for a share named after the
+volume. The pin's own mark, drawn the same morning, already said vault: `LocationSource.ofPin` puts a pin on an
+unmounted volume in the saved vault of that name. The pick never learned the rule the mark is drawn by.
+
+`PinnedVault.vault(for:volume:among:)` (core) is that rule for the pick: a pin that recorded a share stays on
+the share, and any other pin on an unmounted volume is in the first saved vault of that volume name. A core
+test runs seven pins through both `ofPin` and the pick and asks that they agree. In the app,
+`missingPinRoute` decides unlock, mount or unpin in that order, from the saved vaults and servers handed in, and
+`openPinnedVault` asks the window's unlock funnel through a new `PanelHost.panelRequestsUnlockedVault`. So the
+Keychain's passphrase, the prompt, `VaultPrivacy` and the double-click guard are the vault row's own. It then
+lands on the pinned folder under wherever the volume mounted (`PinnedShare.path`), or offers to unpin if the
+unlocked vault does not hold it. A pane that moved on while the vault unlocked stays where it went, as one does
+while a pinned share mounts. No new strings.
+
+6 core and 6 app tests are new, and 3 negative controls failed theirs by name: a pick that never finds a
+vault (4 core tests, the mark agreement among them), the old order with the servers asked first (the reported
+route), and a landing with no `loadToken` guard. Seen live in the `app.dirnex.Dirnex.live` copy, cloud guard
+in, with a throwaway encrypted sparsebundle whose volume held `Work/note.txt`, its saved row, a pin on
+`/Volumes/DirnexPinCheck/Work` and a saved SMB server on a `.invalid` host. The pin wore the padlock mark;
+Focus Sidebar, ↑↑ and Return unlocked the vault (its passphrase handed in through an env-gated in-memory
+secret store, so the login Keychain was never asked) and the left pane opened on `Work` with `note.txt`, the
+vault row open with its eject button, and no alert. 5 776 core and 2 650 app tests pass, the live suites
+skipped since nothing here reaches a server, and the defaults domain was compared unchanged. Four earlier full
+app runs each failed one of two timing tests that pass alone: `EditFileRouteTests`' created-file case, which also
+failed with the new suite skipped and takes 45–61 s against a 30 s wait even when it passes, and
+`RowIconArrivalTests`, which passed beside the new suite alone, twice. **Not run live**: Oleg's own vault and
+NAS, the passphrase prompt, and a ⌘ pick into a new tab, which no test covers either; it takes
+`navigate(to:inNewTab:)`, the path the vault row's own ⌘ pick takes.
+
 ### After M19 — the follow-on log (2026-08-07 → 2026-09-21)
 
 Ninety-one dated passes that landed outside a milestone of their own, between M18's close on
