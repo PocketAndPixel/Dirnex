@@ -97,7 +97,8 @@ enum TransferDialogText {
             estimatedTimeRemaining: estimatedTimeRemaining
         )
         var text = QueueBarView.detailText(for: aggregate, paused: state.phase != .running)
-        if state.totalFiles > 0 {
+        // "Files: 0 of 1" says nothing the bytes do not, for the reason the dialog then shows one bar.
+        if state.totalFiles > 1 {
             let done = min(state.completedFiles, state.totalFiles)
             text += " · " + String(
                 localized: "Files: \(done) of \(state.totalFiles)",

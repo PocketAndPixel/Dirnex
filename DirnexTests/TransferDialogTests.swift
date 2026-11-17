@@ -164,6 +164,69 @@ struct TransferDialogTests {
         #expect(fixture.queue.resumed == [id])
     }
 
+    /// An indeterminate bar that is ever started keeps sweeping after it turns determinate, for as
+    /// long as its value keeps changing, which is the whole of a transfer (measured 2026-11-17 on
+    /// the layer's `overallIndeterminateAnimation`). So no phase may start one.
+    @Test("neither bar is ever indeterminate, from Preparing through the end")
+    func barsStayDeterminate() throws {
+        let fixture = DialogFixture()
+        try fixture.press("\r", code: 36)
+        let id = try #require(fixture.ids.first)
+        let controller = fixture.dialog.controller
+        let bars = [controller.fileBar, controller.totalBar]
+        #expect(bars.allSatisfy { !$0.isIndeterminate }, "preparing")
+        for status in [JobStatus.waiting, .running, .paused, .finished] {
+            fixture.dialog.handle(DialogFixture.snapshot([fixture.job(id, status)]))
+            #expect(bars.allSatisfy { !$0.isIndeterminate }, "\(status)")
+        }
+    }
+
+    /// With one file the file's bar and the job's draw the same fraction, so only the job's shows.
+    @Test("one file going shows one bar; a folder or several files show the file's bar as well")
+    func oneFileOneBar() {
+        let file = DialogFixture.summary.sources[0]
+        let other = DialogFixture.entry("b.txt", kind: .file)
+        let folder = DialogFixture.entry("photos", kind: .directory)
+        func shows(_ sources: [FileEntry], files: Int) -> Bool {
+            let controller = TransferDialogController(summary: TransferSummary(
+                kind: .copy,
+                sources: sources,
+                destination: .local("/dest")
+            ))
+            _ = controller.view
+            controller.showProgress()
+            var state = TransferDialogState(phase: files == 0 ? .preparing : .running)
+            state.totalFiles = files
+            controller.render(state, detail: nil)
+            return !controller.fileBar.isHidden
+        }
+        #expect(!shows([file], files: 0), "a lone file, before the pre-scan has counted it")
+        #expect(!shows([file], files: 1))
+        #expect(shows([folder], files: 0), "a folder may hold many until it is counted")
+        #expect(!shows([folder], files: 1), "a folder holding one file")
+        #expect(shows([folder], files: 340))
+        #expect(shows([file, other], files: 0))
+        #expect(shows([file, other], files: 2))
+    }
+
+    @Test("the readout counts files only when there is more than one")
+    func readoutCountsSeveral() {
+        var one = TransferDialogState(phase: .running, totalBytes: 10, completedBytes: 4)
+        one.totalFiles = 1
+        var several = one
+        several.totalFiles = 2
+        let oneText = TransferDialogText.detail(one, bytesPerSecond: 0, estimatedTimeRemaining: nil)
+        let severalText = TransferDialogText.detail(
+            several,
+            bytesPerSecond: 0,
+            estimatedTimeRemaining: nil
+        )
+        #expect(
+            severalText.hasPrefix(oneText) && severalText.count > oneText.count,
+            "\(severalText)"
+        )
+    }
+
     // MARK: - The rest of the app
 
     /// A job paused in its dialog is invisible to the queue-wide flag, which is what the bar read.
@@ -206,19 +269,23 @@ struct TransferDialogTests {
 private final class DialogFixture {
     static let summary = TransferSummary(
         kind: .copy,
-        sources: [FileEntry(
-            path: .local("/src/a.txt"),
-            name: "a.txt",
-            kind: .file,
+        sources: [entry("a.txt", kind: .file)],
+        destination: .local("/dest")
+    )
+
+    static func entry(_ name: String, kind: FileEntry.Kind) -> FileEntry {
+        FileEntry(
+            path: .local("/src/\(name)"),
+            name: name,
+            kind: kind,
             byteSize: 1,
             modificationDate: Date(timeIntervalSince1970: 1_700_000_000),
             creationDate: Date(timeIntervalSince1970: 1_700_000_000),
             isHidden: false,
             permissions: 0o644,
             inode: 1
-        )],
-        destination: .local("/dest")
-    )
+        )
+    }
 
     let queue = QueueRecorder()
     let preferences = AppPreferences(defaults: ScratchDefaults.fresh())
