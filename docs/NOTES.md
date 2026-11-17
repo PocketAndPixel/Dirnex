@@ -559,6 +559,19 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
 
 ### Waits, run loops and timing
 
+- **Await a gesture through the decision the test needs to see.** In a full run on 2026-11-17,
+  the ⇧F4 create task waited 19.1 s for its first main-actor turn and 17.2 s for its next turn
+  after the first `stat`. The backend answered each call in under 0.1 ms. A sample of the main
+  thread during the second wait showed several suites building windows and running UI tests.
+  Time both sides of an actor hop before blaming an I/O queue. The dialog now starts the task,
+  and the tests await `editFile(named:in:)` and check the counts and the status token on return.
+- **A quiet table can still have a badge scan in flight.** In the same run, a cloud status
+  snapshot reached `RowIconArrivalTests` 0.82 s after cache eviction. Its `renderRefresh()`
+  replaced the name cells between two image checks. A 200 ms wait for steady cells had already
+  passed. Tracing `reloadData()` also showed palette and row-density changes from other tests.
+  An icon test can remove those unrelated observers from its own pane and keep the normal icon
+  notifications, including the one sent when an image arrives.
+
 - **A wait over several async stages adds their scheduling delays together.** Measured
   2026-11-11 in `CompareReadingTests.lateNulGoesToBytes`: alone, the test took 0.38 s and the
   read took 9 ms. In a full run, its reading-window callback arrived at 27.09 s, the read ran

@@ -47,36 +47,14 @@ struct EditFileRouteTests {
         )
     }
 
-    /// Wait a delay **out** to show the editor is never reached, giving up early if it ever is.
-    ///
-    /// Half a second, and it rests on **ordering, not on its length**. The local route reaches
-    /// `openInEditor` in the same main-actor turn the resolving `stat` resumes on, and that turn is
-    /// queued as the `stat` returns, before this wait starts. In a full run the main actor stalls for
-    /// seconds at a time, so the whole window can pass in one stall: measured 2026-10-01, this wait
-    /// woke **once**, 2.1–3.8 s late. Its one look still comes after that turn, because the main
-    /// actor runs its queue in order. The negative control is what says so: with ⇧F4 opening the
-    /// path directly again, both tests failed every full run (docs/NOTES.md ▸ Testing). Kept small
-    /// because this suite runs beside `PanelPassiveRefreshTests`, which measures whether a pane
-    /// repaints while nobody touched it and is sensitive to what else is holding the main actor.
-    private func hold(until isHappening: () -> Bool) async {
-        let deadline = ContinuousClock.now + .milliseconds(500)
-        while !isHappening(), ContinuousClock.now < deadline {
-            try? await Task.sleep(for: .milliseconds(25))
-        }
-    }
-
     @Test("a file already on the server is opened by its own route, not as a local path")
-    func existingRemoteFileTakesTheRemoteRoute() async throws {
+    func existingRemoteFileTakesTheRemoteRoute() async {
         let backend = RecordingBackend(hasFile: true)
         let pane = Self.pane(backend)
 
-        pane.editFile(named: "notes.txt", in: Self.directory)
+        await pane.editFile(named: "notes.txt", in: Self.directory)
 
-        // The flow ran and resolved the name — without this the status assertion below would pass
-        // against a ⇧F4 that had simply stopped working. The shared wait's 30 s, not a copy's 10 s:
-        // the main actor stalls for seconds in a full run, and once past 10 s (2026-10-01).
-        try await settleUntil { backend.statCount == 1 }
-        await hold(until: { pane.transientStatusToken > 0 })
+        #expect(backend.statCount == 1)
         #expect(pane.transientStatusToken == 0)
         // An existing name means *open that file*: `createFile` would truncate the document the
         // user was reaching for, which is why the backend's is `O_EXCL` underneath.
@@ -84,17 +62,16 @@ struct EditFileRouteTests {
     }
 
     @Test("a file created on the server is opened by its own route, not as a local path")
-    func createdRemoteFileTakesTheRemoteRoute() async throws {
+    func createdRemoteFileTakesTheRemoteRoute() async {
         let backend = RecordingBackend(hasFile: false)
         let pane = Self.pane(backend)
 
-        pane.editFile(named: "notes.txt", in: Self.directory)
+        await pane.editFile(named: "notes.txt", in: Self.directory)
 
-        try await settleUntil { backend.createCount == 1 }
+        #expect(backend.createCount == 1)
         // Read back rather than assumed: the route is decided from an entry, and a remote one is
         // fetched and later saved against the size, time and entity tag only a `stat` carries.
-        try await settleUntil { backend.statCount == 2 }
-        await hold(until: { pane.transientStatusToken > 0 })
+        #expect(backend.statCount == 2)
         #expect(pane.transientStatusToken == 0)
     }
 }

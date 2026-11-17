@@ -21929,6 +21929,16 @@ failed with the new suite skipped and takes 45–61 s against a 30 s wait even w
 NAS, the passphrase prompt, and a ⌘ pick into a new tab, which no test covers either; it takes
 `navigate(to:inNewTab:)`, the path the vault row's own ⌘ pick takes.
 
+**2026-11-17 — Full-suite failures in ⇧F4 and row icon tests.** The create test waited 19.1 s for
+its task to start and 17.2 s for the main actor to resume after the first `stat`. It now awaits the
+edit through route selection and checks both backend counts and the status token. In the icon test,
+a late cloud badge snapshot reloaded the table after eviction. The windowed fixture keeps its icon
+observers and excludes unrelated badge and style updates. With the local edit route restored, both
+route tests saw the editor status token rise. Removing the weak image lookup loaded each folder
+twice. Removing images from arrivals sent each folder from 534 to 543 loads in the final half second.
+Three consecutive full app runs passed (87.9 s, 100.3 s, 99.3 s), with 109 live tests skipped each
+time. All 73 defaults keys matched across each run. All 5,776 core tests and both linters passed.
+
 ### After M19 — the follow-on log (2026-08-07 → 2026-09-21)
 
 Ninety-one dated passes that landed outside a milestone of their own, between M18's close on

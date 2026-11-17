@@ -11,11 +11,6 @@ import Testing
 /// these make the loader forget the keys themselves (`RowIconLoader.forget`), in a real pane in a
 /// window, drawing real folders' icons.
 ///
-/// Controlled 2026-11-17 by taking each part of the fix out in turn: without the loader answering from
-/// the images rows still draw, the second test failed; with that gone too and an arrival only asking,
-/// as before, the second and third; with an arrival not carrying its images, the third; and with an
-/// arrival not asking for the other rows, the fourth.
-///
 /// Serialized because the loader is one for the app and its test hooks are too; the fixture's folders
 /// have names of their own, so a pane in another suite drawing at the same time counts for nothing here.
 @MainActor
@@ -28,8 +23,8 @@ struct RowIconArrivalTests {
         let loads = LoadCounter(under: fixture.directory)
         defer { loads.stop() }
 
-        let source = try await fixture.drawnPane()
-        try await settleUntil { fixture.allLoaded(in: source.pane) }
+        try await fixture.drawRows()
+        try await settleUntil { fixture.allLoaded }
         #expect(loads.counts.count == IconFixture.names.count)
         #expect(loads.counts.values.allSatisfy { $0 == 1 })
     }
@@ -40,24 +35,24 @@ struct RowIconArrivalTests {
         defer { fixture.remove() }
         let loads = LoadCounter(under: fixture.directory)
         defer { loads.stop() }
-        let source = try await fixture.drawnPane()
-        try await settleUntil { fixture.allLoaded(in: source.pane) }
-        try await fixture.waitForSteadyCells(in: source)
-        let drawn = fixture.images(in: source.pane)
+        try await fixture.drawRows()
+        try await settleUntil { fixture.allLoaded }
+        let drawn = fixture.images
         let before = loads.counts
+        try #require(before.count == IconFixture.names.count)
 
         RowIconLoader.shared.forget(loads.keys)
         // Another image arriving, as any load anywhere in the app does: nothing here may ask.
         NotificationCenter.default.post(name: RowIconLoader.didLoadNotification, object: nil)
         try await Task.sleep(for: .milliseconds(300))
-        #expect(fixture.images(in: source.pane) == drawn)
+        #expect(fixture.images == drawn)
         #expect(loads.counts == before)
 
         // And a re-ask, as coming to the front makes (`FileIconProvider.forgetTypeIcons`): the rows
         // still draw their images, so the loader answers with those whatever the cache let go of.
         NotificationCenter.default.post(name: FileIconProvider.typeIconsDidChange, object: nil)
         try await Task.sleep(for: .milliseconds(300))
-        #expect(fixture.images(in: source.pane) == drawn)
+        #expect(fixture.images == drawn)
         #expect(loads.counts == before)
     }
 
@@ -72,8 +67,7 @@ struct RowIconArrivalTests {
         RowIconLoader.shared.holdsLoads = true
         defer { RowIconLoader.shared.holdsLoads = false }
 
-        let source = try await fixture.drawnPane()
-        try await fixture.waitForSteadyCells(in: source)
+        try await fixture.drawRows()
         #expect(loads.counts.isEmpty)
         // Newer requests than the rows' own, enough to push those off the end of the queue.
         let elsewhere = "/RowIconArrivalTests-gone-\(UUID().uuidString)"
@@ -89,13 +83,10 @@ struct RowIconArrivalTests {
             ))
         }
         RowIconLoader.shared.holdsLoads = false
-        try await settleUntil { fixture.allLoaded(in: source.pane) }
+        try await settleUntil { fixture.allLoaded }
         #expect(loads.counts.count == IconFixture.names.count)
     }
 
-    /// Not "once": with nothing kept, a cell the table makes anew for a row after dropping the one that
-    /// held the image has nothing to be answered with and loads again. Seen once in a full suite run,
-    /// two loads for one folder (2026-11-17). The loop is what this is about, and it never stops.
     @Test("an icon the cache lets go of as soon as it is stored stops loading once it is drawn")
     func iconTheCacheKeepsDroppingStopsLoading() async throws {
         let fixture = try IconFixture()
@@ -108,12 +99,11 @@ struct RowIconArrivalTests {
         }
         defer { RowIconLoader.shared.didStore = nil }
 
-        let source = try await fixture.drawnPane()
-        try await settleUntil { fixture.allLoaded(in: source.pane) }
-        try await Task.sleep(for: .milliseconds(200))
+        try await fixture.drawRows()
+        try await settleUntil { fixture.allLoaded }
         let settled = loads.counts
         try await Task.sleep(for: .milliseconds(500))
-        #expect(fixture.allLoaded(in: source.pane))
+        #expect(fixture.allLoaded)
         #expect(settled.count == IconFixture.names.count)
         #expect(loads.counts == settled, "loads went on: \(settled) then \(loads.counts)")
     }
@@ -124,6 +114,7 @@ struct RowIconArrivalTests {
 private struct IconFixture {
     static let names = ["one", "two", "three"]
     let directory: String
+    private let source: WindowedPane
 
     init() throws {
         let url = FileManager.default.temporaryDirectory
@@ -135,70 +126,50 @@ private struct IconFixture {
             )
         }
         directory = url.path
+        let here = VFSPath.local(directory)
+        let entries = Self.names.map { Handoff.local("\(url.path)/\($0)", kind: .directory) }
+        source = windowedPane(at: here, backend: Handoff.StubBackend(listings: [here: entries]))
+
+        // A badge scan or a preference test can reload the whole table after its icons arrive.
+        // Keep the pane's normal icon observers so the loader still has to reach the visible cells.
+        for name in [
+            CloudSyncStatusProvider.didChangeNotification, FinderTagProvider.didChangeNotification,
+            AppPreferences.paletteDidChange, AppPreferences.rowDensityDidChange,
+            FileColorRuleStore.didChangeNotification
+        ] {
+            NotificationCenter.default.removeObserver(source.pane, name: name, object: nil)
+        }
     }
 
     func remove() {
+        source.window.contentViewController = nil
         try? FileManager.default.removeItem(atPath: directory)
     }
 
-    /// A windowed pane listing the folders, once the table has made its own name cell for each row,
-    /// so each one has asked. Its own: a cell made here with `makeIfNecessary` is not the one the table
-    /// goes on to draw the row with, and the table's then asks again.
-    func drawnPane() async throws -> WindowedPane {
-        let here = VFSPath.local(directory)
-        let entries = Self.names.map { Handoff.local("\(directory)/\($0)", kind: .directory) }
-        let source = windowedPane(
-            showing: entries,
-            at: here,
-            backend: Handoff.StubBackend(listings: [here: entries])
-        )
+    /// Let the table make its own visible cells. A cell requested with `makeIfNecessary` can
+    /// differ from the cell AppKit later draws for that row.
+    func drawRows() async throws {
         try await settleUntil { source.pane.tabs[0].hasLoaded }
         try await settleUntil {
             source.window.layoutIfNeeded()
             source.window.displayIfNeeded()
-            return images(in: source.pane).allSatisfy { $0 != nil }
+            return images.allSatisfy { $0 != nil }
         }
         let table = source.pane.tableView
         try #require(
             table.rows(in: table.visibleRect).length == source.pane.parentRowCount + Self.names.count
         )
-        return source
-    }
-
-    /// Wait until the table has stopped making new cells for the rows. On a cold first run it can still
-    /// be swapping the cells it drew first for new ones after every row has its image, and a cell made
-    /// after the cache let go, its old one already gone, rightly loads once more, which is not what the
-    /// test is about (one flake in four runs, 2026-11-17).
-    func waitForSteadyCells(in source: WindowedPane) async throws {
-        var last = cells(in: source.pane)
-        var steadySince = ContinuousClock.now
-        try await settleUntil {
-            source.window.displayIfNeeded()
-            let now = cells(in: source.pane)
-            if now != last {
-                last = now
-                steadySince = ContinuousClock.now
-            }
-            return ContinuousClock.now - steadySince >= .milliseconds(200)
-        }
-    }
-
-    private func cells(in pane: PanelViewController) -> [ObjectIdentifier?] {
-        (0..<Self.names.count).map { offset in
-            nameCell(pane.parentRowCount + offset, in: pane).map(ObjectIdentifier.init)
-        }
     }
 
     /// Each folder's row draws a loaded image, not the folder placeholder it starts with.
-    func allLoaded(in pane: PanelViewController) -> Bool {
-        let images = images(in: pane)
-        return images.count == Self.names.count
-            && images.allSatisfy { $0 != nil && $0 != ObjectIdentifier(FileIconProvider.parentIcon) }
+    var allLoaded: Bool {
+        images.allSatisfy { $0 != nil && $0 != ObjectIdentifier(FileIconProvider.parentIcon) }
     }
 
     /// What each folder's row draws now, by identity.
-    func images(in pane: PanelViewController) -> [ObjectIdentifier?] {
-        (0..<Self.names.count).map { offset in
+    var images: [ObjectIdentifier?] {
+        let pane = source.pane
+        return (0..<Self.names.count).map { offset in
             nameCell(pane.parentRowCount + offset, in: pane)?.imageView?.image
                 .map(ObjectIdentifier.init)
         }
