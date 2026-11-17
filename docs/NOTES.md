@@ -3166,6 +3166,17 @@ Measured 2026-11-08 for M37's byte view, whose table has a row for every 16 byte
     linters green throughout) and to any screenshot taken with a short name — the field really does
     hold the whole value, and nothing logs. A `cacheDisplay` of a live sheet is what shows it: the
     gap beside a name that stops at a hyphen is the tell.
+- **A single-line label still breaks at a hard line break in its value, so a file name holding one
+  draws on two lines in a one-line row.** Probed 2026-11-17 on the pane's name-cell shape
+  (`labelWithString:`, `usesSingleLineMode`, truncating tail, `wraps == false`): `Icon` lays out 16 pt
+  tall, while `Icon\r`, `a\nb`, `a\r\nb` and a name with U+2028 lay out **32 pt**. The cell centers
+  that in a 22 pt row, so the first line rides up and is clipped and the rest is not shown. The name
+  that showed it is OneDrive's `Icon\r` (a folder's custom-icon file). None of the single-line
+  properties stops it. The value has to change: ``FileNameDisplay/visible(_:)`` draws each control
+  character as its Unicode control picture (`Icon␍`, one 16 pt line, by font fallback to Apple
+  Symbols). **Anything that reads the label back gets that form.** The F2 field opens on it, so the
+  rename treats the picture form as unchanged; compared with the real name alone, Return renamed
+  `Icon\r` to `Icon␍`.
 - **A paragraph style's `headIndent` keeps a value's *wrapped* lines under a tab stop, and not its later
   *lines*: a line break starts a new paragraph, and that starts at `firstLineHeadIndent`.** Seen live
   2026-09-15 on the strip under Quick View's JSON tree: a container written out put its `{` in the

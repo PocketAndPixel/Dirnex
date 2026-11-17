@@ -1,4 +1,5 @@
 import AppKit
+import DirnexCore
 
 /// What a Quick View says about the file it is showing (PLAN.md §M11): the name, and where it sits
 /// in the pane's list. In the two full modes the list is behind the preview, and arrowing through
@@ -86,7 +87,9 @@ final class QuickViewHeaderView: NSVisualEffectView {
     var caption: QuickViewCaption? {
         didSet {
             guard caption != oldValue else { return }
-            nameLabel.stringValue = caption?.name ?? ""
+            // As the pane's row draws it: a control character would push the name onto a second
+            // line the strip has no room for.
+            nameLabel.stringValue = caption.map { FileNameDisplay.visible($0.name) } ?? ""
             positionLabel.stringValue = caption?.positionText ?? ""
             let showsSlideshow = caption?.isSlideshowRunning == true
             slideshowButton.isHidden = !showsSlideshow

@@ -165,15 +165,20 @@ extension PanelViewController {
     /// The cursor lands on the renamed entry by its new identity after the re-list.
     private func performRename(source: VFSPath, oldName: String, to rawName: String) {
         let newName = rawName.trimmingCharacters(in: .whitespacesAndNewlines)
+        // The field opened on the name as the row draws it, so a name holding a control character
+        // (`Icon\r`) comes back as its picture (`Icon␍`) when nothing was typed. That is an
+        // unchanged name too: compared with the real one alone, Return renamed the file to its own
+        // picture.
+        let shownName = FileNameDisplay.visible(oldName)
         // An empty or unchanged name is a silent cancel.
-        guard !newName.isEmpty, newName != oldName else {
+        guard !newName.isEmpty, newName != oldName, newName != shownName else {
             focusTable()
             return
         }
         guard !newName.contains("/") else {
             presentOperationFailure(
                 message: String(
-                    localized: "Can’t rename “\(oldName)”",
+                    localized: "Can’t rename “\(shownName)”",
                     comment: "Rename validation failure title; %@ is the current name."
                 ),
                 detail: String(
@@ -250,7 +255,7 @@ extension PanelViewController {
                 }
                 presentOperationFailure(
                     message: String(
-                        localized: "Can’t rename “\(oldName)”",
+                        localized: "Can’t rename “\(shownName)”",
                         comment: "Rename failure title; %@ is the current name."
                     ),
                     detail: describe(error)
