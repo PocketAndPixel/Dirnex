@@ -110,6 +110,30 @@ set_clock() {
     say "Set $1's clock, which was ${drift#-} s $([ "$drift" -gt 0 ] && echo behind || echo ahead)."
 }
 
+# Fill `$1`'s SwiftPM cache (~/Library/Caches/org.swift.swiftpm) with the app's packages, from a
+# shallow clone of the repository, before the runner takes a job. A job then fetches only what
+# changed since, as a job in a VM that has run one before does. The first full download of Sparkle
+# in a fresh clone failed inside a job four times in two days (CI on 2026-11-12, and three tries of
+# the release on 2026-11-17): `curl 56 LibreSSL SSL_read: … bad decrypt`, 0–40% in, every package
+# clone of the run alike. About 50 full downloads made through `tart exec` never failed, from a
+# launchd job shaped like the runner's, under full CPU, and straight after the DirnexCore tests, so
+# the cause is still unknown; every job that started from a filled cache went through.
+warm_packages() {
+    in_vm "$1" "
+        d=\$(mktemp -d)
+        trap 'rm -rf \"\$d\"' EXIT
+        git clone -q --depth 1 $REPO_URL \"\$d/repo\" || exit 1
+        for try in 1 2 3; do
+            xcodebuild -resolvePackageDependencies -project \"\$d/repo/Dirnex.xcodeproj\" -scheme Dirnex \
+                -clonedSourcePackagesDirPath \"\$d/packages\" > \"\$d/log\" 2>&1 && exit 0
+            rm -rf \"\$d/packages\"
+            sleep 10
+        done
+        tail -5 \"\$d/log\"
+        exit 1
+    "
+}
+
 # Whether the runner's service is running in `$1`. Its `runsvc.sh` stays up while the runner updates
 # itself, so this is false only once the service has given up.
 runner_started() { in_vm "$1" "launchctl list $RUNNER_SERVICE" 2> /dev/null | grep -q '"PID"'; }
@@ -218,7 +242,11 @@ run() {
         if vm_exists "$VM"; then "$TART" delete "$VM"; fi
         "$TART" clone "$BASE" "$VM"
         say "Booting $VM…"
-        if boot "$VM" && set_clock "$VM" && in_vm "$VM" "launchctl bootstrap gui/\$(id -u) ~/$RUNNER_PLIST"; then
+        # A cache that could not be filled is not a reason to keep the runner down: its jobs then
+        # download the packages themselves, as they did before.
+        if boot "$VM" && set_clock "$VM" \
+            && { warm_packages "$VM" || say "Could not fill $VM's package cache; its jobs will download the packages."; } \
+            && in_vm "$VM" "launchctl bootstrap gui/\$(id -u) ~/$RUNNER_PLIST"; then
             say "The runner is up."
             local recycle restarts=0
             recycle="$(date -j -f '%H:%M' "$RECYCLE_AT" +%s)"

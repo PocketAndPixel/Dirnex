@@ -147,6 +147,12 @@ same name.
   up with no runner for 13 hours and every job waited. The loop now sets the clock before starting
   the runner and every minute after, since a Mac that sleeps leaves the VM's clock behind too, and
   starts the runner again up to five times in a row. Both show in the log.
+- **It fills the clone's package cache before the runner starts**, from a shallow clone of the
+  repository, about 15 s per start. In a fresh clone the first full download of Sparkle failed
+  inside a job four times in two days (`curl 56 LibreSSL SSL_read: … bad decrypt`, partway in, every
+  package alike), while about 50 made from outside a job never did, so the cause is still unknown.
+  Every job that started from a filled cache went through. A job then fetches only what changed;
+  if the cache can't be filled, the log says so and jobs download the packages as before.
 - **A change to the script reaches the loop only through `uninstall` and `install`.** The running
   loop keeps the functions it read at login, and its nightly restart boots the clone with them.
 - **Between nightly restarts the clone keeps its state from job to job.** The release puts the
