@@ -77,30 +77,8 @@ enum MermaidFlowchartSVG {
             MermaidSVG.tip(edge.tail, at: edge.start, from: edge.points[1], classes: "mm-tip")
         )
         if let label = edge.label {
-            // A plate under the label, because the line runs through where the text sits. Its class
-            // is the page background's, so it hides the line in either appearance.
-            parts.append(MermaidSVG.rect(
-                plate(around: edge.labelCenter, text: label),
-                classes: "mm-edge-label-plate",
-                radius: 3
-            ))
-            parts.append(MermaidSVG.text(label, at: edge.labelCenter, classes: "mm-edge-label"))
+            parts.append(MermaidSVG.edgeLabel(label, at: edge.labelCenter, plated: !edge.isLoop))
         }
         return parts.joined()
-    }
-
-    /// The plate is sized from the *character count* rather than from the metric, on purpose: it
-    /// only has to be about right, and threading the metric through the emitter would make the
-    /// drawing depend on it twice — once for the layout the caller already did, and once here,
-    /// where a disagreement between the two would be invisible until it looked wrong.
-    private static func plate(around center: MermaidPoint, text: String) -> MermaidRect {
-        let width = Double(text.count) * 6.6 + 8
-        let height = 15.0
-        return MermaidRect(
-            x: center.x - width / 2,
-            y: center.y - height / 2,
-            width: width,
-            height: height
-        )
     }
 }

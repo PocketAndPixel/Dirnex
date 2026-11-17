@@ -260,11 +260,12 @@ final class QueueBarView: NSView {
 
         // Coalesce the fast-moving detail readout to once a second so it's legible, but refresh
         // it immediately when the run pauses or resumes so that transition never looks stuck.
-        let pausedChanged = lastPausedState != snapshot.isPaused
+        let paused = Self.readsPaused(snapshot)
+        let pausedChanged = lastPausedState != paused
         if pausedChanged || Date().timeIntervalSince(lastDetailRefresh) >= Self.detailRefreshInterval {
-            drawDetail(aggregate, paused: snapshot.isPaused)
+            drawDetail(aggregate, paused: paused)
         } else {
-            deferDetail(aggregate, paused: snapshot.isPaused)
+            deferDetail(aggregate, paused: paused)
         }
 
         let symbol = snapshot.isPaused ? "play.fill" : "pause.fill"
@@ -342,8 +343,10 @@ extension QueueBarView {
 
         // Whole sentences per branch rather than a spliced verb (docs/NOTES.md): a language that
         // inflects the object or reorders the clause can't build "Copying <name>" from a bare verb.
+        // A running job is named over a paused one: a job paused in its own dialog sits ahead of it
+        // in the queue's order (PLAN.md §M41).
         var text: String
-        if let current = active.first {
+        if let current = active.first(where: { $0.status == .running }) ?? active.first {
             let name = current.progress?.currentItem?.lastComponent
             if let name, !name.isEmpty {
                 text = Self.activeStatus(kind: current.kind, name: name)
@@ -356,7 +359,7 @@ extension QueueBarView {
                 comment: "Queue-bar status before any operation has started transferring."
             )
         }
-        if snapshot.isPaused {
+        if Self.readsPaused(snapshot) {
             text = String(
                 localized: "Paused — \(text)",
                 comment: "Queue-bar status prefix when paused; %@ is the underlying status."

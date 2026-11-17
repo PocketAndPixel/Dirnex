@@ -68,6 +68,10 @@ final class BrowserWindowController: NSWindowController, PanelHost, PaneKeyWindo
     /// `trackQuickViewSwipe`. `nil` whenever no gesture is being finished.
     var quickViewSwipeAmountAtLift: CGFloat?
 
+    /// The slideshow running in this window, if any (⇧⌘S, PLAN.md §M39 ▸ Slice 16). Driven from
+    /// `BrowserWindowController+Slideshow`.
+    var quickViewSlideshow: QuickViewSlideshow?
+
     /// Archive members extracted for preview (Quick Look ⌘Y / Quick View ⌃Q inside a browsed
     /// archive), shared across both panes and both surfaces (PLAN.md §M4 "Quick Look inside").
     let archivePreviewCache = ArchivePreviewCache()
@@ -160,6 +164,9 @@ final class BrowserWindowController: NSWindowController, PanelHost, PaneKeyWindo
     var isGatheringWriteBacks = false
     /// The last observed pause state, so the queue bar's button knows which way to toggle.
     var lastPaused = false
+    /// The copy or move dialog on screen, if any (PLAN.md §M41): it asks, then follows its jobs
+    /// through the snapshots `handle` receives. Stored here because an extension cannot store it.
+    var transferDialog: TransferDialog?
 
     /// Autosave name for the panes split's divider geometry. A fresh install (or one still
     /// on the pre-V2 name) has no saved entry, which is our signal to open the panes 50/50

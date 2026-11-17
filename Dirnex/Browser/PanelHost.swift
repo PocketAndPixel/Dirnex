@@ -16,12 +16,24 @@ protocol PanelHost: ClosedTabHost {
     /// When `conflictPolicy` is `.ask`, `resolveConflict` fields each collision (TC's per-file
     /// conflict dialog) and `onError` fields each failure (skip/retry/abort); both run on the
     /// background copy thread, bridged to main-actor prompts (`ConflictPrompter`/`ErrorPrompter`).
+    ///
+    /// `id` is the job's id in the queue, chosen by the caller so whoever follows the job can know it
+    /// before it runs (``TransferTracker``). The overload without one, below, mints a fresh id.
     func enqueue(
         _ operation: FileOperation,
+        id: OperationJobID,
         conflictPolicy: ConflictPolicy,
         resolveConflict: (@Sendable (ConflictContext) -> ConflictResolution)?,
         onError: (@Sendable (OperationErrorContext) -> ErrorResolution)?
     )
+
+    /// Start a copy or move the user asked for with F5 or F6 (PLAN.md §M41).
+    ///
+    /// The window asks first and follows the jobs in a dialog when Settings ▸ Operations says to;
+    /// otherwise, and for a script, `start` runs at once with ``TransferTracker/untracked``. `start`
+    /// queues the jobs, taking each one's id from the tracker it is given, then calls `finish()` on
+    /// it. It does not run at all if the user cancels the question.
+    func runTransfer(_ summary: TransferSummary, start: @escaping (TransferTracker) -> Void)
 
     /// Queue `operations` in this order, then return once the window's queue has nothing left to do.
     /// A sync's record is kept after its copies have landed, and `enqueue` cannot say when that is.
@@ -89,6 +101,21 @@ protocol PanelHost: ClosedTabHost {
     /// ⌃Q surface, which sits in the covered pane while the window owns the preference.
     func setQuickViewRenderStyle(_ style: QuickViewRenderStyle)
 
+    /// Follow a link clicked on a page `surface` is rendering, from the document at `location`: move
+    /// the active pane's cursor to the file it names, open it in the browser, or say why neither
+    /// (PLAN.md §M39). The window's, because the ⌃Q surface sits in the covered pane while the link
+    /// moves the active one.
+    func followQuickViewLink(
+        _ link: DocumentLink,
+        from location: VFSPath,
+        on surface: QuickViewPreviewView
+    )
+
+    /// The files the active pane lists beside the document at `location`, which a page's wiki links
+    /// are found among when the document is not on this disk (PLAN.md §M39 ▸ Slice 7). The window's
+    /// for `followQuickViewLink`'s reason.
+    func quickViewNamesListed(beside location: VFSPath) -> Set<String>
+
     /// Move a full-size Quick View on by `steps` files, animated like the two-finger swipe (← / →).
     /// The window owns it because the preview surface being turned is the window's, not the pane's.
     func flipQuickView(steps: Int)
@@ -133,6 +160,15 @@ protocol PanelHost: ClosedTabHost {
         inNewTab: Bool
     )
 
+    /// Make sure `vault` is unlocked through the same funnel, then hand `body` where it is mounted,
+    /// leaving every pane where it is: the caller is going somewhere *inside* the vault (a pin in a
+    /// locked one, `PanelViewController+PinnedVault`). `body` runs only on success, so a cancelled
+    /// passphrase ends the gesture there.
+    func panelRequestsUnlockedVault(
+        _ vault: VaultLocation,
+        then body: @escaping @MainActor (String) -> Void
+    )
+
     /// The window's shared cache of archive members extracted for preview (Quick Look / Quick
     /// View inside a browsed archive). Owned by the window so both panes and both preview
     /// surfaces resolve the same extracted temp file.
@@ -170,4 +206,23 @@ protocol PanelHost: ClosedTabHost {
         _ entries: [FileEntry],
         then: @escaping @MainActor (OperationReport) -> Void
     )
+}
+
+extension PanelHost {
+    /// ``enqueue(_:id:conflictPolicy:resolveConflict:onError:)`` for a job nobody needs to know
+    /// before it runs, under a fresh id.
+    func enqueue(
+        _ operation: FileOperation,
+        conflictPolicy: ConflictPolicy,
+        resolveConflict: (@Sendable (ConflictContext) -> ConflictResolution)?,
+        onError: (@Sendable (OperationErrorContext) -> ErrorResolution)?
+    ) {
+        enqueue(
+            operation,
+            id: OperationJobID(),
+            conflictPolicy: conflictPolicy,
+            resolveConflict: resolveConflict,
+            onError: onError
+        )
+    }
 }

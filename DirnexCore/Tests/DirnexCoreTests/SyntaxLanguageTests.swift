@@ -114,7 +114,7 @@ struct SyntaxLanguageTests {
         #expect(SyntaxLanguage.forFile(named: "PLAN.md") == .markdown)
         #expect(SyntaxLanguage.forFile(named: "fix.patch") == .diff)
         let scanned: [SyntaxLanguage] = [
-            .markup, .markdown, .diff, .dotenv, .nginx, .ignoreFile, .gitAttributes
+            .markup, .markdown, .diff, .dotenv, .nginx, .ignoreFile, .gitAttributes, .rtf
         ]
         for language in scanned {
             #expect(language.grammar == nil)

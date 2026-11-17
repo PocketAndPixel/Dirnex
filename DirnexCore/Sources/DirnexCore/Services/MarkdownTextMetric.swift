@@ -27,10 +27,22 @@ public struct MarkdownTextMetric: Sendable {
     public var width: @Sendable (String) -> Double
     /// One line's height, which sets a node's height and a diagram's row pitch.
     public var lineHeight: Double
+    /// The same, in the bold face a class diagram's class names are drawn in (§M39 ▸ Slice 14).
+    ///
+    /// A metric of its own rather than a guessed factor over `width`: bold is wider by an amount
+    /// that depends on the letters, and a box sized for regular text with a bold name in it is the
+    /// "two spellings of one rule" failure the font size already guards against. Without one it is
+    /// `width`, which is what the fixed-advance test metric wants.
+    public var boldWidth: @Sendable (String) -> Double
 
-    public init(lineHeight: Double, width: @escaping @Sendable (String) -> Double) {
+    public init(
+        lineHeight: Double,
+        boldWidth: (@Sendable (String) -> Double)? = nil,
+        width: @escaping @Sendable (String) -> Double
+    ) {
         self.lineHeight = lineHeight
         self.width = width
+        self.boldWidth = boldWidth ?? width
     }
 
     /// A fixed advance per character.

@@ -287,9 +287,9 @@ extension PanelViewController {
         alert.window.initialFirstResponder = field
 
         let apply: (NSApplication.ModalResponse) -> Void = { [weak self] response in
-            guard response == .alertFirstButtonReturn else { return }
+            guard response == .alertFirstButtonReturn, let self else { return }
             let name = field.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
-            self?.editFile(named: name, in: target)
+            Task { await self.editFile(named: name, in: target) }
         }
         if let window = view.window {
             alert.beginSheetModal(for: window, completionHandler: apply)
@@ -323,7 +323,7 @@ extension PanelViewController {
     ///
     /// Internal, not private: `EditFileRouteTests` drives it directly, because the dialog above it
     /// is an `NSAlert` and a test host that presents one waits for a human (docs/NOTES.md ▸ Testing).
-    func editFile(named name: String, in directory: VFSPath) {
+    func editFile(named name: String, in directory: VFSPath) async {
         guard !name.isEmpty else { return } // an empty name is a silent cancel
         guard !name.contains("/") else {
             presentOperationFailure(
@@ -341,81 +341,79 @@ extension PanelViewController {
 
         let target = directory.appending(name)
         let backend = backend
-        Task {
-            // One `stat` decides the branch: an existing name means *open that file*, which is why
-            // `createFile` is `O_EXCL` underneath — a file appearing between this read and the
-            // create is reported, never truncated.
-            let existing = await BlockingWork.run {
-                try? backend.stat(at: target)
-            }
-            if let existing {
-                guard existing.kind == .file else {
-                    presentOperationFailure(
-                        message: String(
-                            localized: "Can’t edit “\(name)”",
-                            comment: "Edit-file failure title; %@ is the name."
-                        ),
-                        detail: String(
-                            localized: "There’s already a folder with that name.",
-                            comment: "Edit-file failure detail: name is a folder."
-                        )
-                    )
-                    return
-                }
-                openForEditing(existing)
-                return
-            }
-            // Inside an archive the empty member is made by a rewrite, then opened like any member,
-            // so its first save goes back through the archive's own write-back question.
-            if target.backend.isArchive {
-                createArchiveMember(.emptyFile, at: target) { [weak self] created in
-                    self?.openForEditing(created)
-                }
-                return
-            }
-            do {
-                try await BlockingWork.run {
-                    Result {
-                        try backend.createFile(at: target)
-                    }
-                }.get()
-            } catch {
-                presentOperationFailure(
-                    message: String(
-                        localized: "Can’t create “\(name)”",
-                        comment: "Create-file failure title; %@ is the name."
-                    ),
-                    detail: describe(error)
-                )
-                return
-            }
-            refreshCurrentDirectory(selecting: target)
-            focusTable()
-            do {
-                // The new file is read back rather than assumed, because the route is decided from
-                // an *entry*: on a server it is a copy that gets edited, and both the fetch that
-                // brings it down and the save that goes back up are keyed on the size, time and
-                // entity tag only a `stat` carries. A hand-built stand-in would cost one round trip
-                // less and make the very first save look like somebody else's write
-                // (`RemoteFileRevision`).
-                let created = try await BlockingWork.run {
-                    Result {
-                        try backend.stat(at: target)
-                    }
-                }.get()
-                openForEditing(created)
-            } catch {
-                // The file was created — this is the read back failing, so it is the *edit* that
-                // could not happen and the create is not retracted. Said out loud: the row is on
-                // screen by now, and a keystroke that silently opens nothing reads as a dead key.
+        // One `stat` decides the branch: an existing name means *open that file*, which is why
+        // `createFile` is `O_EXCL` underneath — a file appearing between this read and the
+        // create is reported, never truncated.
+        let existing = await BlockingWork.run {
+            try? backend.stat(at: target)
+        }
+        if let existing {
+            guard existing.kind == .file else {
                 presentOperationFailure(
                     message: String(
                         localized: "Can’t edit “\(name)”",
                         comment: "Edit-file failure title; %@ is the name."
                     ),
-                    detail: describe(error)
+                    detail: String(
+                        localized: "There’s already a folder with that name.",
+                        comment: "Edit-file failure detail: name is a folder."
+                    )
                 )
+                return
             }
+            openForEditing(existing)
+            return
+        }
+        // Inside an archive the empty member is made by a rewrite, then opened like any member,
+        // so its first save goes back through the archive's own write-back question.
+        if target.backend.isArchive {
+            createArchiveMember(.emptyFile, at: target) { [weak self] created in
+                self?.openForEditing(created)
+            }
+            return
+        }
+        do {
+            try await BlockingWork.run {
+                Result {
+                    try backend.createFile(at: target)
+                }
+            }.get()
+        } catch {
+            presentOperationFailure(
+                message: String(
+                    localized: "Can’t create “\(name)”",
+                    comment: "Create-file failure title; %@ is the name."
+                ),
+                detail: describe(error)
+            )
+            return
+        }
+        refreshCurrentDirectory(selecting: target)
+        focusTable()
+        do {
+            // The new file is read back rather than assumed, because the route is decided from
+            // an *entry*: on a server it is a copy that gets edited, and both the fetch that
+            // brings it down and the save that goes back up are keyed on the size, time and
+            // entity tag only a `stat` carries. A hand-built stand-in would cost one round trip
+            // less and make the very first save look like somebody else's write
+            // (`RemoteFileRevision`).
+            let created = try await BlockingWork.run {
+                Result {
+                    try backend.stat(at: target)
+                }
+            }.get()
+            openForEditing(created)
+        } catch {
+            // The file was created — this is the read back failing, so it is the *edit* that
+            // could not happen and the create is not retracted. Said out loud: the row is on
+            // screen by now, and a keystroke that silently opens nothing reads as a dead key.
+            presentOperationFailure(
+                message: String(
+                    localized: "Can’t edit “\(name)”",
+                    comment: "Edit-file failure title; %@ is the name."
+                ),
+                detail: describe(error)
+            )
         }
     }
 }

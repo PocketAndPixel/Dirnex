@@ -62,7 +62,8 @@ enum MarkdownLinkDefinitions {
         rest = rest.dropFirst()
         guard let close = unescapedIndex(of: "]", in: rest) else { return nil }
         let label = String(rest[rest.startIndex..<close])
-        guard !label.isEmpty else { return nil }
+        // `[^label]:` is a footnote's definition even when a URL follows it, as on GitHub.
+        guard !label.isEmpty, !label.hasPrefix("^") else { return nil }
         rest = rest[rest.index(after: close)...]
         guard rest.first == ":" else { return nil }
         rest = rest.dropFirst().drop(while: \.isWhitespace)

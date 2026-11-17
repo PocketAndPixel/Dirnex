@@ -162,6 +162,17 @@ public enum CommandCatalog {
             // whole of its surface.
         ),
         Command(
+            id: "file.export",
+            title: "Export…",
+            category: .file,
+            // The formats by name, since somebody wanting a PDF types "pdf"; "save as" and "print"
+            // are what the same wish is called in a document app; "markdown" and "md" because the
+            // file under the cursor is one (PLAN.md §M39 ▸ Slice 12).
+            keywords: ["export", "html", "pdf", "save as", "print", "convert", "markdown", "md"]
+            // No shortcut: the F-key row is full, and turning a document into a page is an
+            // occasional act. The palette and the File menu are its surface.
+        ),
+        Command(
             id: "file.syncDirectories",
             title: "Synchronize Directories…",
             category: .file,

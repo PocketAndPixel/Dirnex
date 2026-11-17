@@ -12,7 +12,12 @@ import Foundation
 /// a session). Boring `UserDefaults` persistence, like the rest of the app's config.
 @MainActor
 final class AppPreferences: ObservableObject {
-    static let shared = AppPreferences()
+    /// The app's own preferences, and the only instance whose syntax theme reaches the screen.
+    static let shared: AppPreferences = {
+        let preferences = AppPreferences()
+        SyntaxTheme.select(preferences.syntaxTheme)
+        return preferences
+    }()
 
     /// `internal` rather than `private` only because Swift's `private` does not cross files and
     /// `AppPreferences+Palette` writes through it (docs/NOTES.md ▸ Lint ceilings and file splitting).
@@ -160,6 +165,17 @@ final class AppPreferences: ObservableObject {
         }
     }
 
+    /// How Quick View draws an RTF file — its control words, or the document they describe (PLAN.md
+    /// §M39 ▸ Slice 3). Its own preference because it opens on the document, as RTF always had, where a
+    /// page opens on its source; one shared choice would make `1` on a letter turn every page to source.
+    @Published var quickViewRichTextStyle: QuickViewRenderStyle {
+        didSet {
+            guard quickViewRichTextStyle != oldValue else { return }
+            defaults.set(quickViewRichTextStyle.rawValue, forKey: Keys.quickViewRichTextStyle)
+            NotificationCenter.default.post(name: Self.quickViewRenderStyleDidChange, object: self)
+        }
+    }
+
     /// Panels ▸ whether a rendered HTML preview may run the page's own JavaScript (PLAN.md §M16).
     ///
     /// **Off** by default: a preview renders on every cursor step, so the file's code would run
@@ -179,6 +195,13 @@ final class AppPreferences: ObservableObject {
             defaults.set(quickViewJavaScriptEnabled, forKey: Keys.quickViewJavaScriptEnabled)
             NotificationCenter.default.post(name: Self.quickViewJavaScriptDidChange, object: self)
         }
+    }
+
+    /// Panels ▸ the colors code is drawn in: VS Code's (the default), Xcode's or GitHub's (PLAN.md
+    /// §M39 ▸ Slice 10). Changing it posts `syntaxThemeDidChange`, and on the shared instance it moves
+    /// `SyntaxTheme.current`, which every open surface redraws in (`SyntaxThemeRepaint`).
+    @Published var syntaxTheme: SyntaxColorTheme {
+        didSet { syntaxThemeChanged(from: oldValue) }
     }
 
     /// Panels ▸ how large a file Quick View may pull down from a server on its own, in **bytes**
@@ -230,6 +253,12 @@ final class AppPreferences: ObservableObject {
             defaults.set(remoteRefreshFloor, forKey: Keys.remoteRefreshFloor)
             NotificationCenter.default.post(name: Self.remoteRefreshFloorDidChange, object: self)
         }
+    }
+
+    /// Panels ▸ the seconds a Quick View slideshow shows each image (PLAN.md §M39 ▸ Slice 16); its
+    /// bookkeeping is in `AppPreferences+Slideshow`, for this file's length ceiling.
+    @Published var slideshowInterval: Int {
+        didSet { slideshowIntervalChanged(from: oldValue) }
     }
 
     /// Panels ▸ the three colors the user owns (PLAN.md §M15 Slice 2), each as `#RRGGBB` or the
@@ -402,6 +431,9 @@ final class AppPreferences: ObservableObject {
         // Defaults off (see the property), which is what `bool(forKey:)` already answers for a
         // never-written key.
         quickViewJavaScriptEnabled = defaults.bool(forKey: Keys.quickViewJavaScriptEnabled)
+        // Empty (never written) = VS Code's, and so is a theme an older or newer build can't parse.
+        syntaxTheme = SyntaxColorTheme(rawValue: defaults.string(forKey: Keys.syntaxTheme) ?? "")
+            ?? .standard
         // `object(forKey:)`, not `integer(forKey:)`: a missing key reads as **0** there, which is a
         // legitimate value here ("never fetch unasked") — so the cheap spelling would hand every
         // fresh install the one setting that turns the feature off, and read as it never working.
@@ -417,6 +449,7 @@ final class AppPreferences: ObservableObject {
             (defaults.object(forKey: Keys.remoteRefreshFloor) as? NSNumber)?.doubleValue
                 ?? RemoteRefreshPolicy.defaultFloor
         )
+        slideshowInterval = Self.storedSlideshowInterval(in: defaults)
         // Empty (never written) = the source, the shipped default, and so is anything an
         // older/newer build can't parse.
         quickViewRenderStyle = QuickViewRenderStyle(
@@ -433,6 +466,10 @@ final class AppPreferences: ObservableObject {
         quickViewXMLStyle = QuickViewRenderStyle(
             rawValue: defaults.string(forKey: Keys.quickViewXMLStyle) ?? ""
         ) ?? QuickViewDualStyleKind.xml.defaultStyle
+        // Empty (never written) = the document, which is what RTF showed before it had a source.
+        quickViewRichTextStyle = QuickViewRenderStyle(
+            rawValue: defaults.string(forKey: Keys.quickViewRichTextStyle) ?? ""
+        ) ?? QuickViewDualStyleKind.richText.defaultStyle
         // Empty (never written) = Follow System, and so is anything `PanelPalette` can't parse.
         accentColorHex = defaults.string(forKey: Keys.accentColorHex) ?? ""
         cursorColorHex = defaults.string(forKey: Keys.cursorColorHex) ?? ""

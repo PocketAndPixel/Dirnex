@@ -33,43 +33,72 @@ public struct MarkdownHeading: Equatable, Sendable {
 /// The order it visits headings in is the order the renderer renders them in, and that
 /// correspondence is the one thing here that could silently drift — so `MarkdownAnchorTests` pins it
 /// against a document with headings nested inside both container kinds.
+///
+/// The walk is one function, `visit`, and both of its users go through it: the anchors here, and
+/// the title an exported page takes from its first heading (`MarkdownTitle`), so the two cannot
+/// disagree about which heading comes first.
 enum MarkdownHeadings {
     static func gather(
         from blocks: [MarkdownBlock],
-        references: [String: MarkdownLinkReference]
+        references: [String: MarkdownLinkReference],
+        footnotes: Set<String> = []
     ) -> [MarkdownHeading] {
         var slugger = MarkdownSlugger()
         var headings: [MarkdownHeading] = []
-        collect(blocks, into: &headings, slugger: &slugger, references: references)
+        visit(blocks) { level, source in
+            let text = MarkdownInline.plainText(MarkdownInlineParser.parse(
+                source,
+                references: references,
+                footnotes: footnotes
+            ))
+            headings.append(MarkdownHeading(level: level, text: text, slug: slugger.next(for: text)))
+            return true
+        }
         return headings
     }
 
-    private static func collect(
+    /// The first heading in the order `gather` takes them, with its source as written.
+    static func first(in blocks: [MarkdownBlock]) -> (level: Int, source: String)? {
+        var first: (level: Int, source: String)?
+        visit(blocks) { level, source in
+            first = (level, source)
+            return false
+        }
+        return first
+    }
+
+    /// Hand each heading's level and source to `body` in document order, until it answers `false`.
+    /// Answers whether the walk ran to the end.
+    @discardableResult
+    private static func visit(
         _ blocks: [MarkdownBlock],
-        into headings: inout [MarkdownHeading],
-        slugger: inout MarkdownSlugger,
-        references: [String: MarkdownLinkReference]
-    ) {
+        _ body: (Int, String) -> Bool
+    ) -> Bool {
         for block in blocks {
             switch block {
             case let .heading(level, source):
-                let text = MarkdownInlineParser.plainText(
-                    MarkdownInlineParser.parse(source, references: references)
-                )
-                headings.append(
-                    MarkdownHeading(level: level, text: text, slug: slugger.next(for: text))
-                )
-            case let .blockQuote(inner):
-                collect(inner, into: &headings, slugger: &slugger, references: references)
+                guard body(level, source) else { return false }
+            case let .blockQuote(inner), let .alert(_, inner):
+                guard visit(inner, body) else { return false }
             case let .list(list):
                 for item in list.items {
-                    collect(item.blocks, into: &headings, slugger: &slugger, references: references)
+                    guard visit(item.blocks, body) else { return false }
                 }
-            // Spelled out rather than left to a `default`, so a block kind that gains children is
-            // named here by the compiler instead of quietly holding headings nobody can link to.
+            case let .definitionList(items):
+                for definition in items.flatMap(\.definitions) {
+                    guard visit(definition.blocks, body) else { return false }
+                }
+            // A footnote is drawn at the foot of the page, after every heading has taken its
+            // anchor, so a heading inside one gets none, here and in the renderer alike.
+            case .footnoteDefinition:
+                break
+            // Spelled out rather than left to a `default`, so a block kind that gains children
+            // is named here by the compiler instead of quietly holding headings nobody can
+            // link to.
             case .paragraph, .thematicBreak, .codeBlock, .table, .frontMatter, .tableOfContents:
                 break
             }
         }
+        return true
     }
 }

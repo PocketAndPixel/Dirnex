@@ -18,6 +18,7 @@ extension AppPreferences {
         case .table: quickViewTableStyle
         case .json: quickViewJSONStyle
         case .xml: quickViewXMLStyle
+        case .richText: quickViewRichTextStyle
         }
     }
 
@@ -27,6 +28,7 @@ extension AppPreferences {
         case .table: quickViewTableStyle = style
         case .json: quickViewJSONStyle = style
         case .xml: quickViewXMLStyle = style
+        case .richText: quickViewRichTextStyle = style
         }
     }
 }

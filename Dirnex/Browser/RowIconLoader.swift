@@ -13,15 +13,34 @@ import QuickLookThumbnailing
 /// shows its placeholder until then. Quick Look's own `.icon` representation was tried for this and
 /// is worse: 308 ms against 56 ms for the same 15 items, and three applications drawn differently.
 ///
-/// A row asks with ``image(for:kind:pointSize:scale:appearance:)`` on every render and gets `nil`
-/// until its image is in; a pane listens for ``didLoadNotification`` and re-asks for its visible rows.
+/// A row asks with ``image(for:)`` when it is drawn and gets `nil` until its image is in. A pane
+/// listens for ``didLoadNotification``, which carries the images that arrived, puts each in the row
+/// that asked for it, and asks again for the rest of its rows on screen.
+///
+/// Both are about the cache being an `NSCache`, which lets go of entries while the system is under
+/// memory pressure (2026-11-17). When each arrival only made every pane ask again for all its rows, a
+/// row the cache had let go of got its placeholder back and another load, whose arrival asked again,
+/// and so on. Seen by Oleg as thumbnails and My Drive's icon blinking several times a second: the log
+/// held the same four custom-icon folders loaded about eight times a second each for 3½ minutes, at a
+/// warning pressure level that lasted all night, and the same build never did it once the pressure was
+/// back to normal (docs/NOTES.md ▸ Drawing rows and cells). So an arrival carries its images rather
+/// than leaving them in the cache to be read back, and an image some row is still drawing is answered
+/// from ``drawn`` whatever the cache has let go of, so asking again for a row on screen (on an arrival,
+/// on coming to the front, on a reload) neither blanks it nor loads it again.
 @MainActor
 final class RowIconLoader {
     static let shared = RowIconLoader()
 
-    /// Posted when images have arrived, at most once per ``notifyDelay``, so every pane re-asks for
-    /// its visible rows; also when the app's appearance changes, which makes every key a new one.
+    /// Posted when images have arrived, at most once per ``notifyDelay``, with the images in its
+    /// `userInfo` (``arrivals(in:)``), so a pane can put them in its rows whatever the cache has let go
+    /// of since.
     static let didLoadNotification = Notification.Name("Dirnex.rowIconsDidLoad")
+
+    /// Posted when the app's appearance changes, which makes every key a new one, so every pane asks
+    /// again for its visible rows.
+    static let keysDidChangeNotification = Notification.Name("Dirnex.rowIconKeysDidChange")
+
+    private static let arrivalsKey = "arrivals"
 
     enum Kind: Hashable {
         /// The item's own icon, as `NSWorkspace.icon(forFile:)` draws it.
@@ -55,8 +74,27 @@ final class RowIconLoader {
     private let cache = NSCache<CacheKey, Loaded>()
     private var waiting: [Key] = []
     private var running: Set<Key> = []
+    /// The images that arrived since the last ``didLoadNotification``, posted with the next one. The
+    /// notification carries them rather than leaving the panes to read them back from the cache,
+    /// which may have let them go in the 50 ms between.
+    private var arrived: [Key: NSImage] = [:]
+    /// Every image handed out, held weakly: one that a cell is still drawing stays here when the cache
+    /// lets it go, so a row on screen asked again gets the same picture back. Emptied entries are
+    /// swept when the table has doubled since the last sweep.
+    private var drawn: [Key: WeakImage] = [:]
+    private var sweepDrawnAt = 512
     private var notifyScheduled = false
+    private var reaskScheduled = false
     private var appearanceObservation: NSKeyValueObservation?
+
+    /// Tests only: told of every load as it starts, and of every result as it is stored.
+    var didStartLoad: ((Key) -> Void)?
+    var didStore: ((Key) -> Void)?
+    /// Tests only: while set, nothing starts loading, so requests wait and the oldest are dropped past
+    /// ``maxWaiting``, as behind a long scroll.
+    var holdsLoads = false {
+        didSet { if !holdsLoads { startWaiting() } }
+    }
 
     private init() {
         // About 16 MB at the largest row's 40 px; a folder of more pictures than this reloads the
@@ -64,17 +102,17 @@ final class RowIconLoader {
         cache.countLimit = 4000
     }
 
-    /// The loaded image for `entry`, or `nil` while it is loading or when there is none to show, in
-    /// which case the row keeps its placeholder. A miss starts the load.
-    func image(
+    /// The key `entry`'s image is kept under, for a row drawn at `pointSize` and `scale` in
+    /// `appearance`.
+    func key(
         for entry: FileEntry,
         kind: Kind,
         pointSize: CGFloat,
         scale: CGFloat,
         appearance: NSAppearance
-    ) -> NSImage? {
+    ) -> Key {
         observeAppearanceOnce()
-        let key = Key(
+        return Key(
             path: entry.path.path,
             modified: entry.modificationDate,
             size: entry.byteSize,
@@ -83,9 +121,48 @@ final class RowIconLoader {
             scale: scale,
             appearance: Self.appearanceName(appearance).rawValue
         )
+    }
+
+    /// The loaded image for `key`, or `nil` while it is loading or when there is none to show, in
+    /// which case the row keeps its placeholder. A miss starts the load, unless a row is still
+    /// drawing the image, which is answered without one.
+    func image(for key: Key) -> NSImage? {
         if let loaded = cache.object(forKey: CacheKey(key)) { return loaded.image }
+        if let image = drawn[key]?.image { return image }
         enqueue(key)
         return nil
+    }
+
+    /// ``image(for:)`` for `entry`, its key made here.
+    func image(
+        for entry: FileEntry,
+        kind: Kind,
+        pointSize: CGFloat,
+        scale: CGFloat,
+        appearance: NSAppearance
+    ) -> NSImage? {
+        image(
+            for: key(
+                for: entry,
+                kind: kind,
+                pointSize: pointSize,
+                scale: scale,
+                appearance: appearance
+            )
+        )
+    }
+
+    /// The images a ``didLoadNotification`` brought, by key.
+    static func arrivals(in notification: Notification) -> [Key: NSImage] {
+        notification.userInfo?[arrivalsKey] as? [Key: NSImage] ?? [:]
+    }
+
+    /// Let go of `keys`, as `NSCache` does on its own under memory pressure. For tests, which have no
+    /// other way to make it.
+    func forget(_ keys: some Sequence<Key>) {
+        for key in keys {
+            cache.removeObject(forKey: CacheKey(key))
+        }
     }
 
     // MARK: - Loading
@@ -100,8 +177,10 @@ final class RowIconLoader {
     }
 
     private func startWaiting() {
+        guard !holdsLoads else { return }
         while running.count < Self.maxRunning, let key = waiting.popLast() {
             running.insert(key)
+            didStartLoad?(key)
             Task {
                 let image = await Self.load(key)
                 finish(key, image: image)
@@ -122,8 +201,20 @@ final class RowIconLoader {
         }
         // A miss is kept too, so a file Quick Look has nothing for is not asked again on every render.
         cache.setObject(Loaded(loaded), forKey: CacheKey(key))
-        if loaded != nil { scheduleNotify() }
+        didStore?(key)
+        if let loaded {
+            remember(loaded, for: key)
+            arrived[key] = loaded
+            scheduleNotify()
+        }
         startWaiting()
+    }
+
+    private func remember(_ image: NSImage, for key: Key) {
+        drawn[key] = WeakImage(image: image)
+        guard drawn.count >= sweepDrawnAt else { return }
+        drawn = drawn.filter { $0.value.image != nil }
+        sweepDrawnAt = max(512, drawn.count * 2)
     }
 
     private func scheduleNotify() {
@@ -132,7 +223,25 @@ final class RowIconLoader {
         Task {
             try? await Task.sleep(for: Self.notifyDelay)
             notifyScheduled = false
-            NotificationCenter.default.post(name: Self.didLoadNotification, object: self)
+            let arrivals = arrived
+            arrived = [:]
+            NotificationCenter.default.post(
+                name: Self.didLoadNotification,
+                object: self,
+                userInfo: [Self.arrivalsKey: arrivals]
+            )
+        }
+    }
+
+    /// Tell the panes to ask again, after the same short delay as an arrival, so a table has taken
+    /// the new appearance by the time it is asked for its own.
+    private func scheduleReask() {
+        guard !reaskScheduled else { return }
+        reaskScheduled = true
+        Task {
+            try? await Task.sleep(for: Self.notifyDelay)
+            reaskScheduled = false
+            NotificationCenter.default.post(name: Self.keysDidChangeNotification, object: self)
         }
     }
 
@@ -141,7 +250,7 @@ final class RowIconLoader {
     private func observeAppearanceOnce() {
         guard appearanceObservation == nil else { return }
         appearanceObservation = NSApplication.shared.observe(\.effectiveAppearance) { _, _ in
-            MainActor.assumeIsolated { RowIconLoader.shared.scheduleNotify() }
+            MainActor.assumeIsolated { RowIconLoader.shared.scheduleReask() }
         }
     }
 
@@ -212,6 +321,11 @@ private final class CacheKey: NSObject {
     override func isEqual(_ object: Any?) -> Bool {
         (object as? CacheKey)?.key == key
     }
+}
+
+/// An image some row may still be drawing, not kept alive for it.
+private struct WeakImage {
+    weak var image: NSImage?
 }
 
 /// What a load gave, `nil` included: a file with no thumbnail is remembered as having none.

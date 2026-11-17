@@ -84,6 +84,12 @@ public enum RemoteFetchPurpose: Sendable, Equatable, CaseIterable {
     /// for this row is not asked about: the transfer stops, and a file that has to be that large can
     /// be waited for during the drag.
     case dragOut
+    /// File ▸ Export… over a Markdown file that is not on this disk: its bytes are rendered into a
+    /// page of its own (PLAN.md §M39 ▸ Slice 12).
+    ///
+    /// On the open and edit row, as every gesture somebody pressed a key for sits there: one file the
+    /// user named, read end to end. Its own case for the reason ``addToArchive`` gives.
+    case export
 
     /// Whether this fetch happens without anybody having pressed a key for the file in question.
     ///
@@ -94,7 +100,7 @@ public enum RemoteFetchPurpose: Sendable, Equatable, CaseIterable {
         switch self {
         case .cursorPreview, .writeBackCheck, .dragOut: true
         case .preview, .open, .edit, .handOff, .compare, .syncContents, .checksum, .userScript,
-             .pack, .addToArchive, .browseArchive: false
+             .pack, .addToArchive, .browseArchive, .export: false
         }
     }
 }
@@ -213,7 +219,7 @@ public enum RemoteFetchPolicy {
         // mere look is the ordering this table exists to keep straight.
         case .open, .edit,
              .handOff, .compare, .syncContents, .checksum, .userScript, .pack, .addToArchive,
-             .browseArchive, .dragOut:
+             .browseArchive, .dragOut, .export:
             max(64 * 1024 * 1024, limit)
         }
     }

@@ -22,6 +22,7 @@ extension QuickViewPreviewView {
         if isDelimitedTable(url) { return .table }
         if isJSON(url) { return .json }
         if isXML(url) { return .xml }
+        if isRichTextSource(url) { return .richText }
         return isRenderableHTML(url) || isRenderableMarkdown(url) ? .page : nil
     }
 }

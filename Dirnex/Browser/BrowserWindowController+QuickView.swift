@@ -1,4 +1,5 @@
 import AppKit
+import DirnexCore
 
 /// Quick View for the window: the mode where a live preview follows the *active* pane's cursor,
 /// at one of three sizes — the inactive pane (⌃Q, PLAN.md §M4), across both panes (⌃⇧Q) or filling
@@ -55,6 +56,8 @@ extension BrowserWindowController {
 
     func setQuickViewMode(_ mode: QuickViewMode) {
         guard mode != quickViewMode else { return }
+        // A slideshow runs at full size, so the pane size or none ends it (PLAN.md §M39 ▸ Slice 16).
+        if !mode.isFullSize { stopQuickViewSlideshow() }
         quickViewMode = mode
         // Before the surfaces are reconciled, so the window is already resizing into (or out of)
         // the full-screen space while the preview lays itself out at the size it will land at.
@@ -109,8 +112,8 @@ extension BrowserWindowController {
     /// Re-state the visible header, because the JavaScript mark lives in its caption and the reload
     /// above says nothing about it. Only the caption is touched: re-delivering would ask the surface
     /// to show a file it is already showing, which it rightly skips, and the page has just been
-    /// reloaded by the loop above anyway.
-    private func refreshQuickViewCaption() {
+    /// reloaded by the loop above anyway. Internal, since a slideshow's mark lives there too.
+    func refreshQuickViewCaption() {
         let preview = quickViewMode == .pane
             ? counterpart(of: focusedPanel).quickViewPreview
             : activeFullSizePreview
@@ -208,7 +211,8 @@ extension BrowserWindowController {
             placeholder: placeholder,
             // Only where there is a card to carry them: controls armed for a surface that is showing
             // a real file would act on behalf of a row nobody is looking at.
-            actions: placeholder.map { _ in previewActions(for: active) }
+            actions: placeholder.map { _ in previewActions(for: active) },
+            location: active.quickViewSourceLocation
         )
         switch quickViewMode {
         case .off:
@@ -219,7 +223,8 @@ extension BrowserWindowController {
                 style: style,
                 caption: quickViewCaption(for: url, style: style, from: active),
                 placeholder: placeholder,
-                actions: content.actions
+                actions: content.actions,
+                location: content.location
             )
         case .fullWindow:
             present(ensureFullWindowPreview(), content, from: active)
@@ -229,7 +234,10 @@ extension BrowserWindowController {
         // The full-size surfaces sit over the *focused* table, so anything a backend does with
         // first responder as it loads would silently turn ↑/↓ into document scrolling — the mode's
         // whole point, lost. Re-assert the table after every show.
-        if quickViewMode.isFullSize { restoreTableFocus(to: active) }
+        if quickViewMode.isFullSize {
+            restoreTableFocus(to: active)
+            quickViewSlideshowSurfaceDidUpdate(activeFullSizePreview, from: active)
+        }
     }
 
     /// What the placeholder card's controls do, bound to the pane whose cursor it is standing in for.
@@ -276,6 +284,8 @@ extension BrowserWindowController {
         let style: QuickViewRenderStyle
         let placeholder: RemotePreviewPlaceholder?
         let actions: RemotePreviewActions?
+        /// Where the file is on its own backend, which a rendered page's links lead from (§M39).
+        let location: VFSPath?
     }
 
     /// Unhide `preview`, load `content` into it, and name the file in its header.
@@ -289,7 +299,12 @@ extension BrowserWindowController {
     ) {
         preview.isHidden = false
         preview.placeholderActions = content.actions
-        preview.show(content.url, style: content.style, placeholder: content.placeholder)
+        preview.show(
+            content.url,
+            style: content.style,
+            placeholder: content.placeholder,
+            location: content.location
+        )
         preview.setCaption(quickViewCaption(for: content.url, style: content.style, from: active))
     }
 
@@ -309,6 +324,7 @@ extension BrowserWindowController {
         from active: PanelViewController
     ) -> QuickViewCaption? {
         var caption = active.quickViewCaption
+        caption?.isSlideshowRunning = quickViewSlideshow != nil
         guard let url, let kind = QuickViewPreviewView.dualStyleKind(of: url) else {
             caption?.style = nil
             return caption

@@ -13,25 +13,45 @@ import Foundation
 enum MarkdownHTMLRenderer {
     static func render(_ scan: MarkdownBlockScan, options: MarkdownRenderOptions) -> String {
         let context = Context(scan: scan, options: options)
-        return scan.blocks.map { context.render($0) }.joined(separator: "\n")
+        let body = context.render(scan.blocks)
+        // Last, because the footnotes drawn are the ones the page above referenced, in the order
+        // it referenced them (`MarkdownHTMLRenderer+Footnotes`).
+        let footnotes = context.footnoteSection()
+        return footnotes.isEmpty ? body : body + "\n" + footnotes
     }
 
     /// What every block needs while rendering: the link definitions to resolve against, the
     /// document's headings, and the caller's say over where an image's bytes come from.
     ///
     /// A **class**, not a struct, for one reason: the anchors are handed out in document order, so
-    /// rendering a heading advances a cursor. A struct would need every `render` on the walk to be
-    /// `mutating`, which recursion through `map` cannot express.
+    /// rendering a heading advances a cursor, and so does a footnote's number. A struct would need
+    /// every `render` on the walk to be `mutating`, which recursion through `map` cannot express.
     final class Context {
         let references: [String: MarkdownLinkReference]
         let options: MarkdownRenderOptions
         let headings: [MarkdownHeading]
+        let footnotes: [String: MarkdownFootnote]
+        /// The key of every footnote, which is what the inline pass needs to know of them.
+        let footnoteKeys: Set<String>
+        /// What a `[[name]]` is checked against, its answers kept for the whole page.
+        let wikiLinks: MarkdownWikiLink.Lookup
         /// How many headings have been rendered. See `nextHeadingID`.
         private var headingIndex = 0
+        /// Footnotes in the order they were first referenced, which is their numbering.
+        var footnoteOrder: [String] = []
+        /// How many times each footnote has been referenced so far, which names each reference's
+        /// anchor (`fnref-1`, `fnref-1-2`) and how many ways back its footnote draws.
+        var footnoteReferences: [String: Int] = [:]
 
         init(scan: MarkdownBlockScan, options: MarkdownRenderOptions) {
             references = scan.references
             headings = scan.headings
+            footnotes = scan.footnotes
+            footnoteKeys = Set(scan.footnotes.keys)
+            wikiLinks = MarkdownWikiLink.Lookup(
+                locateFile: options.locateFile,
+                anchors: Set(scan.headings.map(\.slug))
+            )
             self.options = options
         }
 
@@ -47,8 +67,14 @@ enum MarkdownHTMLRenderer {
                 codeBlock(info: info, code: code)
             case let .blockQuote(blocks):
                 MarkdownHTML.element("blockquote", render(blocks))
+            case let .alert(kind, blocks):
+                alert(kind, blocks)
+            case .footnoteDefinition:
+                ""
             case let .list(list):
                 self.list(list)
+            case let .definitionList(items):
+                definitionList(items)
             case let .table(table):
                 self.table(table)
             case let .frontMatter(entries):
@@ -58,8 +84,10 @@ enum MarkdownHTMLRenderer {
             }
         }
 
+        /// The blocks one per line, leaving out any that draw nothing, so a footnote's definition
+        /// leaves no blank line where it stood.
         func render(_ blocks: [MarkdownBlock]) -> String {
-            blocks.map(render).joined(separator: "\n")
+            blocks.map(render).filter { !$0.isEmpty }.joined(separator: "\n")
         }
 
         // MARK: Leaf blocks
@@ -95,6 +123,12 @@ enum MarkdownHTMLRenderer {
             // listing *plus a note*, which is why the diagram path owns both outcomes rather than
             // failing back into this one (`MarkdownHTMLRenderer+Diagram`).
             if let diagram = diagram(info: info, code: code) { return diagram }
+            // A ```` ```math ```` fence is display math, and stays a listing when its TeX does not
+            // close. Lowercase only, as on GitHub, which draws ```` ```Math ```` as code.
+            if info?.split(whereSeparator: \.isWhitespace).first == "math",
+               let markup = TeXMath.mathML(code, display: true) {
+                return "<div class=\"math-display\">\(markup)</div>"
+            }
             // The first word only: an info string may carry more (`swift showLineNumbers`), and the
             // language is the part that names a grammar.
             let language = info?.split(whereSeparator: \.isWhitespace).first.map(String.init)
@@ -104,6 +138,20 @@ enum MarkdownHTMLRenderer {
                 MarkdownCodeHighlighting.body(code, info: info),
                 attributes: attributes
             ) + "</pre>"
+        }
+
+        /// A GitHub alert, in GitHub's own classes: a box holding its title and then its text.
+        private func alert(_ kind: MarkdownAlertKind, _ blocks: [MarkdownBlock]) -> String {
+            let title = MarkdownHTML.element(
+                "p",
+                MarkdownHTML.escaped(options.alertTitle(kind)),
+                attributes: " class=\"markdown-alert-title\""
+            )
+            return MarkdownHTML.element(
+                "div",
+                "\n" + title + "\n" + render(blocks) + "\n",
+                attributes: " class=\"markdown-alert markdown-alert-\(kind.rawValue)\""
+            )
         }
 
         private func list(_ list: MarkdownList) -> String {
@@ -133,6 +181,20 @@ enum MarkdownHTMLRenderer {
                 attributes = " class=\"task\""
             }
             return MarkdownHTML.element("li", inner, attributes: attributes)
+        }
+
+        /// A definition list. A definition with no blank line before it draws its text bare, as a
+        /// tight list's item does.
+        private func definitionList(_ items: [MarkdownDefinitionItem]) -> String {
+            let rows = items.flatMap { item in
+                [MarkdownHTML.element("dt", inline(item.term))] + item.definitions.map {
+                    MarkdownHTML.element(
+                        "dd",
+                        $0.isLoose ? render($0.blocks) : unwrappedParagraph($0.blocks)
+                    )
+                }
+            }
+            return MarkdownHTML.element("dl", "\n" + rows.joined(separator: "\n") + "\n")
         }
 
         private func unwrappedParagraph(_ blocks: [MarkdownBlock]) -> String {

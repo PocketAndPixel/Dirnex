@@ -96,6 +96,8 @@ struct PanelsSettingsView: View {
 
             QuickViewFetchLimitSection(preferences: preferences)
 
+            SlideshowIntervalSection(preferences: preferences)
+
             RemoteRefreshSection(preferences: preferences)
 
             Section {
@@ -117,6 +119,8 @@ struct PanelsSettingsView: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
             }
+
+            SyntaxThemeSection(preferences: preferences)
 
             PaletteSettingsSection(preferences: preferences)
 
@@ -156,6 +160,22 @@ struct OperationsSettingsView: View {
 
     var body: some View {
         Form {
+            Section {
+                Toggle(
+                    "Ask before copying and moving, and show progress",
+                    isOn: $preferences.confirmTransfers
+                )
+            } footer: {
+                Text(
+                    """
+                    F5 and F6 ask before they start, then show the progress in a dialog. Background \
+                    hands it to the queue bar. When this is off, they go straight to the queue bar.
+                    """
+                )
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            }
+
             Section {
                 Toggle("Ask before moving items to the Trash", isOn: $preferences.confirmTrash)
             } footer: {

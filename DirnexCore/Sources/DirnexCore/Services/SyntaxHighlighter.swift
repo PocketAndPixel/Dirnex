@@ -30,6 +30,7 @@ public enum SyntaxHighlighter {
         case .nginx: SyntaxNginxScanner.tokens(in: text)
         case .ignoreFile: SyntaxIgnoreScanner.tokens(in: text, dialect: .ignore)
         case .gitAttributes: SyntaxIgnoreScanner.tokens(in: text, dialect: .attributes)
+        case .rtf: SyntaxRTFScanner.tokens(in: text)
         }
     }
 
@@ -60,6 +61,10 @@ private struct CompiledGrammar {
     let keywords: Set<String>
     let typeNames: Set<String>
     let keywordsAreCaseInsensitive: Bool
+    let lineBlockOpen: [UInt16]
+    let lineBlockClose: [UInt16]
+    let hasLineBlockComment: Bool
+    let keysBeforeColon: Bool
     /// Longest word worth building a `String` for. Every identifier in the file is measured against
     /// it before anything is allocated, and the ones that pass are short enough to live in Swift's
     /// small-string representation — so the hot path of the scanner allocates nothing at all.
@@ -96,6 +101,10 @@ private struct CompiledGrammar {
         keywords = grammar.keywords
         typeNames = grammar.typeNames
         keywordsAreCaseInsensitive = grammar.keywordsAreCaseInsensitive
+        lineBlockOpen = grammar.lineBlockComment.map { Array($0.open.utf16) } ?? []
+        lineBlockClose = grammar.lineBlockComment.map { Array($0.close.utf16) } ?? []
+        hasLineBlockComment = !lineBlockOpen.isEmpty
+        keysBeforeColon = grammar.keysBeforeColon
         maxWordLength = (grammar.keywords.map(\.utf16.count) + grammar.typeNames.map(\.utf16.count))
             .max() ?? 0
     }
@@ -134,10 +143,11 @@ private struct Scanner {
 
     // MARK: Comments
 
-    /// A block comment first, then each line-comment spelling. Both run to the end of the buffer
-    /// when they are never closed — which is what a file truncated at `TextPreview.byteLimit` hands
-    /// over, and what an unterminated `/*` genuinely means.
+    /// A whole-line block comment, a block comment, then each line-comment spelling. All three run
+    /// to the end of the buffer when they are never closed — which is what a file truncated at
+    /// `TextPreview.byteLimit` hands over, and what an unterminated `/*` genuinely means.
     private mutating func scanComment() -> Bool {
+        if grammar.hasLineBlockComment, scanLineBlockComment() { return true }
         if grammar.hasBlockComment, matches(grammar.blockOpen) {
             let start = index
             index += grammar.blockOpen.count
@@ -167,6 +177,37 @@ private struct Scanner {
         return false
     }
 
+    /// Ruby's `=begin` … `=end`: from an opener that starts its line to the end of the first line
+    /// a closer starts (`LanguageGrammar.lineBlockComment`). The search for the closer is a
+    /// lookahead over line starts, and nothing is kept once it lands.
+    private mutating func scanLineBlockComment() -> Bool {
+        guard index == 0 || Unit.isLineBreak(units[index - 1]),
+              isLineDelimiter(grammar.lineBlockOpen, at: index)
+        else { return false }
+        let start = index
+        var line = Unit.nextLineStart(after: Unit.lineEnd(from: index, in: units), in: units)
+        index = units.count
+        while line < units.count {
+            let end = Unit.lineEnd(from: line, in: units)
+            if isLineDelimiter(grammar.lineBlockClose, at: line) {
+                index = end
+                break
+            }
+            line = Unit.nextLineStart(after: end, in: units)
+        }
+        emit(from: start, kind: .comment)
+        return true
+    }
+
+    /// Whether `delimiter` stands at `position` with whitespace or the line's end after it, so
+    /// `=beginning` opens nothing.
+    private func isLineDelimiter(_ delimiter: [UInt16], at position: Int) -> Bool {
+        guard Unit.matches(delimiter, in: units, at: position) else { return false }
+        let after = position + delimiter.count
+        guard after < units.count else { return true }
+        return Unit.isSpaceOrTab(units[after]) || Unit.isLineBreak(units[after])
+    }
+
     // MARK: Strings
 
     /// A quote-delimited literal, delimiters included in the token.
@@ -176,6 +217,10 @@ private struct Scanner {
     /// interpolation stays the string's color, which is the quiet direction: the alternative is
     /// re-entering the scanner from inside a literal, which is the state stack the milestone's
     /// boundary is drawn against.
+    ///
+    /// A closed literal with a colon after it is a key where the grammar says so
+    /// (`LanguageGrammar.keysBeforeColon`). One left open at a line break is not, whatever follows,
+    /// since only the closing branch asks.
     private mutating func scanString() -> Bool {
         for literal in grammar.strings where matches(literal.open) {
             let start = index
@@ -189,7 +234,8 @@ private struct Scanner {
                     break
                 } else if matches(literal.close) {
                     index += literal.close.count
-                    break
+                    emit(from: start, kind: isKey(at: index) ? .typeOrTag : .string)
+                    return true
                 } else {
                     index += 1
                 }
@@ -198,6 +244,18 @@ private struct Scanner {
             return true
         }
         return false
+    }
+
+    /// Whether a colon follows `position`, across whitespace and line breaks, in a grammar that
+    /// reads that as a key. A lookahead only: the scan resumes at `position` either way.
+    private func isKey(at position: Int) -> Bool {
+        guard grammar.keysBeforeColon else { return false }
+        var lookahead = position
+        while lookahead < units.count,
+              Unit.isSpaceOrTab(units[lookahead]) || Unit.isLineBreak(units[lookahead]) {
+            lookahead += 1
+        }
+        return lookahead < units.count && units[lookahead] == Unit.colon
     }
 
     // MARK: Directives, numbers, words
@@ -266,7 +324,10 @@ private struct Scanner {
         }
         guard Unit.isIdentifierStart(units[index]) else { return false }
         while index < units.count, Unit.isIdentifierContinue(units[index]) { index += 1 }
-        if let kind = classify(from: start, to: index) {
+        // JSON5's unquoted key, `{name: 1}`: in JSON nothing else is a bare word before a colon.
+        if isKey(at: index) {
+            emit(from: start, kind: .typeOrTag)
+        } else if let kind = classify(from: start, to: index) {
             emit(from: start, kind: kind)
         }
         return true

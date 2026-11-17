@@ -44,6 +44,73 @@ struct QuickViewMarkdownDiagramTests {
         Note over U,Robot: a note
         U-xRobot: cancel
     ```
+
+    ```mermaid
+    stateDiagram-v2
+        [*] --> Idle
+        Idle --> Idle : tick
+        state fork_state <<fork>>
+        state if_state <<choice>>
+        Idle --> fork_state : go
+        fork_state --> Active
+        Active --> if_state
+        if_state --> [*]
+        Busy : waiting
+        Busy : on a lock
+        if_state --> Busy
+        note right of Busy : a note
+        state Active {
+            [*] --> NumLockOff
+            --
+            [*] --> CapsLockOff
+        }
+    ```
+
+    ```mermaid
+    ---
+    title: Shapes
+    ---
+    classDiagram
+        namespace Geometry {
+            class Shape~T~ {
+                <<interface>>
+                +int id$
+                +area()* double
+            }
+        }
+        Shape "1" <|-- "*" Circle : is a
+        Circle *-- Point
+        Circle o-- Style
+        Circle ..> Canvas
+        Circle --() Drawable
+        note for Circle "round"
+    ```
+
+    ```mermaid
+    erDiagram
+        subgraph Sales
+            CUSTOMER ||--o{ ORDER : places
+        end
+        ORDER }|..|{ PROMO : uses
+        CUSTOMER {
+            string id PK "the key"
+        }
+    ```
+
+    ```mermaid
+    gantt
+        title Release
+        dateFormat YYYY-MM-DD
+        excludes weekends
+        topAxis
+        section Build
+        Parser :done, p, 2014-01-06, 2d
+        Lexer :active, l, after p, 3d
+        Fix :crit, f, after l, 2d
+        section Ship
+        Release :milestone, m, after f, 0d
+        Freeze :vert, v, 2014-01-10, 0d
+    ```
     """
 
     private func render(_ source: String) -> String {
@@ -51,7 +118,9 @@ struct QuickViewMarkdownDiagramTests {
             source,
             options: MarkdownRenderOptions(
                 textMetric: QuickViewMarkdownDiagram.metric,
-                describeUndrawnDiagram: { QuickViewMarkdownDiagram.describeUndrawn($0) }
+                describeUndrawnDiagram: { QuickViewMarkdownDiagram.describeUndrawn($0) },
+                // Inside the gantt above, so its today line is drawn too.
+                now: Date(timeIntervalSince1970: 1_389_355_200)
             )
         ).html
     }
@@ -73,7 +142,10 @@ struct QuickViewMarkdownDiagramTests {
     ///
     /// A short, closed list on purpose. Exempting a class is then a deliberate edit here, which is
     /// the whole value of the sweep above: a class arriving with no rule and no entry fails.
-    private static let hooks: Set<String> = ["mermaid-flowchart", "mermaid-sequence"]
+    private static let hooks: Set<String> = [
+        "mermaid-flowchart", "mermaid-sequence", "mermaid-state", "mermaid-class", "mermaid-er",
+        "mermaid-gantt"
+    ]
 
     @Test("the diagram rules reach the page the preview actually loads")
     func rulesAreInTheDocument() {
@@ -109,6 +181,18 @@ struct QuickViewMarkdownDiagramTests {
             ))
     }
 
+    @Test("a class name is measured in the bold face the stylesheet draws it in")
+    func boldMetricAgrees() {
+        // Measured bold and drawn regular would leave a box too wide; measured regular and drawn
+        // bold, a name spilling out of it. Both halves name the same face (§M39 ▸ Slice 14).
+        let metric = QuickViewMarkdownDiagram.metric
+        #expect(metric.boldWidth("CredentialDescription") > metric.width("CredentialDescription"))
+        let bold = NSFont.boldSystemFont(ofSize: QuickViewMarkdownDiagram.labelSize)
+        let expected = Double(("Shape" as NSString).size(withAttributes: [.font: bold]).width)
+        #expect(metric.boldWidth("Shape") == expected)
+        #expect(QuickViewMarkdownDiagram.rules.contains(".mm-class-name { font-weight: bold; }"))
+    }
+
     @Test("measuring is safe off the main actor, which is where the render runs")
     func metricIsUsableOffTheMainActor() async {
         // The milestone's probe measured this against four concurrent queues; the claim here is the
@@ -123,8 +207,8 @@ struct QuickViewMarkdownDiagramTests {
 
     @Test("an undrawn type is named, in the app's words rather than the core's")
     func undrawnTypeIsNamed() {
-        let output = render("```mermaid\nstateDiagram-v2\n[*] --> Still\n```")
-        #expect(output.contains(QuickViewMarkdownDiagram.describeUndrawn("stateDiagram-v2")))
+        let output = render("```mermaid\njourney\ntitle My day\n```")
+        #expect(output.contains(QuickViewMarkdownDiagram.describeUndrawn("journey")))
         // And the source is still there to read, which is what makes the fallback honest.
         #expect(output.contains("<pre>"))
     }

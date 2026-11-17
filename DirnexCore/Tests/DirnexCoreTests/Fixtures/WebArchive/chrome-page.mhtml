@@ -1,0 +1,47 @@
+From: <Saved by Blink>
+Snapshot-Content-Location: http://127.0.0.1:8765/index.html
+Subject: Probe page
+Date: Thu, 12 Nov 2026 19:43:30 GMT
+MIME-Version: 1.0
+Content-Type: multipart/related;
+	type="text/html";
+	boundary="----MultipartBoundary--GVMFFEkgXeZP1a1BR9gw0JMHSpXGdkRxbvpWFDTzsK----"
+
+
+------MultipartBoundary--GVMFFEkgXeZP1a1BR9gw0JMHSpXGdkRxbvpWFDTzsK----
+Content-Type: text/html
+Content-ID: <frame-8A9DA371F2BE7F64F678619425ABB920@mhtml.blink>
+Content-Transfer-Encoding: quoted-printable
+Content-Location: http://127.0.0.1:8765/index.html
+
+<!DOCTYPE html><html><head><meta http-equiv=3D"Content-Type" content=3D"tex=
+t/html; charset=3DUTF-8"><title>Probe page</title>
+<link rel=3D"stylesheet" href=3D"http://127.0.0.1:8765/style.css"></head><b=
+ody data-ran=3D"yes"><h1 id=3D"h">H=C3=A9llo archive</h1>
+<img id=3D"img" src=3D"http://127.0.0.1:8765/red.png"><div class=3D"box"></=
+div>
+
+<a id=3D"lnk" href=3D"https://example.com/">out</a></body></html>
+------MultipartBoundary--GVMFFEkgXeZP1a1BR9gw0JMHSpXGdkRxbvpWFDTzsK----
+Content-Type: image/png
+Content-Transfer-Encoding: base64
+Content-Location: http://127.0.0.1:8765/red.png
+
+iVBORw0KGgoAAAANSUhEUgAAAHgAAAA8CAIAAAAiz+n/AAAAhklEQVR4nO3QAQkAIBDAQJN8/1CG
+sYXCPFiAcWvP6ELr+cEngQbdCjToVqBBtwINuhVo0K1Ag24FGnQr0KBbgQbdCjToVqBBtwINuhVo
+0K1Ag24FGnQr0KBbgQbdCjToVqBBtwINuhVo0K1Ag24FGnQr0KBbgQbdCjToVqBBtwINuhVo0K0O
+5H7Ew6qOkfgAAAAASUVORK5CYII=
+
+------MultipartBoundary--GVMFFEkgXeZP1a1BR9gw0JMHSpXGdkRxbvpWFDTzsK----
+Content-Type: text/css
+Content-Transfer-Encoding: quoted-printable
+Content-Location: http://127.0.0.1:8765/style.css
+
+@charset "utf-8";
+
+body { font-family: sans-serif; }
+
+h1 { color: rgb(0, 128, 0); }
+
+.box { width: 300px; height: 40px; background: rgb(0, 0, 255); }
+------MultipartBoundary--GVMFFEkgXeZP1a1BR9gw0JMHSpXGdkRxbvpWFDTzsK------

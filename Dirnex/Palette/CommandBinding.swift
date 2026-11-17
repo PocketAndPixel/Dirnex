@@ -33,6 +33,7 @@ enum CommandBinding {
         "file.pack": #selector(PanelViewController.packSelection(_:)),
         "file.archiveNameEncoding":
             #selector(PanelViewController.chooseArchiveNameEncoding(_:)),
+        "file.export": #selector(PanelViewController.exportRenderedPage(_:)),
         "file.syncDirectories": #selector(PanelViewController.synchronizeDirectories(_:)),
         "file.compareByContents": #selector(PanelViewController.compareByContents(_:)),
         "file.resolveConflict": #selector(PanelViewController.resolveConflict(_:)),
@@ -89,6 +90,9 @@ enum CommandBinding {
             #selector(BrowserWindowController.toggleQuickViewFullWindow(_:)),
         "view.quickViewFullScreen":
             #selector(BrowserWindowController.toggleQuickViewFullScreen(_:)),
+        // The window controller, for the reason the sizes are: the slideshow runs at full size, where
+        // the preview is a sibling of the panes (PLAN.md §M39 ▸ Slice 16).
+        "view.quickViewSlideshow": #selector(BrowserWindowController.toggleQuickViewSlideshow(_:)),
         // The window controller for the same reason as the sizes above: at full size the preview
         // is a sibling of the panes, so a pane-hosted selector would find no target the moment the
         // user clicked into the document.

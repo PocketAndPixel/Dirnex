@@ -11,7 +11,11 @@ import Foundation
 /// too, because a diagram with no nodes is a blank rectangle, which is a worse answer than the
 /// source and a note.
 enum MermaidParser {
-    static func parse(_ source: String) -> MermaidDiagram {
+    /// `clock` is asked by a gantt alone (`MermaidGanttClock`). Whether a gantt draws never
+    /// depends on it, so `MermaidRenderer.unsupportedType` asks without one.
+    static func parse(_ fence: String, clock: MermaidGanttClock = .none) -> MermaidDiagram {
+        // Front matter first, so the type word is the one under it (`MermaidFrontMatter`).
+        let source = MermaidFrontMatter.split(fence).body
         let lines = statements(in: source)
         guard let header = lines.first else { return .unsupported("") }
         let keyword = String(header.prefix(while: { !$0.isWhitespace }))
@@ -27,21 +31,51 @@ enum MermaidParser {
         case "sequencediagram":
             let sequence = MermaidSequenceParser.parse(Array(lines.dropFirst()))
             return sequence.participants.isEmpty ? .unsupported(keyword) : .sequence(sequence)
+        case "statediagram", "statediagram-v2":
+            // Read again without the `;` split, which the state grammar does not have
+            // (`MermaidStateParser`).
+            let unsplit = statements(in: source, separator: nil)
+            let diagram = MermaidStateParser.parse(Array(unsplit.dropFirst()))
+            return diagram.states.isEmpty ? .unsupported(keyword) : .state(diagram)
+        case "classdiagram", "classdiagram-v2":
+            // No `;` split either: the corpus's members write `&lt;` (`MermaidClassParser`).
+            let unsplit = statements(in: source, separator: nil)
+            let diagram = MermaidClassParser.parse(Array(unsplit.dropFirst()))
+            return diagram.nodes.isEmpty ? .unsupported(keyword) : .classDiagram(diagram)
+        case "erdiagram":
+            let unsplit = statements(in: source, separator: nil)
+            let diagram = MermaidERParser.parse(Array(unsplit.dropFirst()))
+            return diagram.entities.isEmpty && diagram.groups.isEmpty
+                ? .unsupported(keyword)
+                : .entityRelationship(diagram)
+        case "gantt":
+            // A line per statement, as the gantt grammar has no `;` (`MermaidGanttParser`).
+            let unsplit = statements(in: source, separator: nil)
+            guard let parsed = MermaidGanttParser.parse(Array(unsplit.dropFirst())),
+                  !parsed.tasks.isEmpty,
+                  let gantt = try? MermaidGanttSchedule.resolve(parsed, clock: clock),
+                  gantt.tasks.contains(where: { $0.start != nil && $0.end != nil })
+            else { return .unsupported(keyword) }
+            return .gantt(gantt)
         default:
             return .unsupported(keyword)
         }
     }
 
-    /// The fence's statements: comments and blank lines gone, indentation gone, and a line ending in
-    /// a `;` separator split into the statements it holds.
+    /// The fence's statements: comments and blank lines gone, indentation gone, and a line holding
+    /// a `separator` split into the statements it holds — `;` unless the dialect has none.
     ///
     /// `%%` is mermaid's comment and it is stripped **outside quotes**, so a node label reading
     /// `A["100%% done"]` keeps its text. The same care is why the split on `;` is not a plain
     /// `components(separatedBy:)`.
-    static func statements(in source: String) -> [String] {
+    static func statements(in source: String, separator: Character? = ";") -> [String] {
         source
             .split(whereSeparator: \.isNewline)
-            .flatMap { splitOutsideQuotes(stripComment(String($0)), on: ";") }
+            .flatMap { line -> [String] in
+                let text = stripComment(String(line))
+                guard let separator else { return [text] }
+                return splitOutsideQuotes(text, on: separator)
+            }
             .map { $0.trimmingCharacters(in: .whitespaces) }
             .filter { !$0.isEmpty }
     }

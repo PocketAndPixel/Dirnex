@@ -51,11 +51,13 @@ struct QuickViewMarkdownPreviewTests {
     func bothFamiliesOfferBothStyles() throws {
         let tree = try TempDirectory()
         defer { tree.cleanup() }
-        for name in ["README.md", "page.html", "page.xhtml", "notes.markdown"] {
+        // RTF joined as a family of its own in M39 (`QuickViewRichTextSourceTests`); an OpenDocument
+        // file is rich text too, and still has one style, not being text.
+        for name in ["README.md", "page.html", "page.xhtml", "notes.markdown", "letter.rtf"] {
             let url = try tree.write(name, contents: "hi")
             #expect(QuickViewPreviewView.offersBothStyles(url), "\(name) should offer both")
         }
-        for name in ["notes.txt", "photo.jpg", "letter.rtf", "page.webarchive"] {
+        for name in ["notes.txt", "photo.jpg", "essay.odt", "page.webarchive"] {
             let url = try tree.write(name, contents: "hi")
             #expect(!QuickViewPreviewView.offersBothStyles(url), "\(name) should not")
         }

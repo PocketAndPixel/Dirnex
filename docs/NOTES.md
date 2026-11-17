@@ -27,6 +27,82 @@ at build time.
   time and read as *our* bug when a user's link lands nowhere. The same corpus handed over the
   duplicate rule's real shape — a file linking to `#all`, `#all-1` **and** `#all-2`, which is a
   counter that steps past a collision the author wrote, not "append the count".
+  - **When the corpus has no answer, GitHub's renderer can be asked directly, two ways.**
+    `gh api markdown -f mode=markdown -F text=@sample.md` renders a synthetic sample as GitHub
+    does, footnotes included, but with **no alerts and no heading anchors**. For those, render a real
+    file in a public repository: `gh api repos/<owner>/<repo>/contents/<path> -H 'Accept:
+    application/vnd.github.html'` returns the page as the site draws it, alert boxes and
+    `user-content-` anchors included. Used 2026-11-13 for M39 Slice 6, it turned up two rules
+    no guess would have produced. A shortcode is drawn or not by the *first* `:word:` in its run of
+    text, so `10:30:00 :smile:` stays text. And `## :bulb: Highlights` anchors as `#bulb-highlights`
+    while `## 💡 Highlights` anchors as `#-highlights`. A sample sent this way is published to
+    GitHub's API, so it stays synthetic: no text from a user's file.
+    - **Math is off in `mode=markdown`.** Every `$x$` came back as text, which read as GitHub having
+      no math. `mode=gfm` draws it (as `<math-renderer>`), but turns every line break into `<br>`,
+      so a multi-line `$$` block splits there; read display blocks off a real file instead (M39
+      Slice 8 used opentelemetry's `ieee_754.md` and a Hugging Face template). One raw `<b>` in a
+      sample also stopped every later `$x$` in the file from being math, so keep samples to
+      Markdown.
+  - **Score every line against the oracle, before and after, rather than reading the lines that
+    changed.** M39 Slice 9 changed 16 146 Markdown lines that none of its rules named. Most were JSON
+    keys inside ```` ```json ```` fences, and the rest were lines a mis-paired fence had swallowed.
+    "Changed" kept reading as "suspect" until each line was given what a CommonMark parser says it is
+    (heading, rule, fence line, indented code, paragraph) and both versions were scored. That gave 18
+    lines worse, in three copies of one README, against 15 188 fixed. A parser that reports lines is
+    already on this Mac: `mdast-util-from-markdown` with `micromark-extension-gfm`, under
+    `dirnex-home/web/node_modules`. It has three traps as an oracle. Its offsets index the text with
+    any BOM removed, so strip the BOM before slicing by `offset`. It knows no front matter, so it
+    reads every `---` / `key:` / `---` block as a setext heading (1 869 files here). And after an
+    indented code block it will not start an ordered list at `2.`, where GitHub's renderer does
+    (asked 2026-11-14).
+  - **For a Mermaid rule, the oracle is Mermaid drawing on its own documentation page.** GitHub's
+    API leaves a mermaid fence as a placeholder its viewer draws later, so it answers nothing. Every
+    example on `mermaid.js.org/syntax/<type>.html` is an editable `code.editable-code` with a Run
+    button, and the page redraws the example in place. Set the code's `textContent`, dispatch an
+    `input` event (without it Run redraws the old text), click Run, and read the new
+    `svg[id^="mermaid"]` back out of the DOM: node ids name the start and end of each scope
+    (`root_start`, `First_end`), and `getBoundingClientRect` gives the positions. Importing the
+    library from a CDN into that page instead was refused by the permission classifier. Used
+    2026-11-15 for M39 Slice 13, it settled five rules the docs do not state (PLAN.md §M39 ▸
+    Slice 13). Mermaid 12 lays state diagrams out with ELK by default; the classic look, which
+    GitHub's older Mermaid draws, is the target.
+    - **The redrawn SVG is the code block's container's previous sibling**, not a child of it
+      (`code.closest('div.language-mermaid').parentElement.previousElementSibling`). A first
+      reader searching the container's parent picked up the page's first diagram instead. Used
+      2026-11-15 for M39 Slice 14 on the class and ER pages, it settled the rules each model type
+      states (`MermaidClassDiagram`, `MermaidERDiagram`). Two of them inverted the obvious guess: an
+      ER entity belongs to the **first** subgraph naming it where a state belongs to the last
+      block, and a class relation's quoted label keeps its quotes where an ER one loses them.
+    - **Mermaid 12 draws ER diagrams with ELK and its new look by default.** Its docs page shows
+      the classic look only where an example's front matter asks for it, and GitHub's older
+      Mermaid draws classic, so read layout off a `look: classic` example and membership or
+      markers off any.
+    - **For a gantt, read Mermaid's source first and the page second.** The schedule is code with
+      no layout in it, so `ganttDb.js`, `ganttRenderer.js` and `gantt.jison` answer more than any
+      drawing: `gh api repos/mermaid-js/mermaid/contents/packages/mermaid/src/diagrams/gantt/<file>
+      -H 'Accept: application/vnd.github.raw'`. The page then checks the reading: it lays a gantt
+      out at its container's width (1 024 px there, so a time line of 874), and a bar's `x` and
+      `width` divided by the pixels a day give back Mermaid's dates exactly. Used 2026-11-15 for
+      M39 Slice 15, it settled two rules the docs get wrong. With no `dateFormat` Mermaid hands
+      every date to JavaScript's `Date`, so `2014-01-01` is midnight in London and an end date is
+      ignored, giving the bar no length, where the docs say the default is `YYYY-MM-DD`. And an
+      `until` end is no `YYYY-MM-DD` date, so `excludes` pushes it past a weekend too, while the bar
+      stops where `until` said.
+  - **To look at a diagram before the app does, screenshot a scratch page headlessly.** A scratch
+    package over `DirnexCore` can measure with the app's own font through AppKit
+    (`QuickViewMarkdownDiagram.metric`'s three lines) and write the render into a page carrying the
+    diagram rules. Then `Google Chrome --headless --screenshot=<png> --window-size=760,820 file://…`
+    draws it, one file per diagram so each fits. Slice 13's first look, before any test was written,
+    caught long transitions zig-zagging across the picture as each layer centered its dummies on its
+    own; the test that pins it now was written from that picture.
+  - **When nothing on the Mac uses a construct, the corpus still says what the rule must not
+    misread.** M39 Slice 7 found no definition list and no real wiki link outside Claude's memory
+    notes in 12 603 distinct files, but it did find the prose each obvious rule breaks: a wrapped line
+    of HISTORY.md opening with `: "conflicts"`, and READMEs writing `[[Prototype]]` for a JavaScript
+    spec slot. Render every file before and after the change, keeping one hash of the HTML per file,
+    and the files whose hash moved are the change's whole effect. Slice 7's list was 0 files with
+    the app's defaults, and 25 with a real existence check, all of them memory notes. A scratch
+    package over `DirnexCore` in release renders the lot in 16 s.
 - **Core first, then the app.** A slice opens with pure, tested, purely-additive `DirnexCore`
   files (app untouched, no rebuild) and lands in a second pass that wires the app. PLAN.md §2:
   if it touches bytes it lives in the core and has tests.
@@ -192,6 +268,12 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
   and the non-optional form both pass. The RHS arithmetic resolves to a different numeric type
   than the optional's wrapped type. Fix: precompute the RHS as a typed literal, or unwrap with
   `try #require` first. Don't chase it as a bug in the code under test.
+- **`#require(Module.Type(...))` does not compile**: the macro reads the module as the receiver of a
+  call and asks it to be `Copyable` and `Escapable`. Met 2026-11-12, where a test importing WebKit
+  had to write `DirnexCore.WebArchive`, since WebKit's legacy framework has a `WebArchive` class of
+  its own and the bare name is ambiguous. A file-private `typealias` for the qualified name compiles
+  in every macro. The app's own sources name the type in an expression, where the lookup settled on
+  the core's without complaint; qualify it there anyway.
 - **A `mutating` call or `coll.allSatisfy(\.x)` can't sit inside `#expect(...)`** — hoist the
   result into a `let` first. `contains(where: \.x)` is the same (2026-10-01: the expansion fails
   with "call can throw, but it is not marked with 'try'"); a closure, `contains { $0.x }`, compiles.
@@ -466,7 +548,29 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
   A window a test builds to answer a sheet needs `defer: false`, as `TrashlessProbe.window()` has;
   the window shown at once in the app is unaffected either way.
 
+- **A gesture that ends in `focusTable()` loads a test pane's view, and the load sends the pane back to
+  where it started.** Seen 2026-11-17 in `PinnedVaultFavoriteTests`: the landing called `navigate(to:)`, then
+  `focusTable()`, whose `loadViewIfNeeded()` ran `viewDidLoad` → `activateTab(unasked:)`, a second
+  navigation to the tab's own path with a newer `loadToken`. The first listing was dropped as stale, and the
+  pane sat on its start folder for the whole 30 s wait while the code under test was right. A pane in a
+  window always has its view, so load it in the fixture (`loadViewIfNeeded()` before the gesture), and
+  start it on a small folder of the fixture's own: a loaded view asks `RowIconLoader.shared` for every row it
+  lists, which the temporary directory has hundreds of.
+
 ### Waits, run loops and timing
+
+- **Await a gesture through the decision the test needs to see.** In a full run on 2026-11-17,
+  the ⇧F4 create task waited 19.1 s for its first main-actor turn and 17.2 s for its next turn
+  after the first `stat`. The backend answered each call in under 0.1 ms. A sample of the main
+  thread during the second wait showed several suites building windows and running UI tests.
+  Time both sides of an actor hop before blaming an I/O queue. The dialog now starts the task,
+  and the tests await `editFile(named:in:)` and check the counts and the status token on return.
+- **A quiet table can still have a badge scan in flight.** In the same run, a cloud status
+  snapshot reached `RowIconArrivalTests` 0.82 s after cache eviction. Its `renderRefresh()`
+  replaced the name cells between two image checks. A 200 ms wait for steady cells had already
+  passed. Tracing `reloadData()` also showed palette and row-density changes from other tests.
+  An icon test can remove those unrelated observers from its own pane and keep the normal icon
+  notifications, including the one sent when an image arrives.
 
 - **A wait over several async stages adds their scheduling delays together.** Measured
   2026-11-11 in `CompareReadingTests.lateNulGoesToBytes`: alone, the test took 0.38 s and the
@@ -1283,6 +1387,14 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
   `.search` backend), then for a sheet whose text is not the progress title.
 
 ### Fixtures and shared state
+
+- **A corpus sampled from a source folder changes when a file is added beside it.** Seen 2026-11-14:
+  `LineDiffGitCorpusTests.corpus()` takes every seventh file of `Services`, and two new files from M39
+  Slice 8 shifted the sample, which shifted the seeded edits every later file got. README.md then drew
+  an edit the copy-back property had never met: the first copy realigned the diff around a moved
+  block and took 9 changes to 10, and the loop allowed one copy per change. `ComparedDocument` was
+  right (the original came back after 11 copies). A test failing on a file nobody touched, after
+  files were only added, is the sample moving; read its draw before the code it names.
 
 - **`JSONEncoder` output is not stable between two encodes of one value unless `.sortedKeys` is set.**
   Seen 2026-11-09 in `GitMergeWireTests`: a test comparing a sent frame with a second `frame(request)`
@@ -2833,6 +2945,44 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
   - **Quick Look's picture of text says less than the type icon at row size**: at 16 pt a `.js`, `.json`,
     `.txt` or `.md` is a white square with grey lines, and audio is a note on a blank page. Images, movies
     and PDFs are the ones worth a thumbnail (`RowIcon.isPreviewed`).
+- **Work that runs when a load lands must not be able to start a load, or a cache that lets go under memory
+  pressure turns it into a loop.** Seen 2026-11-17 as row icons blinking several times a second:
+  `RowIconLoader` kept images only in an `NSCache`, and each arrival made every pane ask again for its rows,
+  so a row whose image the cache had dropped got its placeholder back and a new load, whose arrival asked
+  again. The log held four of Home's folders, both My Drive among them, loaded about 8 times a second each
+  for 3½ minutes, and the same build never did it once the pressure was back to normal. In the live copy,
+  with the cache made to drop each image as it was stored, the old code made 874 loads of 7 rows in 8 s and
+  the fix 14. Two things fixed it, and either alone was not enough in the tests: the arrival carries its
+  images, so they are put in rather than read back, and the loader answers from a weak table of the images
+  it handed out, so asking again for a row still drawing one gets that one back. The asking on arrival
+  stays: the loader's queue drops its oldest requests, and an arrival is what makes a dropped row ask again.
+  - **"Can't reproduce it today" can be the memory pressure.** `modelmanagerd` and `duetexpertd` log
+    the pressure events they get (`Received dispatch memory pressure event: warning`, later `normal`), so
+    `log show` over the hours in question says which level a report ran under. Here it was `warning`
+    from at least 01:42 until 11:04 the next morning.
+  - **`NSWorkspace.icon(forFile:)` on some folders logs one `CFURLCreateBookmarkData` in the calling
+    process per call, and a Quick Look thumbnail logs nothing.** Measured with a probe: on this Mac four of
+    Home's folders logged one (both custom-icon My Drive folders, Desktop and `Applications (Parallels)`),
+    none of Documents' folders did, and thumbnails of a PNG and a PDF did not. So a loop over icons can be
+    counted from the unified log after the fact, but only for those rows.
+  - **A test cannot raise memory pressure**: `__NSFakeMemoryPressureNotification` posted on the
+    distributed center left an `NSCache` untouched. `memory_pressure -S` was not tried, since it sets the
+    level for every app on the Mac. Make the cache forget instead (`RowIconLoader.forget`, `didStore`).
+- **A badge on a template glyph stays a template if it is cut out rather than painted over.** Built
+  2026-11-17 for the Favorites marks (`BadgedGlyph`). Drawing the mark with `.destinationOut` sixteen
+  times around a 1.2 pt circle, then once normally, leaves a ring of clear pixels that follows its outline,
+  and the result is still one alpha mask. AppKit tints it, and the cursor's `.sourceAtop` paints it, like
+  any symbol. A filled disc behind the mark would need a second color, which a template cannot hold.
+  - **Draw the base the way the image view would**, into the view's own box: a 15 pt `folder` is
+    21 × 16 and `scaleProportionallyDown` fits it to 18 wide. Drawn at its own size in an 18 pt canvas, a
+    marked folder sat larger than the unmarked ones beside it, and 105 pixels moved in the bands the mark
+    cannot reach (`PinBadgeTests`). The mark's box is 13 pt of the 18, so a test comparing halves rather
+    than those bands fails on the mark itself.
+  - **SF Symbols has no `folder.badge.` form for a drive, a cloud or a protocol**, only `plus`, `minus`,
+    `questionmark`, `person.crop` and `gearshape`. And `globe.fill` exists, so "the filled form where there
+    is one" would have filled WebDAV's globe, which was kept as an outline on purpose. Name each mark.
+  - **Outline marks are too thin at two thirds of a 15 pt glyph.** Rendered beside filled ones at sidebar
+    size, outlines at 8.5 pt read as smudges, and SFTP's `network` and WebDAV's `globe` were one shape.
 
 #### Reloading and the row model
 
@@ -3016,6 +3166,17 @@ Measured 2026-11-08 for M37's byte view, whose table has a row for every 16 byte
     linters green throughout) and to any screenshot taken with a short name — the field really does
     hold the whole value, and nothing logs. A `cacheDisplay` of a live sheet is what shows it: the
     gap beside a name that stops at a hyphen is the tell.
+- **A single-line label still breaks at a hard line break in its value, so a file name holding one
+  draws on two lines in a one-line row.** Probed 2026-11-17 on the pane's name-cell shape
+  (`labelWithString:`, `usesSingleLineMode`, truncating tail, `wraps == false`): `Icon` lays out 16 pt
+  tall, while `Icon\r`, `a\nb`, `a\r\nb` and a name with U+2028 lay out **32 pt**. The cell centers
+  that in a 22 pt row, so the first line rides up and is clipped and the rest is not shown. The name
+  that showed it is OneDrive's `Icon\r` (a folder's custom-icon file). None of the single-line
+  properties stops it. The value has to change: ``FileNameDisplay/visible(_:)`` draws each control
+  character as its Unicode control picture (`Icon␍`, one 16 pt line, by font fallback to Apple
+  Symbols). **Anything that reads the label back gets that form.** The F2 field opens on it, so the
+  rename treats the picture form as unchanged; compared with the real name alone, Return renamed
+  `Icon\r` to `Icon␍`.
 - **A paragraph style's `headIndent` keeps a value's *wrapped* lines under a tab stop, and not its later
   *lines*: a line break starts a new paragraph, and that starts at `firstLineHeadIndent`.** Seen live
   2026-09-15 on the strip under Quick View's JSON tree: a container written out put its `{` in the
@@ -3602,6 +3763,17 @@ Measured 2026-11-08 for M37's byte view, whose table has a row for every 16 byte
     because M17 authored those values against `.textBackgroundColor` and they clear AA *there*. So a
     code fence that carries syntax colors is delimited by a **border** and keeps the page's own
     background; the fill is only safe on inline code, which carries `.textColor` and nothing else.
+- **A dynamic `NSColor` asks its provider again on every resolution, so it can follow more than the
+  appearance.** Probed 2026-11-14 for M39's syntax themes: a color from `NSColor(name:dynamicProvider:)`
+  whose block read a locked global answered the new value under `performAsCurrentDrawingAppearance`
+  and through `cgColor` as soon as the global changed, and an attributed string kept the same object.
+  So a user setting that changes colors can live in the provider, and every attributed string and
+  label already holding the color only needs to draw again (`SyntaxTheme`, `SyntaxThemeRepaint`).
+  "Draw again" is `needsDisplay` on every view in the window, subviews included, and nothing more,
+  TextKit 2 text views too: in the running app an open Swift preview took the new colors with no
+  layout invalidated, and kept the old ones with the walk switched off. What does not follow is
+  anything that took a value out of the color: a layer's `cgColor` (below) and a generated
+  stylesheet, which has to be rewritten.
 - **A layer's `cgColor` is frozen at whichever appearance was current when it was taken.** The tab
   chip set `layer.backgroundColor` from `.unemphasizedSelectedContentBackgroundColor` whenever its
   state changed, so after a switch from dark the inactive pane's tab stayed `#464646` in a light
@@ -3689,6 +3861,23 @@ Measured 2026-11-08 for M37's byte view, whose table has a row for every 16 byte
     state machine: put the reset in the funnel, and make the test's argument the *exit*, since a
     single-exit test passes against the half-fix (measured — the `.stopped` case passed while the
     show-a-file case failed at 1.0).
+- **A bar that has been indeterminate keeps sweeping after it turns determinate, for as long as its
+  value keeps changing.** Measured 2026-11-17 in a scratch program by walking the bar's layer tree
+  for animation keys: after `startAnimation`, then `isIndeterminate = false` and `stopAnimation`
+  (in either order), `overallIndeterminateAnimation` ended 1.6 s later when nothing else was set,
+  and was still there 4 s later with `doubleValue` set every 0.1 s. Hiding and showing the bar, or
+  toggling `isIndeterminate` again, changed nothing; reassigning `style` (`.spinning`, then `.bar`)
+  ended it, which is behaviour seen rather than documented. Live, the copy dialog's job bar swept
+  across the whole of a 19 GB copy while the readout beside it counted up (PLAN.md §M41 Slice 3).
+  - **The tell is a fill that does not start at the left edge.** A determinate bar always fills from
+    the left, so a blue segment with empty track on both sides, or one sliding between captures, is
+    the indeterminate animation, whatever `isIndeterminate` says.
+  - **A capture of an inactive window draws the bar without it.** The same dialog read as correct grey
+    fills while the app was in the background and swept whenever it was in front, which made the
+    first reading look like a stale frame. Compare a capture against the readout before believing it.
+  - The dialog's answer was to never be indeterminate, as the queue bar never was, and let "Preparing…"
+    say it in words. A test pins `isIndeterminate` false in every phase, which is the rule; the layer
+    walk is the instrument for the symptom.
 
 ### File-system events (FSEvents)
 
@@ -3973,6 +4162,63 @@ Measured 2026-11-08 for M37's byte view, whose table has a row for every 16 byte
     file as text. A view built before the rules land would render exactly one page unprotected, and
     it is the quietest failure available: the preview looks perfect, and only a server somewhere else
     knows.
+- **A rule that re-admits a URL is a request WebKit may make, and a webarchive decides when.** Measured
+  2026-11-12 for M39 against a throwaway server's access log. WebKit draws a `.webarchive` from its own
+  resources and asks the network for nothing it holds, but the block-everything list blanks it, since
+  the archived URLs are the originals. Re-admitting exactly the archive's URLs drew it whole, and then a
+  subframe whose archived `WebResourceFrameName` did not match the name WebKit generates
+  (`<!--frame1-->`, numbered in **creation** order, so an `<object>` before an iframe is frame 2) was
+  fetched from the server, its image after it. A crafted file writes both the names and the page. What
+  holds is moving every archived origin to a scheme nothing serves (`WebArchiveSeal`): a miss then has
+  no network path at all, and a reference the rewrite misses keeps a real origin the rules block.
+  - **A frame finds resources only in its own archive**, never its parent's: an MHTML frame drew
+    unstyled until its stylesheet was copied into its subframe archive.
+  - **WebKit on macOS has no MHTML.** As `multipart/related` it drew the raw headers as text, and
+    `loadFileURL` failed with "Frame load interrupted". A `cid:` iframe never loads from an archive
+    either, so the reference has to be rewritten.
+  - **One non-ASCII character fails the whole content rule list** ("Only ASCII characters are
+    supported in pattern"), so a list built from URLs must percent-encode them or lose every rule.
+  - A main resource with no `WebResourceTextEncodingName` honours its own `<meta charset>`, and
+    `WebResourceResponse` is not needed: an archive without any drew from its MIME types alone.
+- **A generated page's link clicks can be read back only if its base URL spells the path they resolve
+  against.** WebKit gives `decidePolicyFor` the URL it resolved, never the `href`. Measured 2026-11-12
+  for M39 Slice 4 with `loadHTMLString` and a synthetic `click()` on each link: under
+  `x-dirnex-document:///<the document's own path>` every click arrived with the backend path as its
+  path, `#anchor` came against the document and scrolled the page, `""` was the document and `.` its
+  folder, a name holding a space, `é` or `#` round-tripped, `file:///…` stayed `file:`, `//host/x`
+  arrived with `host` as the host, and `..` stopped at the root. A non-special scheme keeps `\` as
+  written, where `file:` turns it into `/`. Under the `file://` *folder* the preview used to load
+  with, `""`, `.` and `#anchor` all resolved to the folder.
+  - **`URL(string:)` re-encodes every `%` in a string once it meets one invalid character.**
+    `x-dirnex-document:///My%20Docs/100%.md` parsed as `My%2520Docs/100%25.md`, and a `\` or a
+    space did the same, `https://e.com/My%20Docs/a b` included, so a valid escape beside one bad
+    character comes back as literal text. `encodingInvalidCharacters: false` answers `nil` instead.
+    Foundation also leaves dot segments in an already-absolute URL unfolded, where WHATWG folds them,
+    `%2E%2E` included. `DocumentLink` therefore splits and merges paths by RFC 3986 §5.2 by hand and
+    encodes only a web link's invalid characters before a strict parse.
+  - **`standardizedFileURL` decomposes a name.** Measured 2026-11-13: `…/caf%C3%A9.html` came back
+    as `cafe%CC%81.html`, `e` and U+0301, while `path` kept U+00E9. Swift compares and hashes strings
+    by canonical equivalence and APFS looks names up the same way, so on this disk nothing shows; a
+    server's names are bytes, so a decomposed one is a file that is not there. Never build a path
+    for a server out of a standardized local URL.
+- **On a `file:` page WebKit asks the navigation delegate about a link only when it names a file
+  that exists inside the page's read access.** Measured 2026-11-13 with `loadFileURL(_:allowingReadAccessTo:)`
+  on the page's folder and a synthetic `click()` on each link: an existing sibling, a file in a
+  subfolder, a web link and an `#anchor` all reached `decidePolicyFor`. A missing sibling and a
+  missing file in a subfolder reached nothing, and an existing `../top.md` failed the page's own
+  load path with "Ignoring request to load this main resource because it is outside the sandbox",
+  again without asking. The page stays as it was in every case, so it reads as a dead link.
+  - **It looked like a base-URL problem twice before it was understood.** The M39 Slice 4 probe and
+    Slice 5's negative control both put a `file://` folder under a generated page and saw clicks go
+    nowhere. A `loadHTMLString` page has no read access at all (the entry below), so every `file:`
+    link on one is outside it, and both folders lacked the named files besides.
+  - **What it cost**: a server's HTML file is rendered from a local copy alone in a temp folder, so
+    every link to a sibling was dropped, and the live run was the first place that showed it, since
+    the tests had only clicked links on generated pages. Such a page is now loaded from its bytes
+    under `DocumentLink.baseURL(for:)` like a Markdown page (`QuickViewWebView.Page.copied`), which
+    costs nothing, as the copy's folder held none of the page's stylesheets or images either. A
+    local HTML file still loads from disk, for its siblings, and its links to a missing file or out
+    of its folder stay silent.
 - **`loadHTMLString(_:baseURL:)` grants the page no file access at all, and a probe put next to its
   own test data will tell you it does.** M18 needed a *generated* document to reach the sibling image
   a `.md` refers to. The first probe measured six candidates and reported the obvious one working —
@@ -4062,6 +4308,74 @@ Measured 2026-11-08 for M37's byte view, whose table has a row for every 16 byte
     answer — the find searches what the page shows — and a fixture without the declaration measures
     the decoder rather than the find. It also means the **source** and **rendered** styles of one file
     can honestly disagree about its text, since `TextPreview` detects the encoding and WebKit guesses.
+- **An in-page link to an element already in view does not scroll.** Seen 2026-11-13 in M39 Slice
+  6's live run: a footnote's `↩²` back link was clicked and the page stayed put, which read as a dead
+  link. A probe in a real page settled it. `location.hash` became `#fnref-1-2`, so WebKit followed the
+  link, and `scrollY` stayed at 320 because the target was already 102 pt down a 300 pt window. A
+  target out of view is scrolled to as usual (`QuickViewMarkdownAlertTests` clicks one). So a live
+  check of an anchor needs its target off screen, or the hash read back.
+- **WebKit draws MathML with scripts off, and seven details decide whether it looks like TeX.**
+  Probed 2026-11-14 for M39 Slice 8 in an offscreen `WKWebView`, each candidate beside the others:
+  - A plain `(` in an `<mrow>` stretches to the row's height; TeX's does not, so it needs
+    `stretchy="false"`. `\left` and an environment's delimiters stretch, as the dictionary does.
+  - `columnalign` is read on an `<mtd>` and ignored on an `<mtable>`.
+  - An `<mtd>` is padded on both sides by WebKit's own stylesheet, 6 points between an `aligned`
+    pair at 13 px. Padding 0 from the page's stylesheet closes it.
+  - `<mo>&#x2061;</mo>` after `sin` adds no space (`logn`); an explicit thin `<mspace>` does.
+  - A prime as `<msup><mi>f</mi><mo>′</mo></msup>` is tiny and high, since WebKit does not swap in
+    the font's prime variant. `<mi>f</mi><mo>′</mo>` is right, and `<msup>` of that row takes `f′²`.
+  - Accents: U+02C9 sits on a letter where U+00AF floats high; U+02C7 overlaps unless
+    `stretchy="false"`; U+00AF stretches as an overline where U+203E floats far above. An accent's
+    `<mo>` brings its operator spacing into the `<mover>` (`\vec{v}` drew with a gap each side), so
+    accents carry `lspace="0" rspace="0"`; `\vec`'s `→` at `mathsize="0.6em"` is TeX's small arrow.
+  - `<math display="block">` will not scroll: `overflow-x` on it does nothing, and a wide formula
+    widened the page to 1 169 points in a 420-point window. A `span` around it with `display: block;
+    overflow-x: auto` scrolls, and a `span` (not a `div`) keeps the `<p>` it sits in from closing.
+  - `movablelimits`, `minsize`/`maxsize`, `mathsize`, `scriptlevel`, `displaystyle`, `menclose`,
+    `mphantom` and the Mathematical Alphanumeric characters (`ℝ`, `𝐱`) all drew as specified.
+  - **A `takeSnapshot` PNG is at the screen's scale.** A formula that measured 740 pixels in the
+    probe's image is 370 points, so a test written for "wider than the 420-point window" passed a
+    formula that fit. Measure widths in the page (`getBoundingClientRect`), not in the picture.
+  - **`overflow-x: visible` is not a negative control when `overflow-y` is `hidden`**: CSS computes
+    the visible one to `auto`, so the "broken" page scrolled exactly as before. Remove both.
+- **A Content-Security-Policy in a `<meta>` holds in a `file://` page, in WebKit and in Chrome, and one
+  naming only scripts leaves every picture alone.** Probed 2026-11-14 for an exported Markdown page
+  (PLAN.md §M39 ▸ Slice 11), loaded by `loadFileURL` in an offscreen `WKWebView` and by headless
+  Chrome's `--dump-dom`, beside a throwaway `http.server`: under `script-src 'none'; object-src 'none';
+  base-uri 'none'; form-action 'none'` an inline `<script>`, an `onerror` handler and a `javascript:`
+  link did nothing, and each ran with the `<meta>` removed; a `data:` image, a sibling file and an image
+  from the server drew (`naturalWidth` 1) and the server logged each fetch. Without `default-src` the
+  policy says nothing about images, styles or fonts. Read the page's state with `evaluateJavaScript`,
+  which answered under the policy: it is the app's script, not the page's.
+- **A `WKWebView` prints to PDF headlessly, and paper is not the screen.** Probed 2026-11-14 for
+  M39's export (`MarkdownExportPDF`): `printOperation(with:)` on a web view in a borderless window that
+  is never shown, print and progress panels off, `jobDisposition = .save` and the URL in the info's
+  `jobSavingURL`, gave 17 A4 pages of selectable text in 69–86 ms. No frame had to be set on the
+  operation's view. What a caller has to know:
+  - `runModal(for:delegate:didRun:contextInfo:)` **returns at once**, and the `didRun` selector is
+    called **off the main thread**. A `@MainActor` delegate trapped in `_dispatch_assert_queue_fail`;
+    a `nonisolated` method resuming a continuation works.
+  - **A CSS mask is not applied on paper.** An SF Symbol used as `-webkit-mask` over the title's color
+    printed as a square of that color with the black symbol drawn on it, as a shorthand, as longhands
+    and with `print-color-adjust: exact` alike. The same symbol pre-tinted, as a background or as
+    `content: url(…)`, printed right.
+  - **Backgrounds print only when `WKPreferences.shouldPrintBackgrounds` is on.** Off, an inline code
+    span's fill and the masked icon both vanished.
+  - `@media print` applies; the info's margins are honored (36 pt put the text at x = 36); and the
+    paper is the user's own (`NSPrintInfo.shared` was `iso-a4` here). `scalingFactor` is honored too,
+    but 1.25 took an 11-page document to 28, laid sideways across sheets, so size the text in CSS.
+  - **Print evaluates `prefers-color-scheme` as light, whatever the view's appearance; `createPDF`
+    follows the view.** Measured on a dark Mac with a page whose palette sat under the media query: a
+    view drawing `rgb(30, 30, 30)` on screen printed 9 % dark pixels, the text, while `createPDF` of it
+    came out 71 % dark. Colors set without the query printed 67 % dark, which is what showed the
+    measure could see a dark page. So a test that a print is light passes with the view set dark, and
+    only proves something once its fixture is checked that way.
+- **`color-mix(in srgb, var(--a) 25%, var(--b))` works as an SVG `fill` in the preview's WebKit**, and
+  follows both custom properties into whichever appearance is on, so a tint of a page color needs no
+  second palette. Used 2026-11-15 for M39 Slice 15's gantt bars: four mixes came back as four
+  distinct computed `fill`s, none the page's background. With the color space misspelt the whole
+  declaration is dropped, which only a test reading the computed style in a real page catches; the
+  stylesheet sweep still finds the class named.
 
 ### Previews: telling what kind of file it is
 
@@ -10627,6 +10941,15 @@ overturned the obvious implementation.
   not found in the Kelvin sign, which lowercases to `k`; and lowercasing can lengthen a text in UTF-16
   (`İ` becomes `i` and a combining dot) while it kept the character count on every sample tried, so a
   match in the lowercased text comes back by characters, never by offsets (`FilterQuery`).
+- **APFS's file-name limit is 255 UTF-16 units, not bytes, while a volume name's and ext4's are 255
+  bytes.** Probed 2026-11-14 with `open()` in the scratchpad: 255 `é` (510 bytes) and 255 `漢` (765
+  bytes) were created, 127 `😀` (254 units) was and 128 (256 units) was refused with `ENAMETOOLONG`,
+  and 128 decomposed `é` (256 units) were refused too. The vault rule above (▸ Encryption) is a volume
+  name through `diskutil`, a different limit. So a name derived from another one has to fit the limits
+  its source fitted: `MarkdownExport.fileName` counts units always, and bytes only when the source kept
+  to 255 of them, since a source of 200 `é` came from a disk that does not count bytes. Trimming by
+  `Character` keeps a flag whole; one character of hundreds of combining marks still needs a cut
+  between scalars, or the trimmed name is empty.
 
 ### Persisted state and missing values
 

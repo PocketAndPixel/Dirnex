@@ -288,10 +288,14 @@ enum CFamilyGrammars {
 
     /// `//` and `/* */` are here for JSONC and JSON5 rather than for JSON, which has no comments —
     /// and they cost strict JSON nothing, since neither sequence can occur outside a string.
-    static let json = base(
-        keywords: words("false null true"),
-        strings: [.doubleQuoted]
-    )
+    ///
+    /// A key is told from a value by the colon after it (`LanguageGrammar.keysBeforeColon`), which
+    /// M17 left undone for want of that lookahead.
+    static let json: LanguageGrammar = {
+        var grammar = base(keywords: words("false null true"), strings: [.doubleQuoted])
+        grammar.keysBeforeColon = true
+        return grammar
+    }()
 
     /// The one grammar on the case-insensitive flag: `SELECT` and `select` are the same word, so
     /// both sets below are stored lowercased and the scanner folds the file's word before looking

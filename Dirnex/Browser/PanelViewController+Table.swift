@@ -65,8 +65,11 @@ extension PanelViewController: NSTableViewDelegate {
         case .name:
             // An app-library row in the merged iCloud listing wears the app's own icon (PLAN.md §M9);
             // everything else is `RowIcon`'s choice, a placeholder until a loaded image is in.
-            cell.imageView?.image = iCloudLibraryIcon(for: entry) ?? rowIconImage(for: entry)
-            cell.textField?.stringValue = entry.name
+            applyRowIcon(to: cell, for: entry)
+            // A control character in a name breaks even a single-line label onto a second line the
+            // row cannot show (`Icon\r`, a folder's custom icon), so it draws as its picture
+            // instead. Inline rename reads this text back, and compares it in this form.
+            cell.textField?.stringValue = FileNameDisplay.visible(entry.name)
             cell.textField?.alignment = .natural
             // Finder tags, the cloud badge and Git's status letter all ride at the name's right
             // edge (PLAN.md §M6) — none of them a column of their own, in Finder's order for the

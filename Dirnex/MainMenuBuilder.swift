@@ -87,6 +87,9 @@ enum MainMenuBuilder {
             // only route to the chooser that does not require a gesture to have *failed* first
             // (PLAN.md §M27) — somebody who merely wants to read the names had none.
             .command("file.archiveNameEncoding"),
+            // Export… follows the archive pair: like Pack it makes a new file from the item under
+            // the cursor and lands it in the other pane (PLAN.md §M39 ▸ Slice 12).
+            .command("file.export"),
             .command("file.syncDirectories"), .command("file.compareByContents"),
             // Resolve Conflict… follows Compare By Contents, since its window is the compare
             // window with a third side (PLAN.md §M34).
@@ -120,6 +123,7 @@ enum MainMenuBuilder {
             .command("view.sizeVisualization"), .subcommand("view.gitAwareSizes"), .separator,
             .command("view.quickLook"), .command("view.quickView"),
             .subcommand("view.quickViewFullWindow"), .subcommand("view.quickViewFullScreen"),
+            .subcommand("view.quickViewSlideshow"),
             .subcommand("view.quickViewSource"), .subcommand("view.quickViewRenderedPage"),
             .subcommand("view.downloadPreview"),
             .subcommand("view.quickViewZoomIn"), .keyAlias("view.quickViewZoomIn"),

@@ -10,6 +10,11 @@ import AppKit
 final class SidebarCellView: NSTableCellView {
     static let identifier = NSUserInterfaceItemIdentifier("SidebarItemCell")
 
+    /// The square the leading glyph is drawn in. A wider symbol is scaled down to fit it, and a
+    /// pinned folder's badged glyph is drawn to exactly this box so its folder matches the others
+    /// (`BadgedGlyph`).
+    static let iconSide: CGFloat = 18
+
     /// Invoked when the eject button is clicked; `nil` hides the button.
     var onEject: (() -> Void)?
 
@@ -112,8 +117,8 @@ final class SidebarCellView: NSTableCellView {
         NSLayoutConstraint.activate([
             icon.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 4),
             icon.centerYAnchor.constraint(equalTo: centerYAnchor),
-            icon.widthAnchor.constraint(equalToConstant: 18),
-            icon.heightAnchor.constraint(equalToConstant: 18),
+            icon.widthAnchor.constraint(equalToConstant: Self.iconSide),
+            icon.heightAnchor.constraint(equalToConstant: Self.iconSide),
 
             label.leadingAnchor.constraint(equalTo: icon.trailingAnchor, constant: 6),
             label.centerYAnchor.constraint(equalTo: centerYAnchor),
