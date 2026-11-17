@@ -165,6 +165,29 @@ struct FileOperationQueueJobPauseTests {
         #expect(!fixture.landed("pp/a.bin"))
     }
 
+    /// The dialog names its job before queuing it, so the first snapshot that shows the job is one it
+    /// can recognize, however fast the job ends.
+    @Test("a job takes the id it is given, and a second job given the same id gets its own")
+    func takesTheGivenID() async throws {
+        let fixture = try Fixture(volumeFor: { _ in "V" })
+        defer { fixture.cleanup() }
+        let chosen = OperationJobID()
+        let local = LocalBackend()
+        let operation = FileOperation(
+            kind: .copy,
+            sources: [try local.stat(at: fixture.tree.vfsPath("pp/a.bin"))],
+            destinationDirectory: fixture.tree.vfsPath("pp/dest")
+        )
+
+        let first = await fixture.queue.enqueue(operation, id: chosen)
+        let second = await fixture.queue.enqueue(operation, id: chosen)
+
+        #expect(first == chosen)
+        #expect(second != chosen)
+        #expect(await fixture.queue.snapshot().jobs.map(\.id) == [chosen, second])
+        try await fixture.finish()
+    }
+
     @Test("pausing a finished job, or one already paused, changes nothing")
     func pauseIsIdempotent() async throws {
         let fixture = try Fixture(volumeFor: { _ in "V" })

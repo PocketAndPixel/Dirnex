@@ -125,6 +125,40 @@ struct TreeTransferTests {
         #expect(!FileManager.default.fileExists(atPath: fixture.destination.appending("sub").path))
     }
 
+    /// F5 hands the host what it is about to do, so the dialog can ask (PLAN.md §M41), and every job it
+    /// queues takes its id from the tracker, so the dialog knows each one before it can run. ⇧F5's
+    /// two jobs here are queued after their folders are made, off the main thread, which is the case
+    /// the tracker's `finish()` exists for.
+    @Test(
+        "F5 and ⇧F5 hand the host a summary, and each job's id comes from the tracker",
+        arguments: [false, true]
+    )
+    func transferIsTracked(keepingFolders: Bool) async throws {
+        let fixture = try Fixture(destination: "dest")
+        defer { fixture.cleanUp() }
+        try fixture.markInTree([fixture.aPath, fixture.bPath])
+        var tracked: [OperationJobID] = []
+        var finished = 0
+        fixture.source.host.trackTransfers = {
+            TransferTracker(onTrack: { tracked.append($0) }, onFinish: { finished += 1 })
+        }
+
+        if keepingFolders {
+            fixture.source.pane.copyToOtherPaneKeepingFolders(nil)
+        } else {
+            fixture.source.pane.copyToOtherPane(nil)
+        }
+        try await settleUntil { finished == 1 }
+
+        let summary = try #require(fixture.source.host.transfers.first)
+        #expect(fixture.source.host.transfers.count == 1)
+        #expect(summary.kind == .copy)
+        #expect(summary.destination == fixture.destination)
+        #expect(Set(summary.sources.map(\.path)) == [fixture.aPath, fixture.bPath])
+        #expect(tracked.count == (keepingFolders ? 2 : 1))
+        #expect(fixture.source.host.enqueuedIDs == tracked)
+    }
+
     @Test("⇧F5 recreates the folder a mark was found in, and queues one job per level")
     func copyKeepingFoldersRecreatesTheFolder() async throws {
         let fixture = try Fixture(destination: "dest")

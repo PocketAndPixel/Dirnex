@@ -331,6 +331,7 @@ tests (`RowIconTests`) and not exercised live.
 | Put Back (restore from Trash, or a share's `#recycle`) | yes, limited<sup>iii</sup> | n/a | n/a | yes, limited<sup>iii</sup> | yes, limited<sup>iii</sup> | yes, limited<sup>iii</sup> | n/a | n/a | n/a | n/a | yes, limited<sup>o</sup> |
 | Undo `⌘Z` | yes | yes | yes, limited<sup>qq</sup> | yes, partially<sup>p</sup> | yes, partially<sup>p</sup> | yes, partially<sup>p</sup> | yes, partially<sup>p</sup> | yes, partially | n/a | yes | no |
 | Background queue, progress bar, Stop | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes |
+| `F5`/`F6` ask first, then a progress dialog<sup>aaw</sup> | yes | yes | no<sup>aaw</sup> | yes | yes | yes | yes | no<sup>h</sup> | yes | yes | yes |
 | Per-file conflict dialog | yes | yes | yes | yes | yes | yes | yes | n/a | yes | yes | yes |
 | Preserve permissions / dates / xattrs on copy | yes | yes | yes, limited | yes, limited<sup>q</sup> | yes, limited<sup>q</sup> | yes, limited<sup>q</sup> | n/a<sup>q</sup> | n/a | yes, limited<sup>lll</sup> | yes | yes |
 | Copy a symlink as a symlink | yes | yes | yes | yes, limited<sup>pp</sup> | n/a<sup>pp</sup> | n/a<sup>pp</sup> | n/a | n/a | n/a | yes | yes |
@@ -422,6 +423,13 @@ permanently. Finder refuses the same gesture.
 reversible: ⌘Z swaps the container back (▸ <sup>qq</sup>), and the confirmation says which
 it will be before it runs.
 Top-level archives only.
+
+<sup>aaw</sup> Since 2026-11-17 (PLAN.md §M41 Slice 2), on by default and turned off by the dialog's
+"Don't ask again" or Settings ▸ Operations. It is a second view of the same queued job, so every
+column that has the queue has the dialog, for `F5`, `F6`, `⇧F5` and Move Keeping Folders. **Not** for
+`F5` into or out of an archive, which add or extract by their own route and keep the queue bar alone,
+nor for `⌘V`, a drag or a script. Pinned by tests (`TransferDialogTests`); not yet exercised live
+(Slice 3).
 
 <sup>aac</sup> Gated per **row**, like <sup>ee</sup>: each hit deletes the way the folder it lives in
 does (`DeleteRouting`), so a local hit goes to the Trash and a hit on a server is the confirmed

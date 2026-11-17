@@ -32,4 +32,20 @@ enum Scripting {
     static var activeWindow: BrowserWindowController? {
         (NSApp.delegate as? AppDelegate)?.activeBrowserWindowController
     }
+
+    /// Set while an automation verb runs a command, so a command that would stop to ask runs straight
+    /// through instead (PLAN.md §M41). F5's and F6's confirmation is the case: a script cannot press
+    /// Return, and would wait on the sheet for ever. A click on the function bar dispatches through
+    /// the same `runCommand(id:)`, which is why the two doors set this rather than the dispatch.
+    @MainActor
+    private(set) static var isAutomating = false
+
+    /// Run `body` as automation; see ``isAutomating``.
+    @MainActor
+    static func automating<Result>(_ body: () -> Result) -> Result {
+        let outer = isAutomating
+        isAutomating = true
+        defer { isAutomating = outer }
+        return body()
+    }
 }

@@ -264,7 +264,43 @@ Slice 2:
 2. **The dialogs** (app). The confirmation, the progress sheet, the Stop question, the switch and the
    box, the conflict and error prompts through `sheetHost`, the queue bar reading a job paused on its
    own, and 14 languages. Esc and Return pinned by tests beside `EscapeToDismissTests`, since computer
-   use cannot send Escape.
+   use cannot send Escape. **Landed 2026-11-17**, with the live run still to come. One sheet in two
+   phases: `TransferDialogController` retitles the same two buttons (OK becomes Background, Cancel
+   stays), so Return, Return and Escape, Return hold across the switch. `TransferDialog` asks, starts,
+   follows and closes, and `TransferDialogState` reads the jobs as a pure value. F5 and F6 now go
+   through `PanelHost.runTransfer`, which asks only when the setting is on, no automation verb is
+   running, and no sheet is up. The setting is `confirmTransfers`, a computed property over the
+   defaults in `AppPreferences+Transfers`, since the class file sits at the length ceiling.
+   `Scripting.automating` is set by the AppleScript and App Intents doors, not by `runCommand`, which a
+   click on the function bar also takes. `StubPanelHost` starts every transfer at once, so no existing
+   test changed what it measures. Findings worth keeping:
+   - **The dialog has to know its job before the job exists.** A clone ends in the turn it starts,
+     and the queue drops finished jobs once it drains, so an id learned from `enqueue`'s answer can
+     arrive after the only snapshot that ever showed the job. `FileOperationQueue.enqueue(_:id:)` now
+     takes the caller's id (one tested core parameter), `TransferTracker` hands it to the dialog
+     before the queue sees it, and the window passes each snapshot to the dialog before it dispatches
+     `clearFinished`.
+   - **AppKit already forgives Shift on Return and Escape.** The catcher's negative control found a
+     plain button answering ⇧⏎ and ⇧⎋ with nothing held, so ⇧F5 needed no help. The catcher stays for
+     Copy rebound to a ⌃, ⌥ or ⌘ chord, which is refused without it; both directions are tested.
+   - "Waiting for 1 job ahead" became **"Waiting for its turn in the queue…"**: a snapshot does not
+     say which disks a job shares, so a count would be a guess. A job also reads `.waiting` for an
+     instant between being queued and starting, so the line shows only while another job is running,
+     and in a paused queue the job reads Paused.
+   - The question's default button is **OK**, as asked, rather than a verb. "Don't ask again" answers
+     the copy at hand too: ticked, OK starts it with no progress dialog.
+   - The conflict and error dialogs hang on `sheetHost`. The queue bar names a running job over a
+     held one and reads "Paused" when nothing it holds is running.
+
+   Twenty-one new app tests and one core test. Negative controls: without the one-second hold the
+   hold test fails, a queue bar reading only the queue-wide flag fails its test, and a chord with
+   nothing held is refused. Eighteen new strings in 14 languages, with plural forms for the two
+   counted questions, rendered from each `.lproj` in a test; `check_localization_keys.py` is clean.
+   The full app suite (2 672 tests) passed twice in a row. The first full run before them reported
+   one issue that its filtered log does not name, and the new suites then passed 5 of 5 on their
+   own, so it is recorded here as unexplained rather than as fixed. Not covered: how the sheet looks, and how it grows when the progress rows appear, which Slice 3
+   checks live. F5 into or out of an archive keeps the queue bar alone (LOCATION-SUPPORT.md
+   <sup>aaw</sup>).
 3. **Live run**: a cross-volume copy onto a disk image (§M2's setup), so the progress sheet stays up
    long enough to drive.
 

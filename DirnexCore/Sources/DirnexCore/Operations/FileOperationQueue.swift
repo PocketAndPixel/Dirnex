@@ -91,14 +91,22 @@ public actor FileOperationQueue {
     /// `onError` is consulted when a source fails to transfer — TC's per-file "Skip / Retry /
     /// Abort" dialog. Like `resolveConflict` it runs on the copy thread; a missing one leaves
     /// the engine's default (collect the failure and carry on).
+    ///
+    /// `id` lets a caller name the job before it exists (PLAN.md §M41). The copy dialog has to know
+    /// its job before the job can report: a clone finishes in the turn it starts, and the queue
+    /// forgets finished jobs once it drains, so an id learned from the return value can arrive after
+    /// the only snapshot that ever showed the job (docs/NOTES.md ▸ Swift 6 and concurrency, the handle
+    /// that only exists after the work has started). An id already in the queue is not reused: the job
+    /// gets a fresh one, which is what this returns.
     @discardableResult
     public func enqueue(
         _ operation: FileOperation,
+        id requested: OperationJobID = OperationJobID(),
         conflictPolicy: ConflictPolicy = .fail,
         resolveConflict: (@Sendable (ConflictContext) -> ConflictResolution)? = nil,
         onError: (@Sendable (OperationErrorContext) -> ErrorResolution)? = nil
     ) -> OperationJobID {
-        let id = OperationJobID()
+        let id = jobs[requested] == nil ? requested : OperationJobID()
         jobs[id] = Job(
             operation: operation,
             policy: conflictPolicy,

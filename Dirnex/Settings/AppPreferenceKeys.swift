@@ -31,6 +31,8 @@ extension AppPreferences {
         static let cursorColorHex = "Dirnex.pref.cursorColorHex"
         static let markColorHex = "Dirnex.pref.markColorHex"
         static let confirmTrash = "Dirnex.pref.confirmTrash"
+        /// F5 and F6 ask, then show their progress in a dialog (PLAN.md §M41). Absent means on.
+        static let confirmTransfers = "Dirnex.pref.confirmTransfers"
         static let showVaultsInFinder = "Dirnex.pref.showVaultsInFinder"
         static let diffToolIdentifier = "Dirnex.pref.diffToolIdentifier"
         static let textEditorIdentifier = "Dirnex.pref.textEditorIdentifier"

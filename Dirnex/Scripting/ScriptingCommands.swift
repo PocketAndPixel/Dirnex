@@ -55,7 +55,7 @@ final class DirnexCopySelectionScriptCommand: NSScriptCommand {
         // `nil` = no window; otherwise the dispatch result (file.copy always resolves, so `true`).
         let ran = MainActor.assumeIsolated { () -> Bool? in
             guard let window = Scripting.activeWindow else { return nil }
-            return window.runCommand(id: "file.copy")
+            return Scripting.automating { window.runCommand(id: "file.copy") }
         }
         guard let ran else { return fail(AppleScriptError.notFound, Scripting.noWindow) }
         return ran
@@ -95,7 +95,7 @@ final class DirnexRunOperationScriptCommand: NSScriptCommand {
         }
         let ran = MainActor.assumeIsolated { () -> Bool? in
             guard let window = Scripting.activeWindow else { return nil }
-            return window.runCommand(id: id)
+            return Scripting.automating { window.runCommand(id: id) }
         }
         guard let ran else { return fail(AppleScriptError.notFound, Scripting.noWindow) }
         return ran ? true : fail(
