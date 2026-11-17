@@ -26,11 +26,16 @@ public enum CopyEngine {
     ///   (discarding any partial bytes first), `.skip` collects the failure and moves on, and
     ///   `.abort` unwinds the whole operation as canceled. A missing resolver behaves as
     ///   `.skip`, so an unattended run still finishes and summarizes its failures.
-    /// - `onProgress` is called periodically (throttled by byte volume and at each item
-    ///   boundary) — never per chunk, so a 50 GB copy doesn't flood the caller.
+    /// - `onProgress` is called periodically: at each top-level item boundary, and otherwise once
+    ///   8 MiB have moved or a tenth of a second has passed, whichever comes first — never per
+    ///   chunk or per file, so a 50 GB copy or a folder of 100 000 small files doesn't flood the
+    ///   caller. The clock is what names a small file (PLAN.md §M41): bytes alone left a folder of
+    ///   3 000 small files unnamed. Each update carries ``OperationProgress/files``.
     /// - `isCancelled` is polled between chunks and items; canceling leaves a report with
     ///   `wasCancelled == true` and cleans up any half-written file (a partially copied
     ///   directory tree is left in place for the user to remove).
+    /// - `uptime` is the clock behind that tenth of a second, in seconds from any fixed point.
+    ///   Injectable so a test can make every file start report, or none.
     public static func run(
         _ operation: FileOperation,
         using backend: any VFSBackend,
@@ -38,7 +43,8 @@ public enum CopyEngine {
         resolveConflict: (@Sendable (ConflictContext) -> ConflictResolution)? = nil,
         onError: (@Sendable (OperationErrorContext) -> ErrorResolution)? = nil,
         onProgress: @escaping @Sendable (OperationProgress) -> Void = { _ in },
-        isCancelled: @escaping @Sendable () -> Bool = { false }
+        isCancelled: @escaping @Sendable () -> Bool = { false },
+        uptime: @escaping @Sendable () -> TimeInterval = { ProcessInfo.processInfo.systemUptime }
     ) -> OperationReport {
         CopyRun(
             operation: operation,
@@ -46,32 +52,36 @@ public enum CopyEngine {
             policy: conflictPolicy,
             resolveConflict: resolveConflict,
             onError: onError,
-            onProgress: onProgress,
+            tally: CopyProgressTally(
+                totalItems: operation.sources.count,
+                onProgress: onProgress,
+                uptime: uptime
+            ),
             isCancelled: isCancelled
         ).execute()
     }
 }
 
 /// One execution of a `FileOperation`. A short-lived class (never shared across tasks)
-/// so the recursive copy and its helpers can share a running byte/item tally without
-/// threading `inout` accumulators through every call.
+/// so the recursive copy and its helpers can share a running tally (``CopyProgressTally``)
+/// without threading `inout` accumulators through every call.
 private final class CopyRun {
+    /// One top-level source with what the pre-scan measured under it.
+    private struct SizedSource {
+        let entry: FileEntry
+        let bytes: Int64
+        /// Files at any depth (``DirectorySizeMeasurement/files``); a non-directory source is one.
+        let files: Int
+    }
+
     private let operation: FileOperation
     private let backend: any VFSBackend
     private let policy: ConflictPolicy
     private let resolveConflict: (@Sendable (ConflictContext) -> ConflictResolution)?
     private let onError: (@Sendable (OperationErrorContext) -> ErrorResolution)?
-    private let onProgress: @Sendable (OperationProgress) -> Void
     private let isCancelled: @Sendable () -> Bool
 
-    /// Emit a progress update at most this often by byte volume, so a large file reports
-    /// smoothly without a main-actor hop per 1 MiB chunk.
-    private static let emitThreshold: Int64 = 8 << 20
-
-    private var totalBytes: Int64 = 0
-    private var completedBytes: Int64 = 0
-    private var completedItems = 0
-    private var lastEmitted: Int64 = -1
+    private var tally: CopyProgressTally
     private var skipped: [VFSPath] = []
     private var failures: [OperationItemFailure] = []
     private var outcomes: [OperationItemOutcome] = []
@@ -95,7 +105,7 @@ private final class CopyRun {
         policy: ConflictPolicy,
         resolveConflict: (@Sendable (ConflictContext) -> ConflictResolution)?,
         onError: (@Sendable (OperationErrorContext) -> ErrorResolution)?,
-        onProgress: @escaping @Sendable (OperationProgress) -> Void,
+        tally: CopyProgressTally,
         isCancelled: @escaping @Sendable () -> Bool
     ) {
         self.operation = operation
@@ -103,19 +113,21 @@ private final class CopyRun {
         self.policy = policy
         self.resolveConflict = resolveConflict
         self.onError = onError
-        self.onProgress = onProgress
+        self.tally = tally
         self.isCancelled = isCancelled
     }
 
     func execute() -> OperationReport {
         startingTallies = metadataTallies()
         let sized = preScan()
-        totalBytes = sized.reduce(0) { $0 + $1.bytes }
-        emit(current: nil, force: true)
+        tally.begin(
+            totalBytes: sized.reduce(0) { $0 + $1.bytes },
+            totalFiles: sized.reduce(0) { $0 + $1.files }
+        )
 
         for item in sized {
             if isCancelled() { return report(canceled: true) }
-            if !transfer(item.entry, bytes: item.bytes) {
+            if !transfer(item) {
                 return report(canceled: true) // canceled mid-item
             }
         }
@@ -124,27 +136,27 @@ private final class CopyRun {
 
     // MARK: - Pre-scan
 
-    /// Measure each source's byte weight up front for the progress denominator, reusing
-    /// the directory sizer for subtrees. A source we can't size counts as 0 rather than
-    /// aborting the whole operation.
-    private func preScan() -> [(entry: FileEntry, bytes: Int64)] {
+    /// Measure each source's byte weight and file count up front for the progress denominators,
+    /// reusing the directory sizer for subtrees. A source we can't size counts as 0 bytes and no
+    /// files rather than aborting the whole operation.
+    private func preScan() -> [SizedSource] {
         // A marked symlink may have arrived from a listing that could not say what it points at, and
         // recreating it needs that text. Asking here costs nothing when there are no links and one
         // round trip when there are (PLAN.md §M25 Slice 4).
         backend.resolvingSymlinkTargets(in: operation.sources).map { entry in
-            let bytes: Int64
-            if entry.kind == .directory {
-                bytes = (
-                    try? DirectorySizer.size(
-                        of: entry.path,
-                        using: backend,
-                        isCancelled: isCancelled
-                    )
-                ) ?? 0
-            } else {
-                bytes = entry.byteSize
+            guard entry.kind == .directory else {
+                return SizedSource(entry: entry, bytes: entry.byteSize, files: 1)
             }
-            return (entry, bytes)
+            let measured = try? DirectorySizer.measure(
+                of: entry.path,
+                using: backend,
+                isCancelled: isCancelled
+            )
+            return SizedSource(
+                entry: entry,
+                bytes: measured?.bytes ?? 0,
+                files: measured?.files ?? 0
+            )
         }
     }
 
@@ -158,23 +170,24 @@ private final class CopyRun {
     /// A failed attempt is routed to `onError`, which can `.retry` the source (any partial
     /// bytes discarded first), `.skip` it (collect and continue — the default), or `.abort`
     /// the whole operation. The loop re-attempts as long as the resolver keeps asking.
-    private func transfer(_ entry: FileEntry, bytes: Int64) -> Bool {
+    private func transfer(_ source: SizedSource) -> Bool {
+        let entry = source.entry
         // `landingName` rather than `entry.name`: a rename the backend refused in place arrives here
         // as a one-source move that lands under a *different* name (`FileOperation.renamedTo`).
         let destination = operation.destinationDirectory.appending(operation.landingName(for: entry))
-        // The byte tally to roll back to before each attempt, so a failed-then-retried copy
-        // doesn't double-count the bytes it wrote before failing.
-        let bytesBefore = completedBytes
+        // The tallies to roll back to before each attempt, so a failed-then-retried copy doesn't
+        // double-count the bytes and files it wrote before failing.
+        let before = tally.mark
         while true {
-            emit(current: entry.path, force: true)
+            tally.emit(current: entry.path, force: true)
             do {
-                try attempt(entry, to: destination, bytes: bytes)
+                try attempt(source, to: destination)
                 return true
             } catch is CancellationError {
                 return false
             } catch {
                 let failure = (error as? VFSError) ?? .io(path: entry.path, code: 0)
-                completedBytes = bytesBefore // discard the failed attempt's partial progress
+                tally.rollBack(to: before) // discard the failed attempt's partial progress
                 switch resolveError(entry, failure) {
                 case .retry:
                     continue
@@ -191,18 +204,19 @@ private final class CopyRun {
     /// One attempt to transfer `entry`, resolving the destination conflict and moving the
     /// bytes. Records the item's disposition (`skipped`/`outcomes`) only on success; a throw
     /// leaves those untouched so a retry re-runs cleanly.
-    private func attempt(_ entry: FileEntry, to destination: VFSPath, bytes: Int64) throws {
+    private func attempt(_ source: SizedSource, to destination: VFSPath) throws {
+        let entry = source.entry
         switch try resolveConflict(for: entry, at: destination) {
         case .skip:
             skipped.append(entry.path)
-            account(bytes: bytes)
+            tally.finishItem(bytes: source.bytes, files: source.files)
             outcomes.append(.init(source: entry.path, landedAt: nil, replacedExisting: false))
         case let .proceed(target):
-            try perform(entry, to: target, bytes: bytes)
-            account(bytes: 0) // bytes were tallied inside `perform`
+            try perform(source, to: target)
+            tally.finishItem(bytes: 0, files: 0) // both were tallied inside `perform`
             outcomes.append(.init(source: entry.path, landedAt: target, replacedExisting: false))
         case let .overwrite(temp, existing, final):
-            try replace(entry, via: temp, removing: existing, landingAt: final, bytes: bytes)
+            try replace(entry, via: temp, removing: existing, landingAt: final)
             outcomes.append(.init(source: entry.path, landedAt: final, replacedExisting: true))
         }
     }
@@ -221,23 +235,23 @@ private final class CopyRun {
         _ entry: FileEntry,
         via temp: VFSPath,
         removing existing: VFSPath,
-        landingAt final: VFSPath,
-        bytes: Int64
+        landingAt final: VFSPath
     ) throws {
         try copyManual(entry, to: temp)
         try backend.removeItem(at: existing)
         try backend.moveItem(at: temp, to: final)
         if operation.kind == .move { try backend.removeItem(at: entry.path) }
-        account(bytes: 0)
+        tally.finishItem(bytes: 0, files: 0) // `copyManual` tallied both
     }
 
     /// Copy or move `entry` onto a `target` that is guaranteed free. Move takes the
     /// same-volume rename fast path and falls back to copy-then-delete across volumes.
-    private func perform(_ entry: FileEntry, to target: VFSPath, bytes: Int64) throws {
+    private func perform(_ source: SizedSource, to target: VFSPath) throws {
+        let entry = source.entry
         if operation.kind == .move {
             do {
                 try backend.moveItem(at: entry.path, to: target)
-                completedBytes += bytes
+                tally.add(bytes: source.bytes, files: source.files)
                 return
             } catch let VFSError.io(_, code) where code == EXDEV {
                 // Cross-volume: fall through to copy the bytes, then remove the source.
@@ -258,7 +272,7 @@ private final class CopyRun {
            entry.path.backend == target.backend,
            backend.capabilities(for: entry.path).contains(.clone),
            try backend.cloneItem(at: entry.path, to: target) {
-            completedBytes += bytes
+            tally.add(bytes: source.bytes, files: source.files)
             return
         }
         try copyManual(entry, to: target)
@@ -284,7 +298,7 @@ private final class CopyRun {
                 throw VFSError.unsupported(.symbolicLinkTargetUnreadable(name: entry.name))
             }
             try backend.createSymbolicLink(at: target, withDestination: destination)
-            completedBytes += entry.byteSize
+            tally.add(bytes: entry.byteSize, files: 1)
         case .directory:
             try backend.createDirectory(at: target)
             // Resolved as a batch, because the cost of learning a target is the *connection*
@@ -305,6 +319,7 @@ private final class CopyRun {
                 sourceMetadata: RemoteSourceMetadata(entry)
             )
         case .file, .other:
+            tally.startFile(entry)
             try backend.copyFile(
                 at: entry.path,
                 to: target,
@@ -314,39 +329,19 @@ private final class CopyRun {
                 // upload's source is local, and a download's would otherwise cost a whole connection
                 // to ask about. A backend with no use for either copies exactly as before.
                 hint: CopySourceHint(entry),
-                progress: { [self] delta in
-                    completedBytes += delta
-                    emit(current: entry.path, force: false)
-                },
+                progress: { [self] delta in tally.wrote(delta, of: entry.path) },
                 isCancelled: isCancelled
             )
+            tally.finishFile()
         }
     }
 
-    // MARK: - Progress accounting
-
-    private func account(bytes: Int64) {
-        completedBytes += bytes
-        completedItems += 1
-        emit(current: nil, force: true)
-    }
-
-    private func emit(current: VFSPath?, force: Bool) {
-        guard force || completedBytes - lastEmitted >= Self.emitThreshold else { return }
-        lastEmitted = completedBytes
-        onProgress(OperationProgress(
-            totalBytes: totalBytes,
-            completedBytes: completedBytes,
-            totalItems: operation.sources.count,
-            completedItems: completedItems,
-            currentItem: current
-        ))
-    }
+    // MARK: - Report
 
     private func report(canceled: Bool) -> OperationReport {
         OperationReport(
-            completedItems: completedItems,
-            completedBytes: completedBytes,
+            completedItems: tally.completedItems,
+            completedBytes: tally.completedBytes,
             skipped: skipped,
             failures: failures,
             wasCancelled: canceled,

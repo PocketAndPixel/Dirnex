@@ -4,7 +4,7 @@ A dual-pane, keyboard-first file manager for macOS in the spirit of Total Comman
 built native (Swift), with macOS-only superpowers TC never had: Quick Look, Spotlight
 search, APFS clones, Finder tags, a command palette, and universal undo.
 
-Status: **M0–M39 shipped**, **M40 planned** (14 languages; M29's licensing is on in betas, off in stable until the
+Status: **M0–M39 shipped**, **M40 planned**, **M41 open** (14 languages; M29's licensing is on in betas, off in stable until the
 store opens; M30's Report a Bug is in every release built while `DIRNEX_BUG_REPORT_URL` is set) ·
 Created: 2026-07-05 ·
 Log: [docs/HISTORY.md](docs/HISTORY.md) · What works where:
@@ -187,6 +187,86 @@ and all four are archived in [docs/HISTORY.md](docs/HISTORY.md).
 - **SMB** (M35): a comment column on a server's share list, from the `NetCommentStr` that
   `EnumerateShares` already returns; and a way up from a share Finder mounted, which keeps `..` →
   `/Volumes`.
+
+#### M41 — Copy and move dialogs (M)
+
+Asked 2026-11-17 by users coming from Total Commander, who want F5 and F6 to show a dialog with a
+progress bar rather than only the queue bar. Oleg keeps today's behaviour for himself, so the dialogs
+come with a "Don't ask again" box and a switch in Settings. The queue bar is unchanged: the dialogs
+are a view of the same queued job, and §1's "file operations never block the UI" still holds,
+because the progress dialog is one Return away from the background.
+
+Decided 2026-11-17 (Oleg):
+
+- **F5, F6, ⇧F5 and ⇧F6 ask first.** A sheet names what goes where, with OK (Return) and Cancel
+  (Esc). Cancel copies nothing.
+- **OK turns the same sheet into the progress dialog**: what is being copied and where, the file
+  being written now with a bar of its own, the job's bar, a line like "1.8 GB of 3.7 GB · 120 MB/s ·
+  15 s left · file 34 of 340", and Background (Return), Pause and Cancel (Esc).
+- **Background closes the sheet**, and the job goes on in the queue bar exactly as it does today.
+- **Pause pauses this job only**, and asks nothing.
+- **Cancel pauses the job and asks** "Stop copying?", with Stop (Return) and Continue (Esc). The
+  question says what stays: what was already copied or moved stays where it is, and ⌘Z undoes it.
+  Continue resumes the job, unless it had been paused before Cancel.
+- So **Return, Return** gets rid of both dialogs, **Esc** closes the confirmation, and **Esc, Return**
+  stops a running job.
+- **One switch for both dialogs**, on by default, since the box can only be offered by the dialog
+  showing. "Don't ask again" on the confirmation turns it off, F5 then goes straight to the queue as
+  today, and Settings ▸ Operations turns it back on.
+
+Proposed with them the same day, and taken with "okay" rather than asked one by one; open until
+Slice 2:
+
+- **The sheet stays up at least a second after OK.** A copy that finishes at once (an APFS clone)
+  would otherwise close it under the second Return, which then lands on the file list and opens
+  whatever is under the cursor.
+- **A job waiting its turn says so** ("Waiting for 1 job ahead"): jobs on one pair of disks run one
+  at a time, so an F5 behind a background copy can sit in the queue.
+- **A sheet, not a free window.** Esc and Return have to reach it, and a free window loses the
+  keyboard to the first click on a pane, after which Esc clears the pane's filter or marks instead.
+- **The conflict and error dialogs attach through `NSAlert.sheetHost(over:)`**, so onto the progress
+  sheet while it is up. `ConflictDialog` and `ErrorDialog` attach to the browser window today, where
+  macOS 14 and 15 queue a second sheet out of sight (NOTES.md ▸ Alerts, sheets and dialogs) and the
+  copy would wait for an answer nobody can see.
+- **Drag and drop and ⌘V keep today's behaviour**: the gesture names the destination, and Finder
+  does not ask. They can take the progress half later.
+- **AppleScript copies skip both dialogs**, since a script cannot press Return, and the app test
+  suite runs with the switch off.
+
+#### Slices
+
+1. **Core: per-job pause and per-file progress** (additive). `FileOperationQueue.pause(_:)` and
+   `resume(_:)` for one job, running or waiting, apart from the queue-wide pause; the queue-wide
+   resume leaves a job paused on its own as it was. `OperationProgress` carries the file being
+   written now at any depth, its bytes and size, and the job's files done and total, counted by the
+   pre-scan, emitted on a clock as well as by bytes so a slow link and a folder of small files both
+   move the dialog. **Landed 2026-11-17.** Probed first with a scratch package running the shipped
+   engine, cloning refused, over a folder of 3 000 4 KB files and one of 200 MB: 29 updates, none
+   naming a small file, 0.45–0.61 s between two of them, and `totalItems` 1 for the whole folder.
+   Reading `systemUptime` costs 14 ns, so a clock is free. Landed as `TransferFiles` on
+   `OperationProgress` (the file being written at any depth, its bytes and size, files done and
+   total), counted by a new `DirectorySizeMeasurement.files` so the file count and the byte bar come
+   from one walk under one rule, and reported every 8 MiB *or* every 0.1 s through an injectable
+   `uptime`. The tally and its pacing moved out of `CopyEngine.swift` into `CopyProgressTally`,
+   which had taken `CopyRun` past both lint ceilings. `FileOperationQueue.pause(_:)` and `resume(_:)`
+   keep a set of held jobs beside the queue-wide flag, and `JobSnapshot.isHeld` tells the two
+   apart; pause, resume and cancel moved to `FileOperationQueue+Control.swift`. A held job that never
+   started reads `.paused`, the scheduler skips it, and `cancel` drops it itself, since there is no
+   engine to unwind. Twelve tests in two new suites, plus file counts in two sizer tests; green 3/3
+   under `LIBDISPATCH_COOPERATIVE_POOL_STRICT=1`. Each rule has a negative control that fails it:
+   without the clock the naming test fails all five checks, without the rollback a skipped folder
+   leaves 2 files counted where 1 landed, and a queue-wide resume that releases held jobs, or a pause
+   that ignores a waiting one, fails on the transfer's own step count rather than on a status. The
+   app is untouched, and nothing in it calls `DirectorySizeMeasurement.init`, the one signature that
+   changed. **For Slice 2:** the queue bar counts any
+   `.paused` job as active and reads "Paused" only from `QueueSnapshot.isPaused`, so a job held in its
+   dialog shows as running there.
+2. **The dialogs** (app). The confirmation, the progress sheet, the Stop question, the switch and the
+   box, the conflict and error prompts through `sheetHost`, the queue bar reading a job paused on its
+   own, and 14 languages. Esc and Return pinned by tests beside `EscapeToDismissTests`, since computer
+   use cannot send Escape.
+3. **Live run**: a cross-volume copy onto a disk image (§M2's setup), so the progress sheet stays up
+   long enough to drive.
 
 The app's share of selling Dirnex (the private companion repo `dirnex-home`, milestones C1–C15) was
 two milestones, **M29** (a license, and the reminder it removes) and **M30** (Report a Bug), both
