@@ -21865,6 +21865,37 @@ unchanged. **Not run live**:
 the light appearance; Go ▸ Places opened by hand, whose build is under test; and a pin on a mounted external
 drive or an unlocked vault, both pinned by core tests.
 
+**2026-11-17: row icons stop blinking under memory pressure** (Oleg's report: after he locked a vault, the
+pane on Documents had its thumbnails blinking very fast, and so did both My Drive folders on Home, and a
+rebuild the next morning would not do it). The log of that night's process held it: from the eject at 02:20:12
+to 02:23:39, the same four of Home's folders, both My Drive among them, loaded about 8 times a second each, in
+a steady 62 ms beat that is `RowIconLoader`'s 50 ms notify delay plus a load. The morning's process was the
+same binary (one `Dirnex.debug.dylib`, dated 01:48). What had changed was the memory pressure, at `warning`
+from at least 01:42 until 11:04. `RowIconLoader` kept its images only in an `NSCache`, which lets go under
+pressure, and each arrival made every pane ask again for all its rows, so a row whose image had been let go
+got its placeholder back and a new load, and that load's arrival asked again. The eject only put a pane on
+rows that draw a loaded icon; a plain folder's loaded icon is its placeholder, so only pictures and custom
+icons showed the blink.
+
+The fix has two parts, and the tests needed both. An arrival now carries its images and puts them in
+before it asks for anything. The loader also answers from a weak table of the images it handed out, so a
+row that still draws one gets it back when asked again (on an arrival, on coming to the front, on a reload),
+whatever the cache has let go of. Asking again on an arrival stays, because the loader's queue drops its
+oldest requests and that is how a dropped row gets asked for again. The appearance change, which used to
+post the arrival notification, has one of its own (`keysDidChangeNotification`). Not chosen: a plain
+dictionary in place of the `NSCache`, which would hold every icon ever drawn through any pressure.
+
+4 app tests are new (`RowIconArrivalTests`), driving a real pane in a window over real folders with the
+cache made to forget. 4 negative controls each failed their tests: no weak table, the old behaviour, an
+arrival that carried nothing, and an arrival that did not ask for the other rows. A test could not raise
+memory pressure (docs/NOTES.md ▸ Drawing rows and cells), so the live check was a probe, behind an
+environment variable, that dropped each image as soon as it was stored, in the `app.dirnex.Dirnex.live`
+copy, with both panes on a fixture of four PNGs, a custom-icon folder and two plain folders. Over 8 s, the
+old code made 874 loads of the 7 rows and was still climbing, the fix made 14 and none after the first 4 s,
+and the old code with no probe made 7. 5 770 core and 2 644 app tests pass. The live suites skipped, since
+nothing here reaches a server, and the defaults domain was compared unchanged. **Not run live**: real
+memory pressure, since `memory_pressure -S` sets the level for every app on the Mac, and Oleg's own vault.
+
 ### After M19 — the follow-on log (2026-08-07 → 2026-09-21)
 
 Ninety-one dated passes that landed outside a milestone of their own, between M18's close on
