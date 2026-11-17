@@ -1175,6 +1175,12 @@ tries the saved SMB servers in sidebar order and keeps the one that mounted. It 
 share Finder mounted is recorded only once Dirnex has connected to it, and an account with no saved password is
 passed over rather than prompted for.
 
+A pin inside a **vault** is a local path too, and records nothing. Picking one while the vault is locked unlocks
+the saved vault of that volume name, with the passphrase on file or by asking for it, and goes in under whatever
+mount point the volume gets (`PinnedVault`, since 2026-11-17). That is the place its padlock mark names, and it
+comes ahead of the saved servers, which before then were asked for a share of the vault's name. A pin that
+recorded a share stays on the share.
+
 A **tab** inside a share is written down with the share the same way, and comes back even though Dirnex
 unmounted the share on quit. Its first navigation mounts the share by the rules a restored server tab
 reconnects by: the tab in front at launch mounts unless Settings ▸ Panels never contacts a server unasked, any

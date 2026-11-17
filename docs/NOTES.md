@@ -548,6 +548,15 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
   A window a test builds to answer a sheet needs `defer: false`, as `TrashlessProbe.window()` has;
   the window shown at once in the app is unaffected either way.
 
+- **A gesture that ends in `focusTable()` loads a test pane's view, and the load sends the pane back to
+  where it started.** Seen 2026-11-17 in `PinnedVaultFavoriteTests`: the landing called `navigate(to:)`, then
+  `focusTable()`, whose `loadViewIfNeeded()` ran `viewDidLoad` → `activateTab(unasked:)`, a second
+  navigation to the tab's own path with a newer `loadToken`. The first listing was dropped as stale, and the
+  pane sat on its start folder for the whole 30 s wait while the code under test was right. A pane in a
+  window always has its view, so load it in the fixture (`loadViewIfNeeded()` before the gesture), and
+  start it on a small folder of the fixture's own: a loaded view asks `RowIconLoader.shared` for every row it
+  lists, which the temporary directory has hundreds of.
+
 ### Waits, run loops and timing
 
 - **A wait over several async stages adds their scheduling delays together.** Measured

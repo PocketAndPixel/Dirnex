@@ -179,17 +179,20 @@ extension PanelViewController {
     /// and the endpoint goes on *that* tab: the active one is being left as it is, connection and all.
     func jumpToFavorite(_ entry: FavoriteEntry, inNewTab: Bool = false) {
         // A pinned folder can outlive the directory it points at; catch that here rather than
-        // dropping the user onto a load-failure sheet. When what is missing is the share it is on,
-        // mount that; otherwise offer to unpin the dead entry.
+        // dropping the user onto a load-failure sheet. When what is missing is the vault or the
+        // share it is on, unlock or mount that; otherwise offer to unpin the dead entry.
         if entry.path.backend == .local, !Self.directoryExists(entry.path) {
-            let shares = Self.sharesToMount(
+            switch Self.missingPinRoute(
                 for: entry,
-                saved: ServerConnectionStore.load().connections
-            )
-            if shares.isEmpty {
-                presentMissingFavoriteEntry(entry.path)
-            } else {
+                vaults: VaultStore.load().vaults,
+                servers: ServerConnectionStore.load().connections
+            ) {
+            case let .unlock(vault):
+                openPinnedVault(entry, in: vault, inNewTab: inNewTab)
+            case let .mount(shares):
                 openPinnedShare(entry, from: shares, inNewTab: inNewTab)
+            case .unpin:
+                presentMissingFavoriteEntry(entry.path)
             }
             return
         }
