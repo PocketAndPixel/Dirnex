@@ -138,6 +138,17 @@ same name.
   uninstalled), which replaces the VM's copy, then cut a beta before the next stable release.
 - **It takes 8 of this Mac's cores and 16 GB of memory** while it runs (`CPUS` and `MEMORY_MB` in the
   script, applied by `create`).
+- **It has no sound device** (`--no-audio`). With Tart's default audio pass-through, every beep in
+  the app tests made the VM open the Mac's microphone, and Bluetooth headphones dropped to mono for
+  a few seconds each time.
+- **It keeps the VM's clock on this Mac's and starts a runner that has stopped.** On 2026-11-17 the
+  clone came up 18 minutes behind, GitHub refused the runner's sign-in as expired, and the runner
+  read that as a deleted registration and stopped its service, which never retries: the VM stayed
+  up with no runner for 13 hours and every job waited. The loop now sets the clock before starting
+  the runner and every minute after, since a Mac that sleeps leaves the VM's clock behind too, and
+  starts the runner again up to five times in a row. Both show in the log.
+- **A change to the script reaches the loop only through `uninstall` and `install`.** The running
+  loop keeps the functions it read at login, and its nightly restart boots the clone with them.
 - **Between nightly restarts the clone keeps its state from job to job.** The release puts the
   keychain list back at the end, the app tests build in the job's own folder (`$RUNNER_TEMP`, emptied
   after each job), and *Crash reports* reads only the reports written during the run. Keep it that
