@@ -2923,6 +2923,29 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
   - **Quick Look's picture of text says less than the type icon at row size**: at 16 pt a `.js`, `.json`,
     `.txt` or `.md` is a white square with grey lines, and audio is a note on a blank page. Images, movies
     and PDFs are the ones worth a thumbnail (`RowIcon.isPreviewed`).
+- **Work that runs when a load lands must not be able to start a load, or a cache that lets go under memory
+  pressure turns it into a loop.** Seen 2026-11-17 as row icons blinking several times a second:
+  `RowIconLoader` kept images only in an `NSCache`, and each arrival made every pane ask again for its rows,
+  so a row whose image the cache had dropped got its placeholder back and a new load, whose arrival asked
+  again. The log held four of Home's folders, both My Drive among them, loaded about 8 times a second each
+  for 3½ minutes, and the same build never did it once the pressure was back to normal. In the live copy,
+  with the cache made to drop each image as it was stored, the old code made 874 loads of 7 rows in 8 s and
+  the fix 14. Two things fixed it, and either alone was not enough in the tests: the arrival carries its
+  images, so they are put in rather than read back, and the loader answers from a weak table of the images
+  it handed out, so asking again for a row still drawing one gets that one back. The asking on arrival
+  stays: the loader's queue drops its oldest requests, and an arrival is what makes a dropped row ask again.
+  - **"Can't reproduce it today" can be the memory pressure.** `modelmanagerd` and `duetexpertd` log
+    the pressure events they get (`Received dispatch memory pressure event: warning`, later `normal`), so
+    `log show` over the hours in question says which level a report ran under. Here it was `warning`
+    from at least 01:42 until 11:04 the next morning.
+  - **`NSWorkspace.icon(forFile:)` on some folders logs one `CFURLCreateBookmarkData` in the calling
+    process per call, and a Quick Look thumbnail logs nothing.** Measured with a probe: on this Mac four of
+    Home's folders logged one (both custom-icon My Drive folders, Desktop and `Applications (Parallels)`),
+    none of Documents' folders did, and thumbnails of a PNG and a PDF did not. So a loop over icons can be
+    counted from the unified log after the fact, but only for those rows.
+  - **A test cannot raise memory pressure**: `__NSFakeMemoryPressureNotification` posted on the
+    distributed center left an `NSCache` untouched. `memory_pressure -S` was not tried, since it sets the
+    level for every app on the Mac. Make the cache forget instead (`RowIconLoader.forget`, `didStore`).
 - **A badge on a template glyph stays a template if it is cut out rather than painted over.** Built
   2026-11-17 for the Favorites marks (`BadgedGlyph`). Drawing the mark with `.destinationOut` sixteen
   times around a 1.2 pt circle, then once normally, leaves a ring of clear pixels that follows its outline,
