@@ -22165,9 +22165,9 @@ instead of opening Oleg's editor: F7 with `folder A/sub folder A` made both, wit
 with the cursor on `Folder B`. No File Provider request was logged, and Oleg's defaults domain was
 unchanged by content. **Not run live**: the refusal sentences and an archive, since Oleg moved to a
 full-screen Space mid-run and the sheet could no longer be typed into from the background
-(LIVE-VERIFICATION.md); a server and a cloud mount; a translation. Left for a decision: Export's
-folder field, which could make folders on the way too, and F2 or ⇧F2 with a `/`, which would be a move.
-⌥F5's archive name took a path the same day, below.
+(LIVE-VERIFICATION.md); a server and a cloud mount; a translation. Left for a decision: F2 or ⇧F2
+with a `/`, which would be a move. ⌥F5's archive name and Export's folder field took a path the same
+day, below.
 
 **2026-11-18: ⌥F5 takes a path too** (Oleg's go-ahead on the follow-up named above; core and app). A
 `/` in Pack's name field used to fail at the write, after any download, with `bsdtar: Failed to open`
@@ -22202,6 +22202,35 @@ Pack, so everything after the button ran the shipped path: `backups/2026/photos`
 alert, which no background capture reached (its window was not among the app's), so its sentence is
 pinned by the test; the name refusals under the form; an encrypted pack; a server or a cloud mount as
 the destination; a translation.
+
+**2026-11-18: Export makes a folder that is not there** (Oleg's go-ahead on the next follow-up, and his
+call between two designs; core and app). File ▸ Export…'s folder field refused a folder that did not
+exist ("There’s no folder …"). It now offers to make it, and asks once: the field takes a path from a
+root as well as one from the other pane's folder, so a typo would otherwise make a stray folder
+somewhere nobody is looking. The first press says "There’s no folder “…”. Press Export again to create
+it." under the form; a second press while the field still names that folder makes it, and a press
+naming another missing folder asks afresh. `NestedCreation.state(of:using:)` (core) reads where the
+folder stands without making anything, from the folder up, counting the backend root as there since
+some backends cannot `stat` their own; the deepest folder on the way that is there has to take writes,
+and a file on the way is named with F7's sentence. `makeFolders(upTo:using:)` (core) is `mkdir -p`
+with the take-back every create here has. The folders are made only once the page is written, so a
+source that could not be drawn or a download that was stopped leaves no empty folder, and they are
+journaled as a New Folder of their own, so ⌘Z takes back the copy and then the folders. One sentence
+is new in all 14 languages. The folder-field tests moved to `MarkdownExportFolderTests`, the gesture
+suite being at SwiftLint's type ceiling.
+
+Tests: 5 core (`NestedCreationWholePathTests`) and 3 app (`MarkdownExportFolderTests`: the offer and
+the second press, the refusals, and an export into a confirmed folder, which makes it, journals it and
+copies into it). Negative controls failed by name: a second press that never confirms failed the offer
+test, and an export that skips the folders failed the export test on all three of its checks. 5 846
+core tests in 575 suites and 2 685 app tests in 417 pass (one known issue, declared by its test), both
+linters and the localization check are clean, and Oleg's defaults domain was unchanged across the run.
+Seen live in `app.dirnex.Dirnex.live`, Oleg in a full-screen Space again, through a temporary probe that
+filled the folder field with `out/new` and pressed Export twice, five seconds apart: after the first
+press nothing was on disk; after the second, `out/new/notes.html` was, a page; the journal held a New
+Folder record of two steps under the Copy; one Undo removed the page and a second both folders. **Not
+seen live**: the note under the form, since no background capture reached the sheet; the refusals; a
+server; a translation.
 
 ### After M19 — the follow-on log (2026-08-07 → 2026-09-21)
 

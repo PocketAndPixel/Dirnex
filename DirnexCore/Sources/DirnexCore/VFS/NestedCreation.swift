@@ -63,9 +63,60 @@ public enum NestedCreation {
     ) throws -> [VFSPath] {
         let chain = item.ancestorsFromRoot.dropLast()
         guard let start = chain.firstIndex(of: directory) else { return [] }
+        return try ensureAll(chain[(start + 1)...], using: backend)
+    }
+
+    // MARK: - A folder named by a whole path
+
+    /// Where a folder a whole path names stands, read without making anything: there, or missing
+    /// below the deepest folder on its way that is there (2026-11-18, for Export's folder field,
+    /// which takes a path from a root and asks before it makes anything).
+    public enum FolderState: Sendable, Equatable {
+        /// The folder is there.
+        case present
+        /// It is not, and `under` is the deepest folder on its way that is: where making the rest
+        /// would start, and whose write permission the rest needs.
+        case missing(under: VFSPath)
+    }
+
+    /// Read where `folder` stands, from the folder up. Throws ``VFSError/notADirectory(_:)`` naming
+    /// the nearest thing on the way that is not a folder, `folder` itself included. The backend root
+    /// counts as there without asking, since some backends cannot `stat` their own root.
+    public static func state(of folder: VFSPath, using backend: any VFSBackend) throws -> FolderState {
+        for path in folder.ancestorsFromRoot.reversed() {
+            if !path.isRoot {
+                guard let entry = try? backend.stat(at: path) else { continue }
+                guard entry.isDirectoryLike else { throw VFSError.notADirectory(path) }
+            }
+            return path == folder ? .present : .missing(under: path)
+        }
+        return .present // unreachable: every path's chain ends at its root
+    }
+
+    /// Make `folder` and every folder on its way that is not there yet, like `mkdir -p`. Returns the
+    /// folders made, outermost first; nothing when `folder` is there. A failure takes back what it
+    /// made, as every create here does.
+    @discardableResult
+    public static func makeFolders(upTo folder: VFSPath, using backend: any VFSBackend) throws -> [
+        VFSPath
+    ] {
+        guard case let .missing(under) = try state(of: folder, using: backend) else { return [] }
+        let chain = folder.ancestorsFromRoot
+        guard let start = chain.firstIndex(of: under) else { return [] }
+        return try ensureAll(chain[(start + 1)...], using: backend)
+    }
+
+    // MARK: - The walk
+
+    /// Make sure each of `folders`, outermost first, is a folder, taking back what this call made if
+    /// one cannot be. Returns those made.
+    private static func ensureAll(
+        _ folders: some Sequence<VFSPath>,
+        using backend: any VFSBackend
+    ) throws -> [VFSPath] {
         var made: [VFSPath] = []
         do {
-            for folder in chain[(start + 1)...] where try ensureFolder(folder, using: backend) {
+            for folder in folders where try ensureFolder(folder, using: backend) {
                 made.append(folder)
             }
         } catch {
@@ -75,19 +126,14 @@ public enum NestedCreation {
         return made
     }
 
-    // MARK: - The walk
-
     private static func make(
         _ name: NestedName,
         in directory: VFSPath,
         using backend: any VFSBackend,
         leaf: () throws -> [VFSPath]
     ) throws -> [VFSPath] {
-        var made: [VFSPath] = []
+        let made = try ensureAll(name.folders(in: directory), using: backend)
         do {
-            for folder in name.folders(in: directory) where try ensureFolder(folder, using: backend) {
-                made.append(folder)
-            }
             return try made + leaf()
         } catch {
             takeBack(made, using: backend)

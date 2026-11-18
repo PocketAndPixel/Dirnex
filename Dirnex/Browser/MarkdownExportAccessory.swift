@@ -28,6 +28,9 @@ final class MarkdownExportAccessory: NSObject {
     var onHeightChange: (() -> Void)?
     /// What pressing Export does, once ``routeExport(through:)`` has taken the button over.
     var onExport: (() -> Void)?
+    /// The missing folder the last press said it would make on the next one (2026-11-18). A press
+    /// whose folder field still names it makes the folder; one naming another folder asks again.
+    var folderToCreate: VFSPath?
 
     /// The format the name's extension was last made to follow.
     private var shownFormat: MarkdownExport.Format

@@ -38,15 +38,21 @@ extension PanelViewController {
     /// backend ever answers one, keeps the generic wording.
     func describeCreateFailure(_ error: Error, making target: VFSPath) -> String {
         if case let .notADirectory(blocker)? = error as? VFSError, blocker != target {
-            return String(
-                localized: "“\(blocker.lastComponent)” isn’t a folder, so nothing can be made inside it.",
-                comment: """
-                Failure detail of New Folder or Edit File for a typed path such as “A/B”: something \
-                on the way is a file; %@ is its name.
-                """
-            )
+            return Self.fileInTheWaySentence(blocker)
         }
         return describe(error)
+    }
+
+    /// The sentence for `blocker`, something other than a folder standing where a folder on the way
+    /// would go. Static for Export's folder check, which says it under its form (`+Export`).
+    static func fileInTheWaySentence(_ blocker: VFSPath) -> String {
+        String(
+            localized: "“\(blocker.lastComponent)” isn’t a folder, so nothing can be made inside it.",
+            comment: """
+            Failure detail of New Folder or Edit File for a typed path such as “A/B”: something \
+            on the way is a file; %@ is its name.
+            """
+        )
     }
 
     /// Why typed text names nothing a create could make. Internal for ⌥F5's sheet, which says it
