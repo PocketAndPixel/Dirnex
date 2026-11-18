@@ -78,6 +78,7 @@ struct UserScriptMaterializeTests {
     func remotePanelOmitsTheCurrentDirectory() throws {
         let (pane, host) = hostedPane(at: VFSPath(backend: Handoff.remoteID, path: "/srv"))
         let copy = try Handoff.temporaryFile(named: "report.pdf")
+        defer { Handoff.removeTemporaryFiles([copy]) }
 
         let environment = pane.scriptContext(selection: [copy]).environment()
 
@@ -102,6 +103,7 @@ struct UserScriptMaterializeTests {
     @Test("a set already on this disk runs with no job and nothing to write back")
     func localSetRunsWithNoJob() throws {
         let file = try Handoff.temporaryFile(named: "a.txt")
+        defer { Handoff.removeTemporaryFiles([file]) }
         let row = Handoff.local(file.path)
         let hosted = windowedPane(showing: [row], at: .local(file.deletingLastPathComponent().path))
         hosted.pane.panel.moveCursor(to: 0)
@@ -116,6 +118,7 @@ struct UserScriptMaterializeTests {
     func remoteSetIsQueuedAndCopiesAreWatched() throws {
         let row = Handoff.remote("/srv/report.pdf")
         let copy = try Handoff.temporaryFile(named: "report.pdf")
+        defer { Handoff.removeTemporaryFiles([copy]) }
         let hosted = windowedPane(
             showing: [row], at: VFSPath(backend: Handoff.remoteID, path: "/srv")
         )
@@ -170,6 +173,7 @@ struct UserScriptMaterializeTests {
     func mismatchedPairingWatchesNothing() throws {
         let (pane, host) = hostedPane()
         let copy = try Handoff.temporaryFile(named: "report.pdf")
+        defer { Handoff.removeTemporaryFiles([copy]) }
 
         pane.watchForWriteBack(
             of: [Handoff.remote("/srv/report.pdf"), Handoff.remote("/srv/other.pdf")],

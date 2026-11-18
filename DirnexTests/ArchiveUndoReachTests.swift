@@ -21,6 +21,7 @@ struct ArchiveUndoReachTests {
     @Test("undoing a delete brings the member back, byte for byte")
     func undoDelete() throws {
         let fixture = try Fixture()
+        defer { fixture.cleanUp() }
         let before = try fixture.archiveBytes()
 
         let snapshot = try #require(try ArchiveWriter.delete(
@@ -50,6 +51,7 @@ struct ArchiveUndoReachTests {
     @Test("undoing an add removes what was added")
     func undoAdd() throws {
         let fixture = try Fixture()
+        defer { fixture.cleanUp() }
         let extra = fixture.directory.appendingPathComponent("added.txt")
         try "added".write(to: extra, atomically: true, encoding: .utf8)
 
@@ -68,6 +70,7 @@ struct ArchiveUndoReachTests {
     @Test("an encrypted archive is undone through the same one step, and still opens")
     func undoEncryptedDelete() throws {
         let fixture = try Fixture(encryption: .aes256)
+        defer { fixture.cleanUp() }
         let snapshot = try #require(try ArchiveWriter.delete(
             innerPaths: ["/one.txt"],
             fromArchiveAt: fixture.archive,
@@ -89,6 +92,7 @@ struct ArchiveUndoReachTests {
     @Test("a rewrite that fails leaves no snapshot behind")
     func failedRewriteStoresNothing() throws {
         let fixture = try Fixture(encryption: .aes256)
+        defer { fixture.cleanUp() }
         #expect(throws: (any Error).self) {
             try ArchiveWriter.delete(
                 innerPaths: ["/one.txt"],
@@ -105,6 +109,7 @@ struct ArchiveUndoReachTests {
     @Test("a caller that wants no undo gets none, and the store stays empty")
     func undoCanBeDeclined() throws {
         let fixture = try Fixture()
+        defer { fixture.cleanUp() }
         let snapshot = try ArchiveWriter.delete(
             innerPaths: ["/one.txt"], fromArchiveAt: fixture.archive, undo: .none
         )
@@ -116,6 +121,7 @@ struct ArchiveUndoReachTests {
     @Test("an archive over the whole budget is rewritten and not journalled")
     func overTheBudgetIsNotUndoable() throws {
         let fixture = try Fixture()
+        defer { fixture.cleanUp() }
         let tiny = ArchiveUndoStorage.Request(
             store: ArchiveUndoStore(
                 root: fixture.directory.appendingPathComponent("tiny-store"),
@@ -166,6 +172,7 @@ struct ArchiveUndoReachTests {
     @Test("a journal that names no archive prunes the store empty")
     func unreferencedSnapshotsGo() throws {
         let fixture = try Fixture()
+        defer { fixture.cleanUp() }
         let store = try #require(fixture.undo.store)
         _ = try ArchiveWriter.delete(
             innerPaths: ["/one.txt"], fromArchiveAt: fixture.archive, undo: fixture.undo
@@ -185,6 +192,12 @@ struct ArchiveUndoReachTests {
         let archive: String
         let undo: ArchiveUndoStorage.Request
         private let encryption: ArchiveEncryption
+
+        /// Removes the fixture's folder, and everything in it with it. The temp folder is the
+        /// user's own and nothing empties it between runs, so each test removes what it made.
+        func cleanUp() {
+            try? FileManager.default.removeItem(at: directory)
+        }
 
         init(encryption: ArchiveEncryption = .none) throws {
             self.encryption = encryption

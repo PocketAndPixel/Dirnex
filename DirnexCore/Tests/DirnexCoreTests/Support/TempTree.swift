@@ -17,8 +17,27 @@ struct TempTree {
         try fileManager.createDirectory(at: root, withIntermediateDirectories: true)
     }
 
+    /// Removes the tree, first taking off what the attribute tests leave on purpose and what stops a
+    /// removal: an ACL denying delete, and the locked flag. Without that the `try?` hid the refusal,
+    /// and each run left the ACL tests' `f.txt` behind in a folder of its own (2026-11-19).
     func cleanup() {
+        if (try? fileManager.removeItem(at: root)) != nil { return }
+        Self.unprotect(root.path)
+        if let walker = fileManager.enumerator(atPath: root.path) {
+            for case let relative as String in walker {
+                Self.unprotect(root.appendingPathComponent(relative).path)
+            }
+        }
         try? fileManager.removeItem(at: root)
+    }
+
+    /// Clears the flags word and the extended ACL of the entry at `path`, a symlink itself rather
+    /// than what it points to.
+    private static func unprotect(_ path: String) {
+        _ = lchflags(path, 0)
+        guard let empty = acl_init(0) else { return }
+        defer { acl_free(UnsafeMutableRawPointer(empty)) }
+        _ = acl_set_link_np(path, ACL_TYPE_EXTENDED, empty)
     }
 
     /// Absolute path of a name relative to the tree root.

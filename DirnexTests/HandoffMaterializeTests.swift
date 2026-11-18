@@ -70,6 +70,7 @@ struct HandoffMaterializeTests {
         let (pane, host) = hostedPane()
         let row = Handoff.remote("/srv/report.pdf")
         let copy = try Handoff.temporaryFile(named: "report.pdf")
+        defer { Handoff.removeTemporaryFiles([copy]) }
         host.materializeReport = Handoff.report(landing: [(row, copy)])
         let handed = Handed()
 
@@ -87,6 +88,7 @@ struct HandoffMaterializeTests {
         let (pane, host) = hostedPane()
         let row = Handoff.remote("/srv/report.pdf")
         let copy = try Handoff.temporaryFile(named: "report.pdf")
+        defer { Handoff.removeTemporaryFiles([copy]) }
         host.materializeReport = Handoff.report(landing: [(row, copy)])
         let handed = Handed()
         pane.materialize([row], for: .handOff, failureMessage: neverAsked) { _ in }
@@ -125,6 +127,7 @@ struct HandoffMaterializeTests {
         let landed = Handoff.remote("/srv/one.pdf")
         let lost = Handoff.remote("/srv/two.pdf")
         let copy = try Handoff.temporaryFile(named: "one.pdf")
+        defer { Handoff.removeTemporaryFiles([copy]) }
         host.materializeReport = Handoff.report(landing: [(landed, copy)], failing: [lost])
         let handed = Handed()
         var wordedFailure = false

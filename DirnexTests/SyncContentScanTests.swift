@@ -260,6 +260,7 @@ struct SyncContentPreparationTests {
         let (pane, host) = hostedPane()
         let rows = [Handoff.remote("/srv/a.bin"), Handoff.remote("/srv/b.bin")]
         let copies = try rows.map { try Handoff.temporaryFile(named: $0.name) }
+        defer { Handoff.removeTemporaryFiles(copies) }
         host.materializeReport = Handoff.report(landing: Array(zip(rows, copies)))
         host.remoteFileCache.adopt(zip(rows, copies).map { row, copy in
             MaterializedFile(

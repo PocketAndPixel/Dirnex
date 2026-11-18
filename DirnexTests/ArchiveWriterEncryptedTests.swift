@@ -19,6 +19,7 @@ struct ArchiveWriterEncryptedTests {
     @Test("deleting a member keeps the archive encrypted and openable")
     func deletePreservesEncryption() throws {
         let fixture = try Fixture()
+        defer { fixture.cleanUp() }
 
         try ArchiveWriter.delete(
             innerPaths: ["/one.txt"],
@@ -37,6 +38,7 @@ struct ArchiveWriterEncryptedTests {
     @Test("adding a file keeps the archive encrypted, and the new member is encrypted too")
     func addPreservesEncryption() throws {
         let fixture = try Fixture()
+        defer { fixture.cleanUp() }
         let extra = fixture.directory.appendingPathComponent("added.txt")
         try "added".write(to: extra, atomically: true, encoding: .utf8)
 
@@ -62,6 +64,7 @@ struct ArchiveWriterEncryptedTests {
     @Test("an edited member written back replaces it and nothing else")
     func writeBackReplacesOneMember() throws {
         let fixture = try Fixture()
+        defer { fixture.cleanUp() }
         // What editing in place does: the extracted copy, edited, added back where it came from.
         let edited = fixture.directory.appendingPathComponent("one.txt")
         try "first, revised".write(to: edited, atomically: true, encoding: .utf8)
@@ -83,6 +86,7 @@ struct ArchiveWriterEncryptedTests {
     @Test("a hidden-names archive is still hidden after a rewrite")
     func hiddenNamesSurviveARewrite() throws {
         let fixture = try Fixture(namePrivacy: .hidden)
+        defer { fixture.cleanUp() }
         // Before: the outer archive lists only the wrapper.
         let before = try EncryptedArchiveReader.inspect(archiveAt: fixture.archive)
         #expect(ArchiveNamePrivacy.looksWrapped(before.entries.map(\.archivePath)))
@@ -105,6 +109,7 @@ struct ArchiveWriterEncryptedTests {
     @Test("an unencrypted archive still rewrites through the bsdtar route")
     func plainArchiveIsUnaffected() throws {
         let fixture = try Fixture(encryption: .none)
+        defer { fixture.cleanUp() }
         try ArchiveWriter.delete(
             innerPaths: ["/one.txt"], fromArchiveAt: fixture.archive, undo: fixture.undo
         )
@@ -124,6 +129,7 @@ struct ArchiveWriterEncryptedTests {
     @Test("with no passphrase the rewrite refuses and the archive is untouched")
     func missingPassphraseLeavesOriginal() throws {
         let fixture = try Fixture()
+        defer { fixture.cleanUp() }
         let before = try fixture.archiveBytes()
 
         #expect(throws: EncryptedArchiveError.passphraseRequired) {
@@ -137,6 +143,7 @@ struct ArchiveWriterEncryptedTests {
     @Test("with the wrong passphrase the rewrite refuses and the archive is untouched")
     func wrongPassphraseLeavesOriginal() throws {
         let fixture = try Fixture()
+        defer { fixture.cleanUp() }
         let before = try fixture.archiveBytes()
 
         // `incorrectPassphrase` specifically, because that is what re-raises the prompt rather than
@@ -155,6 +162,7 @@ struct ArchiveWriterEncryptedTests {
     @Test("no scratch archive is left beside the original when a rewrite fails")
     func failureLeavesNoLitter() throws {
         let fixture = try Fixture()
+        defer { fixture.cleanUp() }
         #expect(throws: (any Error).self) {
             try ArchiveWriter.delete(
                 innerPaths: ["/one.txt"],
@@ -172,7 +180,7 @@ struct ArchiveWriterEncryptedTests {
     }
 
     /// A real archive on disk, written by the app's own writer so every rewrite under test reads
-    /// bytes of exactly the shape Dirnex produces. Removed with the test's temp directory.
+    /// bytes of exactly the shape Dirnex produces. Removed by `cleanUp()`.
     private struct Fixture {
         static let passphrase = ArchivePassphrase("correct horse")
 
@@ -182,6 +190,12 @@ struct ArchiveWriterEncryptedTests {
         /// store, which in this target is the *developer's* `~/Library/Application Support/Dirnex`
         /// — see `ArchiveUndoStorage.Request` for why `undo:` has no default.
         let undo: ArchiveUndoStorage.Request
+
+        /// Removes the fixture's folder, and everything in it with it. The temp folder is the
+        /// user's own and nothing empties it between runs, so each test removes what it made.
+        func cleanUp() {
+            try? FileManager.default.removeItem(at: directory)
+        }
 
         init(
             encryption: ArchiveEncryption = .aes256,

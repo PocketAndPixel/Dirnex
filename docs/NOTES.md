@@ -1441,6 +1441,42 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
     folder goes (`window.contentViewController = nil`): no listings of the temp folder, 1 min 8 s of
     CPU, a worst stall of 17 ms. A temporary probe in `DirectoryLoader.model` logging any listing
     over 5 000 entries named the path, and one in `leaveVanishedFolder` named the fixture.
+    - **Met again 2026-11-19, in `PathRenameTests`, a day after it landed.** Its three panes sat
+      over real folders in `RetainedWindows` windows, and each test's `defer` removed the folder
+      with the pane still in place. Two of them climbed into the temp folder at 40 s and 45 s, and
+      a full run then listed it (77 000 entries) 225 times. The host used 1 761 CPU s, about 90 % of
+      everything the Mac used during the run, and the tests took 158 s. With `Rig.cleanUp()` taking
+      the pane out first, two runs used 80 CPU s each and took 64 s, with no listing of the temp
+      folder and the same 2 723 tests passing. The same two probes named it again. `RetainedWindows`
+      now states the rule in its doc comment, which is where a new test goes for a window.
+    - **The tell is a host that idles near one core and then holds every core.** Sampled with `ps`
+      once a second, the host used 10–16 CPU s per 10 s for its first 40 s and 110–170 after. Under
+      Time Profiler, 81 % of its CPU sat in `DirectoryModel.compare` under `DirectoryLoader.model`,
+      mostly lock waits in the sort. The suspects the slow run suggested cost almost nothing: 43
+      `WebContent` processes used 2.7 CPU s together, and `qlmanage` and `osascript` less. Sample
+      `mds` too, but only for a run that does not follow a build: Spotlight indexing the fresh
+      products added about 12 CPU s to the first run after one.
+- **The temp folder is the developer's own, and nothing empties it between runs.** Measured
+  2026-11-19: `$TMPDIR` held 76 966 entries (5.1 GB), nearly all fixture folders from earlier runs.
+  A full app run added about 88: 19 `ArchiveCreate-`, 17 `dirnex-handoff-`, 13 `gpr-routing-`, 11
+  `ArchiveRename-`, 8 `ArchiveWriterEncrypted-`, 7 `ArchiveUndoReach-`, 6
+  `DirnexArchiveSessionTests-`, 5 `dirnex-merge-offer-`, and one each of `dirnex-not-staged-` and
+  `Dirnex-GPR-`, the last a 23 MB DNG. `swift test` added 20: 10 `dnx-m26-`, 8 `dnx-m26s5-` and 2
+  `dirnex-tests-`. Two fixtures' doc comments said "Removed with the test's temp directory", and
+  there is no such directory. Each fixture now removes what it made. Most do it in a `defer` after
+  construction. A class suite whose `init` makes a folder for every test removes it in `deinit`
+  (`RemoteWriteBackMergeOfferTests`). The GoPro test calls `GPRConverter.shared.purge()`, which the
+  app runs as it quits and the test host never does. Afterwards three app runs and one core run left
+  none. The pile is what made the climbing pane above cost 1 761 CPU s; in a small folder the same
+  bug costs seconds and goes unseen. So emptying `$TMPDIR` fixes neither.
+  - **`TempTree.cleanup()` could not remove what the ACL tests leave on purpose.** Two of them end
+    with a `deny delete` ACL on their file. `removeItem` refuses it, and the `try?` hid the refusal.
+    The cleanup now clears the flags and the extended ACL on every entry, then tries again.
+  - **Count by birth time.** Comparing a listing taken before with one taken after misses nothing,
+    but it does not say who. Instead, fold the UUID out of each name born inside the run's window
+    (`os.lstat(...).st_birthtime`); that names each leaker and its rate in one pass. The toolchain
+    leaves its own `TemporaryDirectory.XXXXXX` folders, holding only `.keep-directory`, 6–8 at the
+    start of each `xcodebuild` or `swift` command. Nothing in the repo makes them.
 - **Reading a system attribute does not mean a test may write it.** Measured 2026-10-18 in the
   cloud-folder fixtures: `setxattr` on `com.apple.file-provider-domain-id` returned `EPERM`, even
   on a new owned directory outside `CloudStorage`. The same bytes under
