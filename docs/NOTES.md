@@ -682,6 +682,12 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
     none of the main actor's work (the stack in the log showed it). And a wait that gives up keeps
     the pane, the host and the fixtures alive for the rest of the run, so the late work ends quietly
     instead of failing somewhere nobody is looking.
+  - **A walk search is the same kind of flow.** Met 2026-11-18 in `UnindexedSearchTests`, which passed
+    alone in 0.25 s. In a full run, its first walk landed after the test's 30 s wait, and its late
+    results tab satisfied the wait on the second walk. The test returned and its `defer` deleted the
+    folder while the second walk was still going. That walk failed to list the folder, and the window-less `runModal()` alert held the run until it was killed five minutes
+    later. The suite now waits 120 s and removes the folder only after a wait that succeeded; a wait
+    that gives up keeps the pane. With the budget set to zero, the run recorded the issue and ended.
 - **A wait on a value the code under test sets *before* doing the work is a wait on nothing, and it
   makes a control read as inert.** The Synchronize sheet assigns its comparison synchronously on the
   way in and only then derives the rows, so `settleUntil { sheet.comparison == .content }` is
@@ -5520,6 +5526,26 @@ against a fake.
   with `-attr` and without. APFS finds the file under either form, so a `stat` of the hit works, but
   the hit's path is not byte-equal to the same file's path in a folder listing. Nothing acts on this
   yet; it matters wherever a hit is compared with a listed row by path.
+- **A folder Spotlight does not index answers every query with nothing, and says nothing about why.**
+  Probed 2026-11-18 for M40 Slice 3 on a folder under `/private/tmp` and one on the NAS's SMB share
+  that Finder mounted: name, text and tag queries with `-onlyin` each printed 0 paths and exit 0,
+  exactly what a search with no matches prints. The Finder tags were there all along, written over
+  SMB with `xattr` and read back, while `mdls` showed `kMDItemUserTags = (null)` for both files. So
+  whether Spotlight covers a folder has to be asked before trusting an empty answer
+  (`SpotlightCoverage`), and there are two ways to ask, because each misses what the other sees:
+  - **A volume's root goes to `mdutil -s`**, which prints `Indexing enabled.` (with a trailing space
+    for `/`) or `Indexing disabled.` (the NAS share) for a mount point and `Error: unknown indexing
+    state.` for any other folder. A root cannot be looked up by name: asking `/System/Volumes` for an
+    item named `Data` found three other folders of that name and not the volume.
+  - **Any other folder is looked up by name in its parent**: `mdfind -0 -onlyin <parent>
+    'kMDItemFSName == "<name>"'`. It finds an indexed folder in about 0.1 s and nothing for an
+    unindexed one. `-onlyin` covers the parent's whole subtree, so other folders of that name come back
+    too (six `oleg` folders for `/Users/oleg`), and only an exact path match counts. The comparison is
+    case-sensitive. A composed query and a decomposed one both find a folder whose name has an accent,
+    and an escaped `"` in the name works.
+  - **`mdfind` prints real paths, so resolve the folder with `realpath(3)` before comparing.** A folder
+    under `/tmp` comes back under `/private/tmp`. `URL.resolvingSymlinksInPath()` is the wrong tool
+    here: it turns `/private/tmp` back into `/tmp`.
 
 ### Owner, group and mode in a columnar listing
 
@@ -10973,6 +10999,23 @@ overturned the obvious implementation.
   not found in the Kelvin sign, which lowercases to `k`; and lowercasing can lengthen a text in UTF-16
   (`İ` becomes `i` and a combining dot) while it kept the character count on every sample tried, so a
   match in the lowercased text comes back by characters, never by offsets (`FilterQuery`).
+- **For a case- and diacritic-insensitive search through file bytes, `NSString.range(of:options:)` is
+  an order of magnitude faster than Swift's `String.range(of:options:)` with the same options.**
+  Measured 2026-11-18 in a Release build for M40 Slice 3's content search, over 8 MiB in 1 MiB
+  chunks: ASCII took 35 ms against 628 ms (about 237 against 13 MB/s), and Cyrillic took 76 ms against
+  998 ms. Folding both sides and calling `contains` took 142 and 271 ms. The `NSString` route matches
+  as Spotlight's `cd` does: `CAFE` finds `Café`, `STRASSE` finds `Straße`, `іжак` finds `Їжак`, `École`
+  finds a decomposed `école` and `file` finds `ﬁle`. Its decoder needs three guards for chunked input
+  (`TextChunkDecoder`):
+  - **`NSString(data:encoding: NSUTF8StringEncoding)` answers `nil` for the whole chunk** when the
+    chunk ends partway through a character, and for Latin-1 bytes. So the incomplete tail is carried
+    into the next chunk, and whatever is still invalid is decoded lossily, so an ASCII needle is
+    still found in a Windows-1252 file.
+  - **The UTF-16 decoder drops a trailing odd byte without a word** (`41 00 42` gives `A`), which
+    would misalign everything after a chunk boundary that cut a unit in two. The odd byte is carried.
+  - **It keeps a lone surrogate rather than failing**, and appending the other half makes the pair
+    findable again (`😀` found in the joined string). The decoder still holds a trailing high
+    surrogate back, so the search does not depend on that behaviour.
 - **APFS's file-name limit is 255 UTF-16 units, not bytes, while a volume name's and ext4's are 255
   bytes.** Probed 2026-11-14 with `open()` in the scratchpad: 255 `é` (510 bytes) and 255 `漢` (765
   bytes) were created, 127 `😀` (254 units) was and 128 (256 units) was refused with `ENAMETOOLONG`,

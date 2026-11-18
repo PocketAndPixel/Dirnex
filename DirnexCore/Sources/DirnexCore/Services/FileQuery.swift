@@ -276,8 +276,9 @@ public struct FileQuery: Sendable, Equatable, Codable {
 
     /// Escape the characters that are special inside an `mdfind` double-quoted string literal —
     /// a backslash and a double quote — so a search term containing them can't break out of the
-    /// literal or corrupt the predicate.
-    private static func escape(_ term: String) -> String {
+    /// literal or corrupt the predicate. Internal for `SpotlightCoverage`, which asks `mdfind` for a
+    /// folder by its name.
+    static func escape(_ term: String) -> String {
         term
             .replacingOccurrences(of: "\\", with: "\\\\")
             .replacingOccurrences(of: "\"", with: "\\\"")

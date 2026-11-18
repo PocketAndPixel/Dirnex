@@ -105459,6 +105459,95 @@
         }
       }
     },
+    "Spotlight doesn’t index “%@”, so Dirnex searches it file by file. Content is found in plain-text files only, not inside PDFs or Word documents.": {
+      "comment": "Find Files: note under the fields when the folder is not in the Spotlight index; %@ is the folder's name.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Spotlight indexiert „%@“ nicht, daher durchsucht Dirnex den Ordner Datei für Datei. Inhalte werden nur in reinen Textdateien gefunden, nicht in PDFs oder Word-Dokumenten."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Spotlight doesn’t index “%@”, so Dirnex searches it file by file. Content is found in plain-text files only, not inside PDFs or Word documents."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Spotlight no indexa «%@», así que Dirnex lo busca archivo por archivo. El contenido solo se encuentra en archivos de texto sin formato, no dentro de PDF ni documentos de Word."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Spotlight n’indexe pas «%@», Dirnex le parcourt donc fichier par fichier. Le contenu n’est trouvé que dans les fichiers en texte brut, pas dans les PDF ni les documents Word."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Spotlight non indicizza “%@”, quindi Dirnex lo esamina file per file. Il contenuto si trova solo nei file di testo semplice, non dentro PDF o documenti Word."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Spotlight は “%@” をインデックスしていないため、Dirnex がファイルを 1 つずつ検索します。内容はプレーンテキストのファイルでのみ見つかり、PDF や Word 書類の中は検索されません。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Spotlight가 “%@”을(를) 색인하지 않으므로 Dirnex가 파일을 하나씩 검색합니다. 내용은 일반 텍스트 파일에서만 찾으며, PDF나 Word 문서 안은 검색하지 않습니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Spotlight indexeert “%@” niet, dus Dirnex doorzoekt de map bestand voor bestand. Inhoud wordt alleen gevonden in platte-tekstbestanden, niet in pdf’s of Word-documenten."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Spotlight nie indeksuje „%@”, więc Dirnex przeszukuje folder plik po pliku. Zawartość jest wyszukiwana tylko w zwykłych plikach tekstowych, nie w plikach PDF ani dokumentach Word."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O Spotlight não indexa “%@”, então o Dirnex busca nele arquivo por arquivo. O conteúdo só é encontrado em arquivos de texto simples, não dentro de PDFs ou documentos do Word."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Spotlight не индексирует «%@», поэтому Dirnex просматривает папку файл за файлом. Содержимое ищется только в простых текстовых файлах, а не внутри PDF или документов Word."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Spotlight не індексує «%@», тому Dirnex переглядає папку файл за файлом. Вміст шукається лише у звичайних текстових файлах, а не всередині PDF чи документів Word."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Spotlight 未索引“%@”，因此 Dirnex 将逐个文件搜索。内容仅在纯文本文件中查找，不包括 PDF 或 Word 文稿内部。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Spotlight 未索引「%@」，因此 Dirnex 會逐一搜尋檔案。內容僅在純文字檔案中尋找，不包括 PDF 或 Word 文件內部。"
+          }
+        }
+      }
+    },
     "Start": {
       "comment": "Multi-rename counter field label: first number.",
       "localizations": {
@@ -125086,91 +125175,91 @@
         }
       }
     },
-    "This search looks inside files, which needs the Spotlight index and is only available on this Mac.": {
+    "This search looks inside files, which is only available on this Mac.": {
       "comment": "Unanswerable-search body: file contents are out of reach.",
       "localizations": {
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Diese Suche durchsucht Dateiinhalte. Das erfordert den Spotlight-Index und ist nur auf diesem Mac möglich."
+            "value": "Diese Suche durchsucht Dateiinhalte und ist nur auf diesem Mac möglich."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "This search looks inside files, which needs the Spotlight index and is only available on this Mac."
+            "value": "This search looks inside files, which is only available on this Mac."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Esta búsqueda mira dentro de los archivos, lo que requiere el índice de Spotlight y solo está disponible en este Mac."
+            "value": "Esta búsqueda mira dentro de los archivos y solo está disponible en este Mac."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Cette recherche examine le contenu des fichiers, ce qui nécessite l’index Spotlight et n’est possible que sur ce Mac."
+            "value": "Cette recherche examine le contenu des fichiers, ce qui n’est possible que sur ce Mac."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Questa ricerca guarda dentro i file: richiede l’indice di Spotlight ed è disponibile solo su questo Mac."
+            "value": "Questa ricerca guarda dentro i file ed è disponibile solo su questo Mac."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "この検索はファイルの内容を対象とします。Spotlight のインデックスが必要なため、この Mac でのみ利用できます。"
+            "value": "この検索はファイルの内容を対象とするため、この Mac でのみ利用できます。"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "이 검색은 파일 내용을 대상으로 하며, Spotlight 색인이 필요하므로 이 Mac에서만 사용할 수 있습니다."
+            "value": "이 검색은 파일 내용을 대상으로 하므로 이 Mac에서만 사용할 수 있습니다."
           }
         },
         "nl": {
           "stringUnit": {
             "state": "translated",
-            "value": "Deze zoekopdracht kijkt in bestanden. Daarvoor is de Spotlight-index nodig, die alleen op deze Mac beschikbaar is."
+            "value": "Deze zoekopdracht kijkt in bestanden en is alleen op deze Mac beschikbaar."
           }
         },
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "To wyszukiwanie przegląda zawartość plików, co wymaga indeksu Spotlight i jest dostępne tylko na tym Macu."
+            "value": "To wyszukiwanie przegląda zawartość plików i jest dostępne tylko na tym Macu."
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Esta busca olha dentro dos arquivos, o que exige o índice do Spotlight e só está disponível neste Mac."
+            "value": "Esta busca olha dentro dos arquivos e só está disponível neste Mac."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Этот поиск заглядывает внутрь файлов: для этого нужен индекс Spotlight, доступный только на этом Mac."
+            "value": "Этот поиск заглядывает внутрь файлов и доступен только на этом Mac."
           }
         },
         "uk": {
           "stringUnit": {
             "state": "translated",
-            "value": "Цей пошук зазирає всередину файлів: для цього потрібен індекс Spotlight, доступний лише на цьому Mac."
+            "value": "Цей пошук зазирає всередину файлів і доступний лише на цьому Mac."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "此搜索需要查看文件内容，这依赖 Spotlight 索引，仅在本 Mac 上可用。"
+            "value": "此搜索需要查看文件内容，仅在本 Mac 上可用。"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "此搜尋需要查看檔案內容，這依賴 Spotlight 索引，僅在本 Mac 上可用。"
+            "value": "此搜尋需要查看檔案內容，僅在本 Mac 上可用。"
           }
         }
       }

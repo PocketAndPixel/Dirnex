@@ -303,6 +303,62 @@ struct SubtreeSearchTests {
     }
 }
 
+/// The walk with a predicate that reads files, where Spotlight does not index (PLAN.md §M40 Slice 3).
+@Suite("Subtree search: reading files")
+struct SubtreeSearchReadingTests {
+    /// Reading a folder's files can take seconds, so Stop has to be heard between them rather than
+    /// only before the next listing.
+    @Test("a predicate that reads files hears Stop between a folder's rows")
+    func readingStopsBetweenRows() throws {
+        // Three files in one folder, so the only place to hear Stop before the second is between rows.
+        let names = ["one.txt", "two.txt", "three.txt"]
+        let backend = FakeTreeBackend(directories: ["/root": names.map { .file($0, size: 1) }])
+        let inspector = RecordingInspector(text: Dictionary(uniqueKeysWithValues: names.map {
+            ("/root/\($0)", "needle")
+        }))
+        let results = try SubtreeSearch.find(
+            under: .local("/root"),
+            using: backend,
+            matching: SearchPredicate(
+                FileQuery(contentContains: "needle"),
+                answering: .indexed,
+                inspector: inspector
+            ),
+            isCancelled: { !inspector.textReads.isEmpty }
+        )
+        #expect(results.completion == .stopped)
+        #expect(inspector.textReads == ["/root/one.txt"])
+        #expect(results.hits.map(\.name) == ["one.txt"])
+    }
+
+    @Test("a predicate that reads files reports each hit as it is found")
+    func readingReportsEachHit() throws {
+        let inspector = RecordingInspector(text: [
+            "/root/report-top.txt": "needle",
+            "/root/b/deep/report-deep.txt": "needle"
+        ])
+        var seen: [SubtreeSearch.Progress] = []
+        _ = try SubtreeSearch.find(
+            under: .local("/root"),
+            using: FakeTreeBackend(directories: [
+                "/root": [.dir("b"), .file("report-top.txt", size: 10)],
+                "/root/b": [.dir("deep")],
+                "/root/b/deep": [.file("report-deep.txt", size: 5000)]
+            ]),
+            matching: SearchPredicate(
+                FileQuery(contentContains: "needle"),
+                answering: .indexed,
+                inspector: inspector
+            ),
+            onProgress: { seen.append($0) }
+        )
+        // Three listings and two hits, each hit reported before its folder's own report.
+        #expect(seen.count == 5)
+        #expect(seen.first == SubtreeSearch.Progress(directoriesListed: 1, hits: 1))
+        #expect(seen.last?.hits == 2)
+    }
+}
+
 // MARK: - Fakes
 
 /// One row in a fake listing.

@@ -222,7 +222,7 @@ public enum S3AccountSearch {
             return
         }
 
-        let matches = listing.entries.filter(question.predicate.matches)
+        let matches = listing.entries.filter { question.predicate.matches($0) }
         if listing.isComplete {
             run.record(bucket, .complete, at: reached.location, matches: matches)
         } else if isCancelled() {

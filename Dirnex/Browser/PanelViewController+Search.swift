@@ -32,6 +32,21 @@ extension PanelViewController {
             self?.runSearch(query, in: SearchPlace(folder: scope, everything: choice == .everything))
         }
         presentAsMovableWindow(controller)
+        noteIfUnindexed(scope, in: controller)
+    }
+
+    /// Ask Spotlight about `folder` while the dialog is up, and have the dialog say so when the
+    /// folder is going to be walked (PLAN.md §M40 Slice 3). Only a folder on this Mac is asked; every
+    /// other place walks with no index to compare it to, and its dialog already shows what it answers.
+    ///
+    /// The run asks again for itself (`performSearch`), so this is only what the dialog says, and a
+    /// Find pressed before the answer arrives runs the right search all the same.
+    func noteIfUnindexed(_ folder: VFSPath, in controller: SearchController) {
+        guard SearchRoute.forBackend(folder.backend) == .spotlight else { return }
+        Task { [weak controller] in
+            guard await !SpotlightCoverageCheck.covers(localFolder: folder.path) else { return }
+            controller?.showUnindexedNote()
+        }
     }
 
     /// Whether this pane has anything to search — gates ⌥F7 and its menu item. Asks the edit
@@ -174,9 +189,20 @@ extension PanelViewController {
 
     /// Run `query` within `scope` (its subtree), or everywhere when `scope` is `nil`, off the
     /// main thread, then land the hits where `landing` says (`+SearchEdit`).
+    ///
+    /// **A folder Spotlight does not index is walked instead** (PLAN.md §M40 Slice 3): `mdfind`
+    /// answers nothing for it and says nothing about it, so a search there read as "no matches" on
+    /// an SMB share Finder mounted or anywhere under `/private/tmp`. Asked here rather than in the
+    /// dialog, because a saved search and an edit arrive here with no dialog, and because a folder
+    /// can be indexed between the two.
     private func performSearch(_ query: FileQuery, scope: VFSPath?, landing: SearchLanding) {
         let backend = backend
         Task {
+            if let scope, scope.backend == .local,
+               await !SpotlightCoverageCheck.covers(localFolder: scope.path) {
+                performWalkSearch(query, under: scope, landing: landing)
+                return
+            }
             let results = await SpotlightSearchRunner.run(query, scope: scope, backend: backend)
             landSearchResults(
                 results.entries,

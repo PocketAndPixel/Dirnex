@@ -105,6 +105,12 @@ so a trap goes here only if it can bite any live run; one tied to an area goes u
     Documents favorites reach the providers. Seeding both tabs at the fixture and `Dirnex.favorites` to
     the fixture alone (`-data`, with the copy quit) made a launch with no request in the log
     (`function=TCCAccessRequestIndirect` counts them).
+    - **An AppleEvent sent to the copy logs one too, so read the target before counting.** Seen
+      2026-11-18: after a launch with no request, each `osascript … run operation` logged a
+      `TCCAccessRequestIndirect` in the copy, 15 lines across the two sends. Each named
+      `com.anthropic.claude-code`, the sender, as `target_identity`, and was granted in 13 ms with
+      nothing on screen. So a nonzero count after a run driven by AppleEvents is not a provider prompt
+      until its `target_identity` says so.
   - **With Oleg in a full-screen Space, the copy's menu reads as disabled and its verbs take the
     front.** Seen 2026-11-15: the copy's window was off-Space and not main, so `app_menu` refused
     View ▸ Quick View Panel as disabled, and `app_bring_to_current_space` cannot move a window into a
@@ -704,6 +710,13 @@ so a trap goes here only if it can bite any live run; one tied to an area goes u
     build, export the domain, rebuild `build/debug-dd` with any env-gated probe, use his saved rows
     (they hold the NAS accounts), then rebuild without the probe, `defaults import` the export and
     relaunch it. That run moved `Dirnex.frecency`, `Dirnex.tabs.left` and `SULastCheckTime`.
+  - **A share Finder already mounted is not the LAN to the app, and the copy reads it.** Seen
+    2026-11-18: `build/live-copy` listed `/Volumes/media` (`//olegasd@nas/media`, smbfs), walked a
+    folder on it and read its files' tags and bytes, with no TCC request in its log beyond the
+    AppleEvent checks (above) and no prompt. Presumably the kernel's SMB client, which holds the
+    connection, is why Local Network privacy never comes into it. A check that only reads a mounted share can use the copy, and
+    needs no NAS account; one where Dirnex itself connects (its own SMB, SFTP, FTP or WebDAV) still
+    runs in `build/debug-dd`.
   - **Every copy that tries the LAN leaves a row in Local Network that macOS 26 cannot remove.** The
     pane has toggles and no remove button, and switching a row off keeps it. By 2026-11-11 the list
     held seven "Dirnex.app" rows from copies long deleted. Apple's forums put remove buttons in macOS

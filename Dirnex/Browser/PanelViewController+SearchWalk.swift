@@ -1,7 +1,8 @@
 import AppKit
 import DirnexCore
 
-/// ⌥F7 on a place with no index behind it — a connected server, or an archive (PLAN.md §M22).
+/// ⌥F7 on a place with no index behind it — a connected server, an archive (PLAN.md §M22), or a
+/// folder on this Mac that Spotlight does not index (PLAN.md §M40 Slice 3).
 ///
 /// Split from `PanelViewController+Search`, which owns the Spotlight route and the results tab both
 /// routes land in. The seam is the one the milestone is about: *finding* the files differs, and
@@ -11,11 +12,13 @@ extension PanelViewController {
     /// Walk `root`'s subtree for `query`, with a sheet showing progress and offering Stop, then
     /// land the hits where `landing` says — a new results tab, or the one being edited — exactly as
     /// the Spotlight route does (`+SearchEdit`).
+    ///
+    /// On this Mac the walk also reads each file for the tags and the text a listing does not carry
+    /// (`SearchPredicate.walking`).
     func performWalkSearch(_ query: FileQuery, under root: VFSPath, landing: SearchLanding) {
         let predicate: SearchPredicate
-        let fields = SearchFields.answerable(by: root.backend)
         do {
-            predicate = try SearchPredicate(query, answering: fields)
+            predicate = try SearchPredicate.walking(query, in: root.backend)
         } catch let unanswerable as SearchQueryUnanswerable {
             presentUnanswerable(unanswerable, at: root)
             return
@@ -178,8 +181,7 @@ extension PanelViewController {
         if hasContent {
             return String(
                 localized: """
-                This search looks inside files, which needs the Spotlight index and is only \
-                available on this Mac.
+                This search looks inside files, which is only available on this Mac.
                 """,
                 comment: "Unanswerable-search body: file contents are out of reach."
             )

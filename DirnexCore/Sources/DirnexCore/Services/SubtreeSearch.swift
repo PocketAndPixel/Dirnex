@@ -114,7 +114,10 @@ public enum SubtreeSearch {
 
         do {
             if let flat = try backend.subtreeListing(at: root, isCancelled: isCancelled) {
-                let hits = Array(flat.entries.lazy.filter(predicate.matches).prefix(limit))
+                var hits: [FileEntry] = []
+                for entry in flat.entries where hits.count < limit {
+                    if predicate.matches(entry, isCancelled: isCancelled) { hits.append(entry) }
+                }
                 onProgress(Progress(directoriesListed: 1, hits: hits.count))
                 return Results(
                     hits: hits,
@@ -166,19 +169,52 @@ public enum SubtreeSearch {
             }
             listed += 1
 
-            for entry in entries {
-                if entry.isDirectory { queue.append(entry.path) }
-                guard predicate.matches(entry) else { continue }
-                hits.append(entry)
-                if hits.count >= limit {
-                    onProgress(Progress(directoriesListed: listed, hits: hits.count))
-                    return Results(hits: hits, directoriesListed: listed, completion: .truncated)
-                }
+            for entry in entries where entry.isDirectory {
+                queue.append(entry.path)
+            }
+            let found = hits.count
+            let folder = match(
+                entries,
+                with: predicate,
+                upTo: limit - found,
+                isCancelled: isCancelled,
+                onHit: { onProgress(Progress(directoriesListed: listed, hits: found + $0)) }
+            )
+            hits += folder.hits
+            if let ending = folder.ending {
+                return Results(hits: hits, directoriesListed: listed, completion: ending)
             }
             onProgress(Progress(directoriesListed: listed, hits: hits.count))
         }
 
         return Results(hits: hits, directoriesListed: listed, completion: .complete)
+    }
+
+    /// One folder's rows that match, at most `limit` of them, and how the walk ends when it has to
+    /// end here (`nil` to go on). `onHit` is told how many this folder has found so far.
+    ///
+    /// A predicate that reads files can spend seconds on one folder's rows, so Stop is heard between
+    /// them and each hit is reported as it is found (PLAN.md §M40 Slice 3). One that only compares
+    /// listing rows keeps the per-listing rhythm the remote walks were measured at.
+    private static func match(
+        _ entries: [FileEntry],
+        with predicate: SearchPredicate,
+        upTo limit: Int,
+        isCancelled: () -> Bool,
+        onHit: (Int) -> Void
+    ) -> (hits: [FileEntry], ending: Completion?) {
+        var hits: [FileEntry] = []
+        for entry in entries {
+            if predicate.readsFiles, isCancelled() { return (hits, .stopped) }
+            guard predicate.matches(entry, isCancelled: isCancelled) else { continue }
+            hits.append(entry)
+            if hits.count >= limit {
+                onHit(hits.count)
+                return (hits, .truncated)
+            }
+            if predicate.readsFiles { onHit(hits.count) }
+        }
+        return (hits, nil)
     }
 
     /// How a shortcut's run ended, from the two things that can each cut it short.
