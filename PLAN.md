@@ -356,6 +356,40 @@ new placeholder drawn, "alpha" typed into the field left "Alpha Pin" alone under
 ⌘Return opened it as a second tab in the left pane, the first tab and the right pane untouched. No TCC
 request. **Not seen:** the ⌘-click, since a background click carries no modifier.
 
+**2026-11-18: Slice 2 landed, core and app** (Recents by last opened). `mdfind -0 -attr
+kMDItemLastUsedDate` gives each hit's date in the same call; `RecentsQuery.hits(fromOutput:)` reads
+it, splitting at the *last* separator since a name can hold it unescaped, and `RecentsListing` sorts
+the hits newest first before the 5 000 cap, so the cap now keeps the most recently opened rather than
+whichever paths `mdfind` printed first, then stats them and puts the date on `FileEntry.lastUsedDate`.
+**Decided in the slice:** no sort key of its own. `ListingDate` reads off the listing's path which date
+its Date column holds, the last-opened one for `search:/Recents` and the modification date everywhere
+else, and `.modified` sorts by that. A tab carries its sort into the next listing, so a `lastOpened`
+key would have arrived in a folder opened from Recents' tab, or in the Trash shown over it, naming a
+date none of its rows has (NOTES.md ▸ Virtual listings, the `showHidden` leak). The header reads
+"Last Opened" in Recents, in 14 languages, most of them Finder's or Spotlight's own words, and the
+Date column's default width now fits both titles. The pane set its sort indicator only at launch and
+on a header click, so a tab switch left it on whatever was clicked last; the header's title and
+indicator are now set on every reload. Core: 15 tests, three negative controls (the first separator,
+no newest-first sort, the listing's date ignored) each failing the tests that watch them. App: 4
+tests, plus both titles in the width tests; leaving the reload's header update out failed three of
+the four, and drawing the modification date failed the one that reads the cells. The probe's
+fixtures and the new `mdfind` facts are in NOTES.md ▸ External CLI tools ▸ mdfind, among them that
+it prints every path decomposed. **Run live** in `build/live-copy`, with two temporary env-gated
+probes (no cloud rows; Recents' `mdfind` scoped with `-onlyin` to a fixture whose files had their
+last-opened dates written into `com.apple.lastuseddate#PS`, opposite to their modification order):
+Recents listed all nine hits newest opened first under "Last Opened ↓", `watched.mov`, modified in
+2025, second, and the names holding a newline and the separator came through whole. Go ▸ Back put
+"Date Modified" and Name ↑ back, a tab switch moved title and arrow both ways, and a header click
+turned the list oldest first. **Found live and fixed:** in Russian the title drew as "Последнее
+открыт…", because the tab's Date width was stored before, as every existing user's is. Measured in
+all 14 languages, only Russian and Ukrainian were wider than both the old header and the date, so
+they became "Дата открытия" and Finder's "Відкривався", and a test now reads each compiled `.lproj`
+and fails on the long Russian title. No TCC request, the probes and the fixture are gone, and the
+defaults domain is unchanged. The full app suite failed two Quick View web-page tests
+(`QuickViewScrollPageTests`, as in Slice 1, and `QuickViewPageFindTests`) that passed alone.
+**Not seen:** Recents over the whole index rather than a scoped fixture, and the other 12
+translations drawn.
+
 The app's share of selling Dirnex (the private companion repo `dirnex-home`, milestones C1–C15) was
 two milestones, **M29** (a license, and the reminder it removes) and **M30** (Report a Bug), both
 shipped and archived in [docs/HISTORY.md](docs/HISTORY.md). Neither changed what Dirnex *is*: it

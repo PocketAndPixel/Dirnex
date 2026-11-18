@@ -5218,6 +5218,16 @@ and hands its English over as data. `LocalizedCatalog` is the join, `L10n` its o
   - The cost is a wider minimum: 949 pt in German. A test can pin it without a translation: set the
     window to its `minSize`, lay it out, and require the label's frame to be at least its intrinsic
     width (`CompareWindowTests`). With the old priority it fails in English too.
+- **A second title for a column must fit the width every user already stored for the first.** A
+  pane's tabs persist their column widths, so a new header over an old column is drawn at a width
+  sized for the old header and the dates. Measuring both titles for the *default* width fixes a
+  fresh install only. Seen 2026-11-18 (M40 Slice 2): Recents' "Last Opened" in Russian, "Последнее
+  открытие", drew as "Последнее открыт…" in a tab saved earlier, and Ukrainian's "Останнє
+  відкриття" was as wide. Both now fit under the old header ("Дата открытия"; and Finder's own
+  "Відкривався"). Measured before choosing: only those two of the 14 overflowed, since in Chinese,
+  Japanese and Korean the date is wider than either header. `DateColumnMetricsTests` reads each
+  compiled `.lproj` and requires the new title to fit the old one or the date, and the long Russian
+  title fails it.
 
 ### Finding untranslated strings
 
@@ -5488,6 +5498,28 @@ against a fake.
     beat its own interval however fast the host, so there is nothing for CI to drift past
     (`ProcessWaitingReapTests`, whose negative control fails that one test at 63 ms and leaves its
     three narrowness controls green).
+
+### mdfind
+
+- **`-attr` prints an attribute after each path without escaping either, so a name can forge one: read
+  the last separator.** Probed 2026-11-18 for M40 Slice 2. `mdfind -0 -attr kMDItemLastUsedDate
+  <query>` prints each record as the path, `   kMDItemLastUsedDate = ` and the value, then a NUL. A
+  file named `fake   kMDItemLastUsedDate = 2001-01-01 00:00:00 +0000.txt` printed that text and then
+  its real date, so the attribute is after the **last** separator. Without `-0`, a name holding a
+  newline came out as two paths, neither of them a file (`RecentsQuery.hits(fromOutput:)`).
+- **The date is whole seconds in UTC, whatever the locale or the zone.** `2026-11-17 18:40:34 +0000`
+  came back unchanged under `TZ=America/Los_Angeles`, `LC_ALL=de_DE.UTF-8`, `LANG=ja_JP.UTF-8` and
+  `LC_ALL=C`, and a date stored with 987 654 321 ns printed its second. An item with no date prints
+  `(null)`.
+- **A last-opened date can be set by hand, which is how a fixture for it is made.** It lives in the
+  `com.apple.lastuseddate#PS` extended attribute, a `timespec` of 16 bytes (seconds, then nanoseconds,
+  each a little-endian `Int64`), and `mdimport <folder>` re-imports at once: `mdfind` and `mdls` read
+  the new date seconds later. No `stat` field carries it.
+- **`mdfind` prints a path decomposed (NFD), whatever form the name has on disk.** A file written as
+  `ünï cödé.txt`, stored composed (`ls | xxd` shows `c3 bc`), came back as `u` followed by `cc 88`,
+  with `-attr` and without. APFS finds the file under either form, so a `stat` of the hit works, but
+  the hit's path is not byte-equal to the same file's path in a folder listing. Nothing acts on this
+  yet; it matters wherever a hit is compared with a listed row by path.
 
 ### Owner, group and mode in a columnar listing
 

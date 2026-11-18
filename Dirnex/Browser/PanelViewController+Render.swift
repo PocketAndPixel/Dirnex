@@ -16,6 +16,7 @@ extension PanelViewController {
         // the row set about to be drawn, not the one that was.
         rebuildSizeVisualization()
         tableView.reloadData()
+        updateColumnHeaders()
         syncCursorToTable()
         updateChrome()
     }

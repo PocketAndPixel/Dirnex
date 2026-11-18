@@ -31,20 +31,22 @@ struct RecentsQueryTests {
         )
     }
 
-    @Test("the argument vector is the predicate alone — everywhere, never scoped")
+    @Test("the argument vector asks for each hit's last-opened date, NUL-terminated — never scoped")
     func arguments() {
         let arguments = RecentsQuery().mdfindArguments()
         // No `-onlyin`: Recents searches every indexed volume, like Finder's, so a scope flag would
-        // be the bug.
-        #expect(arguments == [RecentsQuery().metadataPredicate()])
+        // be the bug. `-0` and `-attr` are what `RecentsQuery.hits(fromOutput:)` reads.
+        #expect(
+            arguments == ["-0", "-attr", "kMDItemLastUsedDate", RecentsQuery().metadataPredicate()]
+        )
         #expect(!arguments.contains("-onlyin"))
     }
 
-    @Test("results present newest-modified first, files not grouped behind folders")
+    @Test("results present by the Date column, newest first, files not grouped behind folders")
     func resultSort() {
-        // A recency proxy: `mdfind` can't sort and a statted entry has no last-used date, so
-        // modification-descending is the orderable signal. `directoriesFirst` off so the ordering is
-        // purely recency, not folders-then-files.
+        // In Recents the Date column is the last-opened date (`ListingDate`), so this is the true
+        // recency order. `directoriesFirst` off so the ordering is purely recency, not
+        // folders-then-files.
         #expect(RecentsQuery.resultSort.key == .modified)
         #expect(RecentsQuery.resultSort.ascending == false)
         #expect(RecentsQuery.resultSort.directoriesFirst == false)

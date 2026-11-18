@@ -1,11 +1,12 @@
 import AppKit
+import DirnexCore
 
 /// How wide the Date column opens — **measured**, not chosen.
 ///
 /// Neither half of the answer is ours to pick. The date's shape comes from the user's *region*
 /// (`.short`/`.short`, so `de_DE` draws `28.12.25, 22:58` where `ko_KR` draws
 /// `2025. 12. 28. 오후 10:58` — 49 pt apart in the row font), and the header's from their *language*
-/// (`Date Modified` at 95 pt against `Fecha de modificación` at 139). One hardcoded number cannot be
+/// (`Date Modified` at 95 pt against `Fecha de modificación` at 139), in either of its two titles. One hardcoded number cannot be
 /// right for both, and the 150 pt this replaced was wrong in both directions at once: ~22 pt of
 /// empty column in the `dd.MM.yyyy` regions, and short of the Korean date.
 ///
@@ -41,9 +42,23 @@ enum DateColumnMetrics {
     /// hand-rolled sum: `sizeToFit()` on a detached column fits its header cell and nothing else
     /// (there is no data source to consult), and with the indicator installed it accounts for the
     /// sort arrow's slot — measured at a constant 17 pt over the bare title, in every language.
+    ///
+    /// Both of the column's titles, since one column carries both: Date Modified, and Last Opened
+    /// when the pane lists Recents (`ListingDate`). A width for the first alone would truncate the
+    /// second in a language where it is the longer.
     private static var headerWidth: CGFloat {
+        headerTitles.map(headerWidth(for:)).max() ?? 0
+    }
+
+    /// Every title the Date column can carry.
+    private static var headerTitles: [String] {
+        [ListingDate.modified, .lastOpened].map { PanelViewController.Column.date.title(in: $0) }
+    }
+
+    /// What one header title needs, sort indicator included.
+    private static func headerWidth(for title: String) -> CGFloat {
         let column = NSTableColumn(identifier: .init("dateColumnProbe"))
-        column.title = PanelViewController.Column.date.title
+        column.title = title
         column.minWidth = 0
         column.maxWidth = .greatestFiniteMagnitude
         let table = NSTableView()
