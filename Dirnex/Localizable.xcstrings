@@ -96887,91 +96887,91 @@
         }
       }
     },
-    "Run a command…": {
-      "comment": "Command palette search-field placeholder.",
+    "Run a command or go to a place…": {
+      "comment": "Command palette search-field placeholder: it runs commands and opens places and workspaces.",
       "localizations": {
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Befehl ausführen …"
+            "value": "Befehl ausführen oder Ort öffnen …"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Run a command…"
+            "value": "Run a command or go to a place…"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ejecutar un comando…"
+            "value": "Ejecutar un comando o ir a un lugar…"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Exécuter une commande…"
+            "value": "Exécuter une commande ou aller à un emplacement…"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Esegui un comando…"
+            "value": "Esegui un comando o vai a una posizione…"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "コマンドを実行…"
+            "value": "コマンドを実行、または場所へ移動…"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "명령 실행…"
+            "value": "명령 실행 또는 위치로 이동…"
           }
         },
         "nl": {
           "stringUnit": {
             "state": "translated",
-            "value": "Voer een commando uit…"
+            "value": "Voer een commando uit of ga naar een locatie…"
           }
         },
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "Uruchom polecenie…"
+            "value": "Uruchom polecenie lub przejdź do lokalizacji…"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Выполнить команду…"
+            "value": "Выполнить команду или перейти к месту…"
           }
         },
         "uk": {
           "stringUnit": {
             "state": "translated",
-            "value": "Запустити команду…"
+            "value": "Запустити команду або перейти до місця…"
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Executar um comando…"
+            "value": "Executar um comando ou ir para um local…"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "运行命令…"
+            "value": "运行命令或前往位置…"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "執行指令…"
+            "value": "執行指令或前往位置…"
           }
         }
       }

@@ -38,6 +38,16 @@ extension BrowserWindowController {
         guard let box = (sender as? NSMenuItem)?.representedObject as? PlaceBox else { return }
         sidebar.activate(box.place, inNewTab: true)
     }
+
+    /// Open a place or a workspace picked in the ⌘K palette (PLAN.md §M40 Slice 1), through the same
+    /// two doors its other faces use: the sidebar's `activate(_:)` for a place, as Go ▸ Places does,
+    /// and `applyWorkspace` for a workspace, as the Workspaces popup does.
+    func open(_ destination: PaletteDestination) {
+        switch destination {
+        case let .place(place): sidebar.activate(place)
+        case let .workspace(workspace): applyWorkspace(workspace)
+        }
+    }
 }
 
 // MARK: - SidebarViewControllerDelegate
