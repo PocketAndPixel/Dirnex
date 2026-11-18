@@ -64,6 +64,37 @@ struct ArchiveCreateTests {
         #expect(try fixture.readBack("docs/notes.txt").isEmpty)
     }
 
+    /// F2's `sub/deeper/one.txt` on a member (2026-11-18): one rewrite makes the folders and moves
+    /// the member into them, and everything else keeps its bytes.
+    @Test("F2 with a path moves a member below folders made in the same rewrite")
+    func movesAMemberIntoNewFolders() throws {
+        let fixture = try Fixture()
+
+        try ArchiveWriter.move(
+            innerPath: "/one.txt", to: "/sub/deeper/one.txt",
+            inArchiveAt: fixture.archive, undo: fixture.undo
+        )
+
+        #expect(try fixture.kind(of: "sub/deeper") == .directory)
+        #expect(try fixture.readBack("sub/deeper/one.txt") == "first")
+        #expect(try fixture.kind(of: "one.txt") == nil)
+        #expect(try fixture.readBack("two.txt") == "second")
+    }
+
+    @Test("a move onto a member already there is refused, and the archive is byte-identical")
+    func refusesAMoveOntoAMember() throws {
+        let fixture = try Fixture()
+        let before = try fixture.archiveBytes()
+
+        #expect(throws: VFSError.self) {
+            try ArchiveWriter.move(
+                innerPath: "/one.txt", to: "/docs/deep.txt",
+                inArchiveAt: fixture.archive, undo: fixture.undo
+            )
+        }
+        #expect(try fixture.archiveBytes() == before)
+    }
+
     /// F7's `new/deeper/inner` arrives as a name in a folder the archive does not have (2026-11-18),
     /// and the one rewrite makes every folder on the way, each an entry of its own after the repack.
     @Test("a typed path makes the folders on the way in the same rewrite")

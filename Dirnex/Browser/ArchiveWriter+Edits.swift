@@ -115,6 +115,31 @@ extension ArchiveWriter {
         }
     }
 
+    /// Move one member to `destination`, an inner path below its own folder that F2's name typed as a
+    /// path named (2026-11-18), making the folders on the way in the same rewrite. Throws, leaving the
+    /// original untouched, when the destination is taken or the archive can't be read, repacked or
+    /// swapped. Blocks, so call it off-main.
+    @discardableResult
+    static func move(
+        innerPath: String,
+        to destination: String,
+        inArchiveAt archiveOnDiskPath: String,
+        passphrase: ArchivePassphrase? = nil,
+        undo: ArchiveUndoStorage.Request,
+        nameEncoding: ArchiveNameEncoding? = nil
+    ) throws -> ArchiveUndoSnapshot? {
+        try rewrite(
+            archiveOnDiskPath: archiveOnDiskPath, passphrase: passphrase, undo: undo,
+            nameEncoding: nameEncoding
+        ) { workingDirectory in
+            try ArchiveMutation.stage(
+                [ArchiveMutation.Move(from: innerPath, to: destination)],
+                ofArchiveAt: archiveOnDiskPath,
+                inWorkingDirectory: workingDirectory
+            )
+        }
+    }
+
     /// Make a new empty folder or file called `name` in the archive's inner directory
     /// `innerDirectory` (`/` = the archive root), rewriting the archive at `archiveOnDiskPath` in
     /// place: F7 and ⇧F4 inside a browsed archive. Throws, leaving the original untouched, when the

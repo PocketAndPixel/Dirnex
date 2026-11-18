@@ -324,7 +324,7 @@ tests (`RowIconTests`) and not exercised live.
 | Drag **in** from Finder and other apps | yes | yes | yes, limited<sup>j</sup> | yes | yes | yes | yes | no<sup>h</sup> | no<sup>jjj</sup> | no<sup>k</sup> | no<sup>k</sup> |
 | New Folder `F7`<sup>aax</sup> | yes | yes | yes, limited<sup>yyy</sup> | yes | yes | yes | yes | yes, limited<sup>l</sup> | no<sup>jjj</sup> | no | no |
 | New / Edit File `⇧F4`<sup>aax</sup> | yes | yes | yes, limited<sup>yyy</sup> | yes | yes | yes | yes | n/a | no<sup>jjj</sup> | no | no |
-| Rename `F2` | yes | yes | yes, limited<sup>ccc</sup> | yes | yes | yes | yes, limited<sup>i</sup> | no | n/a<sup>kkk</sup> | yes | no<sup>m</sup> |
+| Rename `F2`<sup>aax</sup> | yes | yes | yes, limited<sup>ccc</sup> | yes | yes | yes | yes, limited<sup>i</sup> | no | n/a<sup>kkk</sup> | yes | no<sup>m</sup> |
 | Multi-rename `⇧F2` | yes | yes | yes, limited<sup>ccc</sup> | yes | yes | yes | yes, limited<sup>i</sup> | no | n/a<sup>kkk</sup> | yes | no<sup>m</sup> |
 | Delete `F8` → Trash | yes | yes, limited<sup>o</sup> | n/a | n/a | n/a | n/a | n/a | n/a | no<sup>jjj</sup> | yes<sup>aac</sup> | n/a |
 | Delete `F8` → permanent (confirmed) | yes | yes | yes, limited<sup>n</sup> | yes | yes | yes | yes | yes, limited<sup>l</sup> | n/a | yes<sup>aac</sup> | yes |
@@ -442,10 +442,14 @@ followed. A leading `/`, a `.` or `..` on the way, and a `/` ending ⇧F4's name
 reasons. **⌥F5's name takes a path the same way**: `backups/2026/photos` packs `photos.zip` into
 `backups/2026` inside the other pane's folder. The job makes those folders just before it writes, in
 both runners, and takes them back if it is stopped or fails, so a pack that does not finish still
-leaves nothing behind. Run live on this Mac's disk (F7, its undo and redo, ⇧F4, and ⌥F5 into
-`backups/2026` and against a file in the way). A server and an archive are pinned by tests
-(`NestedCreateRouteTests`, `ArchiveCreateTests`, and the core's `NestedCreationTests` and
-`PackFoldersTests`); a cloud mount goes through the same local backend and was not run live.
+leaves nothing behind. **F2 takes a path too**, since 2026-11-18: `Archive/2025/report.pdf` moves the
+item below its own folder under the last name, making the folders on the way, and one ⌘Z puts it back
+and removes them. Occupied names are refused, as is a folder moved into itself; an S3 prefix goes to the
+queue as a rename job into the new folder, and inside an archive the folders and the move are one
+rewrite. ⇧F2 still refuses a `/`. Run live on this Mac's disk (F7, its undo and redo, ⇧F4, ⌥F5 into
+`backups/2026` and against a file in the way, and F2 with its undo and redo). A server and an archive are pinned by tests
+(`NestedCreateRouteTests`, `PathRenameTests`, `ArchiveCreateTests`, and the core's
+`NestedCreationTests`, `NestedMoveTests` and `PackFoldersTests`); a cloud mount goes through the same local backend and was not run live.
 
 <sup>aac</sup> Gated per **row**, like <sup>ee</sup>: each hit deletes the way the folder it lives in
 does (`DeleteRouting`), so a local hit goes to the Trash and a hit on a server is the confirmed

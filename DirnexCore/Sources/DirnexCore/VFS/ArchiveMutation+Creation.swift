@@ -90,7 +90,7 @@ extension ArchiveMutation {
     /// `FileManager.createDirectory(withIntermediateDirectories:)` (2026-11-18), which went through a
     /// symlink and made the folder at its target outside the tree, and answered a file in the way
     /// with a bare Cocoa 512 (both probed the same day). A typed path is what made that reachable.
-    private static func stageFolders(
+    static func stageFolders(
         above member: VFSPath,
         inWorkingDirectory workingDirectory: String
     ) throws {

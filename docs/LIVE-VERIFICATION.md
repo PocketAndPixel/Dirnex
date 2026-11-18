@@ -329,6 +329,10 @@ so a trap goes here only if it can bite any live run; one tied to an area goes u
     first run measured the *refusal* of a remote directory instead of the transfer, and read as the
     feature not working. Seed `markedPaths` in the persisted tab to reach a marked set at all; and
     note that this made the refusal's own live check free, which is the half worth keeping.
+    - **`cursorPath` is relative to the tab's own folder** (`report.pdf`), as `markedPaths` are. Seen
+      2026-11-18: an absolute path matched nothing, the cursor landed on the folder sorted first, and
+      F2 renamed that folder instead of the file under test. Leave only the item under test in the
+      pane, or seed the relative path.
   - The seed is `Dirnex.tabs.<pane>` holding a `PersistedTab` whose `endpoint` is a
     `ServerEndpoint.sftp` with `.key(identityFile:)` — no password, no Keychain, no prompt — and the
     app reconnects at launch since session restore learned to (NOTES.md ▸ Design lessons). Back the domain up

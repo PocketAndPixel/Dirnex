@@ -74298,95 +74298,6 @@
         }
       }
     },
-    "Names can’t contain the “/” character.": {
-      "comment": "Rename validation failure body: slash is not allowed in a name.",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Namen dürfen kein „/“ enthalten."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Names can’t contain the “/” character."
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Los nombres no pueden contener el carácter «/»."
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Les noms ne peuvent pas contenir le caractère \"/\"."
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "I nomi non possono contenere il carattere “/”."
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "名前に“/”文字は使用できません。"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "이름에는 “/” 문자를 사용할 수 없습니다."
-          }
-        },
-        "nl": {
-          "stringUnit": {
-            "value": "Namen mogen het teken “/” niet bevatten.",
-            "state": "translated"
-          }
-        },
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Nazwy nie mogą zawierać znaku „/”."
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "В именах нельзя использовать символ «/»."
-          }
-        },
-        "uk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Назви не можуть містити символ «/»."
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Nomes não podem conter o caractere “/”."
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "名称不能包含“/”字符。"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "名稱無法包含「/」字元。"
-          }
-        }
-      }
-    },
     "Navigation": {
       "comment": "Shortcuts action category for the navigation verbs.",
       "localizations": {
@@ -175727,6 +175638,95 @@
           "stringUnit": {
             "state": "translated",
             "value": "除非您是管理者，否則「%@」只能移至您所屬的群組。"
+          }
+        }
+      }
+    },
+    "“%@” can’t be moved into itself.": {
+      "comment": "Rename failure detail: a folder renamed to a path inside itself; %@ is its name.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "„%@“ kann nicht in sich selbst bewegt werden."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” can’t be moved into itself."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "«%@» no se puede mover dentro de sí misma."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "«%@» ne peut pas être déplacé dans lui-même."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” non può essere spostato dentro sé stesso."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@”をそれ自身の中に移動することはできません。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@”을(를) 자기 자신 안으로 이동할 수 없습니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” kan niet naar zichzelf worden verplaatst."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nie można przenieść „%@” do jego wnętrza."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” não pode ser movido para dentro de si mesmo."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Нельзя переместить «%@» внутрь самого себя."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не можна перемістити «%@» усередину самого себе."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法将“%@”移到其自身内部。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "無法將「%@」移到其自身內部。"
           }
         }
       }
