@@ -636,6 +636,12 @@ so a trap goes here only if it can bite any live run; one tied to an area goes u
     can be stale anyway. Reopen Closed Tab being *disabled* afterwards says the closed tab was used, and
     a ⌘T that landed instead would have left it enabled. Ask what state only the gesture under test
     could leave behind.
+  - **A list does not re-validate the menu of an app in the background.** Seen 2026-11-19 on Edit ▸
+    Undo in the copy, with Oleg's Chrome in front: after an undo that emptied the stack, `list` still
+    gave "Undo Change Attributes" and a plain Redo, while the saved journal (`Dirnex.undoJournal`) held
+    the step on the redo stack. With the copy in front the same list read right. An inactive app has no
+    key window to answer `undo:`, so read what the gesture leaves (the journal, the files) rather than
+    a menu title.
 - **computer-use reports `AXError: failure` for a button that opens a sheet, and the sheet is up.**
   Seen twice on 2026-10-01 pressing Report a Bug…'s *Show What Will Be Sent…*: the AXPress came back
   as a failure each time, and a screenshot showed the preview sheet open. The press waits for an

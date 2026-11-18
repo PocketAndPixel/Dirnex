@@ -461,6 +461,41 @@ saved preference keys unchanged by content. **Not seen:** a system-immutable ite
 root-only items, a cancel on a second body's dialog, and a translation. The undo still refuses, which
 is Slice 5.
 
+**2026-11-19: Slice 5 landed, core and app, and was run live through a probe** (an undo that needs
+root). ⌘Z and ⇧⌘Z on a change only an administrator can put back now ask in Slice 4's dialog, titled
+"Undoing this change needs an administrator" or "Redoing…", with the batch's body and the command to
+copy, instead of refusing. Core: `LocalAttributeRestore` measures a step against its item as it is,
+dropping the fields and the list the item already holds, and the executor and `EscalatedUndo` both
+measure through it, so a step the escalation leaves to the executor is never refused there for root,
+and someone who ran the command in Terminal and pressed Cancel meets a ⌘Z with nothing left to ask.
+`EscalatedUndo` takes the steps that need root out of the record, one batch item per path with its
+list, in the record's order, and leaves every other step where it was; a redo is the same question
+asked of the inverted record. `UndoJournal.takeForUndo(_:)` and `takeForRedo(_:)` take an entry by
+identity. App: `UndoController` looks at the top, measures off the main thread, asks, runs the root
+part through `AdministratorShell` and then the rest, and only then takes the step; Cancel in the
+dialog, or at the password before anything ran, leaves it where it was. **Decided in the slice:**
+redo asks as undo does; a step only a Created date makes need root has no command, so it is reverted
+as before and the executor names it; a step recorded by a queued job while the dialog is up stays on
+top, and the one asked about is taken from beneath it; and ⌘Z and ⇧⌘Z run one at a time
+(`UndoController.enqueue`), since a second press while the first asked would have found the same
+entry. Before this, two quick presses reverted their records at the same time on two threads. Two
+titles in 14 languages. Core: 14 tests, five negative controls each failing the tests that watch them
+(no narrowing of fields, none of the list, escalated steps left in the remainder, the list dropped
+from the item, a take only from the top); app: 8 tests, four controls (Cancel taking the step, a
+password cancel read as a failure, the top taken rather than the entry asked about, no serializing).
+**Run live** in `build/live-copy`, without a password, through a temporary env-gated probe that
+measured as a user who owns nothing and ran the bodies unprivileged, as the tests do. From a journal
+seeded through the core's encoders (two files changed 0644 → 0600), ⌘Z drew the dialog for 2 items;
+Cancel left both files at 0600 and the step on the undo stack; a second ⌘Z asked again, and
+Authenticate put both back to 0644 and moved the step to redo; ⇧⌘Z asked under "Redoing…" and
+re-applied 0600. Relaunched without the probe, ⌘Z on the same files, which are Oleg's own, ran with
+no dialog. No provider TCC request (the six logged named the AppleEvent sender), and the probe, the
+fixture and the copy's domain are gone. Found in passing: listing an inactive app's Edit menu kept
+the title from before the undo (LIVE-VERIFICATION.md). Final runs: core 5963 green, both CI-pinned
+linters clean, the full app suite green (2731 tests), and all 73 saved preference keys unchanged by
+content. **Not seen:** the macOS password dialog, so a root-owned item put back by a real ⌘Z, left
+for Slice 9's live run (Oleg, 2026-11-19); an ACL carried to root by an undo; a translation.
+
 The app's share of selling Dirnex (the private companion repo `dirnex-home`, milestones C1–C15) was
 two milestones, **M29** (a license, and the reminder it removes) and **M30** (Report a Bug), both
 shipped and archived in [docs/HISTORY.md](docs/HISTORY.md). Neither changed what Dirnex *is*: it

@@ -122,6 +122,12 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
 
 ## Swift 6 and concurrency
 
+- **A ternary choosing between two multi-statement `async throws` closures crashed the type
+  checker.** Seen 2026-11-19 building a probe: `let shell: Transport = flag ? { log(…); try await
+  A.run($0, privileged: false) } : { try await A.run($0) }`, with `Transport` a `@Sendable ([String])
+  async throws -> Void` typealias, failed with "failed to produce diagnostic for expression; please
+  submit a bug report" and nothing else. The same two closures assigned in an `if`/`else` compiled.
+  Reach for `if`/`else` before reading anything into that message.
 - **Block/token `NotificationCenter` observers can't be torn down from a `nonisolated deinit`**
   — the `[NSObjectProtocol]` token array is non-Sendable. Use selector-based observers plus
   `removeObserver(self)`.
@@ -11303,6 +11309,25 @@ overturned the obvious implementation.
   inverse reverses and flips them, a failed swap reports none, and a journal from before it decodes
   with `nil`. The same holds for any operation that goes through a container swap: what the swap
   changed has to be journaled beside it, because it cannot be read off the swap afterwards.
+
+- **An undo that asks before it takes has to take by identity, and ⌘Z has to wait for it.** Built
+  2026-11-19 for M40 Slice 5, where ⌘Z on a change only root can put back asks for the password first
+  and Cancel must leave the step where it was. So the entry stays on the stack while the dialog is up,
+  and two things follow that popping at once never needed. A queued job can finish behind the dialog
+  and record something newer, so the step is taken by identity from beneath it
+  (`UndoJournal.takeForUndo(_:)`) rather than as the top. And a second ⌘Z pressed meanwhile would find
+  the same entry on top and ask about it again, so ⌘Z and ⇧⌘Z run one at a time
+  (`UndoController.enqueue`). That last one was a fault before any asking: two quick presses had
+  always reverted their records at the same time, on two threads.
+  - **`UndoRecord.inverted` mints a new id every time.** An entry on the redo stack equals only itself
+    as stored, so find it by the value peeked from the stack, never by inverting the original again.
+    Four of the slice's journal tests compared against a freshly inverted record and failed for that
+    alone.
+  - **Measure what is left before asking who may write it.** The executor asked `AttributePrivilege`
+    about a step's whole diff, so a value already on disk still "needed root" on someone else's file.
+    Once an escalation decides which steps the executor gets, the two have to measure the same way
+    (`LocalAttributeRestore`), or a step handed over as needing nobody is refused after a password
+    the user has just typed.
 
 ### Transfers and batches
 

@@ -29,11 +29,12 @@ enum AttributeBatchEscalation {
         }
     }
 
-    /// The dialog for `batch`. Authenticate is its first button.
-    static func alert(for batch: EscalatedAttributeBatch) -> NSAlert {
+    /// The dialog for `batch`. Authenticate is its first button. `title` names an undo or a redo.
+    static func alert(for batch: EscalatedAttributeBatch, title: String? = nil) -> NSAlert {
         let terminalCommand = batch.terminalCommand()
         let canRun = batch.hasCommands
         return AdministratorEscalationAlert.make(
+            title: title,
             body: canRun
                 ? AdministratorEscalationAlert.batchBody(
                     count: batch.items.count, offersCommand: terminalCommand != nil
