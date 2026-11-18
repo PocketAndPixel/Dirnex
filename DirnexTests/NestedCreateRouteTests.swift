@@ -61,6 +61,24 @@ struct NestedCreateRouteTests {
         #expect(pane.transientStatusToken == 0)
     }
 
+    /// The sentence under F7's, ⇧F4's and a pack's failure alert. A runner or a stage throws
+    /// `notADirectory` naming the file in the way, and the generic "That item isn’t a folder." would
+    /// not say which name that is; ⌥F5's live check could not capture its alert, so this pins it.
+    /// Checked by name rather than by wording, since the test host may run in another language.
+    @Test("a failure names the file in the way, and leaves every other refusal's sentence alone")
+    func failureNamesTheFileInTheWay() {
+        let pane = Self.pane(PathRecordingBackend())
+        let archive = VFSPath(backend: Fixture.backendID, path: "/blocker/x.zip")
+        let blocker = VFSPath(backend: Fixture.backendID, path: "/blocker")
+
+        let named = pane.describeCreateFailure(VFSError.notADirectory(blocker), making: archive)
+        #expect(named.contains("blocker"))
+        #expect(named != pane.describe(VFSError.notADirectory(blocker)))
+        for error in [VFSError.notADirectory(archive), .alreadyExists(archive), .notFound(archive)] {
+            #expect(pane.describeCreateFailure(error, making: archive) == pane.describe(error))
+        }
+    }
+
     @Test("⇧F4 on a file already there in a folder opens it and makes nothing")
     func editFileOpensAnExistingNestedFile() async {
         let backend = PathRecordingBackend(folders: ["/a"], files: ["/a/notes.txt"])

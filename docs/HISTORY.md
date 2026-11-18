@@ -22165,9 +22165,43 @@ instead of opening Oleg's editor: F7 with `folder A/sub folder A` made both, wit
 with the cursor on `Folder B`. No File Provider request was logged, and Oleg's defaults domain was
 unchanged by content. **Not run live**: the refusal sentences and an archive, since Oleg moved to a
 full-screen Space mid-run and the sheet could no longer be typed into from the background
-(LIVE-VERIFICATION.md); a server and a cloud mount; a translation. Left for a decision: ⌥F5's
-archive name and Export's folder field, which could make folders on the way too, and F2 or ⇧F2 with a
-`/`, which would be a move.
+(LIVE-VERIFICATION.md); a server and a cloud mount; a translation. Left for a decision: Export's
+folder field, which could make folders on the way too, and F2 or ⇧F2 with a `/`, which would be a move.
+⌥F5's archive name took a path the same day, below.
+
+**2026-11-18: ⌥F5 takes a path too** (Oleg's go-ahead on the follow-up named above; core and app). A
+`/` in Pack's name field used to fail at the write, after any download, with `bsdtar: Failed to open`
+(probed). `ArchivePacking.archiveName(typed:format:)` (core) now reads the field as F7 reads its own,
+checking the path before the suffix goes on the last name, so `backups/` is refused rather than packed
+as a hidden `backups/.zip`. The sheet says a refusal under its form and keeps the cursor in the name
+field, as it does for a passphrase. The folders are made by the job, not the sheet: `PackFolders`
+(core), shared by `PlainPackRunner` and `PackRunner`, makes them from the operation's
+`destinationDirectory` just before the write and takes them back unless an archive was created, which
+keeps the promise both runners made that a pack which does not finish leaves nothing at the
+destination. A finished pack finds its pane by the folder it was aimed at, which `JobSnapshot` now
+carries, and lands the cursor on the outermost new folder; for a plain name that is the archive, as
+before. A file in the way fails the job naming it, and the failure alert says which name it is.
+
+Found on the way, and fixed: the window's finish loop stopped after an encrypted pack's outcome, so
+its refused uploads and failed source walks, which come home as `failures` with no outcome, said
+nothing, and the sources staged for it were never swept (docs/NOTES.md ▸ Guards and restrictions).
+Both pack kinds now go on through the failure alert and the sweep (`BrowserWindowController.isPack`).
+
+Tests: 11 core (`PackFoldersTests`: the name rule, the folder walk, both runners into a nested path, a
+stopped and a failed pack taking back only what they made, a file in the way, and the queue's snapshot
+naming the destination) and 2 app (`PackFinishTests`, and the failure sentence in
+`NestedCreateRouteTests`). Negative controls failed by name: without the take-back both "takes back"
+tests failed, and without the folders both runners' "lands below" tests and the file-in-the-way test
+failed. 5 841 core tests in 574 suites and 2 683 app tests in 416 pass (one known issue, declared by
+its test), both linters and the localization check are clean, and Oleg's defaults domain was unchanged
+across the run with his own Debug build up. Seen live in `app.dirnex.Dirnex.live`, Oleg being in a
+full-screen Space again, through a temporary probe that filled the sheet's name from a file and pressed
+Pack, so everything after the button ran the shipped path: `backups/2026/photos` made both folders and
+`photos.zip` holding the marked file, with the other pane's cursor on `backups`; `blocker/x`, with
+`blocker` a file, made nothing and left `blocker` byte-identical. **Not seen live**: that refusal's
+alert, which no background capture reached (its window was not among the app's), so its sentence is
+pinned by the test; the name refusals under the form; an encrypted pack; a server or a cloud mount as
+the destination; a translation.
 
 ### After M19 — the follow-on log (2026-08-07 → 2026-09-21)
 

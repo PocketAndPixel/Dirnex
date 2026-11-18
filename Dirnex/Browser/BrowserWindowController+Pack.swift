@@ -13,10 +13,12 @@ import DirnexCore
 /// a modal saying "done" over a result already visible. A **failure** interrupts, because nothing
 /// was written and the pane looks exactly as it did before — there is no other way to find out.
 extension BrowserWindowController {
-    func presentPackOutcome(of report: OperationReport) {
+    /// `destination` is the folder the pack was aimed at, the job's `destinationDirectory`: the
+    /// archive's own folder, or the folder a typed path starts from. `nil` reads as the former.
+    func presentPackOutcome(of report: OperationReport, into destination: VFSPath?) {
         switch report.pack {
         case let .created(summary):
-            presentPackSuccess(summary)
+            presentPackSuccess(summary, into: destination)
         case let .failed(error):
             presentPackFailure(error)
         case nil:
@@ -27,14 +29,22 @@ extension BrowserWindowController {
         }
     }
 
-    private func presentPackSuccess(_ summary: PackSummary) {
+    private func presentPackSuccess(_ summary: PackSummary, into destination: VFSPath?) {
         // The archive lands in the pane the pack *targeted*, which is the one the user is not
         // standing in — Pack writes into the other pane, like F5. So the pane to re-list is the one
         // showing the archive's own directory, never `focusedPanel`: selecting there asks the source
         // pane to put its cursor on a file it does not contain, which fails silently and leaves the
         // new archive sitting unselected in the pane that does. (The neighboring checksum outcome
         // reads `focusedPanel` correctly, because a manifest is written beside the files it covers.)
-        paneShowing(summary.archive.parent)?.refreshCurrentDirectory(selecting: summary.archive)
+        //
+        // **The archive may be below folders the pack made** (`backups/2026/photos.zip`, 2026-11-18),
+        // which no pane shows, so the pane is the one showing the folder the pack was aimed at, and
+        // the row to land on is the one there on the way to the archive: `backups`, new as well.
+        if let destination = destination ?? summary.archive.parent,
+           let pane = paneShowing(destination),
+           let row = destination.child(towards: summary.archive) {
+            pane.refreshCurrentDirectory(selecting: row)
+        }
         let name = summary.archive.lastComponent
         let size = ByteCountFormatter.string(
             fromByteCount: summary.byteSize,
@@ -61,8 +71,7 @@ extension BrowserWindowController {
     /// The pane currently showing `directory`, the **inactive** one first since that is what a pack
     /// targets. `nil` when neither does — the user navigated both panes away while the job ran, and
     /// there is then nothing to re-list, which is an answer rather than a failure.
-    private func paneShowing(_ directory: VFSPath?) -> PanelViewController? {
-        guard let directory else { return nil }
+    private func paneShowing(_ directory: VFSPath) -> PanelViewController? {
         let candidates = [panelCounterpart(of: focusedPanel), focusedPanel].compactMap { $0 }
         return candidates.first { $0.panel.path == directory }
     }

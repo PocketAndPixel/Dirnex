@@ -1,9 +1,10 @@
 import AppKit
 import DirnexCore
 
-/// What F7 and ⇧F4 say about a typed path (2026-11-18): the refusals of a name that names nothing a
-/// create could make, and the sentence for a file standing where a folder on the way would go. One
-/// place, so the two dialogs and every backend they reach say the same thing about the same text.
+/// What F7, ⇧F4 and ⌥F5 say about a typed path (2026-11-18): the refusals of a name that names
+/// nothing a create could make, and the sentence for a file standing where a folder on the way would
+/// go. One place, so the three dialogs and every backend they reach say the same thing about the same
+/// text.
 extension PanelViewController {
     /// Parse what F7's or ⇧F4's field holds, saying what is wrong when it names nothing that can be
     /// made. `nil` for a refusal, and for an empty field, which is a silent cancel as it always was.
@@ -22,7 +23,7 @@ extension PanelViewController {
                         localized: "Can’t create the file",
                         comment: "Create-file failure title for an invalid name."
                     ),
-                detail: Self.sentence(for: error)
+                detail: Self.nestedNameSentence(for: error)
             )
             return nil
         }
@@ -48,7 +49,9 @@ extension PanelViewController {
         return describe(error)
     }
 
-    private static func sentence(for problem: NestedName.Problem) -> String {
+    /// Why typed text names nothing a create could make. Internal for ⌥F5's sheet, which says it
+    /// under its own form (`+ArchivePack`).
+    static func nestedNameSentence(for problem: NestedName.Problem) -> String {
         switch problem {
         case .empty:
             // Never shown: `nestedName` reads it as a cancel. Kept a sentence so the switch stays
