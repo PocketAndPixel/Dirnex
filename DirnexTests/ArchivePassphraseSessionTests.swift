@@ -41,6 +41,7 @@ struct ArchivePassphraseSessionTests {
     @Test("an encrypted member extracts with the passphrase and is cached")
     func encryptedMemberExtracts() async throws {
         let archive = try Fixture()
+        defer { archive.cleanUp() }
         let cache = ArchivePreviewCache()
         let member = ArchiveMember(archivePath: archive.path, innerPath: "one.txt")
 
@@ -54,6 +55,7 @@ struct ArchivePassphraseSessionTests {
     @Test("without a passphrase an encrypted member is refused, not handed to bsdtar")
     func encryptedMemberNeedsPassphrase() async throws {
         let archive = try Fixture()
+        defer { archive.cleanUp() }
         let cache = ArchivePreviewCache()
         let member = ArchiveMember(archivePath: archive.path, innerPath: "one.txt")
 
@@ -68,6 +70,7 @@ struct ArchivePassphraseSessionTests {
     @Test("a wrong passphrase reports itself as wrong, which is what drives the retry")
     func wrongPassphraseIsDistinguishable() async throws {
         let archive = try Fixture()
+        defer { archive.cleanUp() }
         let cache = ArchivePreviewCache()
         let member = ArchiveMember(archivePath: archive.path, innerPath: "one.txt")
 
@@ -83,6 +86,7 @@ struct ArchivePassphraseSessionTests {
     @Test("a second member of an encrypted archive decrypts only itself")
     func secondMemberExtractsOnlyItself() async throws {
         let archive = try Fixture()
+        defer { archive.cleanUp() }
         let cache = ArchivePreviewCache()
         let first = ArchiveMember(archivePath: archive.path, innerPath: "one.txt")
         let second = ArchiveMember(archivePath: archive.path, innerPath: "two.txt")
@@ -108,7 +112,9 @@ struct ArchivePassphraseSessionTests {
     @Test("two archives holding the same member name never share an extraction")
     func reuseDoesNotCrossArchives() async throws {
         let one = try Fixture()
+        defer { one.cleanUp() }
         let other = try Fixture()
+        defer { other.cleanUp() }
         let cache = ArchivePreviewCache()
 
         let fromOne = try await cache.extractedURL(
@@ -123,12 +129,18 @@ struct ArchivePassphraseSessionTests {
     }
 
     /// A real AES-256 zip holding two named members, written by the app's own writer so the
-    /// passphrase takes the route it takes in production. Removed with the test's temp directory.
+    /// passphrase takes the route it takes in production. Removed by `cleanUp()`.
     private struct Fixture {
         static let passphrase = ArchivePassphrase("correct horse")
 
         let directory: URL
         let path: String
+
+        /// Removes the fixture's folder, and everything in it with it. The temp folder is the
+        /// user's own and nothing empties it between runs, so each test removes what it made.
+        func cleanUp() {
+            try? FileManager.default.removeItem(at: directory)
+        }
 
         init() throws {
             directory = FileManager.default.temporaryDirectory

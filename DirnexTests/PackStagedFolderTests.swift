@@ -69,6 +69,8 @@ struct PackStagedFolderTests {
             .appendingPathComponent("dirnex-not-staged-\(UUID().uuidString)", isDirectory: true)
             .appendingPathComponent("photos", isDirectory: true)
         try FileManager.default.createDirectory(at: outside, withIntermediateDirectories: true)
+        // Removed after the expectation that it survived the sweep, which is the point of the test.
+        defer { try? FileManager.default.removeItem(at: outside.deletingLastPathComponent()) }
         let staged = try Self.stagedTree(named: "photos")
 
         RemoteFileCache.sweepStagedTrees([outside, staged])

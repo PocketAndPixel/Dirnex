@@ -20,6 +20,7 @@ struct ArchiveRenameTests {
     @Test("a renamed member keeps its bytes, and its neighbours survive")
     func renameKeepsBytesAndNeighbours() throws {
         let fixture = try Fixture()
+        defer { fixture.cleanUp() }
 
         try ArchiveWriter.rename(
             innerPath: "/one.txt", to: "renamed.txt",
@@ -36,6 +37,7 @@ struct ArchiveRenameTests {
     @Test("a member in a subdirectory stays in it")
     func renameKeepsTheDirectory() throws {
         let fixture = try Fixture(nesting: true)
+        defer { fixture.cleanUp() }
 
         try ArchiveWriter.rename(
             innerPath: "/docs/deep.txt", to: "other.md",
@@ -51,6 +53,7 @@ struct ArchiveRenameTests {
     @Test("renaming a folder carries its contents")
     func renameCarriesASubtree() throws {
         let fixture = try Fixture(nesting: true)
+        defer { fixture.cleanUp() }
 
         try ArchiveWriter.rename(
             innerPath: "/docs", to: "guides",
@@ -68,6 +71,7 @@ struct ArchiveRenameTests {
     @Test("a case-only change is a rename like any other")
     func renameAllowsACaseOnlyChange() throws {
         let fixture = try Fixture()
+        defer { fixture.cleanUp() }
 
         try ArchiveWriter.rename(
             innerPath: "/one.txt", to: "ONE.txt",
@@ -83,6 +87,7 @@ struct ArchiveRenameTests {
     @Test("renaming onto an existing member is refused and changes nothing")
     func renameRefusesACollision() throws {
         let fixture = try Fixture()
+        defer { fixture.cleanUp() }
         let before = try fixture.archiveBytes()
 
         #expect(throws: (any Error).self) {
@@ -104,6 +109,7 @@ struct ArchiveRenameTests {
     @Test("a name that would move the member out of its folder is refused")
     func renameRefusesATraversal() throws {
         let fixture = try Fixture(nesting: true)
+        defer { fixture.cleanUp() }
         let before = try fixture.archiveBytes()
 
         for bad in ["..", "../escape.txt", "sub/deep.txt", ""] {
@@ -120,6 +126,7 @@ struct ArchiveRenameTests {
     @Test("a missing member is refused and changes nothing")
     func renameRefusesAMissingMember() throws {
         let fixture = try Fixture()
+        defer { fixture.cleanUp() }
         let before = try fixture.archiveBytes()
 
         #expect(throws: (any Error).self) {
@@ -138,6 +145,7 @@ struct ArchiveRenameTests {
     @Test("an encrypted archive stays encrypted, and the renamed member still opens")
     func renamePreservesEncryption() throws {
         let fixture = try Fixture(encryption: .aes256)
+        defer { fixture.cleanUp() }
 
         try ArchiveWriter.rename(
             innerPath: "/one.txt", to: "renamed.txt",
@@ -166,6 +174,7 @@ struct ArchiveRenameTests {
         // fail this by one second for reasons that have nothing to do with the code under test.
         let stamp = Date(timeIntervalSince1970: 1_700_000_000)
         let fixture = try Fixture(encryption: .aes256, stampedAt: stamp)
+        defer { fixture.cleanUp() }
 
         try ArchiveWriter.rename(
             innerPath: "/one.txt", to: "renamed.txt",
@@ -185,6 +194,7 @@ struct ArchiveRenameTests {
     func renameKeepsModificationDatesThroughTheBsdtarRoute() throws {
         let stamp = Date(timeIntervalSince1970: 1_700_000_000)
         let fixture = try Fixture(stampedAt: stamp)
+        defer { fixture.cleanUp() }
 
         try ArchiveWriter.rename(
             innerPath: "/one.txt", to: "renamed.txt",
@@ -201,6 +211,7 @@ struct ArchiveRenameTests {
     @Test("a rename is undoable")
     func renameIsUndoable() throws {
         let fixture = try Fixture()
+        defer { fixture.cleanUp() }
 
         let snapshot = try ArchiveWriter.rename(
             innerPath: "/one.txt", to: "renamed.txt",
@@ -264,9 +275,11 @@ struct ArchiveRenameTests {
 
         #expect(pane.renameRoute(for: directory.appending("note.txt")) == .backend)
     }
+}
 
-    // MARK: - Fixture
+// MARK: - Fixture
 
+extension ArchiveRenameTests {
     private struct Fixture {
         static let passphrase = ArchivePassphrase("correct horse")
 
@@ -276,6 +289,12 @@ struct ArchiveRenameTests {
         /// *developer's* `~/Library/Application Support/Dirnex` — see `ArchiveUndoStorage.Request`
         /// for why `undo:` has no default.
         let undo: ArchiveUndoStorage.Request
+
+        /// Removes the fixture's folder, and everything in it with it. The temp folder is the
+        /// user's own and nothing empties it between runs, so each test removes what it made.
+        func cleanUp() {
+            try? FileManager.default.removeItem(at: directory)
+        }
 
         /// `stampedAt` back-dates the source files before they are packed, which is the only way to
         /// tell a preserved modification time from a freshly written one — a fixture built "now"

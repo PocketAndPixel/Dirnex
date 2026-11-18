@@ -23,6 +23,7 @@ struct ArchiveCreateTests {
     @Test("F7 makes an empty folder, and the members beside it keep their bytes")
     func makesAFolder() throws {
         let fixture = try Fixture()
+        defer { fixture.cleanUp() }
 
         try ArchiveWriter.create(
             .folder, named: "untitled folder", inInnerDirectory: "/",
@@ -38,6 +39,7 @@ struct ArchiveCreateTests {
     @Test("a new folder goes in the folder it was made in")
     func makesAFolderInAFolder() throws {
         let fixture = try Fixture()
+        defer { fixture.cleanUp() }
 
         try ArchiveWriter.create(
             .folder, named: "inner", inInnerDirectory: "/docs",
@@ -54,6 +56,7 @@ struct ArchiveCreateTests {
     @Test("⇧F4's new member is an empty file")
     func makesAnEmptyFile() throws {
         let fixture = try Fixture()
+        defer { fixture.cleanUp() }
 
         try ArchiveWriter.create(
             .emptyFile, named: "notes.txt", inInnerDirectory: "/docs",
@@ -69,6 +72,7 @@ struct ArchiveCreateTests {
     @Test("F2 with a path moves a member below folders made in the same rewrite")
     func movesAMemberIntoNewFolders() throws {
         let fixture = try Fixture()
+        defer { fixture.cleanUp() }
 
         try ArchiveWriter.move(
             innerPath: "/one.txt", to: "/sub/deeper/one.txt",
@@ -84,6 +88,7 @@ struct ArchiveCreateTests {
     @Test("a move onto a member already there is refused, and the archive is byte-identical")
     func refusesAMoveOntoAMember() throws {
         let fixture = try Fixture()
+        defer { fixture.cleanUp() }
         let before = try fixture.archiveBytes()
 
         #expect(throws: VFSError.self) {
@@ -100,6 +105,7 @@ struct ArchiveCreateTests {
     @Test("a typed path makes the folders on the way in the same rewrite")
     func makesTheFoldersOnTheWay() throws {
         let fixture = try Fixture()
+        defer { fixture.cleanUp() }
 
         try ArchiveWriter.create(
             .folder, named: "inner", inInnerDirectory: "/new/deeper",
@@ -124,6 +130,7 @@ struct ArchiveCreateTests {
     @Test("a file on the way is refused naming it, and the archive is byte-identical")
     func refusesAFileOnTheWay() throws {
         let fixture = try Fixture()
+        defer { fixture.cleanUp() }
         let before = try fixture.archiveBytes()
 
         #expect(
@@ -145,6 +152,7 @@ struct ArchiveCreateTests {
     @Test("a name already there is refused, and the archive is byte-identical")
     func refusesAnOccupiedName() throws {
         let fixture = try Fixture()
+        defer { fixture.cleanUp() }
         let before = try fixture.archiveBytes()
 
         for (creation, name) in [
@@ -170,6 +178,7 @@ struct ArchiveCreateTests {
     @Test("a name no member can have is refused, and the archive is byte-identical")
     func refusesANameThatIsNotAName() throws {
         let fixture = try Fixture()
+        defer { fixture.cleanUp() }
         let before = try fixture.archiveBytes()
 
         for bad in ["", "..", ".", "a/b", "../escape"] {
@@ -191,6 +200,7 @@ struct ArchiveCreateTests {
     @Test("an encrypted archive stays encrypted, and the new folder is in it")
     func keepsEncryption() throws {
         let fixture = try Fixture(encryption: .aes256)
+        defer { fixture.cleanUp() }
 
         try ArchiveWriter.create(
             .folder, named: "made", inInnerDirectory: "/",
@@ -210,6 +220,7 @@ struct ArchiveCreateTests {
     @Test("a .tar.gz stays a .tar.gz")
     func keepsTheContainerFormat() throws {
         let fixture = try Fixture(suffix: "tar.gz")
+        defer { fixture.cleanUp() }
 
         try ArchiveWriter.create(
             .emptyFile, named: "added.txt", inInnerDirectory: "/",
@@ -225,6 +236,7 @@ struct ArchiveCreateTests {
     @Test("a create is undoable")
     func isUndoable() throws {
         let fixture = try Fixture()
+        defer { fixture.cleanUp() }
 
         let snapshot = try ArchiveWriter.create(
             .folder, named: "made", inInnerDirectory: "/",
@@ -244,6 +256,12 @@ struct ArchiveCreateTests {
         /// A scratch store, never the app's own (see the suite's doc comment).
         let undo: ArchiveUndoStorage.Request
         private let storeRoot: URL
+
+        /// Removes the fixture's folder, and everything in it with it. The temp folder is the
+        /// user's own and nothing empties it between runs, so each test removes what it made.
+        func cleanUp() {
+            try? FileManager.default.removeItem(at: directory)
+        }
 
         /// `one.txt`, `two.txt` and `docs/deep.txt`. A zip is written by the in-process writer, as
         /// rename's fixture is; any other suffix is packed by `bsdtar -a`, so the format comes from
@@ -422,6 +440,7 @@ struct ArchiveCreateReachTests {
     @Test("⇧F4 with a name the archive refuses reaches the archive and reports it")
     func shiftF4ReachesTheArchive() async throws {
         let fixture = try ArchiveCreateTests.Fixture()
+        defer { fixture.cleanUp() }
         let root = VFSPath(backend: .archive(forArchiveAt: fixture.archive), path: "/")
         let before = try fixture.archiveBytes()
         let window = TrashlessProbe.window()

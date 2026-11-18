@@ -27,6 +27,17 @@ struct PathRenameTests {
         func exists(_ relative: String) -> Bool {
             FileManager.default.fileExists(atPath: root.appendingPathComponent(relative).path)
         }
+
+        /// The pane leaves its window before its folder goes, as in `TreeTransferTests`.
+        /// `RetainedWindows` keeps the window for the rest of the run, and a pane in a window whose
+        /// folder is deleted moves up to the nearest one left (`leaveVanishedFolder`): the temp
+        /// folder, where it re-listed every entry at each later test's write (docs/NOTES.md ▸
+        /// Testing, 2026-11-19).
+        @MainActor
+        func cleanUp() {
+            window.contentViewController = nil
+            try? FileManager.default.removeItem(at: root)
+        }
     }
 
     private static func rig(backend: any VFSBackend = LocalBackend()) throws -> Rig {
@@ -60,7 +71,7 @@ struct PathRenameTests {
     @Test("a file moves below the folders F2 made, and one record undoes the whole gesture")
     func movesAndJournals() async throws {
         let rig = try Self.rig()
-        defer { try? FileManager.default.removeItem(at: rig.root) }
+        defer { rig.cleanUp() }
         try Data("pdf".utf8).write(to: rig.root.appendingPathComponent("report.pdf"))
 
         rig.pane.performRename(
@@ -84,7 +95,7 @@ struct PathRenameTests {
     @Test("a folder renamed into itself is refused, and nothing is made")
     func refusesIntoItself() async throws {
         let rig = try Self.rig()
-        defer { try? FileManager.default.removeItem(at: rig.root) }
+        defer { rig.cleanUp() }
         try FileManager.default.createDirectory(
             at: rig.root.appendingPathComponent("docs"), withIntermediateDirectories: true
         )
@@ -111,7 +122,7 @@ struct PathRenameTests {
     )
     func deferredMoveAsksForTheJob() async throws {
         let rig = try Self.rig(backend: CrossDeviceBackend())
-        defer { try? FileManager.default.removeItem(at: rig.root) }
+        defer { rig.cleanUp() }
         try FileManager.default.createDirectory(
             at: rig.root.appendingPathComponent("prefix"), withIntermediateDirectories: true
         )

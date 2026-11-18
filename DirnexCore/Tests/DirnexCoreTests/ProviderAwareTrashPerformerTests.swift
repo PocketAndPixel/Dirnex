@@ -41,6 +41,7 @@ struct ProviderAwareTrashPerformerTests {
     @Test("an item lands in the trash under its own name")
     func landsUnderItsOwnName() throws {
         let root = try Self.temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: root) }
         let trash = root.appendingPathComponent("Trash")
         try FileManager.default.createDirectory(at: trash, withIntermediateDirectories: true)
         let source = Self.file(root.appendingPathComponent("report.pdf"), "a")
@@ -59,6 +60,7 @@ struct ProviderAwareTrashPerformerTests {
     @Test("a name already in the trash is stamped, and the item already there is untouched")
     func aCollisionNeverOverwrites() throws {
         let root = try Self.temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: root) }
         let trash = root.appendingPathComponent("Trash")
         try FileManager.default.createDirectory(at: trash, withIntermediateDirectories: true)
         Self.file(trash.appendingPathComponent("report.pdf"), "already thrown away")
@@ -80,6 +82,7 @@ struct ProviderAwareTrashPerformerTests {
     @Test("an item that cannot be placed reports the errno rather than overwriting")
     func exhaustedCandidatesThrow() throws {
         let root = try Self.temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: root) }
         let trash = root.appendingPathComponent("Trash")
         try FileManager.default.createDirectory(at: trash, withIntermediateDirectories: true)
         let frozen = Date(timeIntervalSince1970: 1_788_206_645.017)
@@ -104,6 +107,7 @@ struct ProviderAwareTrashPerformerTests {
     @Test("a missing trash directory fails as a mapped errno, not as a collision")
     func aMissingTrashDirectoryFails() throws {
         let root = try Self.temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: root) }
         let source = Self.file(root.appendingPathComponent("report.pdf"), "a")
         let absent = root.appendingPathComponent("no-such-trash")
 
@@ -129,6 +133,7 @@ struct ProviderAwareTrashPerformerTests {
     @Test("a trash directory that is named but absent is discarded for the fallback")
     func anAbsentCandidateFallsBack() throws {
         let root = try Self.temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: root) }
         let present = root.appendingPathComponent("Present")
         try FileManager.default.createDirectory(at: present, withIntermediateDirectories: true)
         let absent = root.appendingPathComponent("Absent")
@@ -147,6 +152,7 @@ struct ProviderAwareTrashPerformerTests {
     @Test("a candidate that is a file is discarded for the fallback")
     func aFileCandidateFallsBack() throws {
         let root = try Self.temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: root) }
         let notADirectory = Self.file(root.appendingPathComponent(".Trash"), "")
         let fallback = root.appendingPathComponent("Fallback")
 
@@ -167,6 +173,7 @@ struct ProviderAwareTrashPerformerTests {
     @Test("a real file under a provider root whose ubiquity read answers nothing stays ordinary")
     func anAbsentUbiquityKeyIsAuthoritative() throws {
         let home = try Self.temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: home) }
         let mount = home.appendingPathComponent("Library/CloudStorage/GoogleDrive-a@b.com/My Drive")
         try FileManager.default.createDirectory(at: mount, withIntermediateDirectories: true)
         let source = Self.file(mount.appendingPathComponent("report.pdf"), "a")
@@ -185,6 +192,7 @@ struct ProviderAwareTrashPerformerTests {
     @Test("an ordinary local item is still handed to the platform's own trashItem")
     func anOrdinaryItemTakesTheOrdinaryRoute() throws {
         let root = try Self.temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: root) }
         let source = Self.file(root.appendingPathComponent("report.pdf"), "a")
         let spy = SpyOrdinary()
 
@@ -204,6 +212,7 @@ struct ProviderAwareTrashPerformerTests {
     @Test("the provider route records where the item came from")
     func recordsThePutBackOrigin() throws {
         let root = try Self.temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: root) }
         let trash = root.appendingPathComponent("Trash")
         try FileManager.default.createDirectory(at: trash, withIntermediateDirectories: true)
         let folder = root.appendingPathComponent("Cloud")
@@ -231,6 +240,7 @@ struct ProviderAwareTrashPerformerTests {
     @Test("an ordinary item is left to trashItem, and nothing is written here")
     func writesNothingForAnOrdinaryItem() throws {
         let root = try Self.temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: root) }
         let trash = root.appendingPathComponent("Trash")
         try FileManager.default.createDirectory(at: trash, withIntermediateDirectories: true)
         let source = Self.file(root.appendingPathComponent("report.pdf"), "a")

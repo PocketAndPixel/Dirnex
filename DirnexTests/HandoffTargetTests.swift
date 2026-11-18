@@ -63,7 +63,7 @@ struct HandoffTargetTests {
     @Test("a remote row offers the same applications a local file of that type does")
     func remoteRowIsTypedByItsName() throws {
         let onDisk = try Handoff.temporaryFile(named: "note.txt")
-        defer { try? FileManager.default.removeItem(at: onDisk.deletingLastPathComponent()) }
+        defer { Handoff.removeTemporaryFiles([onDisk]) }
 
         let fromDisk = OpenWithLauncher.candidates(for: [Handoff.local(onDisk.path)])
         let fromName = OpenWithLauncher.candidates(for: [Handoff.remote("/srv/note.txt")])

@@ -54,6 +54,7 @@ struct ChecksumMaterializeTests {
         let (pane, host) = hostedPane()
         let rows = [Handoff.remote("/srv/a.bin"), Handoff.remote("/srv/b.bin")]
         let copies = try rows.map { try Handoff.temporaryFile(named: $0.name) }
+        defer { Handoff.removeTemporaryFiles(copies) }
         host.materializeReport = Handoff.report(landing: Array(zip(rows, copies)))
 
         startCreate(pane, sources: rows, manifest: manifest(pane))
@@ -73,7 +74,9 @@ struct ChecksumMaterializeTests {
         let cached = Handoff.remote("/srv/a.bin")
         let fresh = Handoff.remote("/srv/b.bin")
         let cachedCopy = try Handoff.temporaryFile(named: "a.bin")
+        defer { Handoff.removeTemporaryFiles([cachedCopy]) }
         let freshCopy = try Handoff.temporaryFile(named: "b.bin")
+        defer { Handoff.removeTemporaryFiles([freshCopy]) }
         // Put the first row in the cache the way an earlier gesture would have.
         host.remoteFileCache.adopt([
             MaterializedFile(
@@ -103,6 +106,7 @@ struct ChecksumMaterializeTests {
         let landed = Handoff.remote("/srv/a.bin")
         let lost = Handoff.remote("/srv/b.bin")
         let copy = try Handoff.temporaryFile(named: "a.bin")
+        defer { Handoff.removeTemporaryFiles([copy]) }
         hosted.host.materializeReport = Handoff.report(landing: [(landed, copy)], failing: [lost])
 
         startCreate(hosted.pane, sources: [landed, lost], manifest: manifest(hosted.pane))
@@ -205,8 +209,10 @@ struct ChecksumMaterializeTests {
         backend.listings = [root: [manifestRow, claimed]]
 
         let manifestCopy = try Handoff.temporaryFile(named: "files.md5")
+        defer { Handoff.removeTemporaryFiles([manifestCopy]) }
         try Data(Self.manifestText.utf8).write(to: manifestCopy)
         let claimedCopy = try Handoff.temporaryFile(named: "a.bin")
+        defer { Handoff.removeTemporaryFiles([claimedCopy]) }
 
         let (pane, host) = hostedPane(showing: [manifestRow], at: root, backend: backend)
         host.materializeReports = [
@@ -232,6 +238,7 @@ struct ChecksumMaterializeTests {
         let root = VFSPath(backend: Handoff.remoteID, path: "/srv")
         let manifestRow = Handoff.remote("/srv/files.md5")
         let copy = try Handoff.temporaryFile(named: "files.md5")
+        defer { Handoff.removeTemporaryFiles([copy]) }
         try Data("this is prose, not a checksum line\n".utf8).write(to: copy)
 
         let hosted = windowedPane(showing: [manifestRow], at: root)

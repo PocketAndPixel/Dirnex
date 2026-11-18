@@ -74,6 +74,14 @@ enum Handoff {
         return url
     }
 
+    /// Removes what `temporaryFile(named:)` made, each file's folder with the file in it. Called from
+    /// the test's `defer`: the temp folder is the user's own and nothing empties it between runs.
+    static func removeTemporaryFiles(_ urls: [URL]) {
+        for url in urls {
+            try? FileManager.default.removeItem(at: url.deletingLastPathComponent())
+        }
+    }
+
     /// A report standing for a job that landed `files` and failed on `failures`.
     static func report(
         landing files: [(FileEntry, URL)] = [],
@@ -160,6 +168,13 @@ struct WindowedPane {
     let window: NSWindow
 }
 
+/// Windows kept for the rest of the run, for the reason `windowedPane` gives.
+///
+/// **A pane over a real folder leaves its window before its folder is deleted**
+/// (`window.contentViewController = nil`, as `TreeTransferTests` and `PathRenameTests` do). A pane
+/// in a window whose folder vanishes moves up to the nearest folder left (`leaveVanishedFolder`),
+/// which for a fixture is the temp folder, and there it re-lists every entry at each later test's
+/// write. Met twice: 2026-10-28 and 2026-11-19 (docs/NOTES.md ▸ Testing).
 @MainActor
 enum RetainedWindows {
     static var all: [NSWindow] = []
