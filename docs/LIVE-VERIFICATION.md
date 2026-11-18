@@ -112,6 +112,11 @@ so a trap goes here only if it can bite any live run; one tied to an area goes u
     a background click on the header's Page button and most `app_key down` presses on its file list.
     Scrolling the preview did not. Read `lsappinfo front` after every step and put his app back with
     `open -b`.
+    - **Seen again 2026-11-18, with two more limits.** Edit ▸ Undo and File ▸ Edit File… were refused
+      as disabled, and `run operation "edit.undo"`, `"edit.redo"` and `"file.editNew"` ran them. Once
+      the window was off-Space, `app_type` into its sheet was refused and so was
+      `app_bring_to_current_space`, which ends a background run. A quit is refused (`-128`) while a
+      sheet is up, so stop the copy by its PID.
   - **`open -g` still put the copy in front.** Seen the same day, launched with `--env`: `lsappinfo
     front` named `app.dirnex.Dirnex.live`. So did a background double-click on a row, and F5's
     conflict dialog. Check the front after each, and put Oleg's app back with `open -b`.

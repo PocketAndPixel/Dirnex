@@ -43,6 +43,22 @@ struct ArchiveMutationCreationTests {
         }
     }
 
+    /// F7's `Folder A/sub folder A` arrives as a name and a directory the archive lacks (2026-11-18),
+    /// so the directory's folders are held to the name's rule: a `..` there climbs out just as well.
+    @Test("a folder on the way that is not a member name is refused")
+    func createdInnerPathRefusesDotsOnTheWay() {
+        #expect(
+            ArchiveMutation.createdInnerPath(named: "x", inInnerDirectory: "/new/deeper")
+                == "/new/deeper/x"
+        )
+        for bad in ["/docs/..", "/../escape", "/a/./b", ".."] {
+            #expect(
+                ArchiveMutation.createdInnerPath(named: "x", inInnerDirectory: bad) == nil,
+                "\(bad) should not be a folder on the way"
+            )
+        }
+    }
+
     // MARK: - Staging
 
     @Test("a folder is made where the member will be")
@@ -111,6 +127,49 @@ struct ArchiveMutationCreationTests {
         )
 
         #expect(FileManager.default.fileExists(atPath: tree.root + "/gone/deeper/x.txt"))
+    }
+
+    /// Without the walk's own check, `FileManager` answered this with a bare Cocoa 512, and the
+    /// sentence the app could render said nothing about `readme.txt`.
+    @Test("a file on the way is refused naming it, and the file is untouched")
+    func refusesAFileOnTheWay() throws {
+        let tree = try StagedTree()
+        for creation in [ArchiveMutation.Creation.folder, .emptyFile] {
+            #expect(throws: VFSError.notADirectory(tree.member("/readme.txt"))) {
+                try ArchiveMutation.stage(
+                    creation,
+                    at: tree.member("/readme.txt/sub/new"),
+                    inWorkingDirectory: tree.root
+                )
+            }
+        }
+        #expect(try tree.text(of: "/readme.txt") == "read me")
+        #expect(try tree.contents(of: "/") == ["docs", "readme.txt"])
+    }
+
+    /// The staged tree holds a member symlink as a real one, pointing anywhere. `FileManager` went
+    /// through it and made the folder at its target (probed 2026-11-18), which is outside the tree.
+    @Test("a symlink on the way is refused, and nothing is made at its target")
+    func refusesASymlinkOnTheWay() throws {
+        let tree = try StagedTree()
+        let outside = tree.root + "-outside"
+        try FileManager.default.createDirectory(atPath: outside, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(atPath: outside) }
+        try FileManager.default.createSymbolicLink(
+            atPath: tree.root + "/link",
+            withDestinationPath: outside
+        )
+
+        for creation in [ArchiveMutation.Creation.folder, .emptyFile] {
+            #expect(throws: VFSError.notADirectory(tree.member("/link"))) {
+                try ArchiveMutation.stage(
+                    creation,
+                    at: tree.member("/link/new"),
+                    inWorkingDirectory: tree.root
+                )
+            }
+        }
+        #expect(try FileManager.default.contentsOfDirectory(atPath: outside).isEmpty)
     }
 
     // MARK: - Nothing already there is touched

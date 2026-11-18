@@ -64,7 +64,50 @@ struct ArchiveCreateTests {
         #expect(try fixture.readBack("docs/notes.txt").isEmpty)
     }
 
+    /// F7's `new/deeper/inner` arrives as a name in a folder the archive does not have (2026-11-18),
+    /// and the one rewrite makes every folder on the way, each an entry of its own after the repack.
+    @Test("a typed path makes the folders on the way in the same rewrite")
+    func makesTheFoldersOnTheWay() throws {
+        let fixture = try Fixture()
+
+        try ArchiveWriter.create(
+            .folder, named: "inner", inInnerDirectory: "/new/deeper",
+            ofArchiveAt: fixture.archive, undo: fixture.undo
+        )
+        try ArchiveWriter.create(
+            .emptyFile, named: "test.txt", inInnerDirectory: "/Folder B",
+            ofArchiveAt: fixture.archive, undo: fixture.undo
+        )
+
+        #expect(try fixture.kind(of: "new") == .directory)
+        #expect(try fixture.kind(of: "new/deeper") == .directory)
+        #expect(try fixture.kind(of: "new/deeper/inner") == .directory)
+        #expect(try fixture.kind(of: "Folder B") == .directory)
+        #expect(try fixture.readBack("Folder B/test.txt").isEmpty)
+        #expect(try fixture.readBack("docs/deep.txt") == "deep")
+    }
+
     // MARK: - Refusals leave the archive alone
+
+    /// The sentence the app shows names the member in the way, so the error has to name it too.
+    @Test("a file on the way is refused naming it, and the archive is byte-identical")
+    func refusesAFileOnTheWay() throws {
+        let fixture = try Fixture()
+        let before = try fixture.archiveBytes()
+
+        #expect(
+            throws: VFSError.notADirectory(
+                VFSPath(backend: .archive(forArchiveAt: fixture.archive), path: "/one.txt")
+            )
+        ) {
+            try ArchiveWriter.create(
+                .folder, named: "sub", inInnerDirectory: "/one.txt",
+                ofArchiveAt: fixture.archive, undo: fixture.undo
+            )
+        }
+        #expect(try fixture.archiveBytes() == before)
+        #expect(fixture.storeIsEmpty(), "a refused create kept a copy to undo from")
+    }
 
     /// Each occupant a create could land on: a file under a folder's name, a folder under a file's,
     /// and a twin differing only in case, which the APFS the tree is staged on reads as one name.

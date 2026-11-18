@@ -322,8 +322,8 @@ tests (`RowIconTests`) and not exercised live.
 | Drag and drop, inside Dirnex | yes | yes | yes, limited<sup>j</sup> | yes | yes | yes | yes | no<sup>h</sup> | yes, partially<sup>jjj</sup> | yes, partially<sup>k</sup> | yes, partially<sup>k</sup> |
 | Drag **out** to Finder and other apps | yes | yes | yes, partially<sup>j</sup> | yes, partially<sup>k</sup> | yes, partially<sup>k</sup> | yes, partially<sup>k</sup> | yes, partially<sup>k</sup> | no<sup>h</sup> | yes, partially<sup>k</sup> | yes, partially<sup>k</sup> | yes |
 | Drag **in** from Finder and other apps | yes | yes | yes, limited<sup>j</sup> | yes | yes | yes | yes | no<sup>h</sup> | no<sup>jjj</sup> | no<sup>k</sup> | no<sup>k</sup> |
-| New Folder `F7` | yes | yes | yes, limited<sup>yyy</sup> | yes | yes | yes | yes | yes, limited<sup>l</sup> | no<sup>jjj</sup> | no | no |
-| New / Edit File `⇧F4` | yes | yes | yes, limited<sup>yyy</sup> | yes | yes | yes | yes | n/a | no<sup>jjj</sup> | no | no |
+| New Folder `F7`<sup>aax</sup> | yes | yes | yes, limited<sup>yyy</sup> | yes | yes | yes | yes | yes, limited<sup>l</sup> | no<sup>jjj</sup> | no | no |
+| New / Edit File `⇧F4`<sup>aax</sup> | yes | yes | yes, limited<sup>yyy</sup> | yes | yes | yes | yes | n/a | no<sup>jjj</sup> | no | no |
 | Rename `F2` | yes | yes | yes, limited<sup>ccc</sup> | yes | yes | yes | yes, limited<sup>i</sup> | no | n/a<sup>kkk</sup> | yes | no<sup>m</sup> |
 | Multi-rename `⇧F2` | yes | yes | yes, limited<sup>ccc</sup> | yes | yes | yes | yes, limited<sup>i</sup> | no | n/a<sup>kkk</sup> | yes | no<sup>m</sup> |
 | Delete `F8` → Trash | yes | yes, limited<sup>o</sup> | n/a | n/a | n/a | n/a | n/a | n/a | no<sup>jjj</sup> | yes<sup>aac</sup> | n/a |
@@ -431,6 +431,17 @@ column that has the queue has the dialog, for `F5`, `F6`, `⇧F5` and Move Keepi
 nor for `⌘V`, a drag or a script. Pinned by tests (`TransferDialogTests`), and run live on 2026-11-17
 for local copies and moves onto a disk image (§M41 Slice 3); not yet run live with a server at either
 end.
+
+<sup>aax</sup> Since 2026-11-18 the name may be a path: `folder A/sub folder A` makes both folders, and
+`Folder A/test.txt` makes the folder and then the file, in every column either key reaches. A folder on
+the way that is already there is used; a file there is refused by name, and a failure takes back the
+folders it made. One ⌘Z removes everything one F7 made, each folder only while it is empty. An
+**S3 account** pane keeps F7's name whole, since a bucket name has no folders. Inside an **archive**
+the folders are made in the same rewrite, and a member symlink on the way is refused rather than
+followed. A leading `/`, a `.` or `..` on the way, and a `/` ending ⇧F4's name are refused with their
+reasons. Run live on this Mac's disk (F7, its undo and redo, ⇧F4). A server and an archive are pinned
+by tests (`NestedCreateRouteTests`, `ArchiveCreateTests`, and the core's `NestedCreationTests`); a cloud
+mount goes through the same local backend and was not run live.
 
 <sup>aac</sup> Gated per **row**, like <sup>ee</sup>: each hit deletes the way the folder it lives in
 does (`DeleteRouting`), so a local hit goes to the Trash and a hit on a server is the confirmed
