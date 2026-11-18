@@ -4,7 +4,7 @@ A dual-pane, keyboard-first file manager for macOS in the spirit of Total Comman
 built native (Swift), with macOS-only superpowers TC never had: Quick Look, Spotlight
 search, APFS clones, Finder tags, a command palette, and universal undo.
 
-Status: **M0–M39 and M41 shipped**, **M40 planned** (14 languages; M29's licensing is on in betas, off in stable until the
+Status: **M0–M39 and M41 shipped**, **M40 open** (14 languages; M29's licensing is on in betas, off in stable until the
 store opens; M30's Report a Bug is in every release built while `DIRNEX_BUG_REPORT_URL` is set) ·
 Created: 2026-07-05 ·
 Log: [docs/HISTORY.md](docs/HISTORY.md) · What works where:
@@ -177,8 +177,8 @@ users coming from Total Commander, opened and closed 2026-11-17, ahead of M40, a
 - **Recents ordered by when each item was last used** (M8). Modification date stands in today,
   because `mdfind` returns paths in no useful order and a statted `FileEntry` carries no last-used
   date.
-- **Find Files: the tag chip, and a content-grep fallback for volumes Spotlight does not index**
-  (M4).
+- **Find Files: a content-grep fallback for volumes Spotlight does not index** (M4). M4 left a tag
+  chip beside it, and that shipped with M6 (the sheet's Tags field, `FileQuery.tags`).
 - **Localization** (M12): the stock Finder tag names in the ⌃T menu, which are
   `FinderTag.systemTagName` data in the core and stay English; a lint rule keeping bare literals out
   of UI files, which the sweeps stand in for; and the "Results for Search results" stutter, a wording
@@ -189,6 +189,141 @@ users coming from Total Commander, opened and closed 2026-11-17, ahead of M40, a
 - **SMB** (M35): a comment column on a server's share list, from the `NetCommentStr` that
   `EnumerateShares` already returns; and a way up from a share Finder mounted, which keeps `..` →
   `/Volumes`.
+
+**Opened 2026-11-18.** Probed on this Mac, with the NAS share Finder had mounted at `/Volumes/media`:
+
+- **Places and workspaces in ⌘K: the second mechanism already exists.** User scripts ride in the
+  palette as `Command`s (`UserScripts.paletteCommands`), ranked by the same `CommandMatcher` and routed
+  by their id prefix in `CommandPaletteController.runSelected`. A place comes from the window's
+  `placeSources()` and opens through the sidebar's `activate(_:)`, as Go ▸ Places does, and a
+  workspace opens through `applyWorkspace`. So both can be rows of the one list.
+- **Recents: `mdfind -attr kMDItemLastUsedDate` returns the date with each path, in the same call.**
+  A record is the path, three spaces, and `kMDItemLastUsedDate = 2026-11-17 18:40:34 +0000`, or
+  `(null)`. With `-0` a record ends in NUL rather than a newline; the runner splits on newlines today,
+  so a name holding one breaks it. The query the runner already sends answered 50 items in 0.13 s.
+  The dates are whole seconds, in UTC.
+- **Find Files: Spotlight answers nothing for a place it does not index, and says nothing.**
+  `mdutil -s` reads "Indexing disabled." for `/Volumes/media`. For any folder that is not a volume
+  root it answers "unknown indexing state", so it cannot see the scratchpad under `/private/tmp`,
+  which sits on an indexed volume and is left out of the index. What tells them apart:
+  `mdfind -onlyin <parent> 'kMDItemFSName == "<name>"'` finds an indexed folder itself
+  (`~/Dev/Common/Dirnex`, 0.06 s) and nothing for the scratchpad (0.04 s). `kMDItemPath` cannot be
+  queried, and `mdls` is no witness, since it reads a file's attributes whether or not it is indexed.
+  M22's walk (`SearchPredicate`) answers name, kind, size and date; on a local disk it can also read
+  tags (`FinderTagStorage`) and bytes.
+- **Escalation for many items.** `AttributeApplyRunner` refuses each root-only item with
+  `attributeChangeNeedsAdministrator` and goes on, so the batch's report already holds the list, and
+  `EscalatedAttributeCommand` can build each item's command from that item's own diff, as the
+  single-item sheet does. `osascript` carries the body in `argv`, whose limit is 1 MiB
+  (`getconf ARG_MAX`): about 5 000 items at some 200 bytes each. Whether a second `osascript` within
+  five minutes asks for the password again needs a password typed, so it waits for the live run.
+- **Escalating an undo.** `UndoJournal+Attributes` refuses at two sites with
+  `attributeRestoreNeedsAdministrator`, holding the before-state the same command builder takes.
+- **Stock tag names.** `NSWorkspace.shared.fileLabels` names the seven in the app's language, but
+  only from a bundle with that localization: a bare tool got English under every `-AppleLanguages`,
+  and a bundle carrying `de`, `fr`, `ja` and `uk` gave "Rot", "Rouge", "レッド" and "Червоний". In
+  English it says "Gray", while Finder's `FavoriteTagNames` here, and every file Finder tags, say
+  "Grey". So it gives the names Finder *shows*, which is not proof of what Finder *writes* on a
+  localized Mac. This Mac runs in English and cannot show that; a clone of the CI VM set to German
+  could.
+- **The stutter.** The path bar puts "Results for " before `LocalizedCatalog.summary(of:)`, which is
+  "Search results" when only a size or date chip names the search.
+- **A lint rule.** A scan for a literal of two or more letters given to a title, message, label,
+  tooltip, placeholder or `stringValue` in the app finds about fifteen, all deliberate: interpolations
+  of parts already localized, proper names (`Dirnex`, `UTC`), `F\(number)`, a sizing sample. So
+  SwiftLint's `custom_rules` can hold the line, with an inline disable at each of those.
+- **Revocation.** A key's `id` is 128 random bits in base32 and already the only part of a key that
+  goes into a URL (`LicenseKey`), so a list of refunded ids can ship in the open repository without
+  naming anyone.
+- **SMB.** `SMBShare.comment` is parsed and nothing shows it. A Finder mount names its server and
+  account: `volumeURLForRemountingKey` answered `smb://olegasd@nas/media` for `/Volumes/media`, and
+  `statfs` gave `//olegasd@nas/media`, whose share-less form is a `VFSBackendID.smbServer`. Listing
+  that server's shares needs a session as `olegasd`, whose password is in Finder's Keychain item,
+  not Dirnex's. M35 measured that the plugin lists with no `OpenSession` at all, as the mounted
+  identity, and decided not to rely on it.
+
+Decided before Slice 1 (2026-11-18, Oleg, on the probes above):
+
+- **Places and workspaces are rows of the palette's one list**, as user scripts are: every place the
+  sidebar offers and every saved workspace, ranked with the commands, the recently picked ones on top
+  of the empty list. A pick opens through the sidebar's `activate(_:)` or `applyWorkspace`, never a
+  dispatch of its own. Their ids are stable and are resolved against the stores when picked, so a
+  place that has gone is not offered.
+- **Recents orders by last opened, and its date column shows that date under "Last Opened".** Every
+  other tab is unchanged.
+- **Find Files on a place Spotlight does not index walks it**, for name, kind, size, date and tags,
+  and for "Containing" by reading the bytes, case-insensitively, in UTF-8 and UTF-16, skipping
+  binaries. Plain text only, so nothing inside a PDF or a Word file, and the sheet says so.
+- **`..` at the root of a share Finder mounted goes up to that server's share list**, with the cursor
+  on the share, as the account the mount names. It signs in with Dirnex's saved password for that
+  account, or opens the Connect sheet filled in when there is none. Never by the plugin's listing
+  without `OpenSession`, which M35 refused.
+- **A Comment column in a server's share list**, in place of Size and Modified, which a share row
+  leaves empty, shown only while a pane lists shares.
+- **The stock tag names are measured before anything is built**: a clone of `dirnex-ci-base` set to
+  German, a file tagged in Finder, and what Finder wrote read back. The runner's own VM is not
+  touched. The design follows what Finder writes.
+
+Proposed with them, open until the slice that builds each:
+
+- **Escalation for a batch and a recursive change.** The report's root-only items get Apply as
+  Administrator…: one prompt for all of them up to the `argv` bound, each item's command built from
+  its own diff, and the escalated items an undo step of their own.
+- **An undo that needs root asks**, in the same administrator sheet with its command, instead of
+  refusing. Cancel leaves the step where it was.
+- **The stutter.** A search that no term names reads "Search Results" in the path bar, without
+  "Results for".
+- **The lint rule** is a SwiftLint custom rule over `Dirnex/`, with an inline disable at each
+  deliberate literal.
+- **Revoked keys.** The refunded ids are compiled into the core, starting empty. A key on the list
+  verifies and is then refused as revoked: Settings ▸ License says it is no longer valid, the reminder
+  treats the install as unlicensed, and the key stays stored, so taking it off the list restores it.
+- **A place inside a vault stays out of the palette's recents**, as `VaultPrivacy` keeps it out of
+  every memory the user did not ask for.
+
+#### Slices
+
+1. **⌘K: places and workspaces** (core, then app). The ids and their resolution, pure over
+   `SidebarPlaceGroup`s and `Workspace`s; then the palette's list, titles from the sidebar's own
+   presentation, the dispatch, the recents, 14 languages.
+2. **Recents by last opened** (core, then app). The `-0 -attr` parse, the date on an entry and its
+   sort, the Last Opened column, 14 languages.
+3. **Find Files where Spotlight does not index** (core, then app). The index check, the local walk
+   with tags and the byte grep, the sheet's sentence.
+4. **Escalation for a batch and a recursive change** (core, then app).
+5. **An undo that needs root** (app).
+6. **Localization.** The tag-name measurement and what it decides, the stutter, the lint rule.
+7. **Revoked keys** (core, then app).
+8. **SMB: the Comment column and the way up** (core, then app).
+9. **Live, and the record.**
+
+**Done when:**
+- a place's or a workspace's name typed in ⌘K opens it, and a place that has gone is not offered;
+- Recents lists by last opened and shows the date;
+- ⌥F7 on the NAS share and under `/private/tmp` finds by name, tag and text;
+- a multi-selection or recursive change with root-only items applies after one password, and ⌘Z on
+  it asks rather than refuses;
+- the stock tags follow what Finder writes, or the item goes back to *undone* with the measurement;
+- a search no term names reads without the stutter, and `swiftlint --strict` fails on a new bare
+  literal in a UI file;
+- a key on the revoked list reads as no longer valid;
+- a server's share list shows its comments, and `..` from a share Finder mounted lands on that list.
+
+#### Progress
+
+**2026-11-18: Slice 1's core half landed** (the app is untouched). `PaletteDestination` gives each of
+the eleven kinds of `SidebarPlace`, and each saved workspace, a stable id under `place.` or
+`openWorkspace.`, keyed on the identity its own store uses: a pin and a volume on their path, a cloud
+mount on its directory, a vault on its image, a search, a server and a workspace on their names, a tag
+on its name in lower case. `resolve` finds the place again in the stores as they are when picked, so a
+pin renamed since resolves to its new name and one removed resolves to nothing. `isRememberable` keeps a
+place inside an unlocked vault, the vault's own volume included, out of the palette's recents. The app
+supplies each row's title and keywords, since both are words in the user's language. 18 tests; three
+negative controls each failed the test that watches them (a tag id keeping its case, the vault check
+removed, the de-duplication removed). Places lengthen the list the matcher sorts, and its tie-break scans
+linearly, so it was timed with 150 extra rows: 0.2–0.5 ms a keystroke in Release, 5–9 ms in Debug, so
+it stays as it is. **For the app half:** `CommandRecents.ids` keeps only registry ids, which is why a
+user script never shows as recent today, so it has to learn destination ids too.
 
 The app's share of selling Dirnex (the private companion repo `dirnex-home`, milestones C1–C15) was
 two milestones, **M29** (a license, and the reminder it removes) and **M30** (Report a Bug), both
