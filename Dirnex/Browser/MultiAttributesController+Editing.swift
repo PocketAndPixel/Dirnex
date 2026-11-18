@@ -10,7 +10,40 @@ import DirnexCore
 /// ``AttributeChangePlan`` orders the syscalls (immutable unlock/relock and the group/mtime repairs
 /// included), and ``FileAttributeIO`` runs them. This file only drives that loop and reports what
 /// happened.
+///
+/// **Items that need root are asked for before anything is written** (PLAN.md §M40 Slice 4, decided
+/// with Oleg): one administrator dialog for all of them, the single-item sheet's shape. Authenticate
+/// runs theirs as root and then the user's own, and the Save is one undo record. Cancel leaves the
+/// sheet as it was, with nothing changed.
 extension MultiAttributesController {
+    /// How a Save splits: the items this user changes directly, each with its own diff, and the ones
+    /// that need root, as one batch. An item that already matches the patch is in neither.
+    struct Commit {
+        var own: [(item: Item, diff: AttributeDiff)] = []
+        var rootOnly = EscalatedAttributeBatch(items: [])
+    }
+
+    func commit(for patch: AttributePatch) -> Commit {
+        var commit = Commit()
+        var rootOnly: [EscalatedAttributeBatch.Item] = []
+        for item in items {
+            let diff = patch.diff(against: item.attributes)
+            guard !diff.isEmpty else { continue }
+            if AttributePrivilege.reasons(for: diff, current: item.attributes, actor: actor).isEmpty {
+                commit.own.append((item, diff))
+            } else {
+                rootOnly.append(.init(
+                    path: item.entry.path,
+                    actsOnLink: item.isSymlink,
+                    current: item.attributes,
+                    diff: diff
+                ))
+            }
+        }
+        commit.rootOnly = EscalatedAttributeBatch(items: rootOnly)
+        return commit
+    }
+
     @objc func saveAttributes(_ sender: Any?) {
         let patch = buildPatch()
         guard !patch.isEmpty else { dismiss(sender); return }
@@ -26,26 +59,39 @@ extension MultiAttributesController {
             return
         }
 
-        // Pre-flight the whole selection: if *any* item's change needs root, refuse the batch before
-        // touching a single file and name the item, rather than half-applying and hitting the bare
-        // EPERM this whole design exists to avoid. `canEdit` already ruled out foreign ownership, so
-        // the reachable case is narrow — a system-immutable item among the set.
-        for item in items {
-            let diff = patch.diff(against: item.attributes)
-            let reasons = AttributePrivilege.reasons(
-                for: diff, current: item.attributes, actor: actor
-            )
-            if let reason = reasons.first {
-                presentNeedsAdministrator(reason, name: item.entry.name)
-                return
+        let commit = commit(for: patch)
+        guard !commit.rootOnly.items.isEmpty else {
+            finish(commit, patch: patch, escalated: nil, sender: sender)
+            return
+        }
+        AttributeBatchEscalation.ask(commit.rootOnly, over: view.window) { [weak self] in
+            Task { @MainActor in
+                let result = await AttributeBatchEscalation.run(commit.rootOnly)
+                // A password dialog cancelled before anything ran is a choice, as on the single-item
+                // sheet: the sheet stays, and nothing changed.
+                if result.wasCancelled, result.outcome.changedCount == 0 { return }
+                self?.finish(commit, patch: patch, escalated: result, sender: sender)
             }
         }
+    }
 
+    /// Write the user's own items, journal them with whatever the administrator run left on disk, and
+    /// report. Only a cancel with nothing changed stops a Save before here; a run that failed is not
+    /// the user's choice, so the Save goes through for their own items and the report names what the
+    /// administrator run could not change, the recursive run's rule for a per-item error.
+    private func finish(
+        _ commit: Commit,
+        patch: AttributePatch,
+        escalated: AttributeBatchEscalation.Result?,
+        sender: Any?
+    ) {
         var entries: [UndoRecord.AttributeBatchEntry] = []
-        var failures: [(name: String, error: Error)] = []
-        for item in items {
-            let diff = patch.diff(against: item.attributes)
-            guard !diff.isEmpty else { continue } // this item already matched the patch
+        var failures: [(name: String, reason: String)] = []
+        if let escalated {
+            entries.append(contentsOf: escalated.outcome.changed)
+            failures += escalated.outcome.unchanged.map { ($0.lastComponent, escalated.reason) }
+        }
+        for (item, diff) in commit.own {
             do {
                 let plan = AttributeChangePlan(
                     diff: diff, current: item.attributes, actsOnLink: item.isSymlink
@@ -58,7 +104,7 @@ extension MultiAttributesController {
                     new: patch.apply(to: item.attributes)
                 ))
             } catch {
-                failures.append((item.entry.name, error))
+                failures.append((item.entry.name, VFSErrorText.sentence(for: error)))
             }
         }
 
@@ -93,19 +139,7 @@ extension MultiAttributesController {
 
     // MARK: - Alerts
 
-    private func presentNeedsAdministrator(_ reason: AttributePrivilege.Reason, name: String) {
-        let alert = NSAlert()
-        alert.messageText = String(
-            localized: "This change needs an administrator",
-            comment: "Attributes save alert title: the change requires root privileges."
-        )
-        alert.informativeText = AttributeFormatting.privilegeExplanation(reason, name: name)
-        alert.addButton(withTitle: String(localized: "OK", comment: "Dismiss button."))
-        alert.enableEscapeToCancel()
-        present(alert, dismissAfter: false)
-    }
-
-    private func presentFailures(_ failures: [(name: String, error: Error)], dismissAfter: Bool) {
+    private func presentFailures(_ failures: [(name: String, reason: String)], dismissAfter: Bool) {
         let alert = NSAlert()
         alert.alertStyle = .warning
         alert.messageText = String(
@@ -114,7 +148,7 @@ extension MultiAttributesController {
         )
         // Name the first failure in full; the OS error is the same one the single-item path shows.
         alert.informativeText = String(
-            localized: "“\(failures[0].name)”: \(VFSErrorText.sentence(for: failures[0].error))",
+            localized: "“\(failures[0].name)”: \(failures[0].reason)",
             comment: "Multi-selection failure detail; %1$@ is an item name, %2$@ the reason."
         )
         alert.addButton(withTitle: String(localized: "OK", comment: "Dismiss button."))

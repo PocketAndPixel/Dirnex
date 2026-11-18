@@ -16,6 +16,11 @@ public enum FileAttributeIO {
     public struct Reading: Sendable, Equatable {
         public let attributes: FileAttributes
         public let isSymlink: Bool
+
+        public init(attributes: FileAttributes, isSymlink: Bool) {
+            self.attributes = attributes
+            self.isSymlink = isSymlink
+        }
     }
 
     /// Read one item's attributes with a single `lstat` — the link's own, never its target's.
