@@ -236,9 +236,10 @@ extension PanelViewController {
 
     // MARK: - ⇧F4: name it first
 
-    /// The name dialog, shaped like New Folder's: an `NSAlert` with an accessory field, `/` refused
-    /// with a real message, then `refreshCurrentDirectory(selecting:)` so a newly created file lands
-    /// under the cursor.
+    /// The name dialog, shaped like New Folder's: an `NSAlert` with an accessory field taking a name
+    /// or a path, a name that names nothing refused with a real message, then
+    /// `refreshCurrentDirectory(selecting:)` so a newly created file, or its outermost new folder,
+    /// lands under the cursor.
     private func promptForFileToEdit() {
         // The cursor decides the target in a tree, and the table's selection is the live cursor
         // (`PanelViewController+CreateTarget`).
@@ -313,7 +314,9 @@ extension PanelViewController {
         return entry.name
     }
 
-    /// Open `name` in `directory`, creating it first when nothing is there yet.
+    /// Open the file `typed` names in `directory`, creating it first when nothing is there yet. The
+    /// name may be a path, `Folder A/test.txt`, whose folders are made on the way (2026-11-18, as
+    /// F7's are: `+NewFolder`), and the cursor then lands on `Folder A`, the row the pane shows.
     ///
     /// The create is deliberately **not** undoable, unlike New Folder's. The file is handed to an
     /// external editor in the same breath, so by the time ⌘Z could be reached another app owns it —
@@ -323,23 +326,12 @@ extension PanelViewController {
     ///
     /// Internal, not private: `EditFileRouteTests` drives it directly, because the dialog above it
     /// is an `NSAlert` and a test host that presents one waits for a human (docs/NOTES.md ▸ Testing).
-    func editFile(named name: String, in directory: VFSPath) async {
-        guard !name.isEmpty else { return } // an empty name is a silent cancel
-        guard !name.contains("/") else {
-            presentOperationFailure(
-                message: String(
-                    localized: "Can’t create the file",
-                    comment: "Create-file failure title for an invalid name."
-                ),
-                detail: String(
-                    localized: "File names can’t contain the “/” character.",
-                    comment: "Create-file failure detail: slash in name."
-                )
-            )
-            return
-        }
-
-        let target = directory.appending(name)
+    func editFile(named typed: String, in directory: VFSPath) async {
+        // An empty field is a silent cancel; a name that names nothing is refused with its reason.
+        guard let nested = nestedName(typed, as: .file) else { return }
+        let name = nested.displayPath
+        let target = nested.target(in: directory)
+        let landing = nested.outermost(in: directory)
         let backend = backend
         // One `stat` decides the branch: an existing name means *open that file*, which is why
         // `createFile` is `O_EXCL` underneath — a file appearing between this read and the
@@ -367,15 +359,17 @@ extension PanelViewController {
         // Inside an archive the empty member is made by a rewrite, then opened like any member,
         // so its first save goes back through the archive's own write-back question.
         if target.backend.isArchive {
-            createArchiveMember(.emptyFile, at: target) { [weak self] created in
+            createArchiveMember(.emptyFile, at: target, shown: name, landing: landing) { [weak self] created in
                 self?.openForEditing(created)
             }
             return
         }
         do {
+            // The folders on the way are not journaled either, for the file's reason: nothing ⌘Z
+            // could remove while the editor holds the file inside them.
             try await BlockingWork.run {
                 Result {
-                    try backend.createFile(at: target)
+                    try NestedCreation.makeFile(nested, in: directory, using: backend)
                 }
             }.get()
         } catch {
@@ -384,11 +378,11 @@ extension PanelViewController {
                     localized: "Can’t create “\(name)”",
                     comment: "Create-file failure title; %@ is the name."
                 ),
-                detail: describe(error)
+                detail: describeCreateFailure(error, making: target)
             )
             return
         }
-        refreshCurrentDirectory(selecting: target)
+        refreshCurrentDirectory(selecting: landing)
         focusTable()
         do {
             // The new file is read back rather than assumed, because the route is decided from

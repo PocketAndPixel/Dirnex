@@ -11785,6 +11785,18 @@ overturned the obvious implementation.
     is a sheet, so an editor autosaving twice while it is up queues a second identical question
     behind the first.
 
+- **Widening a name into a path removes a guard nobody wrote down: "a name has no `/`".** Found
+  2026-11-18 when F7 and ⇧F4 learned to take `folder A/sub folder A`. Inside an archive, the staged
+  tree's folders were made by `FileManager.createDirectory(withIntermediateDirectories:)`, which was
+  safe only because its input had always been the cursor's own folder. With a typed path, `link/new`,
+  where `link` is a member symlink, made `new` at the link's target, outside the scratch tree (probed,
+  and the test's negative control made it there). `ArchiveMutation.stageFolders` now `lstat`s each
+  folder on the way and refuses anything but a real folder. The same probe measured two smaller
+  things: `mkdir(2)` under a file answers `ENOTDIR` naming the path it was given, not the file in the
+  way, so `NestedCreation` reads each folder first to say which name is wrong; and `FileManager`
+  answers that case with a bare Cocoa 512. When an input widens, list what downstream leaned on its
+  old shape before relying on the new one.
+
 ### Archives and encryption
 
 - **`bsdtar` cannot rewrite an encrypted archive, and the failure is quiet enough to read as "not

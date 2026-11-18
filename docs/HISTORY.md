@@ -22132,6 +22132,43 @@ Slice 2:
      known issue, declared by its test), both linters clean, and `app.dirnex.Dirnex` unchanged by
      content across the run.
 
+**2026-11-18: F7 and ⇧F4 take a path** (Oleg's request, with a screenshot of ⇧F4 holding
+`Folder A/test.txt`, and F7's `folder A/sub folder A` as the example; core and app). Both dialogs
+refused any `/`. Now the name may be a path, as Total Commander's F7 takes one: `NestedName` (core)
+parses the field and `NestedCreation` (core) makes each folder on the way that is not there yet,
+then the folder or the empty file. It reads each folder first rather than making it and catching the
+refusal, because `mkdir(2)` under a file answers `ENOTDIR` naming the leaf (probed), and S3's
+`createDirectory` succeeds over a folder that is there, so only the read says which folders this
+create made. A file on the way is refused naming it; a failure takes back the folders it made; a
+leading `/`, a `.` or `..`, and a `/` ending ⇧F4's name are refused with their own sentences. F7's undo
+is one record, `UndoRecord.newFolders`, removing innermost first and each only while empty, so one
+⌘Z takes back the chain. The cursor lands on the outermost new row, the one the pane shows. An S3
+account pane keeps F7's name whole for `S3BucketName`. Inside an archive the typed folders are made
+in the same rewrite, and the walk that makes them replaced
+`FileManager.createDirectory(withIntermediateDirectories:)`, which went through a member symlink and
+made the folder outside the scratch tree (probed; docs/NOTES.md ▸ Guards and restrictions).
+New Folder moved to `+NewFolder` and the record builders to `UndoRecord+Builders`, both files being
+at the 500-line ceiling. Four sentences are new in all 14 languages, and the catalog lost F7's
+unused "Folder names can’t contain “/”".
+
+Tests: 28 core (`NestedNameTests`, `NestedCreationTests`, three in `ArchiveMutationCreationTests`) and
+6 app (`NestedCreateRouteTests` through a headless pane on a server backend, two in
+`ArchiveCreateTests` through the real repack). Negative controls failed by name: making each folder
+without reading it first counted an existing folder as made over an S3-like backend, and the old
+`FileManager` staging made the folder at a symlink's target and threw Cocoa 512 for a file on the
+way. 5 830 core tests in 573 suites and 2 681 app tests in 415 pass (one known issue, declared by its
+test), the live suites skipped since nothing here reaches a server; both linters and the localization
+check are clean. Seen live in `app.dirnex.Dirnex.live`, cloud guard in and the editor launch logged by a probe
+instead of opening Oleg's editor: F7 with `folder A/sub folder A` made both, with the cursor on
+`folder A`; the journal held one record of two steps; Undo removed both and Redo made both again;
+⇧F4 with `Folder B/test.txt` made the folder and an empty file and handed that path to the editor,
+with the cursor on `Folder B`. No File Provider request was logged, and Oleg's defaults domain was
+unchanged by content. **Not run live**: the refusal sentences and an archive, since Oleg moved to a
+full-screen Space mid-run and the sheet could no longer be typed into from the background
+(LIVE-VERIFICATION.md); a server and a cloud mount; a translation. Left for a decision: ⌥F5's
+archive name and Export's folder field, which could make folders on the way too, and F2 or ⇧F2 with a
+`/`, which would be a move.
+
 ### After M19 — the follow-on log (2026-08-07 → 2026-09-21)
 
 Ninety-one dated passes that landed outside a milestone of their own, between M18's close on
