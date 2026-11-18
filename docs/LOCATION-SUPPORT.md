@@ -1017,7 +1017,12 @@ typed in the sheet on that pane's backend, with F5's conflict question and undo,
 cloud mount, SFTP, FTP, WebDAV or S3 alike. A browsed archive or a results listing in the other pane
 is refused before the sheet, since an export is a copy and not an add. HTML is one file with the preview's images inlined (<sup>aat</sup>); a PDF is that
 page printed on the user's paper in the light palette, with no remote image, as the preview draws none.
-The whole file is exported up to 64 MB, where the preview reads 4.
+The whole file is exported up to 64 MB, where the preview reads 4. **A typed folder that is not there
+yet** is offered since 2026-11-18: the first press of Export says so under the form, and a second press
+with the field unchanged makes it and every folder on its way, once the page is written, journaled as a
+New Folder of its own (⌘Z takes back the copy, then the folders). The deepest folder on the way that is
+there has to take writes, and a file standing on the way is named. Run live on this Mac's disk, both
+presses and both undos; a server is pinned by the folder check's tests and was not run live.
 
 <sup>aav</sup> Since 2026-11-15 (PLAN.md §M39 ▸ Slice 16). A timer that steps the pane's cursor to the next
 picture at full size, so it reaches every location the cursor and Quick View do: the pictures are

@@ -288,3 +288,92 @@ private final class FolderSetBackend: VFSBackend, @unchecked Sendable {
         }
     }
 }
+
+/// A folder named by a whole path, for Export's folder field (2026-11-18): where it stands, read
+/// without making anything, and `mkdir -p` once the user has said to make it.
+@Suite("NestedCreation: a folder named by a whole path")
+struct NestedCreationWholePathTests {
+    let backend = LocalBackend()
+
+    @Test(
+        "a folder that is there is present, and one that is not is missing under the deepest that is"
+    )
+    func readsWhereItStands() throws {
+        let tree = try TempTree()
+        defer { tree.cleanup() }
+        try tree.makeDir("have")
+
+        #expect(try NestedCreation.state(of: tree.vfsPath("have"), using: backend) == .present)
+        #expect(
+            try NestedCreation.state(of: tree.vfsPath("have/new/newer"), using: backend)
+                == .missing(under: tree.vfsPath("have"))
+        )
+        // Reading makes nothing.
+        #expect(try FileManager.default.contentsOfDirectory(atPath: tree.path("have")).isEmpty)
+    }
+
+    @Test("a file on the way, or at the end, is named")
+    func namesAFile() throws {
+        let tree = try TempTree()
+        defer { tree.cleanup() }
+        try tree.writeFile("notes", contents: "keep")
+
+        #expect(throws: VFSError.notADirectory(tree.vfsPath("notes"))) {
+            try NestedCreation.state(of: tree.vfsPath("notes/sub"), using: backend)
+        }
+        #expect(throws: VFSError.notADirectory(tree.vfsPath("notes"))) {
+            try NestedCreation.state(of: tree.vfsPath("notes"), using: backend)
+        }
+    }
+
+    /// Some backends cannot `stat` their own root, so a path whose every folder is missing is still
+    /// missing under the root rather than nowhere.
+    @Test("the root counts as there without being asked")
+    func rootIsThere() throws {
+        let root = VFSPath(backend: VFSBackendID("s3://idempotent"), path: "/")
+        let unstattable = RootlessBackend()
+        #expect(
+            try NestedCreation.state(of: root.appending("a"), using: unstattable) == .missing(
+                under: root
+            )
+        )
+        #expect(try NestedCreation.state(of: root, using: unstattable) == .present)
+    }
+
+    @Test("making it makes every missing folder, outermost first, and nothing that was there")
+    func makesTheMissingOnes() throws {
+        let tree = try TempTree()
+        defer { tree.cleanup() }
+        try tree.makeDir("have")
+
+        let made = try NestedCreation.makeFolders(
+            upTo: tree.vfsPath("have/new/newer"),
+            using: backend
+        )
+
+        #expect(made == [tree.vfsPath("have/new"), tree.vfsPath("have/new/newer")])
+        #expect(
+            try NestedCreation.makeFolders(upTo: tree.vfsPath("have/new/newer"), using: backend).isEmpty
+        )
+    }
+
+    @Test("making it under a file is refused and makes nothing")
+    func refusesUnderAFile() throws {
+        let tree = try TempTree()
+        defer { tree.cleanup() }
+        try tree.writeFile("notes", contents: "keep")
+
+        #expect(throws: VFSError.notADirectory(tree.vfsPath("notes"))) {
+            try NestedCreation.makeFolders(upTo: tree.vfsPath("notes/a/b"), using: backend)
+        }
+        #expect(try FileManager.default.contentsOfDirectory(atPath: tree.root.path) == ["notes"])
+    }
+}
+
+/// A backend whose every `stat` fails, the root's included.
+private struct RootlessBackend: VFSBackend {
+    let id = VFSBackendID("s3://idempotent")
+    let capabilities: VFSCapabilities = [.read, .write]
+    func listDirectory(at path: VFSPath) throws -> [FileEntry] { [] }
+    func stat(at path: VFSPath) throws -> FileEntry { throw VFSError.notFound(path) }
+}

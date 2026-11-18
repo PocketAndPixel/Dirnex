@@ -121437,6 +121437,95 @@
         }
       }
     },
+    "There’s no folder “%@”. Press Export again to create it.": {
+      "comment": "Export sheet note: the typed folder does not exist yet, and pressing Export once more makes it. The argument is its path; “Export” is the sheet's button.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Es gibt keinen Ordner „%@“. Klicke erneut auf „Exportieren“, um ihn zu erstellen."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "There’s no folder “%@”. Press Export again to create it."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No hay ninguna carpeta «%@». Pulsa «Exportar» otra vez para crearla."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Il n’y a pas de dossier «%@». Clique de nouveau sur «Exporter» pour le créer."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Non c’è nessuna cartella “%@”. Premi di nuovo “Esporta” per crearla."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "フォルダ“%@”はありません。もう一度“書き出す”をクリックすると作成されます。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” 폴더가 없습니다. 만들려면 “내보내기”를 한 번 더 누르십시오."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Er is geen map “%@”. Klik nog een keer op “Exporteer” om hem te maken."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nie ma folderu „%@”. Kliknij ponownie „Eksportuj”, aby go utworzyć."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Não há uma pasta “%@”. Clique em “Exportar” de novo para criá-la."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Папки «%@» нет. Нажмите «Экспортировать» ещё раз, чтобы создать её."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Теки «%@» немає. Натисніть «Експортувати» ще раз, щоб створити її."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "没有文件夹“%@”。再次点按“导出”即可创建。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "沒有檔案夾「%@」。再按一次「輸出」即可建立。"
+          }
+        }
+      }
+    },
     "There’s no “%@” in “%@”.": {
       "comment": "Quick View link target missing; %1$@ is the name the link names, %2$@ the folder it should be in.",
       "localizations": {

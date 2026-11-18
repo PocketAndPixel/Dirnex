@@ -124,41 +124,6 @@ struct MarkdownExportGestureTests {
         #expect(sheetButtonCount(in: windowed.window) == 1)
     }
 
-    // MARK: - The folder field
-
-    @Test("typed text names a folder on the other pane's backend")
-    func typedFolder() {
-        let base = VFSPath.local("/Users/someone/Docs")
-        #expect(PanelViewController.exportFolder(typed: "", from: base) == base)
-        #expect(PanelViewController.exportFolder(typed: "  ", from: base) == base)
-        #expect(
-            PanelViewController.exportFolder(typed: "out", from: base) == .local(
-                "/Users/someone/Docs/out"
-            )
-        )
-        #expect(PanelViewController.exportFolder(typed: "/tmp/x/", from: base) == .local("/tmp/x"))
-        #expect(PanelViewController.exportFolder(typed: "~/Desktop", from: base)
-            == .local(NSHomeDirectory() + "/Desktop"))
-        // `~` is this Mac's home, so on a server it is a name like any other.
-        let remote = VFSPath(backend: Handoff.remoteID, path: "/home/user")
-        #expect(PanelViewController.exportFolder(typed: "~/x", from: remote)
-            == VFSPath(backend: Handoff.remoteID, path: "/home/user/~/x"))
-        #expect(PanelViewController.exportFolder(typed: "/", from: remote)
-            == VFSPath(backend: Handoff.remoteID, path: "/"))
-    }
-
-    @Test("a folder that is not there is said so, and one that is passes")
-    func folderProblems() async throws {
-        let tree = try TempDirectory()
-        defer { tree.cleanup() }
-        let backend = LocalBackend()
-        #expect(await PanelViewController.folderProblem(.local(tree.root.path), on: backend) == nil)
-        let missing = VFSPath.local(tree.root.appendingPathComponent("nope").path)
-        #expect(await PanelViewController.folderProblem(missing, on: backend) != nil)
-        let file = try tree.write("file.txt", contents: "x")
-        #expect(await PanelViewController.folderProblem(.local(file.path), on: backend) != nil)
-    }
-
     // MARK: - The sheet's controls
 
     @Test("the format is remembered, HTML until a first choice")

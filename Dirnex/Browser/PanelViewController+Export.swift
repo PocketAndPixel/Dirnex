@@ -2,12 +2,26 @@ import AppKit
 import DirnexCore
 
 /// What File ▸ Export… is asked to make: the page `source` draws, as `format`, named `name`, in
-/// `folder`, which is on the other pane's backend.
+/// `folder`, which is on the other pane's backend. `createsFolder` when the folder is not there yet
+/// and the user pressed Export a second time to make it (2026-11-18).
 struct MarkdownExportRequest {
     let source: FileEntry
     let format: MarkdownExport.Format
     let name: String
     let folder: VFSPath
+    var createsFolder = false
+}
+
+/// What the export sheet does with the folder its field names (2026-11-18).
+enum ExportFolderCheck: Equatable {
+    /// There and writable: export into it.
+    case ready
+    /// Not there, and the user pressed Export again while the field named it: make it, then export.
+    case create
+    /// Not there: say so under the form, and make it on the next press if the field still names it.
+    case offerToCreate(String)
+    /// It cannot take the file, for the reason given.
+    case refused(String)
 }
 
 /// File ▸ Export… (PLAN.md §M39 ▸ Slice 12): the Markdown file under the cursor, rendered as a page
@@ -145,10 +159,24 @@ extension PanelViewController {
         accessory.setBusy(true)
         Task { [weak self] in
             // The other pane's own folder was checked before the sheet went up.
-            let problem = folder == base ? nil : await Self.folderProblem(folder, on: backend)
+            let check: ExportFolderCheck = folder == base
+                ? .ready
+                : await Self.folderCheck(folder, confirmed: accessory.folderToCreate, on: backend)
             accessory.setBusy(false)
-            if let problem {
-                accessory.showError(problem)
+            switch check {
+            case .ready, .create:
+                break
+            case let .offerToCreate(sentence):
+                // Asked once, under the form, because the field takes a path from a root: a typo
+                // there would otherwise make a stray folder somewhere nobody is looking (Oleg's call,
+                // 2026-11-18). The next press with the field unchanged is the answer.
+                accessory.folderToCreate = folder
+                accessory.showError(sentence)
+                alert.window.makeFirstResponder(accessory.folderField)
+                return
+            case let .refused(sentence):
+                accessory.folderToCreate = nil
+                accessory.showError(sentence)
                 alert.window.makeFirstResponder(accessory.folderField)
                 return
             }
@@ -158,7 +186,8 @@ extension PanelViewController {
                 source: source,
                 format: accessory.format,
                 name: name,
-                folder: folder
+                folder: folder,
+                createsFolder: check == .create
             ))
         }
     }
@@ -176,21 +205,55 @@ extension PanelViewController {
         return VFSPath(backend: base.backend, path: path)
     }
 
-    /// Why `folder` cannot take the exported file, or `nil` when it can.
-    static func folderProblem(_ folder: VFSPath, on backend: any VFSBackend) async -> String? {
-        guard let entry = await DirectoryLoader.stat(backend, at: folder), entry.isDirectoryLike else {
-            return String(
+    /// What the sheet does with `folder`: export into it, offer to make it, make it, or refuse.
+    ///
+    /// A folder that is not there was refused outright until 2026-11-18. Now it is offered: the first
+    /// press says so, and a second press while the field still names it (`confirmed`) makes it and
+    /// every folder on its way. What it needs is the deepest folder on the way that is there, and that
+    /// folder has to take writes. A file standing on the way is named, as F7 names it; a file standing
+    /// where the folder itself would be keeps the sentence it always had.
+    static func folderCheck(
+        _ folder: VFSPath,
+        confirmed: VFSPath?,
+        on backend: any VFSBackend
+    ) async -> ExportFolderCheck {
+        let state = await BlockingWork.run {
+            Result { try NestedCreation.state(of: folder, using: backend) }
+        }
+        switch state {
+        case .success(.present):
+            return backend.capabilities(for: folder).contains(.write)
+                ? .ready
+                : .refused(readOnlySentence(folder))
+        case let .success(.missing(under)):
+            guard backend.capabilities(for: under).contains(.write) else {
+                return .refused(readOnlySentence(under))
+            }
+            return confirmed == folder
+                ? .create
+                : .offerToCreate(String(
+                    localized: "There’s no folder “\(folder.path)”. Press Export again to create it.",
+                    comment: """
+                    Export sheet note: the typed folder does not exist yet, and pressing Export once more \
+                    makes it. The argument is its path; “Export” is the sheet's button.
+                    """
+                ))
+        case let .failure(error):
+            if case let .notADirectory(blocker)? = error as? VFSError, blocker != folder {
+                return .refused(fileInTheWaySentence(blocker))
+            }
+            return .refused(String(
                 localized: "There’s no folder “\(folder.path)”.",
                 comment: "Export sheet error: the typed folder does not exist. The argument is its path."
-            )
+            ))
         }
-        guard backend.capabilities(for: folder).contains(.write) else {
-            return String(
-                localized: "Files can’t be written to “\(folder.path)”.",
-                comment: "Export sheet error: the typed folder is read-only. The argument is its path."
-            )
-        }
-        return nil
+    }
+
+    private static func readOnlySentence(_ folder: VFSPath) -> String {
+        String(
+            localized: "Files can’t be written to “\(folder.path)”.",
+            comment: "Export sheet error: the typed folder is read-only. The argument is its path."
+        )
     }
 
     private static func sentence(for problem: MarkdownExport.NameProblem, name: String) -> String {
@@ -252,6 +315,27 @@ extension PanelViewController {
         } catch {
             presentExportFailure(error, source: request.source.name)
             return
+        }
+        // The folder the user said to make is made only now, with the page written, so a source
+        // that could not be drawn or a download that was stopped leaves no empty folder behind. It is
+        // journaled as a New Folder of its own: ⌘Z takes back the copy first and then the folders,
+        // each only while empty, which is the order they were made in reverse.
+        if request.createsFolder {
+            let backend = backend
+            let folder = request.folder
+            do {
+                let made = try await BlockingWork.run {
+                    Result { try NestedCreation.makeFolders(upTo: folder, using: backend) }
+                }.get()
+                if let record = UndoRecord.newFolders(made) { host?.recordUndoableAction(record) }
+            } catch {
+                MarkdownExportStaging.discard(staged)
+                presentOperationFailure(
+                    message: Self.exportFailureTitle(request.source.name),
+                    detail: describeCreateFailure(error, making: folder)
+                )
+                return
+            }
         }
         do {
             let entry = try LocalBackend().stat(at: .local(staged.path))
