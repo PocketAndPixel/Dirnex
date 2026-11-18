@@ -87,9 +87,12 @@ enum FileFormatting {
     /// **01.01.1, 02:02** — which reads as a corrupt timestamp rather than as an absent one, and
     /// which no test could see, since every assertion in this area is about the shapes a *real*
     /// date takes.
-    static func dateString(for entry: FileEntry) -> String {
-        guard entry.hasModificationDate else { return "—" }
-        return dateFormatter.string(from: entry.modificationDate)
+    ///
+    /// `listing` is the date the column holds: the modification date, or in Recents when the file was
+    /// last opened (`ListingDate`). A row with no such date gets the dash either way.
+    static func dateString(for entry: FileEntry, in listing: ListingDate = .modified) -> String {
+        guard let date = listing.date(of: entry) else { return "—" }
+        return dateFormatter.string(from: date)
     }
 
     /// Every shape `dateString(for:)` can take in the current region — what a caller sizing the Date

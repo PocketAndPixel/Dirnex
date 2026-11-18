@@ -37,6 +37,21 @@ extension PanelViewController {
             }
         }
 
+        /// The header this column draws over a listing whose Date column holds `listing`'s date:
+        /// Last Opened in Recents (PLAN.md §M40 Slice 2), and ``title`` everywhere else.
+        func title(in listing: ListingDate) -> String {
+            guard self == .date, listing == .lastOpened else { return title }
+            return Self.lastOpenedTitle
+        }
+
+        /// The Date column's header in Recents, where it holds when each file was last opened.
+        static var lastOpenedTitle: String {
+            String(
+                localized: "Last Opened",
+                comment: "File-list column header in Recents: when the file was last opened."
+            )
+        }
+
         /// Whether the column is only installed under some condition rather than always present.
         /// A permanently blank bar column in every pane not measuring one would be pure clutter, so
         /// it comes and goes with its mode.

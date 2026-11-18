@@ -97,7 +97,10 @@ extension PanelViewController: NSTableViewDelegate {
             // ride a recycled cell onto an unrelated row (docs/NOTES.md ▸ AppKit).
             cell.toolTip = FileFormatting.sizeToolTip(for: entry, state: sizeState)
         case .date:
-            cell.textField?.stringValue = FileFormatting.dateString(for: entry)
+            cell.textField?.stringValue = FileFormatting.dateString(
+                for: entry,
+                in: ListingDate(listing: panel.path)
+            )
             cell.textField?.alignment = .natural
         case .sizeBar:
             // Handled above — it isn't a `FileCellView` at all.
@@ -178,8 +181,8 @@ extension PanelViewController: NSTableViewDelegate {
             if deferRefreshIfRenaming() { return }
             reconcileCursorFromTable()
             installSortedModel(model)
+            // Which moves the sort indicator too (`updateColumnHeaders`).
             reloadEverything()
-            updateSortIndicators()
             // Sort is per-tab and persisted (PLAN.md §M1).
             persistState()
         }

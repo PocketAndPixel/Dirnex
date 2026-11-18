@@ -13,14 +13,15 @@ import Foundation
 /// the last-used filter returned 181 clean items, only two of them under `Library`).
 ///
 /// Pure and testable like `FileQuery`: this builds the `mdfind` predicate and argument vector
-/// and touches no disk; the app runs `mdfind` with them off the main thread (`SpotlightSearchRunner`)
-/// and stats the hits into a virtual results panel.
+/// and touches no disk; the app runs `mdfind` with them off the main thread (`SpotlightSearchRunner`),
+/// and ``RecentsQuery/hits(fromOutput:)`` and ``RecentsListing`` turn what it printed into the rows of
+/// a virtual results panel.
 public struct RecentsQuery: Sendable, Equatable {
     /// The rolling window, in seconds back from now, an item must have been used within to count as
-    /// recent. A bound is deliberate rather than "everything ever opened": `mdfind` cannot sort
-    /// (there is no sort flag) and the runner keeps only its first N paths, so an unbounded query
-    /// would surface an arbitrary N, not the newest N. A 30-day window keeps the set both meaningful
-    /// and small enough to fall well under that cap.
+    /// recent. A bound is deliberate rather than "everything ever opened": the listing keeps only the
+    /// newest N (``RecentsListing``), so an unbounded query would read and sort every file ever opened
+    /// to show the same N. A 30-day window keeps the set both meaningful and small enough to fall
+    /// well under that cap (50 hits on the development Mac, 2026-11-18).
     public var usedWithinSeconds: Int
 
     public init(usedWithinSeconds: Int = RecentsQuery.defaultWindowSeconds) {
@@ -45,15 +46,18 @@ public struct RecentsQuery: Sendable, Equatable {
     /// also risks dropping document packages that conform to it.
     static let excludedContentType = "com.apple.application-bundle"
 
-    /// How the results are ordered once listed: modification date, newest first, folders *not*
+    /// The attribute `mdfind` prints beside each path: the date the item was last opened, which is
+    /// what Recents lists by (PLAN.md §M40 Slice 2).
+    static let lastUsedAttribute = "kMDItemLastUsedDate"
+
+    /// How the results are ordered once listed: by the Date column, newest first, folders *not*
     /// grouped ahead of files (recency is the whole ordering, not folders-then-files).
     ///
-    /// This is a **proxy** for "last opened", chosen because it is the only recency signal the app
-    /// can compute: `mdfind` returns paths in no useful order and offers no sort flag, and a statted
-    /// `FileEntry` carries a modification date but not `kMDItemLastUsedDate`. For the documents a
-    /// person is actively working on, used and modified move together, so the order is usually right;
-    /// a file opened-but-not-edited (a watched video) sorts by when it was written instead. Bringing
-    /// the true last-used date into the ordering is left to a later pass if it proves to matter.
+    /// In Recents the Date column holds when each item was last opened (``ListingDate``), so this
+    /// is the true "last opened" order (PLAN.md §M40 Slice 2). Until then it was the modification
+    /// date standing in, since `mdfind` returns paths in no useful order and a `stat` carries no
+    /// last-opened date; a file opened and not edited, such as a watched video, sorted by when it
+    /// was written. The date now comes in the same `mdfind` call (``mdfindArguments()``).
     public static let resultSort = FileSort(
         key: .modified,
         ascending: false,
@@ -71,7 +75,11 @@ public struct RecentsQuery: Sendable, Equatable {
 
     /// The full argument vector for `/usr/bin/mdfind`. No `-onlyin`: Recents searches everywhere
     /// indexed, like Finder's, rather than scoping to any one folder.
+    ///
+    /// `-attr` prints each hit's last-opened date after its path, in the same call, and `-0` ends
+    /// each record with a NUL rather than a newline, so a name holding a newline stays one record
+    /// (both probed 2026-11-18; ``RecentsQuery/hits(fromOutput:)`` reads the result).
     public func mdfindArguments() -> [String] {
-        [metadataPredicate()]
+        ["-0", "-attr", Self.lastUsedAttribute, metadataPredicate()]
     }
 }

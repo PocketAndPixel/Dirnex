@@ -285,7 +285,7 @@ final class PanelViewController: NSViewController {
         tableView.doubleAction = #selector(handleDoubleClick)
         configureDragging()
         observeColumnLayoutChanges()
-        updateSortIndicators()
+        updateColumnHeaders()
     }
 
     deinit {

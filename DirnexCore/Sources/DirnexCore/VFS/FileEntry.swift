@@ -102,6 +102,15 @@ public struct FileEntry: Sendable, Hashable, Identifiable {
     /// multipart one, so it says nothing about content two objects share and must never be read as
     /// a checksum of the bytes.
     public let entityTag: String?
+    /// When the item was last opened, as Spotlight records it (`kMDItemLastUsedDate`), or `nil` for a
+    /// row that was not read with one — which is every row but a Recents hit.
+    ///
+    /// Recents asks for it in the same `mdfind` call that finds the hits (PLAN.md §M40 Slice 2). No
+    /// `stat` can: macOS keeps the date in the `com.apple.lastuseddate#PS` extended attribute and
+    /// Spotlight's index, not in the inode (measured 2026-11-18 — writing that attribute is what moved
+    /// the date `mdfind` reported). So `nil` means "not read", never "never opened", and
+    /// ``ListingDate`` shows it as no date rather than as a guess.
+    public private(set) var lastUsedDate: Date?
 
     public init(
         path: VFSPath,
@@ -121,7 +130,8 @@ public struct FileEntry: Sendable, Hashable, Identifiable {
         symlinkDestination: String? = nil,
         symlinkTargetKind: Kind? = nil,
         isDataless: Bool = false,
-        entityTag: String? = nil
+        entityTag: String? = nil,
+        lastUsedDate: Date? = nil
     ) {
         self.path = path
         self.name = name
@@ -141,6 +151,15 @@ public struct FileEntry: Sendable, Hashable, Identifiable {
         self.symlinkTargetKind = symlinkTargetKind
         self.isDataless = isDataless
         self.entityTag = entityTag
+        self.lastUsedDate = lastUsedDate
+    }
+
+    /// The same entry, now knowing when it was last opened — how a Recents hit, statted like any
+    /// other path, gets the date its `mdfind` reported (``RecentsListing``).
+    public func withLastUsedDate(_ date: Date?) -> FileEntry {
+        var entry = self
+        entry.lastUsedDate = date
+        return entry
     }
 
     /// The same entry, now knowing what its symlink points at.
@@ -169,7 +188,8 @@ public struct FileEntry: Sendable, Hashable, Identifiable {
             symlinkDestination: destination,
             symlinkTargetKind: symlinkTargetKind,
             isDataless: isDataless,
-            entityTag: entityTag
+            entityTag: entityTag,
+            lastUsedDate: lastUsedDate
         )
     }
 
@@ -264,7 +284,8 @@ public struct FileEntry: Sendable, Hashable, Identifiable {
             symlinkDestination: symlinkDestination,
             symlinkTargetKind: symlinkTargetKind,
             isDataless: isDataless,
-            entityTag: entityTag
+            entityTag: entityTag,
+            lastUsedDate: lastUsedDate
         )
     }
 }
