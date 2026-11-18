@@ -91190,6 +91190,95 @@
         }
       }
     },
+    "Redoing this change needs an administrator": {
+      "comment": "Alert title when ⇧⌘Z has to change items only an administrator can change.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Das Wiederholen dieser Änderung erfordert einen Administrator"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Redoing this change needs an administrator"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rehacer este cambio requiere un administrador"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le rétablissement de cette modification nécessite un administrateur"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ripetere questa modifica richiede un amministratore"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "この変更をやり直すには管理者権限が必要です"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 변경을 다시 실행하려면 관리자 권한이 필요합니다"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Het opnieuw uitvoeren van deze wijziging vereist een beheerder"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ponowienie tej zmiany wymaga administratora"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Для повтора этого изменения нужны права администратора"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Для повторення цієї зміни потрібні права адміністратора"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Refazer esta alteração requer um administrador"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "重做此更改需要管理员权限"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "重做此更改需要管理者權限"
+          }
+        }
+      }
+    },
     "Region:": {
       "comment": "Connect field label: the S3 region to sign for.",
       "localizations": {
@@ -129105,6 +129194,95 @@
           "stringUnit": {
             "state": "translated",
             "value": "還原 %@ 已完成，但有問題"
+          }
+        }
+      }
+    },
+    "Undoing this change needs an administrator": {
+      "comment": "Alert title when ⌘Z has to put back items only an administrator can change.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Das Widerrufen dieser Änderung erfordert einen Administrator"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Undoing this change needs an administrator"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Deshacer este cambio requiere un administrador"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "L’annulation de cette modification nécessite un administrateur"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Annullare questa modifica richiede un amministratore"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "この変更を取り消すには管理者権限が必要です"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 변경을 실행 취소하려면 관리자 권한이 필요합니다"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Het herstellen van deze wijziging vereist een beheerder"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cofnięcie tej zmiany wymaga administratora"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Для отмены этого изменения нужны права администратора"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Для відмінення цієї зміни потрібні права адміністратора"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Desfazer esta alteração requer um administrador"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "撤销此更改需要管理员权限"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "還原此更改需要管理者權限"
           }
         }
       }

@@ -143,30 +143,21 @@ extension UndoJournal {
     /// cause instead of a bare errno the app renders as "Dirnex may need Full Disk Access" — the same
     /// "an EPERM that needs root is indistinguishable from one that does not" trap the whole
     /// attributes design is built around, arriving here from the other direction.
+    ///
+    /// The app asks for the password before it gets here (PLAN.md §M40 Slice 5): ``EscalatedUndo``
+    /// takes the steps that need root out of the record and runs them as administrator, measured
+    /// through the same ``LocalAttributeRestore`` as this, so the refusal is left for a step only
+    /// root could take that no command can make (a Created date), or an item changed since.
     static func restoreAttributes(
         _ diff: AttributeDiff,
         at path: VFSPath,
         actsOnLink: Bool,
+        actor: UserContext = .current(),
         failures: inout [OperationItemFailure]
     ) {
         guard !diff.isEmpty else { return }
-        do {
-            let current = try FileAttributeIO.read(at: path).attributes
-            let needsRoot = AttributePrivilege.needsRoot(
-                for: diff, current: current, actor: .current()
-            )
-            guard !needsRoot else {
-                let reason = VFSUnsupportedReason
-                    .attributeRestoreNeedsAdministrator(name: path.lastComponent)
-                failures.append(.init(path: path, error: .unsupported(reason)))
-                return
-            }
-            let plan = AttributeChangePlan(diff: diff, current: current, actsOnLink: actsOnLink)
-            try FileAttributeIO.apply(plan, to: path)
-        } catch let error as VFSError {
-            failures.append(.init(path: path, error: error))
-        } catch {
-            failures.append(.init(path: path, error: .io(path: path, code: 0)))
+        restoreLocally(at: path, actor: actor, failures: &failures) {
+            try LocalAttributeRestore(path: path, actsOnLink: actsOnLink, diff: diff)
         }
     }
 
@@ -178,36 +169,41 @@ extension UndoJournal {
     /// to unlock, write and relock exactly as the forward change did. Reading the current attributes
     /// first is what makes that depend on what is on disk now.
     ///
-    /// The privilege check is the same asymmetry ``restoreAttributes`` guards: nothing about a file
-    /// the user no longer owns is theirs to put back, and a bare `EPERM` here renders as a Full Disk
-    /// Access sentence that cannot help.
+    /// The privilege check is the same asymmetry ``restoreAttributes(_:at:actsOnLink:actor:failures:)``
+    /// guards: nothing about a file the user no longer owns is theirs to put back, and a bare `EPERM`
+    /// here renders as a Full Disk Access sentence that cannot help. A list the item already has is
+    /// nothing to write, and so needs nobody.
     static func restoreAccessControlList(
         _ list: AccessControlList,
         at path: VFSPath,
         actsOnLink: Bool,
+        actor: UserContext = .current(),
         failures: inout [OperationItemFailure]
     ) {
-        do {
-            let current = try FileAttributeIO.read(at: path).attributes
-            let needsRoot = AttributePrivilege.needsRoot(
-                for: AttributeDiff(),
-                current: current,
-                actor: .current(),
-                changesAccessControlList: true
+        restoreLocally(at: path, actor: actor, failures: &failures) {
+            try LocalAttributeRestore(
+                path: path, actsOnLink: actsOnLink, diff: AttributeDiff(), accessControlList: list
             )
-            guard !needsRoot else {
+        }
+    }
+
+    /// Measure what is left to write, refuse by name what only root could write, and write the rest.
+    private static func restoreLocally(
+        at path: VFSPath,
+        actor: UserContext,
+        failures: inout [OperationItemFailure],
+        measure: () throws -> LocalAttributeRestore
+    ) {
+        do {
+            let restore = try measure()
+            guard !restore.isEmpty else { return }
+            guard !restore.needsRoot(for: actor) else {
                 let reason = VFSUnsupportedReason
                     .attributeRestoreNeedsAdministrator(name: path.lastComponent)
                 failures.append(.init(path: path, error: .unsupported(reason)))
                 return
             }
-            let plan = AttributeChangePlan(
-                diff: AttributeDiff(),
-                current: current,
-                actsOnLink: actsOnLink,
-                accessControlList: list
-            )
-            try FileAttributeIO.apply(plan, to: path)
+            try FileAttributeIO.apply(restore.plan, to: path)
         } catch let error as VFSError {
             failures.append(.init(path: path, error: error))
         } catch {

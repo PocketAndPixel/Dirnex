@@ -15,8 +15,20 @@ import Foundation
 /// already reverted against the backend (here is its report), or a selection change needs its
 /// marks installed on a pane.
 enum UndoOutcome {
-    case fileOperation(record: UndoRecord, report: UndoReport)
+    /// `administrator` is the part that needed root, run first after the password, when there was
+    /// one; `report` is then the rest of the record's.
+    case fileOperation(
+        record: UndoRecord,
+        report: UndoReport,
+        administrator: AttributeBatchEscalation.Result? = nil
+    )
     case selection(SelectionChange)
+}
+
+/// Which stack ⌘Z or ⇧⌘Z works on.
+enum UndoDirection: Sendable {
+    case undo
+    case redo
 }
 
 @MainActor
@@ -65,18 +77,95 @@ final class UndoController {
         journal.withdraw(.selection(change))
     }
 
+    /// Asked before an undo or a redo that needs root, with what would run as root: `true` to go on.
+    typealias AdministratorConsent = @MainActor (EscalatedAttributeBatch, UndoDirection) async -> Bool
+    /// Runs the administrator bodies; `AdministratorShell` in the app, a plain shell in tests.
+    typealias AdministratorTransport = @Sendable ([String]) async throws -> Void
+
     /// Pop the top action, moving its inverse onto the redo stack, and apply it: a file
     /// operation is reversed on a background thread and returns a report; a selection change is
     /// handed back for the window to apply on the main thread. `nil` when there was nothing to
-    /// undo.
-    func undo() async -> UndoOutcome? {
-        await apply(journal.takeForUndo())
+    /// undo, or when the user declined the administrator dialog it needed.
+    ///
+    /// **An undo that needs root asks first** (PLAN.md §M40 Slice 5): a change to an item only an
+    /// administrator can change back, such as one the administrator dialog made. `consent` is the
+    /// dialog; on a yes the part that needs root runs through `shell` after the password, and the
+    /// rest of the record through the journal's executor. Cancel, there or at the password, leaves
+    /// the step where it was. `actor` is whom the steps are measured for, injected for the tests.
+    func undo(
+        actor: UserContext = .current(),
+        consent: AdministratorConsent,
+        shell: @escaping AdministratorTransport = { try await AdministratorShell.run($0) }
+    ) async -> UndoOutcome? {
+        await reverse(.undo, actor: actor, consent: consent, shell: shell)
     }
 
     /// Pop the top redo action, moving its inverse (the original action) back onto the undo
-    /// stack, and re-apply it. `nil` when there was nothing to redo.
-    func redo() async -> UndoOutcome? {
-        await apply(journal.takeForRedo())
+    /// stack, and re-apply it. `nil` when there was nothing to redo, or the user declined. A redo
+    /// that needs root asks as an undo does.
+    func redo(
+        actor: UserContext = .current(),
+        consent: AdministratorConsent,
+        shell: @escaping AdministratorTransport = { try await AdministratorShell.run($0) }
+    ) async -> UndoOutcome? {
+        await reverse(.redo, actor: actor, consent: consent, shell: shell)
+    }
+
+    /// Run `request` once every ⌘Z and ⇧⌘Z sent before it has finished.
+    ///
+    /// One at a time, because an undo that needs root takes its entry only after the dialog, and a
+    /// second ⌘Z pressed while the first was still asking would find the same entry on top and ask
+    /// about it again, or take the one beneath it unasked. Before this, two quick presses reverted
+    /// their records at the same time, on two threads.
+    func enqueue(_ request: @escaping @MainActor () async -> Void) {
+        let previous = lastRequest
+        lastRequest = Task { @MainActor in
+            await previous?.value
+            await request()
+        }
+    }
+
+    private var lastRequest: Task<Void, Never>?
+
+    /// The shared body of `undo` and `redo`. A record with no local attribute step is taken at once,
+    /// as it always was. One with such a step is measured off the main thread first, and taken by
+    /// identity afterwards, since a queued job may have recorded something newer meanwhile
+    /// (`UndoJournal.takeForUndo(_:)`).
+    private func reverse(
+        _ direction: UndoDirection,
+        actor: UserContext,
+        consent: AdministratorConsent,
+        shell: @escaping AdministratorTransport
+    ) async -> UndoOutcome? {
+        let next = direction == .undo ? journal.top : journal.redoTop
+        guard let next else { return nil }
+        guard case let .fileOperation(record) = next, record.changesLocalAttributes else {
+            return await apply(direction == .undo ? journal.takeForUndo() : journal.takeForRedo())
+        }
+        let escalation = await BlockingWork.run { EscalatedUndo(reverting: record, actor: actor) }
+        // Nothing needs root, or nothing a command can make (a Created date): the executor writes
+        // what it can and names the rest, as before.
+        guard let escalation, escalation.batch.hasCommands else {
+            take(next, direction)
+            return await apply(next)
+        }
+        guard await consent(escalation.batch, direction) else { return nil }
+        let result = await AttributeBatchEscalation.run(escalation.batch, shell: shell)
+        // Cancelled at the password, before anything ran: a choice, and the step stays.
+        if result.wasCancelled, result.outcome.changedCount == 0 { return nil }
+        take(next, direction)
+        persist()
+        let backend = backend
+        let remainder = escalation.remainder
+        let report = await BlockingWork.run { UndoJournal.revert(remainder, using: backend) }
+        return .fileOperation(record: record, report: report, administrator: result)
+    }
+
+    private func take(_ entry: UndoEntry, _ direction: UndoDirection) {
+        switch direction {
+        case .undo: journal.takeForUndo(entry)
+        case .redo: journal.takeForRedo(entry)
+        }
     }
 
     /// Persist the shuffled stacks, then apply `entry` — the shared tail of `undo` and `redo`,

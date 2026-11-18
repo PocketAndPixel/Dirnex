@@ -13,14 +13,16 @@ import DirnexCore
 enum AdministratorEscalationAlert {
     /// The alert. `body` is its first paragraph; each omission follows as a sentence of its own.
     /// With `canRun` false there is nothing to authenticate, and the one button acknowledges.
+    /// `title` replaces "This change needs an administrator", for an undo or a redo.
     static func make(
+        title: String? = nil,
         body: String,
         omissions: Set<EscalatedAttributeCommand.Omission>,
         terminalCommand: String?,
         canRun: Bool
     ) -> NSAlert {
         let alert = NSAlert()
-        alert.messageText = String(
+        alert.messageText = title ?? String(
             localized: "This change needs an administrator",
             comment: "Attributes save alert title: the change requires root privileges."
         )
@@ -41,6 +43,23 @@ enum AdministratorEscalationAlert {
         }
         alert.enableEscapeToCancel()
         return alert
+    }
+
+    /// The title for an undo or a redo that needs root (PLAN.md §M40 Slice 5). The body is the
+    /// batch's, since putting items back is changing them.
+    static func title(for direction: UndoDirection) -> String {
+        switch direction {
+        case .undo:
+            String(
+                localized: "Undoing this change needs an administrator",
+                comment: "Alert title when ⌘Z has to put back items only an administrator can change."
+            )
+        case .redo:
+            String(
+                localized: "Redoing this change needs an administrator",
+                comment: "Alert title when ⇧⌘Z has to change items only an administrator can change."
+            )
+        }
     }
 
     /// The first paragraph when nothing the elevated command can do remains.

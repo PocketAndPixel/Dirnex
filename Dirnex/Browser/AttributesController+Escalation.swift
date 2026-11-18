@@ -97,9 +97,8 @@ extension AttributesController {
     /// Journal **what actually landed**, not what was asked. An omitted Created date or ACL never
     /// reached disk, so recording it would make ⌘Z attempt to revert a change that never happened.
     /// The undo itself will need root again (nothing about a file you do not own is yours to put
-    /// back), and `UndoJournal` refuses that with a stated reason — the same asymmetric-undo shape
-    /// Slice 4 already handles, so escalated changes journal like any other and simply cannot be
-    /// reversed without authenticating again.
+    /// back), and ⌘Z asks for it in this same dialog before it takes the step (PLAN.md §M40 Slice
+    /// 5, `UndoController.undo`), so escalated changes journal like any other.
     private func journalEscalatedChange(
         _ command: EscalatedAttributeCommand,
         old: FileAttributes,

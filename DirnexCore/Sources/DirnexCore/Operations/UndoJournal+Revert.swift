@@ -15,6 +15,17 @@ extension UndoJournal {
     /// still restores the other four. Pure with respect to the journal; the caller pops the
     /// record and runs this off the main thread.
     public static func revert(_ record: UndoRecord, using backend: any VFSBackend) -> UndoReport {
+        revert(record, using: backend, actor: .current())
+    }
+
+    /// ``revert(_:using:)`` with the local attribute steps measured against `actor` rather than the
+    /// running process, which is how a test checks that a step ``EscalatedUndo`` leaves for the
+    /// executor is one the executor does not refuse for root.
+    static func revert(
+        _ record: UndoRecord,
+        using backend: any VFSBackend,
+        actor: UserContext
+    ) -> UndoReport {
         var failures: [OperationItemFailure] = []
         for step in record.steps {
             switch step {
@@ -29,10 +40,12 @@ extension UndoJournal {
             case let .createFolder(path):
                 createFolder(at: path, using: backend, failures: &failures)
             case let .restoreAttributes(path, actsOnLink, apply, _):
-                restoreAttributes(apply, at: path, actsOnLink: actsOnLink, failures: &failures)
+                restoreAttributes(
+                    apply, at: path, actsOnLink: actsOnLink, actor: actor, failures: &failures
+                )
             case let .restoreAccessControlList(path, actsOnLink, apply, _):
                 restoreAccessControlList(
-                    apply, at: path, actsOnLink: actsOnLink, failures: &failures
+                    apply, at: path, actsOnLink: actsOnLink, actor: actor, failures: &failures
                 )
             case let .restoreRemoteAttributes(path, apply, _):
                 restoreRemoteAttributes(apply, at: path, using: backend, failures: &failures)

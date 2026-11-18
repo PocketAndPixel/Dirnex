@@ -336,6 +336,28 @@ public struct UndoJournal: Sendable, Equatable {
         return entry
     }
 
+    /// Take `entry` for undo once its reversal is under way, wherever it now sits on the undo stack,
+    /// and put its inverse on top of redo (PLAN.md §M40 Slice 5).
+    ///
+    /// ``takeForUndo()`` takes the top the moment ⌘Z is pressed. An undo that needs root asks for the
+    /// password first and keeps its entry on the stack while it does, so that Cancel leaves the step
+    /// where it was. A queued job can finish behind that dialog and record something newer, and the
+    /// entry is then taken from beneath it, the newer action staying on top: the undo really happens
+    /// after that action, and its inverse goes on redo for the same reason. An entry no longer on the
+    /// stack still puts its inverse there, since the reversal runs and redo has to describe what is
+    /// on disk.
+    public mutating func takeForUndo(_ entry: UndoEntry) {
+        if let index = records.lastIndex(of: entry) { records.remove(at: index) }
+        redoRecords = trimmed(redoRecords + [entry.inverted])
+    }
+
+    /// The ⇧⌘Z twin of ``takeForUndo(_:)``: take `entry` off the redo stack wherever it sits, and put
+    /// its inverse, the original action, on top of the undo stack.
+    public mutating func takeForRedo(_ entry: UndoEntry) {
+        if let index = redoRecords.lastIndex(of: entry) { redoRecords.remove(at: index) }
+        records = trimmed(records + [entry.inverted])
+    }
+
     /// Take `entry` back off the top of the undo stack, as though it had never been recorded: an
     /// action that turned out to be the first half of a different gesture. The first click of a
     /// ⌘-double-click marks the row it then opens, and the open is what the user asked for.
