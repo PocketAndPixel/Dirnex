@@ -23,11 +23,13 @@ public struct SearchFields: OptionSet, Sendable, Hashable {
 
     /// A substring of the file's name.
     public static let name = SearchFields(rawValue: 1 << 0)
-    /// A substring of the file's indexed *text*. Spotlight alone — reproducing it anywhere else
-    /// means downloading everything under the scope in order to grep it.
+    /// A substring of the file's *text*. On this Mac only: Spotlight's index where it covers the
+    /// folder, and the file's own bytes where it does not (``LocalSearchInspector``, PLAN.md §M40
+    /// Slice 3). On a server it would mean downloading everything under the scope to grep it.
     public static let content = SearchFields(rawValue: 1 << 1)
-    /// Finder tags. Spotlight alone, and for a second reason beyond the index: a tag is an extended
-    /// attribute of a local file, and nothing on a server carries one.
+    /// Finder tags. On this Mac only, by the index or by reading each file's attribute, and for a
+    /// second reason beyond the index: a tag is an extended attribute of a local file, and nothing on
+    /// a server carries one.
     public static let tags = SearchFields(rawValue: 1 << 2)
     /// The kind chips. Answerable off a listing too, but from the **name** rather than from the
     /// bytes — see ``SearchPredicate``.
@@ -37,7 +39,8 @@ public struct SearchFields: OptionSet, Sendable, Hashable {
     /// The modified-within chip.
     public static let modified = SearchFields(rawValue: 1 << 5)
 
-    /// Everything — what a Spotlight-indexed search answers.
+    /// Everything — what a search on this Mac answers, by the index or by a walk that reads the
+    /// files.
     public static let indexed: SearchFields = [.name, .content, .tags, .kind, .size, .modified]
 
     /// What an ordinary directory listing carries, and therefore what a walk over one can decide:
@@ -65,7 +68,10 @@ public struct SearchFields: OptionSet, Sendable, Hashable {
 /// a real directory before it asks — which is why the virtual containers are ``unavailable`` here
 /// rather than quietly mapped onto Spotlight.
 public enum SearchRoute: Sendable, Equatable {
-    /// `mdfind` against the local index — the only route that can answer content and tags.
+    /// A folder on this Mac: `mdfind` against the index where Spotlight covers the folder, and a walk
+    /// that reads tags and text off each file where it does not (``SpotlightCoverage``, PLAN.md §M40
+    /// Slice 3). One route rather than two because the dialog, the saved search and the edit all
+    /// treat it as one place; which of the two runs is decided when the search starts, by asking.
     case spotlight
     /// A recursive walk of the backend's own listings, matching each entry as it arrives. What a
     /// connected server and an archive get.

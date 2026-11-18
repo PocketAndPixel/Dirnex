@@ -390,6 +390,33 @@ defaults domain is unchanged. The full app suite failed two Quick View web-page 
 **Not seen:** Recents over the whole index rather than a scoped fixture, and the other 12
 translations drawn.
 
+**2026-11-18: Slice 3 landed and was run live** (Find Files where Spotlight
+does not index). `SpotlightCoverage` asks first: `mdutil -s` for a volume's root, otherwise
+`mdfind -0 -onlyin <parent> 'kMDItemFSName == "<name>"'` and whether the folder itself is among the hits
+(the probe found `/Users/oleg` among six `oleg` folders, and could not see `/System/Volumes/Data` as an
+item at all). A local "This Folder" scope it does not cover is walked (`performSearch` asks at run time,
+so saved searches and edits follow), and `SearchPredicate.walking` gives the walk a `LocalSearchInspector`
+reading tags (`FinderTagStorage`) and text (`TextContentSearch`: UTF-8 or UTF-16 by mark or by where
+its NULs fall, binary skipped on a NUL in the first 8 KiB, case- and diacritic-insensitive through
+`NSString`, measured at 240 MB/s against Swift `String`'s 13). A predicate with no reader for tags or
+content refuses them, so none can be ignored. Find Files shows a sentence once Spotlight has answered,
+rather than delaying the dialog. The refusal on a server no longer says content "needs the Spotlight
+index". Core: 41 tests, eleven negative controls each failing its test; app: 4 tests, routing removed
+failing the end-to-end one. The first full app run hung: the end-to-end test's walk outlived its 30 s
+wait, the test deleted its folder, and the late walk's failure alert was `runModal()`. It now waits
+120 s and keeps its pane and folder when it gives up (NOTES.md ▸ Waits). **Live**, in `build/live-copy`
+under `/private/tmp`: the dialog showed its sentence and found both "minutes" files, the saved tag
+search found the one tagged file, the text search found the UTF-8 and the UTF-16 file and not the PNG
+holding the same word, and an edit reran with the sentence up. An indexed folder showed no sentence and
+its search found a PDF's text, which only Spotlight can. **On the NAS's SMB share** that Finder
+mounted, where Spotlight answered 0 for name, tag and text, the copy found the same hits from the
+dialog and the saved searches, with the tag and the text read over SMB, and the share's root showed the
+sentence through `mdutil -s`. The copy made no network-volume request. Fixtures removed; the NAS one
+sits in the share's `#recycle`.
+Final runs: core 5929 tests green, both CI-pinned linters clean, and the full app suite green but for
+`QuickViewScrollPageTests` (as in Slices 1 and 2; it passed alone), with this suite at 44 s and all 73
+saved preference keys unchanged by content.
+
 The app's share of selling Dirnex (the private companion repo `dirnex-home`, milestones C1–C15) was
 two milestones, **M29** (a license, and the reminder it removes) and **M30** (Report a Bug), both
 shipped and archived in [docs/HISTORY.md](docs/HISTORY.md). Neither changed what Dirnex *is*: it

@@ -24,7 +24,7 @@ final class SearchController: NSViewController {
     }
 
     /// The folder the "This Folder" scope option searches within, shown in that option's title.
-    private let currentFolderName: String
+    let currentFolderName: String
     /// What this scope can actually be asked about — the fields outside it are not drawn at all
     /// (PLAN.md §M22).
     ///
@@ -66,6 +66,10 @@ final class SearchController: NSViewController {
     private let tagField = NSTokenField()
     private let scopePopup = NSPopUpButton()
     private let findButton = NSButton()
+    /// Says the folder is walked rather than searched through Spotlight, and what that means for
+    /// Content (PLAN.md §M40 Slice 3). Hidden until the pane learns it, which is after the dialog is
+    /// up: asking Spotlight takes up to a third of a second, and ⌥F7 should not wait for it.
+    let unindexedNote = NSTextField(wrappingLabelWithString: "")
 
     init(
         currentFolderName: String,
@@ -90,7 +94,12 @@ final class SearchController: NSViewController {
 
     override func loadView() {
         let container = NSView()
-        let rows = [makeControlsGrid(), costNote.map(makeCostNote), makeFooter()].compactMap(\.self)
+        let rows = [
+            makeControlsGrid(),
+            costNote.map(makeCostNote),
+            configureUnindexedNote(),
+            makeFooter()
+        ].compactMap(\.self)
         DialogLayout.fill(container, with: rows, spacing: 16)
         NSLayoutConstraint.activate([
             container.widthAnchor.constraint(equalToConstant: 552)
@@ -232,16 +241,6 @@ final class SearchController: NSViewController {
             %@ is its name, such as a bucket, a server or an archive file.
             """
         )
-    }
-
-    /// The cost sentence, wrapped to the footer's width. Secondary text, since it is about the
-    /// search rather than a question in it.
-    private func makeCostNote(_ text: String) -> NSView {
-        let note = NSTextField(wrappingLabelWithString: text)
-        note.textColor = .secondaryLabelColor
-        note.preferredMaxLayoutWidth = 512
-        note.widthAnchor.constraint(equalToConstant: 512).isActive = true
-        return note
     }
 
     private func makeFooter() -> NSView {

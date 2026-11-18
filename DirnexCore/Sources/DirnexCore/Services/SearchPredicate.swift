@@ -14,6 +14,11 @@ import UniformTypeIdentifiers
 /// a search they saved, which is the quiet direction. So the proof lives in the type: there is no
 /// way to hold a `SearchPredicate` that is ignoring part of its query, and the caller is handed the
 /// missing fields by name (``SearchQueryUnanswerable``) to say so.
+///
+/// **Tags and content need something that reads the file** (PLAN.md §M40 Slice 3), a
+/// ``SearchInspector``, which a walk over a local folder Spotlight does not index has and a walk over
+/// a server does not. A place answering those fields with no inspector to read them is refused as
+/// one that does not answer them, so the proof above holds for them too.
 public struct SearchPredicate: Sendable {
     /// The name substring, or `nil` when the query does not ask about names.
     private let nameNeedle: String?
@@ -27,16 +32,26 @@ public struct SearchPredicate: Sendable {
     /// instant — a walk can run for minutes, and a window that slides underneath it would make the
     /// same file match at the start and miss at the end.
     private let modifiedSince: Date?
+    /// The tag names a match must carry, every one of them, lowercased; empty for no tag clause.
+    private let tagNames: Set<String>
+    /// The text a match must hold, or `nil` when the query does not ask about content.
+    private let contentNeedle: String?
+    /// What reads tags and text off a file; never `nil` while either clause is set.
+    private let inspector: (any SearchInspector)?
 
-    /// Compile `query` for a place answering `fields`.
+    /// Compile `query` for a place answering `fields`, with `inspector` to read what a listing does
+    /// not carry.
     ///
-    /// - Throws: ``SearchQueryUnanswerable`` when `query` asks about a field outside `fields`.
+    /// - Throws: ``SearchQueryUnanswerable`` when `query` asks about a field outside `fields`, or
+    ///   about tags or content with no `inspector` that reads them.
     public init(
         _ query: FileQuery,
         answering fields: SearchFields,
+        inspector: (any SearchInspector)? = nil,
         now: Date = Date()
     ) throws {
-        let missing = Self.unanswerable(in: query, given: fields)
+        let readable = SearchFields.listed.union(inspector?.fields ?? [])
+        let missing = Self.unanswerable(in: query, given: fields.intersection(readable))
         guard missing.isEmpty else { throw SearchQueryUnanswerable(fields: missing) }
 
         let name = query.trimmedName
@@ -52,13 +67,43 @@ public struct SearchPredicate: Sendable {
             .compactMap { UTType($0.contentType) }
         minSizeBytes = query.minSizeBytes
         modifiedSince = query.modifiedWithin.map { now.addingTimeInterval(-Double($0.seconds)) }
+        tagNames = Set(query.trimmedTags.map { $0.lowercased() })
+        let content = query.trimmedContent
+        contentNeedle = content.isEmpty ? nil : content
+        self.inspector = tagNames.isEmpty && contentNeedle == nil ? nil : inspector
+    }
+
+    /// The predicate a walk under `backend` runs: every field a search there answers, with what reads
+    /// tags and text off a file where one is at hand. A local folder gets both; a server and an
+    /// archive get the listing's fields alone.
+    public static func walking(
+        _ query: FileQuery,
+        in backend: VFSBackendID,
+        now: Date = Date()
+    ) throws -> SearchPredicate {
+        try SearchPredicate(
+            query,
+            answering: SearchFields.answerable(by: backend),
+            inspector: backend == .local ? LocalSearchInspector() : nil,
+            now: now
+        )
+    }
+
+    /// Whether matching reads files, and so takes long enough per entry that a walk polls Stop and
+    /// reports progress between entries rather than only between listings.
+    public var readsFiles: Bool {
+        inspector != nil
     }
 
     /// Whether `entry` satisfies every clause. Clauses AND, exactly as the metadata predicate's do.
-    public func matches(_ entry: FileEntry) -> Bool {
+    ///
+    /// The listing's clauses go first, then the tags, then the text: each is dearer than the one
+    /// before, and a file the name already rules out is never opened. `isCancelled` is polled while a
+    /// long file is read, and a file abandoned partway is not a match.
+    public func matches(_ entry: FileEntry, isCancelled: () -> Bool = { false }) -> Bool {
         guard matchesName(entry), matchesKind(entry), matchesSize(entry), matchesDate(entry)
         else { return false }
-        return true
+        return matchesTags(entry) && matchesContent(entry, isCancelled: isCancelled)
     }
 
     /// Case- and diacritic-insensitive substring, which is what the `cd` suffix on the metadata
@@ -106,6 +151,24 @@ public struct SearchPredicate: Sendable {
     private func matchesDate(_ entry: FileEntry) -> Bool {
         guard let modifiedSince else { return true }
         return entry.hasModificationDate && entry.modificationDate >= modifiedSince
+    }
+
+    /// Every asked tag among the entry's, case-insensitively, which is how macOS identifies a tag
+    /// (``FinderTag``) and the `c` on the metadata predicate's `kMDItemUserTags`. Not
+    /// diacritic-insensitively: `Café` and `Cafe` are two tags. A folder can carry tags and is asked
+    /// like a file.
+    private func matchesTags(_ entry: FileEntry) -> Bool {
+        guard !tagNames.isEmpty, let inspector else { return true }
+        let carried = Set(inspector.tagNames(of: entry).map { $0.lowercased() })
+        return tagNames.isSubset(of: carried)
+    }
+
+    /// Text is a question about a **file**, so a folder never holds it, and neither does a symlink,
+    /// whose bytes are somewhere else.
+    private func matchesContent(_ entry: FileEntry, isCancelled: () -> Bool) -> Bool {
+        guard let contentNeedle, let inspector else { return true }
+        guard entry.kind == .file else { return false }
+        return inspector.text(of: entry, contains: contentNeedle, isCancelled: isCancelled)
     }
 
     /// The fields `query` asks about that `fields` cannot answer — empty when it is runnable.

@@ -38,8 +38,22 @@ extension PanelViewController {
 
     /// Open Find Files on the active tab's search.
     func editCurrentSearch() {
-        guard let controller = makeEditSearchController() else { return }
+        guard let controller = makeEditSearchController(),
+              let folder = currentSearchPlace?.folder else { return }
         presentAsMovableWindow(controller)
+        noteIfUnindexed(folder, in: controller)
+    }
+
+    /// Where the active tab's search ran, recovered from what the tab stored; `nil` when the tab
+    /// holds no search.
+    private var currentSearchPlace: SearchPlace? {
+        let tab = tabs[activeTabIndex]
+        guard isSearchResults, tab.searchQuery != nil else { return nil }
+        return SearchPlace(
+            scope: tab.searchScope,
+            origin: tab.searchOrigin,
+            home: .local(NSHomeDirectory())
+        )
     }
 
     /// The dialog an edit opens: filled in with the active tab's search, asking about the real
@@ -48,12 +62,7 @@ extension PanelViewController {
     /// saying so.
     func makeEditSearchController() -> SearchController? {
         let tab = tabs[activeTabIndex]
-        guard isSearchResults, let query = tab.searchQuery else { return nil }
-        let place = SearchPlace(
-            scope: tab.searchScope,
-            origin: tab.searchOrigin,
-            home: .local(NSHomeDirectory())
-        )
+        guard let query = tab.searchQuery, let place = currentSearchPlace else { return nil }
         guard place.route != .unavailable else {
             presentUnsearchableScope(at: place.folder)
             return nil
