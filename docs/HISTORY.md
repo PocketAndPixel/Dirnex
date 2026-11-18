@@ -22165,9 +22165,8 @@ instead of opening Oleg's editor: F7 with `folder A/sub folder A` made both, wit
 with the cursor on `Folder B`. No File Provider request was logged, and Oleg's defaults domain was
 unchanged by content. **Not run live**: the refusal sentences and an archive, since Oleg moved to a
 full-screen Space mid-run and the sheet could no longer be typed into from the background
-(LIVE-VERIFICATION.md); a server and a cloud mount; a translation. Left for a decision: F2 or ⇧F2
-with a `/`, which would be a move. ⌥F5's archive name and Export's folder field took a path the same
-day, below.
+(LIVE-VERIFICATION.md); a server and a cloud mount; a translation. ⌥F5's archive name, Export's
+folder field and F2 took a path the same day, below; ⇧F2 still refuses a `/`.
 
 **2026-11-18: ⌥F5 takes a path too** (Oleg's go-ahead on the follow-up named above; core and app). A
 `/` in Pack's name field used to fail at the write, after any download, with `bsdtar: Failed to open`
@@ -22231,6 +22230,39 @@ press nothing was on disk; after the second, `out/new/notes.html` was, a page; t
 Folder record of two steps under the Copy; one Undo removed the page and a second both folders. **Not
 seen live**: the note under the form, since no background capture reached the sheet; the refusals; a
 server; a translation.
+
+**2026-11-18: F2 moves into a typed path** (Oleg's go-ahead on the last follow-up, and his call to make
+missing folders as F7 does rather than move only into folders already there; core and app). F2 refused a
+`/` ("Names can’t contain the “/” character."). Now `Archive/2025/report.pdf` moves the item below its own
+folder under the last name. The path is read as F7's is, so a leading `/`, a `.` or `..` and a `/` at the
+end are refused; so is a folder moved into itself, before anything is asked of a backend.
+`NestedCreation.move` (core) makes the folders on the way, refuses an occupied target, since every
+backend's `moveItem` replaces what is there, and moves; a failure takes the folders back, and an `EXDEV`
+keeps them, since the rename job an S3 prefix goes to copies into them. That job now carries its folder
+(`DeferredRename.directory`), and the folders are journaled as a New Folder of their own, as Export's
+are. Otherwise one record undoes the gesture: `UndoRecord.rename(from:to:madeFolders:)` moves the item
+back and then removes the folders, innermost first and each only while empty, and redo makes them before
+moving it. Inside an archive, `ArchiveMutation.movedInnerPath` and the staged move, which now makes its
+folders with F7's walk, do it in one rewrite (`ArchiveWriter.move`). The cursor lands on the outermost new
+folder. One sentence is new in all 14 languages, and the catalog lost the slash refusal nothing shows now.
+
+Tests: 10 core (`NestedMoveTests`) and 5 app (`PathRenameTests` through `performRename`, the commit the
+field editor calls, which had to become internal; two in `ArchiveCreateTests` through the real repack).
+Negative controls failed by name: without the occupied-target check the move replaced the other file;
+without the folders in the record undo left them behind; without the stage's walk the archive move found
+no folder; and with the commit's old refusal back, the move and the deferred tests failed. 5 856 core
+tests in 576 suites pass, both linters and the localization check are clean, and Oleg's defaults domain
+was unchanged. The first full app run had one failure, a Quick View workbook-iframe test hitting its
+ten-second deadline in a run that took 155 s against the usual 60; it passed alone, and a second full
+run passed all 2 690 app tests in 418 suites (one known issue, declared by its test), in 179 s.
+Seen live in `app.dirnex.Dirnex.live`, with a temporary probe that typed the path into F2's field editor
+and moved the focus away, the commit a Return makes: `report.pdf` → `Archive/2025/report.pdf` made both
+folders and moved the file, with the cursor on `Archive`; the journal held one rename record of three
+steps; Undo put the file back and removed both folders, and Redo did it all again. The first attempt
+renamed the wrong row, a folder, because a seeded `cursorPath` was absolute where it is relative
+(LIVE-VERIFICATION.md); it moved that folder below the two it made, and one Undo put it back, which
+was a check of a folder's move nobody planned. **Not seen live**: the refusals, whose alerts no
+background capture reaches; an archive member; a server, and an S3 prefix's job; a translation.
 
 ### After M19 — the follow-on log (2026-08-07 → 2026-09-21)
 

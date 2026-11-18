@@ -91,8 +91,24 @@ public extension UndoRecord {
     }
 
     /// Undo an inline rename by moving the new name back to the old one.
-    static func rename(from old: VFSPath, to new: VFSPath, date: Date = Date()) -> UndoRecord {
-        UndoRecord(label: .rename, date: date, steps: [.restore(from: new, to: old)])
+    ///
+    /// `madeFolders` are the folders an F2 typed as a path made on the way (2026-11-18:
+    /// `Archive/2025/report.pdf`), outermost first. They are removed after the item is back,
+    /// innermost first and each only while empty, so one ⌘Z undoes the whole gesture; redo makes
+    /// them again before moving the item, since ``inverted`` reverses the steps.
+    static func rename(
+        from old: VFSPath,
+        to new: VFSPath,
+        madeFolders: [VFSPath] = [],
+        date: Date = Date()
+    ) -> UndoRecord {
+        UndoRecord(
+            label: .rename,
+            date: date,
+            steps: [.restore(from: new, to: old)] + madeFolders.reversed().map(
+                UndoStep.removeCreatedFolder
+            )
+        )
     }
 
     /// Undo a Multi-Rename batch by moving each renamed item back to its original name — one

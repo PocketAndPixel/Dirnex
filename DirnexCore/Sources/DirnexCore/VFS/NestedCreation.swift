@@ -66,6 +66,44 @@ public enum NestedCreation {
         return try ensureAll(chain[(start + 1)...], using: backend)
     }
 
+    // MARK: - A move into a typed path
+
+    /// What ``move(_:to:using:)`` did.
+    public struct Moved: Sendable, Equatable {
+        /// The folders made on the way, outermost first.
+        public let folders: [VFSPath]
+        /// The backend asked for the long way (`EXDEV`, an S3 prefix): nothing has moved, and the
+        /// caller queues the copy-then-delete job into the folders, which are kept for it.
+        public let deferred: Bool
+    }
+
+    /// Move `source` to `target`, making the folders between `source`'s own folder and `target`
+    /// first: F2 with a name typed as a path (2026-11-18), `Archive/2025/report.pdf`.
+    ///
+    /// **An occupied `target` is refused** with ``VFSError/alreadyExists(_:)``, because every
+    /// backend's `moveItem` replaces what is there (``VFSBackend/moveItem(at:to:)``), and a rename
+    /// that destroys a file is the one thing it must not do. A failure takes back the folders made,
+    /// as every create here does; an `EXDEV` keeps them, since the job that finishes the move needs
+    /// them. Moving a folder into itself is the caller's to refuse, before anything is asked.
+    public static func move(
+        _ source: VFSPath,
+        to target: VFSPath,
+        using backend: any VFSBackend
+    ) throws -> Moved {
+        guard let directory = source.parent else { throw VFSError.notFound(source) }
+        let made = try makeFolders(above: target, below: directory, using: backend)
+        do {
+            if (try? backend.stat(at: target)) != nil { throw VFSError.alreadyExists(target) }
+            try backend.moveItem(at: source, to: target)
+            return Moved(folders: made, deferred: false)
+        } catch let VFSError.io(_, code) where code == EXDEV {
+            return Moved(folders: made, deferred: true)
+        } catch {
+            takeBack(made, using: backend)
+            throw error
+        }
+    }
+
     // MARK: - A folder named by a whole path
 
     /// Where a folder a whole path names stands, read without making anything: there, or missing
