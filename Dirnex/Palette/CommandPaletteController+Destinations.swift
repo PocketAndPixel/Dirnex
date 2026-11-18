@@ -33,8 +33,10 @@ extension CommandPaletteController {
     /// inside an unlocked vault opens and is not remembered (``PaletteDestination/isRememberable(vaultMountPoints:)``).
     ///
     /// The open waits a turn, after `dismiss()` has made the browser window key again, as a command's
-    /// action does: a place lands in the active pane and puts the focus there.
-    func runDestination(_ id: String) {
+    /// action does: a place lands in the active pane and puts the focus there. With `inNewTab` (⌘Return
+    /// or a ⌘-click) a place opens in a new tab of that pane; a workspace has no such reading, since it
+    /// sets both panes' tabs, so it opens as it does for Return.
+    func runDestination(_ id: String, inNewTab: Bool = false) {
         let browser = browser
         let destination = browser.flatMap {
             PaletteDestination.resolve(
@@ -54,7 +56,7 @@ extension CommandPaletteController {
             return
         }
         DispatchQueue.main.async {
-            browser.open(destination)
+            browser.open(destination, inNewTab: inNewTab)
         }
     }
 

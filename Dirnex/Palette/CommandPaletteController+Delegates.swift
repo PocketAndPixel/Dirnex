@@ -61,24 +61,16 @@ extension CommandPaletteController: NSTextFieldDelegate {
 
     /// The search field is first responder, so the arrow/return/escape keys arrive here as
     /// editing commands rather than reaching the list. Route them to the palette: ↑/↓ move
-    /// the highlight, ⏎ runs the highlighted command, ⎋ closes.
+    /// the highlight, ⏎ runs the highlighted command, ⌘⏎ opens a place in a new tab, ⎋ closes.
     func control(_ control: NSControl, textView: NSTextView, doCommandBy selector: Selector) -> Bool {
-        switch selector {
-        case #selector(NSResponder.moveUp(_:)):
-            moveSelection(by: -1)
-            return true
-        case #selector(NSResponder.moveDown(_:)):
-            moveSelection(by: 1)
-            return true
-        case #selector(NSResponder.insertNewline(_:)):
-            runSelected()
-            return true
-        case #selector(NSResponder.cancelOperation(_:)):
-            dismiss()
-            return true
-        default:
-            return false
+        guard let key = PaletteKey.action(for: selector, event: NSApp.currentEvent) else { return false }
+        switch key {
+        case .moveUp: moveSelection(by: -1)
+        case .moveDown: moveSelection(by: 1)
+        case let .run(inNewTab): runSelected(inNewTab: inNewTab)
+        case .close: dismiss()
         }
+        return true
     }
 }
 
