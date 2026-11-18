@@ -439,9 +439,13 @@ folders it made. One ⌘Z removes everything one F7 made, each folder only while
 **S3 account** pane keeps F7's name whole, since a bucket name has no folders. Inside an **archive**
 the folders are made in the same rewrite, and a member symlink on the way is refused rather than
 followed. A leading `/`, a `.` or `..` on the way, and a `/` ending ⇧F4's name are refused with their
-reasons. Run live on this Mac's disk (F7, its undo and redo, ⇧F4). A server and an archive are pinned
-by tests (`NestedCreateRouteTests`, `ArchiveCreateTests`, and the core's `NestedCreationTests`); a cloud
-mount goes through the same local backend and was not run live.
+reasons. **⌥F5's name takes a path the same way**: `backups/2026/photos` packs `photos.zip` into
+`backups/2026` inside the other pane's folder. The job makes those folders just before it writes, in
+both runners, and takes them back if it is stopped or fails, so a pack that does not finish still
+leaves nothing behind. Run live on this Mac's disk (F7, its undo and redo, ⇧F4, and ⌥F5 into
+`backups/2026` and against a file in the way). A server and an archive are pinned by tests
+(`NestedCreateRouteTests`, `ArchiveCreateTests`, and the core's `NestedCreationTests` and
+`PackFoldersTests`); a cloud mount goes through the same local backend and was not run live.
 
 <sup>aac</sup> Gated per **row**, like <sup>ee</sup>: each hit deletes the way the folder it lives in
 does (`DeleteRouting`), so a local hit goes to the Trash and a hit on a server is the confirmed
@@ -1114,7 +1118,7 @@ month while a name cost 2.0 ms an asset through the public call, and found no fe
 | Create / verify checksum files | yes | yes | verify only<sup>ff</sup> | yes, limited<sup>ff</sup> | yes, limited<sup>ff</sup> | yes, limited<sup>ff</sup> | yes, limited<sup>ff</sup> | n/a | n/a<sup>ppp</sup> | no<sup>xx</sup> | no<sup>xx</sup> |
 | Open in Terminal | yes | yes | n/a | yes<sup>gg</sup> | n/a | n/a | n/a | n/a | n/a | no | no |
 | Run a user script | yes | yes | yes<sup>aaa</sup> | yes<sup>aaa</sup> | yes<sup>aaa</sup> | yes<sup>aaa</sup> | yes<sup>aaa</sup> | no<sup>aaa</sup> | yes, limited<sup>mmm</sup> | yes, limited<sup>aaa</sup> | yes, limited<sup>aaa</sup> |
-| Pack `⌥F5` (create an archive) | yes | yes | yes<sup>hh</sup> | yes<sup>hh</sup> | yes<sup>hh</sup> | yes<sup>hh</sup> | yes<sup>hh</sup> | n/a | yes<sup>hh</sup> | yes<sup>hh</sup> | yes |
+| Pack `⌥F5` (create an archive)<sup>aax</sup> | yes | yes | yes<sup>hh</sup> | yes<sup>hh</sup> | yes<sup>hh</sup> | yes<sup>hh</sup> | yes<sup>hh</sup> | n/a | yes<sup>hh</sup> | yes<sup>hh</sup> | yes |
 | Encrypted archives / hidden member names | yes | yes | yes | yes<sup>hh</sup> | yes<sup>hh</sup> | yes<sup>hh</sup> | yes<sup>hh</sup> | n/a | yes<sup>hh</sup> | yes<sup>hh</sup> | yes |
 | Create / unlock an encrypted vault | yes | yes | n/a | n/a<sup>uu</sup> | n/a<sup>uu</sup> | n/a<sup>uu</sup> | n/a<sup>uu</sup> | n/a | n/a<sup>uu</sup> | no | n/a |
 | Saved connection in the sidebar | n/a | n/a | n/a | yes | yes | yes | yes | yes | yes | n/a | n/a |

@@ -11796,6 +11796,13 @@ overturned the obvious implementation.
   way, so `NestedCreation` reads each folder first to say which name is wrong; and `FileManager`
   answers that case with a bare Cocoa 512. When an input widens, list what downstream leaned on its
   old shape before relying on the new one.
+  - **Taking the same path through ⌥F5 found a `continue` that had outlived its reason by three
+    months.** The window's finish loop stopped after an encrypted pack's outcome, written at M19
+    when everything that pack could get wrong was an `EncryptedArchiveError`. M24 Slice 6 then sent
+    its refused uploads and failed source walks home as `failures` with no outcome, which
+    `presentPackOutcome` reads as a cancel, so they said nothing, and the sources staged for the pack
+    were never swept. Both pack kinds now go on to the tail, through `BrowserWindowController.isPack`.
+    The tell was a comment explaining a skip in terms of the other half's error type.
 
 ### Archives and encryption
 

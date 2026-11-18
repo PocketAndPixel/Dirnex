@@ -51,7 +51,38 @@ public enum PackRunner {
             return report(job: job, outcome: .failed(.archiveNotWritable))
         }
         defer { staging.clean() }
+        // The folders a typed path names are made before the write and taken back if it lands no
+        // archive, as the plain pack does (``PackFolders``).
+        let folders: PackFolders
+        do {
+            folders = try PackFolders(
+                for: job.archive,
+                in: operation.destinationDirectory,
+                using: backend
+            )
+        } catch {
+            return failed(job, with: PackFolders.failure(error, archive: job.archive))
+        }
+        return folders.settle(
+            after: build(
+                job,
+                into: staging,
+                using: backend,
+                onProgress: onProgress,
+                isCancelled: isCancelled
+            ),
+            using: backend
+        )
+    }
 
+    /// Write and deliver, turning every way out into this job's report.
+    private static func build(
+        _ job: PackJob,
+        into staging: PackStaging,
+        using backend: any VFSBackend,
+        onProgress: @escaping @Sendable (OperationProgress) -> Void,
+        isCancelled: @escaping @Sendable () -> Bool
+    ) -> OperationReport {
         do {
             return try write(
                 job,

@@ -162,4 +162,24 @@ public enum ArchivePacking {
         if base.lowercased().hasSuffix(format.suffix) { return base }
         return base + format.suffix
     }
+
+    /// The archive a typed base name asks for, which may be a path (2026-11-18): `backups/2026/photos`
+    /// is `photos.zip` inside `backups/2026`, whose folders the pack makes on the way, as F7's and
+    /// ⇧F4's are made (``NestedName``). The suffix goes on the last name alone, by
+    /// ``archiveFileName(baseName:format:)``'s rule, and a blank field is still `Archive`.
+    ///
+    /// The path is checked **before** the suffix goes on, as a file's: a `/` at the end would
+    /// otherwise turn `backups/` into a hidden `backups/.zip`, a name nobody typed.
+    public static func archiveName(typed baseName: String, format: Format) throws(NestedName.Problem) -> NestedName {
+        let trimmed = baseName.trimmingCharacters(in: .whitespaces)
+        guard !trimmed.isEmpty else {
+            return try NestedName(parsing: archiveFileName(baseName: "", format: format), as: .file)
+        }
+        let typed = try NestedName(parsing: trimmed, as: .file)
+        let file = archiveFileName(baseName: typed.name, format: format)
+        return try NestedName(
+            parsing: (typed.components.dropLast() + [file]).joined(separator: "/"),
+            as: .file
+        )
+    }
 }

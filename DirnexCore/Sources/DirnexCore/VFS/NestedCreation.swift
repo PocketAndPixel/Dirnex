@@ -51,6 +51,30 @@ public enum NestedCreation {
         }
     }
 
+    /// Make each folder between `directory` and `item` that is not there yet, for a create whose last
+    /// step is somebody else's: ⌥F5's archive, which its own writer makes (2026-11-18). Returns the
+    /// folders made, outermost first, for ``takeBack(_:using:)`` to remove if that step fails. Makes
+    /// nothing when `item` is not below `directory`, or is directly in it.
+    @discardableResult
+    public static func makeFolders(
+        above item: VFSPath,
+        below directory: VFSPath,
+        using backend: any VFSBackend
+    ) throws -> [VFSPath] {
+        let chain = item.ancestorsFromRoot.dropLast()
+        guard let start = chain.firstIndex(of: directory) else { return [] }
+        var made: [VFSPath] = []
+        do {
+            for folder in chain[(start + 1)...] where try ensureFolder(folder, using: backend) {
+                made.append(folder)
+            }
+        } catch {
+            takeBack(made, using: backend)
+            throw error
+        }
+        return made
+    }
+
     // MARK: - The walk
 
     private static func make(
@@ -95,8 +119,9 @@ public enum NestedCreation {
 
     /// Remove the folders a failed create made, innermost first, each only while it is still empty,
     /// so nothing put there in the meantime is touched. Best effort: the failure being reported is
-    /// the create's, and one of these cannot replace it.
-    private static func takeBack(_ made: [VFSPath], using backend: any VFSBackend) {
+    /// the create's, and one of these cannot replace it. Public for the pack runners, whose write
+    /// comes after ``makeFolders(above:below:using:)`` and can fail or be stopped.
+    public static func takeBack(_ made: [VFSPath], using backend: any VFSBackend) {
         for folder in made.reversed() {
             guard let children = try? backend.listDirectory(at: folder), children.isEmpty else {
                 continue

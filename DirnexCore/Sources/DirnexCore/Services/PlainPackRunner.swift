@@ -45,14 +45,40 @@ public enum PlainPackRunner {
             return report(outcome: .failed(.archiveNotWritable))
         }
         defer { staging.clean() }
-
+        // A name typed as a path (`backups/2026/photos`) puts the archive below folders that may not
+        // be there yet, so they are made here, before the write, and taken back if it does not land
+        // one: a stopped or failed pack leaves nothing at the destination (``PackFolders``).
+        let folders: PackFolders
         do {
-            return try write(
+            folders = try PackFolders(
+                for: job.archive,
+                in: operation.destinationDirectory,
+                using: backend
+            )
+        } catch {
+            return failed(job, with: PackFolders.failure(error, archive: job.archive))
+        }
+        return folders.settle(
+            after: build(
                 Build(job: job, staging: staging, writer: writer),
                 using: backend,
                 onProgress: onProgress,
                 isCancelled: isCancelled
-            )
+            ),
+            using: backend
+        )
+    }
+
+    /// Write and deliver, turning every way out into this job's report.
+    private static func build(
+        _ build: Build,
+        using backend: any VFSBackend,
+        onProgress: @escaping @Sendable (OperationProgress) -> Void,
+        isCancelled: @escaping @Sendable () -> Bool
+    ) -> OperationReport {
+        let job = build.job
+        do {
+            return try write(build, using: backend, onProgress: onProgress, isCancelled: isCancelled)
         } catch is CancellationError {
             return report(outcome: nil, wasCancelled: true)
         } catch {
