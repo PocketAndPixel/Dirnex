@@ -322,9 +322,9 @@ tests (`RowIconTests`) and not exercised live.
 | Drag and drop, inside Dirnex | yes | yes | yes, limited<sup>j</sup> | yes | yes | yes | yes | no<sup>h</sup> | yes, partially<sup>jjj</sup> | yes, partially<sup>k</sup> | yes, partially<sup>k</sup> |
 | Drag **out** to Finder and other apps | yes | yes | yes, partially<sup>j</sup> | yes, partially<sup>k</sup> | yes, partially<sup>k</sup> | yes, partially<sup>k</sup> | yes, partially<sup>k</sup> | no<sup>h</sup> | yes, partially<sup>k</sup> | yes, partially<sup>k</sup> | yes |
 | Drag **in** from Finder and other apps | yes | yes | yes, limited<sup>j</sup> | yes | yes | yes | yes | no<sup>h</sup> | no<sup>jjj</sup> | no<sup>k</sup> | no<sup>k</sup> |
-| New Folder `F7` | yes | yes | yes, limited<sup>yyy</sup> | yes | yes | yes | yes | yes, limited<sup>l</sup> | no<sup>jjj</sup> | no | no |
-| New / Edit File `⇧F4` | yes | yes | yes, limited<sup>yyy</sup> | yes | yes | yes | yes | n/a | no<sup>jjj</sup> | no | no |
-| Rename `F2` | yes | yes | yes, limited<sup>ccc</sup> | yes | yes | yes | yes, limited<sup>i</sup> | no | n/a<sup>kkk</sup> | yes | no<sup>m</sup> |
+| New Folder `F7`<sup>aax</sup> | yes | yes | yes, limited<sup>yyy</sup> | yes | yes | yes | yes | yes, limited<sup>l</sup> | no<sup>jjj</sup> | no | no |
+| New / Edit File `⇧F4`<sup>aax</sup> | yes | yes | yes, limited<sup>yyy</sup> | yes | yes | yes | yes | n/a | no<sup>jjj</sup> | no | no |
+| Rename `F2`<sup>aax</sup> | yes | yes | yes, limited<sup>ccc</sup> | yes | yes | yes | yes, limited<sup>i</sup> | no | n/a<sup>kkk</sup> | yes | no<sup>m</sup> |
 | Multi-rename `⇧F2` | yes | yes | yes, limited<sup>ccc</sup> | yes | yes | yes | yes, limited<sup>i</sup> | no | n/a<sup>kkk</sup> | yes | no<sup>m</sup> |
 | Delete `F8` → Trash | yes | yes, limited<sup>o</sup> | n/a | n/a | n/a | n/a | n/a | n/a | no<sup>jjj</sup> | yes<sup>aac</sup> | n/a |
 | Delete `F8` → permanent (confirmed) | yes | yes | yes, limited<sup>n</sup> | yes | yes | yes | yes | yes, limited<sup>l</sup> | n/a | yes<sup>aac</sup> | yes |
@@ -431,6 +431,25 @@ column that has the queue has the dialog, for `F5`, `F6`, `⇧F5` and Move Keepi
 nor for `⌘V`, a drag or a script. Pinned by tests (`TransferDialogTests`), and run live on 2026-11-17
 for local copies and moves onto a disk image (§M41 Slice 3); not yet run live with a server at either
 end.
+
+<sup>aax</sup> Since 2026-11-18 the name may be a path: `folder A/sub folder A` makes both folders, and
+`Folder A/test.txt` makes the folder and then the file, in every column either key reaches. A folder on
+the way that is already there is used; a file there is refused by name, and a failure takes back the
+folders it made. One ⌘Z removes everything one F7 made, each folder only while it is empty. An
+**S3 account** pane keeps F7's name whole, since a bucket name has no folders. Inside an **archive**
+the folders are made in the same rewrite, and a member symlink on the way is refused rather than
+followed. A leading `/`, a `.` or `..` on the way, and a `/` ending ⇧F4's name are refused with their
+reasons. **⌥F5's name takes a path the same way**: `backups/2026/photos` packs `photos.zip` into
+`backups/2026` inside the other pane's folder. The job makes those folders just before it writes, in
+both runners, and takes them back if it is stopped or fails, so a pack that does not finish still
+leaves nothing behind. **F2 takes a path too**, since 2026-11-18: `Archive/2025/report.pdf` moves the
+item below its own folder under the last name, making the folders on the way, and one ⌘Z puts it back
+and removes them. Occupied names are refused, as is a folder moved into itself; an S3 prefix goes to the
+queue as a rename job into the new folder, and inside an archive the folders and the move are one
+rewrite. ⇧F2 still refuses a `/`. Run live on this Mac's disk (F7, its undo and redo, ⇧F4, ⌥F5 into
+`backups/2026` and against a file in the way, and F2 with its undo and redo). A server and an archive are pinned by tests
+(`NestedCreateRouteTests`, `PathRenameTests`, `ArchiveCreateTests`, and the core's
+`NestedCreationTests`, `NestedMoveTests` and `PackFoldersTests`); a cloud mount goes through the same local backend and was not run live.
 
 <sup>aac</sup> Gated per **row**, like <sup>ee</sup>: each hit deletes the way the folder it lives in
 does (`DeleteRouting`), so a local hit goes to the Trash and a hit on a server is the confirmed
@@ -1002,7 +1021,12 @@ typed in the sheet on that pane's backend, with F5's conflict question and undo,
 cloud mount, SFTP, FTP, WebDAV or S3 alike. A browsed archive or a results listing in the other pane
 is refused before the sheet, since an export is a copy and not an add. HTML is one file with the preview's images inlined (<sup>aat</sup>); a PDF is that
 page printed on the user's paper in the light palette, with no remote image, as the preview draws none.
-The whole file is exported up to 64 MB, where the preview reads 4.
+The whole file is exported up to 64 MB, where the preview reads 4. **A typed folder that is not there
+yet** is offered since 2026-11-18: the first press of Export says so under the form, and a second press
+with the field unchanged makes it and every folder on its way, once the page is written, journaled as a
+New Folder of its own (⌘Z takes back the copy, then the folders). The deepest folder on the way that is
+there has to take writes, and a file standing on the way is named. Run live on this Mac's disk, both
+presses and both undos; a server is pinned by the folder check's tests and was not run live.
 
 <sup>aav</sup> Since 2026-11-15 (PLAN.md §M39 ▸ Slice 16). A timer that steps the pane's cursor to the next
 picture at full size, so it reaches every location the cursor and Quick View do: the pictures are
@@ -1103,7 +1127,7 @@ month while a name cost 2.0 ms an asset through the public call, and found no fe
 | Create / verify checksum files | yes | yes | verify only<sup>ff</sup> | yes, limited<sup>ff</sup> | yes, limited<sup>ff</sup> | yes, limited<sup>ff</sup> | yes, limited<sup>ff</sup> | n/a | n/a<sup>ppp</sup> | no<sup>xx</sup> | no<sup>xx</sup> |
 | Open in Terminal | yes | yes | n/a | yes<sup>gg</sup> | n/a | n/a | n/a | n/a | n/a | no | no |
 | Run a user script | yes | yes | yes<sup>aaa</sup> | yes<sup>aaa</sup> | yes<sup>aaa</sup> | yes<sup>aaa</sup> | yes<sup>aaa</sup> | no<sup>aaa</sup> | yes, limited<sup>mmm</sup> | yes, limited<sup>aaa</sup> | yes, limited<sup>aaa</sup> |
-| Pack `⌥F5` (create an archive) | yes | yes | yes<sup>hh</sup> | yes<sup>hh</sup> | yes<sup>hh</sup> | yes<sup>hh</sup> | yes<sup>hh</sup> | n/a | yes<sup>hh</sup> | yes<sup>hh</sup> | yes |
+| Pack `⌥F5` (create an archive)<sup>aax</sup> | yes | yes | yes<sup>hh</sup> | yes<sup>hh</sup> | yes<sup>hh</sup> | yes<sup>hh</sup> | yes<sup>hh</sup> | n/a | yes<sup>hh</sup> | yes<sup>hh</sup> | yes |
 | Encrypted archives / hidden member names | yes | yes | yes | yes<sup>hh</sup> | yes<sup>hh</sup> | yes<sup>hh</sup> | yes<sup>hh</sup> | n/a | yes<sup>hh</sup> | yes<sup>hh</sup> | yes |
 | Create / unlock an encrypted vault | yes | yes | n/a | n/a<sup>uu</sup> | n/a<sup>uu</sup> | n/a<sup>uu</sup> | n/a<sup>uu</sup> | n/a | n/a<sup>uu</sup> | no | n/a |
 | Saved connection in the sidebar | n/a | n/a | n/a | yes | yes | yes | yes | yes | yes | n/a | n/a |

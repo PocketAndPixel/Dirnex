@@ -105,6 +105,12 @@ extension ArchiveMutation {
                 inWorkingDirectory: workingDirectory
             )
             do {
+                // A move to a typed path lands below folders the tree may lack (2026-11-18); for a
+                // plain rename the folder is the member's own and this reads it and makes nothing.
+                try stageFolders(
+                    above: VFSPath(backend: .archive(forArchiveAt: archivePath), path: move.to),
+                    inWorkingDirectory: workingDirectory
+                )
                 try FileManager.default.moveItem(atPath: source, toPath: destination)
             } catch let error as NSError where error.code == NSFileWriteFileExistsError {
                 throw VFSError.alreadyExists(
@@ -112,5 +118,18 @@ extension ArchiveMutation {
                 )
             }
         }
+    }
+
+    /// The inner path a member takes when F2's name is a path (2026-11-18): `/docs/a.txt` with
+    /// `Archive/2025/b.txt` is `/docs/Archive/2025/b.txt`, below the member's own folder. `nil` for
+    /// a move of a folder into itself or onto its own path. Every name in a ``NestedName`` is a
+    /// member's name already (no `/`, no `.` or `..`), so nothing else needs refusing here; the
+    /// folders on the way are made by the stage.
+    public static func movedInnerPath(ofInnerPath innerPath: String, to name: NestedName) -> String? {
+        let parent = (innerPath as NSString).deletingLastPathComponent
+        let start = parent.isEmpty ? "/" : parent
+        let destination = name.components.reduce(start) { ($0 as NSString).appendingPathComponent($1) }
+        guard destination != innerPath, !destination.hasPrefix(innerPath + "/") else { return nil }
+        return destination
     }
 }

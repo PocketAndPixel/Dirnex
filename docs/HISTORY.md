@@ -22132,6 +22132,138 @@ Slice 2:
      known issue, declared by its test), both linters clean, and `app.dirnex.Dirnex` unchanged by
      content across the run.
 
+**2026-11-18: F7 and ⇧F4 take a path** (Oleg's request, with a screenshot of ⇧F4 holding
+`Folder A/test.txt`, and F7's `folder A/sub folder A` as the example; core and app). Both dialogs
+refused any `/`. Now the name may be a path, as Total Commander's F7 takes one: `NestedName` (core)
+parses the field and `NestedCreation` (core) makes each folder on the way that is not there yet,
+then the folder or the empty file. It reads each folder first rather than making it and catching the
+refusal, because `mkdir(2)` under a file answers `ENOTDIR` naming the leaf (probed), and S3's
+`createDirectory` succeeds over a folder that is there, so only the read says which folders this
+create made. A file on the way is refused naming it; a failure takes back the folders it made; a
+leading `/`, a `.` or `..`, and a `/` ending ⇧F4's name are refused with their own sentences. F7's undo
+is one record, `UndoRecord.newFolders`, removing innermost first and each only while empty, so one
+⌘Z takes back the chain. The cursor lands on the outermost new row, the one the pane shows. An S3
+account pane keeps F7's name whole for `S3BucketName`. Inside an archive the typed folders are made
+in the same rewrite, and the walk that makes them replaced
+`FileManager.createDirectory(withIntermediateDirectories:)`, which went through a member symlink and
+made the folder outside the scratch tree (probed; docs/NOTES.md ▸ Guards and restrictions).
+New Folder moved to `+NewFolder` and the record builders to `UndoRecord+Builders`, both files being
+at the 500-line ceiling. Four sentences are new in all 14 languages, and the catalog lost F7's
+unused "Folder names can’t contain “/”".
+
+Tests: 28 core (`NestedNameTests`, `NestedCreationTests`, three in `ArchiveMutationCreationTests`) and
+6 app (`NestedCreateRouteTests` through a headless pane on a server backend, two in
+`ArchiveCreateTests` through the real repack). Negative controls failed by name: making each folder
+without reading it first counted an existing folder as made over an S3-like backend, and the old
+`FileManager` staging made the folder at a symlink's target and threw Cocoa 512 for a file on the
+way. 5 830 core tests in 573 suites and 2 681 app tests in 415 pass (one known issue, declared by its
+test), the live suites skipped since nothing here reaches a server; both linters and the localization
+check are clean. Seen live in `app.dirnex.Dirnex.live`, cloud guard in and the editor launch logged by a probe
+instead of opening Oleg's editor: F7 with `folder A/sub folder A` made both, with the cursor on
+`folder A`; the journal held one record of two steps; Undo removed both and Redo made both again;
+⇧F4 with `Folder B/test.txt` made the folder and an empty file and handed that path to the editor,
+with the cursor on `Folder B`. No File Provider request was logged, and Oleg's defaults domain was
+unchanged by content. **Not run live**: the refusal sentences and an archive, since Oleg moved to a
+full-screen Space mid-run and the sheet could no longer be typed into from the background
+(LIVE-VERIFICATION.md); a server and a cloud mount; a translation. ⌥F5's archive name, Export's
+folder field and F2 took a path the same day, below; ⇧F2 still refuses a `/`.
+
+**2026-11-18: ⌥F5 takes a path too** (Oleg's go-ahead on the follow-up named above; core and app). A
+`/` in Pack's name field used to fail at the write, after any download, with `bsdtar: Failed to open`
+(probed). `ArchivePacking.archiveName(typed:format:)` (core) now reads the field as F7 reads its own,
+checking the path before the suffix goes on the last name, so `backups/` is refused rather than packed
+as a hidden `backups/.zip`. The sheet says a refusal under its form and keeps the cursor in the name
+field, as it does for a passphrase. The folders are made by the job, not the sheet: `PackFolders`
+(core), shared by `PlainPackRunner` and `PackRunner`, makes them from the operation's
+`destinationDirectory` just before the write and takes them back unless an archive was created, which
+keeps the promise both runners made that a pack which does not finish leaves nothing at the
+destination. A finished pack finds its pane by the folder it was aimed at, which `JobSnapshot` now
+carries, and lands the cursor on the outermost new folder; for a plain name that is the archive, as
+before. A file in the way fails the job naming it, and the failure alert says which name it is.
+
+Found on the way, and fixed: the window's finish loop stopped after an encrypted pack's outcome, so
+its refused uploads and failed source walks, which come home as `failures` with no outcome, said
+nothing, and the sources staged for it were never swept (docs/NOTES.md ▸ Guards and restrictions).
+Both pack kinds now go on through the failure alert and the sweep (`BrowserWindowController.isPack`).
+
+Tests: 11 core (`PackFoldersTests`: the name rule, the folder walk, both runners into a nested path, a
+stopped and a failed pack taking back only what they made, a file in the way, and the queue's snapshot
+naming the destination) and 2 app (`PackFinishTests`, and the failure sentence in
+`NestedCreateRouteTests`). Negative controls failed by name: without the take-back both "takes back"
+tests failed, and without the folders both runners' "lands below" tests and the file-in-the-way test
+failed. 5 841 core tests in 574 suites and 2 683 app tests in 416 pass (one known issue, declared by
+its test), both linters and the localization check are clean, and Oleg's defaults domain was unchanged
+across the run with his own Debug build up. Seen live in `app.dirnex.Dirnex.live`, Oleg being in a
+full-screen Space again, through a temporary probe that filled the sheet's name from a file and pressed
+Pack, so everything after the button ran the shipped path: `backups/2026/photos` made both folders and
+`photos.zip` holding the marked file, with the other pane's cursor on `backups`; `blocker/x`, with
+`blocker` a file, made nothing and left `blocker` byte-identical. **Not seen live**: that refusal's
+alert, which no background capture reached (its window was not among the app's), so its sentence is
+pinned by the test; the name refusals under the form; an encrypted pack; a server or a cloud mount as
+the destination; a translation.
+
+**2026-11-18: Export makes a folder that is not there** (Oleg's go-ahead on the next follow-up, and his
+call between two designs; core and app). File ▸ Export…'s folder field refused a folder that did not
+exist ("There’s no folder …"). It now offers to make it, and asks once: the field takes a path from a
+root as well as one from the other pane's folder, so a typo would otherwise make a stray folder
+somewhere nobody is looking. The first press says "There’s no folder “…”. Press Export again to create
+it." under the form; a second press while the field still names that folder makes it, and a press
+naming another missing folder asks afresh. `NestedCreation.state(of:using:)` (core) reads where the
+folder stands without making anything, from the folder up, counting the backend root as there since
+some backends cannot `stat` their own; the deepest folder on the way that is there has to take writes,
+and a file on the way is named with F7's sentence. `makeFolders(upTo:using:)` (core) is `mkdir -p`
+with the take-back every create here has. The folders are made only once the page is written, so a
+source that could not be drawn or a download that was stopped leaves no empty folder, and they are
+journaled as a New Folder of their own, so ⌘Z takes back the copy and then the folders. One sentence
+is new in all 14 languages. The folder-field tests moved to `MarkdownExportFolderTests`, the gesture
+suite being at SwiftLint's type ceiling.
+
+Tests: 5 core (`NestedCreationWholePathTests`) and 3 app (`MarkdownExportFolderTests`: the offer and
+the second press, the refusals, and an export into a confirmed folder, which makes it, journals it and
+copies into it). Negative controls failed by name: a second press that never confirms failed the offer
+test, and an export that skips the folders failed the export test on all three of its checks. 5 846
+core tests in 575 suites and 2 685 app tests in 417 pass (one known issue, declared by its test), both
+linters and the localization check are clean, and Oleg's defaults domain was unchanged across the run.
+Seen live in `app.dirnex.Dirnex.live`, Oleg in a full-screen Space again, through a temporary probe that
+filled the folder field with `out/new` and pressed Export twice, five seconds apart: after the first
+press nothing was on disk; after the second, `out/new/notes.html` was, a page; the journal held a New
+Folder record of two steps under the Copy; one Undo removed the page and a second both folders. **Not
+seen live**: the note under the form, since no background capture reached the sheet; the refusals; a
+server; a translation.
+
+**2026-11-18: F2 moves into a typed path** (Oleg's go-ahead on the last follow-up, and his call to make
+missing folders as F7 does rather than move only into folders already there; core and app). F2 refused a
+`/` ("Names can’t contain the “/” character."). Now `Archive/2025/report.pdf` moves the item below its own
+folder under the last name. The path is read as F7's is, so a leading `/`, a `.` or `..` and a `/` at the
+end are refused; so is a folder moved into itself, before anything is asked of a backend.
+`NestedCreation.move` (core) makes the folders on the way, refuses an occupied target, since every
+backend's `moveItem` replaces what is there, and moves; a failure takes the folders back, and an `EXDEV`
+keeps them, since the rename job an S3 prefix goes to copies into them. That job now carries its folder
+(`DeferredRename.directory`), and the folders are journaled as a New Folder of their own, as Export's
+are. Otherwise one record undoes the gesture: `UndoRecord.rename(from:to:madeFolders:)` moves the item
+back and then removes the folders, innermost first and each only while empty, and redo makes them before
+moving it. Inside an archive, `ArchiveMutation.movedInnerPath` and the staged move, which now makes its
+folders with F7's walk, do it in one rewrite (`ArchiveWriter.move`). The cursor lands on the outermost new
+folder. One sentence is new in all 14 languages, and the catalog lost the slash refusal nothing shows now.
+
+Tests: 10 core (`NestedMoveTests`) and 5 app (`PathRenameTests` through `performRename`, the commit the
+field editor calls, which had to become internal; two in `ArchiveCreateTests` through the real repack).
+Negative controls failed by name: without the occupied-target check the move replaced the other file;
+without the folders in the record undo left them behind; without the stage's walk the archive move found
+no folder; and with the commit's old refusal back, the move and the deferred tests failed. 5 856 core
+tests in 576 suites pass, both linters and the localization check are clean, and Oleg's defaults domain
+was unchanged. The first full app run had one failure, a Quick View workbook-iframe test hitting its
+ten-second deadline in a run that took 155 s against the usual 60; it passed alone, and a second full
+run passed all 2 690 app tests in 418 suites (one known issue, declared by its test), in 179 s.
+Seen live in `app.dirnex.Dirnex.live`, with a temporary probe that typed the path into F2's field editor
+and moved the focus away, the commit a Return makes: `report.pdf` → `Archive/2025/report.pdf` made both
+folders and moved the file, with the cursor on `Archive`; the journal held one rename record of three
+steps; Undo put the file back and removed both folders, and Redo did it all again. The first attempt
+renamed the wrong row, a folder, because a seeded `cursorPath` was absolute where it is relative
+(LIVE-VERIFICATION.md); it moved that folder below the two it made, and one Undo put it back, which
+was a check of a folder's move nobody planned. **Not seen live**: the refusals, whose alerts no
+background capture reaches; an archive member; a server, and an S3 prefix's job; a translation.
+
 ### After M19 — the follow-on log (2026-08-07 → 2026-09-21)
 
 Ninety-one dated passes that landed outside a milestone of their own, between M18's close on
