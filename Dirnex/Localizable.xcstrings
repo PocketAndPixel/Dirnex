@@ -13714,6 +13714,95 @@
         }
       }
     },
+    "A name can’t start with “/”. To make folders on the way, type a path from here, such as “Folder/Subfolder”.": {
+      "comment": "Failure detail of New Folder or Edit File: the typed name starts with a slash. “Folder/Subfolder” is an example path: translate both folder names, keep the “/”.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ein Name darf nicht mit „/“ beginnen. Um auch die Ordner dazwischen anzulegen, gib einen Pfad ab hier ein, etwa „Ordner/Unterordner“."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A name can’t start with “/”. To make folders on the way, type a path from here, such as “Folder/Subfolder”."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Un nombre no puede empezar por «/». Para crear también las carpetas intermedias, escribe una ruta desde aquí, como «Carpeta/Subcarpeta»."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Un nom ne peut pas commencer par «/». Pour créer aussi les dossiers intermédiaires, saisis un chemin depuis ici, comme «Dossier/Sous-dossier»."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Un nome non può iniziare con “/”. Per creare anche le cartelle intermedie, inserisci un percorso da qui, come “Cartella/Sottocartella”."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "名前を“/”で始めることはできません。途中のフォルダも作成するには、“フォルダ/サブフォルダ”のように、ここからのパスを入力してください。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이름은 “/”로 시작할 수 없습니다. 중간 폴더도 만들려면 “폴더/하위 폴더”처럼 여기서부터의 경로를 입력하십시오."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Een naam mag niet met “/” beginnen. Typ een pad vanaf hier, zoals “Map/Submap”, om ook de mappen daartussen te maken."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nazwa nie może zaczynać się od „/”. Aby utworzyć też foldery pośrednie, wpisz ścieżkę od tego miejsca, np. „Folder/Podfolder”."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Um nome não pode começar com “/”. Para criar também as pastas intermediárias, digite um caminho a partir daqui, como “Pasta/Subpasta”."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Имя не может начинаться с «/». Чтобы создать и промежуточные папки, введите путь отсюда, например «Папка/Подпапка»."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Назва не може починатися з «/». Щоб створити й проміжні папки, введіть шлях звідси, наприклад «Папка/Підпапка»."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "名称不能以“/”开头。若要同时创建中间的文件夹，请输入从此处开始的路径，例如“文件夹/子文件夹”。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "名稱不能以「/」開頭。若要同時建立中間的檔案夾，請輸入從此處開始的路徑，例如「檔案夾/子檔案夾」。"
+          }
+        }
+      }
+    },
     "A saved search named “%@” already exists. Replace it?": {
       "comment": "Save-search overwrite confirmation body; %@ is the saved-search name.",
       "localizations": {
@@ -62055,95 +62144,6 @@
         }
       }
     },
-    "Folder names can’t contain the “/” character.": {
-      "comment": "New Folder failure detail: slash in name.",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ordnernamen dürfen das Zeichen „/“ nicht enthalten."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Folder names can’t contain the “/” character."
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Los nombres de carpeta no pueden contener el carácter «/»."
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Les noms de dossiers ne peuvent pas contenir le caractère \"/\"."
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "I nomi delle cartelle non possono contenere il carattere “/”."
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "フォルダ名に“/”文字は使用できません。"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "폴더 이름에는 “/” 문자를 사용할 수 없습니다."
-          }
-        },
-        "nl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Mapnamen mogen het teken \"/\" niet bevatten."
-          }
-        },
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Nazwy folderów nie mogą zawierać znaku „/”."
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "В именах папок нельзя использовать символ «/»."
-          }
-        },
-        "uk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Назви папок не можуть містити символ «/»."
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Nomes de pasta não podem conter o caractere “/”."
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "文件夹名称不能包含“/”字符。"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "檔案夾名稱無法包含「/」字元。"
-          }
-        }
-      }
-    },
     "Folder:": {
       "comment": "Export sheet field label for the folder the exported file is saved in.",
       "localizations": {
@@ -74294,95 +74294,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "名稱和值"
-          }
-        }
-      }
-    },
-    "Names can’t contain the “/” character.": {
-      "comment": "Rename validation failure body: slash is not allowed in a name.",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Namen dürfen kein „/“ enthalten."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Names can’t contain the “/” character."
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Los nombres no pueden contener el carácter «/»."
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Les noms ne peuvent pas contenir le caractère \"/\"."
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "I nomi non possono contenere il carattere “/”."
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "名前に“/”文字は使用できません。"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "이름에는 “/” 문자를 사용할 수 없습니다."
-          }
-        },
-        "nl": {
-          "stringUnit": {
-            "value": "Namen mogen het teken “/” niet bevatten.",
-            "state": "translated"
-          }
-        },
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Nazwy nie mogą zawierać znaku „/”."
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "В именах нельзя использовать символ «/»."
-          }
-        },
-        "uk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Назви не можуть містити символ «/»."
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Nomes não podem conter o caractere “/”."
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "名称不能包含“/”字符。"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "名稱無法包含「/」字元。"
           }
         }
       }
@@ -121437,6 +121348,95 @@
         }
       }
     },
+    "There’s no folder “%@”. Press Export again to create it.": {
+      "comment": "Export sheet note: the typed folder does not exist yet, and pressing Export once more makes it. The argument is its path; “Export” is the sheet's button.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Es gibt keinen Ordner „%@“. Klicke erneut auf „Exportieren“, um ihn zu erstellen."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "There’s no folder “%@”. Press Export again to create it."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No hay ninguna carpeta «%@». Pulsa «Exportar» otra vez para crearla."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Il n’y a pas de dossier «%@». Clique de nouveau sur «Exporter» pour le créer."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Non c’è nessuna cartella “%@”. Premi di nuovo “Esporta” per crearla."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "フォルダ“%@”はありません。もう一度“書き出す”をクリックすると作成されます。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” 폴더가 없습니다. 만들려면 “내보내기”를 한 번 더 누르십시오."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Er is geen map “%@”. Klik nog een keer op “Exporteer” om hem te maken."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nie ma folderu „%@”. Kliknij ponownie „Eksportuj”, aby go utworzyć."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Não há uma pasta “%@”. Clique em “Exportar” de novo para criá-la."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Папки «%@» нет. Нажмите «Экспортировать» ещё раз, чтобы создать её."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Теки «%@» немає. Натисніть «Експортувати» ще раз, щоб створити її."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "没有文件夹“%@”。再次点按“导出”即可创建。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "沒有檔案夾「%@」。再按一次「輸出」即可建立。"
+          }
+        }
+      }
+    },
     "There’s no “%@” in “%@”.": {
       "comment": "Quick View link target missing; %1$@ is the name the link names, %2$@ the folder it should be in.",
       "localizations": {
@@ -127486,6 +127486,95 @@
           "stringUnit": {
             "state": "translated",
             "value": "輸入快速鍵…"
+          }
+        }
+      }
+    },
+    "Type the file’s name after the last “/”.": {
+      "comment": "Edit File failure detail: the typed path ends with a slash, so it names no file.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gib nach dem letzten „/“ den Namen der Datei ein."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Type the file’s name after the last “/”."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Escribe el nombre del archivo después de la última «/»."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Saisis le nom du fichier après le dernier «/»."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Inserisci il nome del file dopo l’ultima “/”."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "最後の“/”の後にファイル名を入力してください。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "마지막 “/” 뒤에 파일 이름을 입력하십시오."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Typ de naam van het bestand na de laatste “/”."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wpisz nazwę pliku po ostatnim „/”."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Digite o nome do arquivo depois da última “/”."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Введите имя файла после последней «/»."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Введіть назву файлу після останньої «/»."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "请在最后一个“/”之后输入文件名。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "請在最後一個「/」之後輸入檔案名稱。"
           }
         }
       }
@@ -175553,6 +175642,95 @@
         }
       }
     },
+    "“%@” can’t be moved into itself.": {
+      "comment": "Rename failure detail: a folder renamed to a path inside itself; %@ is its name.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "„%@“ kann nicht in sich selbst bewegt werden."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” can’t be moved into itself."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "«%@» no se puede mover dentro de sí misma."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "«%@» ne peut pas être déplacé dans lui-même."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” non può essere spostato dentro sé stesso."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@”をそれ自身の中に移動することはできません。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@”을(를) 자기 자신 안으로 이동할 수 없습니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” kan niet naar zichzelf worden verplaatst."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nie można przenieść „%@” do jego wnętrza."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” não pode ser movido para dentro de si mesmo."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Нельзя переместить «%@» внутрь самого себя."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не можна перемістити «%@» усередину самого себе."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法将“%@”移到其自身内部。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "無法將「%@」移到其自身內部。"
+          }
+        }
+      }
+    },
     "“%@” can’t be used as a file name.": {
       "comment": "Export sheet error: the name is “.” or “..”. The argument is the name.",
       "localizations": {
@@ -175638,6 +175816,95 @@
           "stringUnit": {
             "state": "translated",
             "value": "「%@」不能用作檔案名稱。"
+          }
+        }
+      }
+    },
+    "“%@” can’t be used as a name.": {
+      "comment": "Failure detail of New Folder or Edit File: the typed path holds “.” or “..”; %@ is that part of it.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "„%@“ kann nicht als Name verwendet werden."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” can’t be used as a name."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "«%@» no se puede usar como nombre."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "«%@» ne peut pas servir de nom."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” non può essere usato come nome."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@”は名前として使用できません。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@”은(는) 이름으로 사용할 수 없습니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” kan niet als naam worden gebruikt."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "„%@” nie może być nazwą."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” não pode ser usado como nome."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "«%@» нельзя использовать как имя."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "«%@» не можна використати як назву."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@”不能用作名称。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "「%@」不能用作名稱。"
           }
         }
       }
@@ -177329,6 +177596,95 @@
           "stringUnit": {
             "state": "translated",
             "value": "此預覽中不會繪製「%@」。"
+          }
+        }
+      }
+    },
+    "“%@” isn’t a folder, so nothing can be made inside it.": {
+      "comment": "Failure detail of New Folder or Edit File for a typed path such as “A/B”: something on the way is a file; %@ is its name.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "„%@“ ist kein Ordner, daher kann darin nichts erstellt werden."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” isn’t a folder, so nothing can be made inside it."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "«%@» no es una carpeta, así que no se puede crear nada dentro."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "«%@» n’est pas un dossier : rien ne peut y être créé."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” non è una cartella, quindi non vi si può creare nulla."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@”はフォルダではないため、その中には何も作成できません。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@”은(는) 폴더가 아니므로 그 안에 아무것도 만들 수 없습니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” is geen map, dus er kan niets in worden gemaakt."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "„%@” nie jest folderem, więc nie można w nim niczego utworzyć."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” não é uma pasta, então nada pode ser criado dentro dela."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "«%@» — не папка, поэтому внутри ничего нельзя создать."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "«%@» — не папка, тому всередині нічого не можна створити."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@”不是文件夹，因此无法在其中创建任何内容。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "「%@」不是檔案夾，因此無法在其中建立任何項目。"
           }
         }
       }

@@ -11785,6 +11785,25 @@ overturned the obvious implementation.
     is a sheet, so an editor autosaving twice while it is up queues a second identical question
     behind the first.
 
+- **Widening a name into a path removes a guard nobody wrote down: "a name has no `/`".** Found
+  2026-11-18 when F7 and ⇧F4 learned to take `folder A/sub folder A`. Inside an archive, the staged
+  tree's folders were made by `FileManager.createDirectory(withIntermediateDirectories:)`, which was
+  safe only because its input had always been the cursor's own folder. With a typed path, `link/new`,
+  where `link` is a member symlink, made `new` at the link's target, outside the scratch tree (probed,
+  and the test's negative control made it there). `ArchiveMutation.stageFolders` now `lstat`s each
+  folder on the way and refuses anything but a real folder. The same probe measured two smaller
+  things: `mkdir(2)` under a file answers `ENOTDIR` naming the path it was given, not the file in the
+  way, so `NestedCreation` reads each folder first to say which name is wrong; and `FileManager`
+  answers that case with a bare Cocoa 512. When an input widens, list what downstream leaned on its
+  old shape before relying on the new one.
+  - **Taking the same path through ⌥F5 found a `continue` that had outlived its reason by three
+    months.** The window's finish loop stopped after an encrypted pack's outcome, written at M19
+    when everything that pack could get wrong was an `EncryptedArchiveError`. M24 Slice 6 then sent
+    its refused uploads and failed source walks home as `failures` with no outcome, which
+    `presentPackOutcome` reads as a cancel, so they said nothing, and the sources staged for the pack
+    were never swept. Both pack kinds now go on to the tail, through `BrowserWindowController.isPack`.
+    The tell was a comment explaining a skip in terms of the other half's error type.
+
 ### Archives and encryption
 
 - **`bsdtar` cannot rewrite an encrypted archive, and the failure is quiet enough to read as "not

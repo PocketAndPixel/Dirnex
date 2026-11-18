@@ -22,16 +22,23 @@ extension PanelViewController {
     /// pane with the cursor on the new row. `created` gets the new member read back from the
     /// rewritten archive: ⇧F4 hands it to the editor.
     ///
+    /// `member` may lie in folders the archive does not have yet, when the name typed was a path
+    /// (`Folder A/sub folder A`, 2026-11-18): the stage makes them in the same rewrite. Then `shown`
+    /// is the path as typed, for the failure title, and `landing` the outermost new row, which is
+    /// the one the pane's listing shows and so the one the cursor can land on.
+    ///
     /// The read-back goes through the backend rather than being assembled here, as the local ⇧F4's
     /// does and for the same reason: the edit route is decided from an *entry*, and the pane may
     /// have moved on by the time the rewrite lands, so the re-list cannot be relied on to hold it.
     func createArchiveMember(
         _ creation: ArchiveMutation.Creation,
         at member: VFSPath,
+        shown: String? = nil,
+        landing: VFSPath? = nil,
         then created: (@MainActor (FileEntry) -> Void)? = nil
     ) {
         guard let archivePath = member.backend.archivePath else { return }
-        let name = member.lastComponent
+        let name = shown ?? member.lastComponent
         let innerDirectory = member.parent?.path ?? "/"
         let encoding = declaredNameEncoding(forArchiveAt: archivePath)
         // An encrypted archive is rewritten through libarchive and needs the passphrase — asked for
@@ -41,7 +48,7 @@ extension PanelViewController {
                 Result {
                     try ArchiveWriter.create(
                         creation,
-                        named: name,
+                        named: member.lastComponent,
                         inInnerDirectory: innerDirectory,
                         ofArchiveAt: archivePath,
                         passphrase: passphrase,
@@ -55,7 +62,7 @@ extension PanelViewController {
             // The mounted TOC is now stale — drop it so the re-list re-reads the rewritten archive.
             (backend as? CompositeBackend)?.invalidateMountedArchive(at: archivePath)
             journalArchiveRewrite(snapshot)
-            refreshArchiveDirectory { [weak self] in self?.moveCursor(onto: member) }
+            refreshArchiveDirectory { [weak self] in self?.moveCursor(onto: landing ?? member) }
             focusTable()
             if let created { readBackCreatedMember(member, then: created) }
         } onFailure: { [weak self] error in
@@ -73,7 +80,7 @@ extension PanelViewController {
                         localized: "Can’t create “\(name)”",
                         comment: "Create-file failure title; %@ is the name."
                     ),
-                detail: describe(error)
+                detail: describeCreateFailure(error, making: member)
             )
         }
     }

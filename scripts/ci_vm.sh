@@ -47,6 +47,12 @@ RUNNER_SHA256="25a065af409ffa317ab4d5a3b614dd15fc9c40f2172bc1b35a1b1258e919a388"
 # The runner's LaunchAgent is kept here inside the VM rather than in ~/Library/LaunchAgents, so
 # the base never loads it: `run` bootstraps it in each clone once that clone has booted.
 RUNNER_PLIST="actions-runner/runner.plist"
+# The service `svc.sh install` names: actions.runner.<owner>-<repo>.<runner name>.
+RUNNER_SERVICE="actions.runner.$(basename "$(dirname "$REPO_URL")")-$(basename "$REPO_URL").$RUNNER_NAME"
+# How far the VM's clock may stray from this Mac's before `set_clock` puts it right, in seconds.
+CLOCK_SLACK=10
+# How many times in a row the watch starts a runner that has stopped, before it leaves it stopped.
+RUNNER_RESTARTS=5
 AGENT_LABEL="app.dirnex.ci-vm"
 AGENT_PLIST="$HOME/Library/LaunchAgents/$AGENT_LABEL.plist"
 LOG="$HOME/Library/Logs/Dirnex-CI-VM.log"
@@ -65,10 +71,16 @@ sys.exit(0 if any(v.get("Name") == sys.argv[1] and v.get("Running") for v in jso
 
 # Boot `$1` headless in the background, with any extra `tart run` arguments, and wait until its
 # guest agent answers, which is what `tart exec` needs.
+#
+# With no sound device. Tart passes the Mac's audio through by default, and each time the app tests
+# beeped in the guest, the VM's Virtualization process opened the Mac's microphone: on 2026-11-18 that
+# was Oleg's AirPods, which dropped to the mono hands-free profile for 5–12 s, four times in one App
+# job, under a video he was watching (bluetoothd's "HFP Stream State Changed to 1", each just after
+# coreaudiod's StartIO from that process).
 boot() {
     local name="$1"
     shift
-    "$TART" run "$name" --no-graphics "$@" >> "$LOG" 2>&1 &
+    "$TART" run "$name" --no-graphics --no-audio "$@" >> "$LOG" 2>&1 &
     local waited=0
     until "$TART" exec "$name" true > /dev/null 2>&1; do
         sleep 2
@@ -81,6 +93,50 @@ boot() {
 }
 
 in_vm() { "$TART" exec "$1" /bin/bash -lc "$2"; }
+
+# Put `$1`'s clock on this Mac's when the two differ by more than CLOCK_SLACK seconds. The runner
+# signs its sign-in with a token good for five minutes by the VM's clock, and GitHub checks it by its
+# own. On 2026-11-17 the clone came up with its clock 18 minutes behind (its boot took 34 minutes,
+# the Mac most likely asleep for part of it), GitHub refused the token as expired, and the runner
+# took that for a deleted registration and stopped its service for good: the VM stayed up with no
+# runner for 13 hours, and every job waited. A Mac that sleeps also leaves a running VM's clock
+# behind by the nap, so the watch in `run` calls this every minute, not only at boot.
+set_clock() {
+    local guest drift
+    guest="$("$TART" exec "$1" /bin/date +%s)" || return 1
+    drift=$(($(date +%s) - guest))
+    [ "${drift#-}" -gt "$CLOCK_SLACK" ] || return 0
+    "$TART" exec "$1" /usr/bin/sudo -n /bin/date -u "$(date -u +%m%d%H%M%Y.%S)" > /dev/null || return 1
+    say "Set $1's clock, which was ${drift#-} s $([ "$drift" -gt 0 ] && echo behind || echo ahead)."
+}
+
+# Fill `$1`'s SwiftPM cache (~/Library/Caches/org.swift.swiftpm) with the app's packages, from a
+# shallow clone of the repository, before the runner takes a job. A job then fetches only what
+# changed since, as a job in a VM that has run one before does. The first full download of Sparkle
+# in a fresh clone failed inside a job four times in two days (CI on 2026-11-12, and three tries of
+# the release on 2026-11-17): `curl 56 LibreSSL SSL_read: … bad decrypt`, 0–40% in, every package
+# clone of the run alike. About 50 full downloads made through `tart exec` never failed, from a
+# launchd job shaped like the runner's, under full CPU, and straight after the DirnexCore tests, so
+# the cause is still unknown; every job that started from a filled cache went through.
+warm_packages() {
+    in_vm "$1" "
+        d=\$(mktemp -d)
+        trap 'rm -rf \"\$d\"' EXIT
+        git clone -q --depth 1 $REPO_URL \"\$d/repo\" || exit 1
+        for try in 1 2 3; do
+            xcodebuild -resolvePackageDependencies -project \"\$d/repo/Dirnex.xcodeproj\" -scheme Dirnex \
+                -clonedSourcePackagesDirPath \"\$d/packages\" > \"\$d/log\" 2>&1 && exit 0
+            rm -rf \"\$d/packages\"
+            sleep 10
+        done
+        tail -5 \"\$d/log\"
+        exit 1
+    "
+}
+
+# Whether the runner's service is running in `$1`. Its `runsvc.sh` stays up while the runner updates
+# itself, so this is false only once the service has given up.
+runner_started() { in_vm "$1" "launchctl list $RUNNER_SERVICE" 2> /dev/null | grep -q '"PID"'; }
 
 # Shut `$1` down from inside and wait for it. `tart stop` alone asks the guest to stop and pulls the
 # plug after 30 s, and what the guest had not yet written out is lost: on 2026-11-12 the base came
@@ -186,9 +242,13 @@ run() {
         if vm_exists "$VM"; then "$TART" delete "$VM"; fi
         "$TART" clone "$BASE" "$VM"
         say "Booting $VM…"
-        if boot "$VM" && in_vm "$VM" "launchctl bootstrap gui/\$(id -u) ~/$RUNNER_PLIST"; then
+        # A cache that could not be filled is not a reason to keep the runner down: its jobs then
+        # download the packages themselves, as they did before.
+        if boot "$VM" && set_clock "$VM" \
+            && { warm_packages "$VM" || say "Could not fill $VM's package cache; its jobs will download the packages."; } \
+            && in_vm "$VM" "launchctl bootstrap gui/\$(id -u) ~/$RUNNER_PLIST"; then
             say "The runner is up."
-            local recycle
+            local recycle restarts=0
             recycle="$(date -j -f '%H:%M' "$RECYCLE_AT" +%s)"
             [ "$recycle" -gt "$(date +%s)" ] || recycle=$((recycle + 86400))
             while vm_running "$VM"; do
@@ -196,6 +256,20 @@ run() {
                 if [ "$(date +%s)" -ge "$recycle" ] && ! in_vm "$VM" 'pgrep -x Runner.Worker' > /dev/null 2>&1; then
                     say "Nightly restart."
                     halt "$VM"
+                    continue
+                fi
+                # A `tart exec` that fails is a VM busy or shutting down: look again next minute.
+                set_clock "$VM" || continue
+                # A runner that stopped stays stopped: its service does not retry (see set_clock).
+                if runner_started "$VM"; then
+                    restarts=0
+                elif [ "$restarts" -lt "$RUNNER_RESTARTS" ]; then
+                    restarts=$((restarts + 1))
+                    say "The runner had stopped; starting it again ($restarts of $RUNNER_RESTARTS)."
+                    in_vm "$VM" "launchctl kickstart gui/\$(id -u)/$RUNNER_SERVICE" > /dev/null 2>&1 || true
+                elif [ "$restarts" -eq "$RUNNER_RESTARTS" ]; then
+                    restarts=$((restarts + 1))
+                    say "The runner keeps stopping, so it stays stopped until $VM restarts. Its logs are in ~/actions-runner/_diag in the VM (scripts/ci_vm.sh shell)."
                 fi
             done
             say "$VM stopped."

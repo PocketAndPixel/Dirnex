@@ -340,7 +340,8 @@ extension FileOperationQueue {
                 status: job.status,
                 progress: job.progress,
                 report: job.report,
-                isHeld: heldJobs.contains(id)
+                isHeld: heldJobs.contains(id),
+                destinationDirectory: job.operation.destinationDirectory
             )
         }
         return QueueSnapshot(

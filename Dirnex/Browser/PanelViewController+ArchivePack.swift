@@ -147,13 +147,15 @@ extension PanelViewController {
     /// conflict guard — or say what was wrong under the form and put the cursor where the fix goes.
     ///
     /// A rejected passphrase leaves every *other* choice where it was — the user has already picked
-    /// a name, a format and a level, and none of that is what they got wrong.
+    /// a name, a format and a level, and none of that is what they got wrong. The name is checked
+    /// first, the same way, since it is the first row of the form.
     private func packPressed(
         on alert: NSAlert,
         accessory: PackAccessory,
         sources: [FileEntry],
         destinationPane: PanelViewController
     ) {
+        guard let archiveName = typedArchiveName(on: alert, accessory: accessory) else { return }
         let encryption = accessory.encryption
         var passphrase: ArchivePassphrase?
         if encryption.isEncrypted {
@@ -191,17 +193,34 @@ extension PanelViewController {
         // Down first, so the collision question lands on the window rather than on a sheet that is
         // about to go.
         alert.window.sheetParent?.endSheet(alert.window, returnCode: .alertFirstButtonReturn)
-        let name = ArchivePacking.archiveFileName(
-            baseName: defaults.baseName,
-            format: defaults.format
-        )
         confirmAndPack(
             sources: sources,
-            archiveName: name,
+            archiveName: archiveName,
             defaults: defaults,
             passphrase: passphrase,
             destinationPane: destinationPane
         )
+    }
+
+    /// The archive the name field asks for, or `nil` with the reason said under the form and the
+    /// cursor put back in the field.
+    ///
+    /// The field may hold a path (2026-11-18): `backups/2026/photos` packs `photos.zip` into
+    /// `backups/2026` inside the other pane's folder, and the job makes those folders before it
+    /// writes (`PackFolders`, in the core), as F7 makes a typed path's (`+NewFolder`). What names no
+    /// archive — a leading `/`, a `.` or `..`, a `/` at the end — is refused here, with the sentences
+    /// F7 and ⇧F4 use, while the sheet is still up to fix it.
+    private func typedArchiveName(on alert: NSAlert, accessory: PackAccessory) -> NestedName? {
+        do {
+            return try ArchivePacking.archiveName(
+                typed: accessory.nameField.stringValue,
+                format: accessory.format
+            )
+        } catch {
+            accessory.showError(Self.nestedNameSentence(for: error))
+            alert.window.makeFirstResponder(accessory.nameField)
+            return nil
+        }
     }
 
     // MARK: - Conflict + run
@@ -210,14 +229,14 @@ extension PanelViewController {
     /// pack. A collision raises a Replace/Cancel confirmation (default Cancel).
     private func confirmAndPack(
         sources: [FileEntry],
-        archiveName: String,
+        archiveName: NestedName,
         defaults: PackAccessory.Defaults,
         passphrase: ArchivePassphrase?,
         destinationPane: PanelViewController
     ) {
         let request = PackRequest(
             sources: sources,
-            target: destinationPane.panel.path.appending(archiveName),
+            target: archiveName.target(in: destinationPane.panel.path),
             defaults: defaults,
             passphrase: passphrase,
             destinationPane: destinationPane
@@ -231,7 +250,8 @@ extension PanelViewController {
 
         let alert = NSAlert()
         alert.alertStyle = .warning
-        alert.messageText = String(localized: "“\(archiveName)” already exists")
+        // The path as typed, so a name in a folder says which folder's copy would be replaced.
+        alert.messageText = String(localized: "“\(archiveName.displayPath)” already exists")
         alert.informativeText = String(
             localized: "Replace the existing archive in “\(destinationPane.panel.path.lastComponent)”?"
         )

@@ -163,7 +163,10 @@ extension PanelViewController {
 
     /// Rename `source` (currently named `oldName`, in the pane's directory) to `newName`.
     /// The cursor lands on the renamed entry by its new identity after the re-list.
-    private func performRename(source: VFSPath, oldName: String, to rawName: String) {
+    ///
+    /// Internal, not private: `PathRenameTests` drives the commit through it, since the field editor
+    /// that calls it needs a person.
+    func performRename(source: VFSPath, oldName: String, to rawName: String) {
         let newName = rawName.trimmingCharacters(in: .whitespacesAndNewlines)
         // The field opened on the name as the row draws it, so a name holding a control character
         // (`Icon\r`) comes back as its picture (`Icon␍`) when nothing was typed. That is an
@@ -175,18 +178,10 @@ extension PanelViewController {
             focusTable()
             return
         }
+        // A `/` makes the name a path below the item's own folder: a move, with the folders on the
+        // way made (2026-11-18, `+RenameIntoPath`). It used to be refused.
         guard !newName.contains("/") else {
-            presentOperationFailure(
-                message: String(
-                    localized: "Can’t rename “\(shownName)”",
-                    comment: "Rename validation failure title; %@ is the current name."
-                ),
-                detail: String(
-                    localized: "Names can’t contain the “/” character.",
-                    comment: "Rename validation failure body: slash is not allowed in a name."
-                )
-            )
-            focusTable()
+            performPathRename(source: source, shownName: shownName, typed: newName)
             return
         }
 

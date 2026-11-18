@@ -36,6 +36,10 @@ public struct JobSnapshot: Sendable, Equatable, Identifiable {
     /// the queue-wide pause, which `QueueSnapshot.isPaused` reports. A job can be both, and stays
     /// paused until each is undone.
     public let isHeld: Bool
+    /// The operation's ``FileOperation/destinationDirectory``. A finished pack's pane is found by it,
+    /// since a typed path can put the archive below folders the pack made, which no pane shows
+    /// (2026-11-18). `nil` only from a snapshot built without one, as a test may build it.
+    public let destinationDirectory: VFSPath?
 
     public init(
         id: OperationJobID,
@@ -43,7 +47,8 @@ public struct JobSnapshot: Sendable, Equatable, Identifiable {
         status: JobStatus,
         progress: OperationProgress?,
         report: OperationReport?,
-        isHeld: Bool = false
+        isHeld: Bool = false,
+        destinationDirectory: VFSPath? = nil
     ) {
         self.id = id
         self.kind = kind
@@ -51,6 +56,7 @@ public struct JobSnapshot: Sendable, Equatable, Identifiable {
         self.progress = progress
         self.report = report
         self.isHeld = isHeld
+        self.destinationDirectory = destinationDirectory
     }
 }
 

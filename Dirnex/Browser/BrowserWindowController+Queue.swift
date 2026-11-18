@@ -120,20 +120,18 @@ extension BrowserWindowController {
                 presentAttributeApplyOutcome(of: report, kind: job.kind)
                 continue
             }
-            // A pack owns its finish the same way: it moves nothing, so `report.failures` is empty
-            // even when it wrote no archive, and everything that can go wrong is an
-            // `EncryptedArchiveError` about the job rather than a `VFSError` about a path.
-            if case .pack = job.kind {
-                presentPackOutcome(of: report)
-                continue
-            }
-            // A **plain** pack reports its success the same way and its failures the ordinary way,
-            // which is why it does not `continue` here. Its writer is `bsdtar` rather than
-            // libarchive, so what goes wrong is a `VFSError` about the archive's path — the tool
-            // missing, the write refused, the upload declined — and those belong in the failure
-            // alert below rather than in a vocabulary invented for the encrypted path.
-            if case .plainPack = job.kind {
-                presentPackOutcome(of: report)
+            // A pack reports its archive, or the writer's own refusal, through `presentPackOutcome`,
+            // and a `VFSError` about a path the ordinary way below: the tool missing, the write or
+            // the upload refused, a source gone, a file where a typed folder would go.
+            //
+            // **Both kinds go on to the tail now.** The encrypted one used to `continue` here, on the
+            // grounds that everything it could get wrong was an `EncryptedArchiveError`. That stopped
+            // being true when M24 Slice 6 sent its refused uploads and failed walks home as
+            // `failures` with no outcome, which `presentPackOutcome` reads as a cancel — so they said
+            // nothing, and the sources staged for it were never swept. Found 2026-11-18 adding typed
+            // folders, whose refusal would have been silent too (docs/NOTES.md ▸ Guards).
+            if Self.isPack(job.kind) {
+                presentPackOutcome(of: report, into: job.destinationDirectory)
             }
             sweepStagedTrees(of: job.kind)
             // What the copy could not carry besides bytes (PLAN.md §M25 Slice 5b). Said on the
@@ -211,6 +209,16 @@ extension BrowserWindowController {
         rightPanel.refreshCurrentDirectory()
     }
 
+    /// Whether `kind` writes one archive, and so reports through `presentPackOutcome` and words its
+    /// failure as the archive's. An exhaustive `switch`, as ``reportsToItsGesture(_:)`` is, so the
+    /// next kind added is a decision here rather than a silent fall into "Couldn't move".
+    nonisolated static func isPack(_ kind: FileOperation.Kind) -> Bool {
+        switch kind {
+        case .pack, .plainPack: true
+        case .copy, .move, .checksum, .attributes, .materialize, .writeBack: false
+        }
+    }
+
     private func reportFailures(_ report: OperationReport, kind: FileOperation.Kind) {
         let alert = NSAlert()
         alert.alertStyle = .warning
@@ -218,7 +226,7 @@ extension BrowserWindowController {
         let name = report.failures[0].path.lastComponent
         let count = report.failures.count
         let single = count == 1
-        if case .plainPack = kind {
+        if Self.isPack(kind) {
             // One sentence whatever went wrong, because a pack has exactly one product: there is
             // no list of items here, and the archive either landed or did not. Without this the
             // `else` below would call it a failed *move*, which is this project's own warning
@@ -256,8 +264,13 @@ extension BrowserWindowController {
                     comment: "Move failure for several items; %lld is the count."
                 )
         }
-        // Reuse the pane's error phrasing (pure — it only switches on the error).
-        alert.informativeText = leftPanel.describe(report.failures[0].error)
+        // Reuse the pane's error phrasing (pure — it only switches on the error). A pack's failure
+        // is about the archive's path, so a file standing where a typed folder would go is named,
+        // as F7's sentence names it.
+        let failure = report.failures[0]
+        alert.informativeText = Self.isPack(kind)
+            ? leftPanel.describeCreateFailure(failure.error, making: failure.path)
+            : leftPanel.describe(failure.error)
         alert.addButton(withTitle: String(
             localized: "OK",
             comment: "Dismiss button on a file-operation failure alert."

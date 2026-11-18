@@ -54,7 +54,7 @@ extension PanelViewController {
         FileOperation(
             renaming: rename.source,
             to: rename.newName,
-            in: rename.source.path.parent ?? panel.path
+            in: rename.directory ?? rename.source.path.parent ?? panel.path
         )
     }
 
@@ -127,6 +127,9 @@ extension PanelViewController {
 struct DeferredRename: Sendable {
     let source: FileEntry
     let newName: String
+    /// Where the renamed item goes: its own folder, unless F2's name was a path (2026-11-18), which
+    /// moves it into another below that one.
+    var directory: VFSPath?
 }
 
 /// Whether a failed rename is one the queue can finish.
