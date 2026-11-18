@@ -79,11 +79,13 @@ final class CommandPaletteController: NSObject {
     /// Run the highlighted command: record it as recent, dismiss, then dispatch its selector
     /// on the next runloop tick — after `dismiss()` has re-keyed the browser window, so the
     /// responder chain reaches the focused pane and not the (now closed) palette.
-    func runSelected() {
+    ///
+    /// `inNewTab` is ⌘Return or a ⌘-click, and only a place reads it (`runDestination`).
+    func runSelected(inNewTab: Bool = false) {
         guard matches.indices.contains(selectedIndex) else { return }
         let id = matches[selectedIndex].command.id
         if PaletteDestination.isDestination(commandID: id) {
-            runDestination(id)
+            runDestination(id, inNewTab: inNewTab)
             return
         }
         recents.record(id, among: offeredIDs)
@@ -247,10 +249,11 @@ final class CommandPaletteController: NSObject {
 
     /// Run the clicked command. Reads `clickedRow` rather than the highlight because a click in
     /// the empty space below the last result still sends the action, with `clickedRow == -1`.
+    /// A ⌘-click opens a place in a new tab, as ⌘Return does.
     @objc private func rowClicked() {
         guard tableView.clickedRow >= 0 else { return }
         selectedIndex = tableView.clickedRow
-        runSelected()
+        runSelected(inNewTab: PaletteKey.isCommandClick(NSApp.currentEvent))
     }
 
     /// Center the palette horizontally over `window` and sit it in the upper third, the

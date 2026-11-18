@@ -345,6 +345,17 @@ inside a vault, and a translation. The full app suite failed once in `QuickViewS
 converted workbook's frame did not load within its 10 s under the whole suite's load), and the suite
 passed alone twice.
 
+**2026-11-18: ⌘Return and a ⌘-click open a place in a new tab** (Oleg's request, the same day). As ⌘
+on a sidebar row or a Go ▸ Places item does, a place opens in a new tab of the active pane; a workspace,
+which sets both panes' tabs, and a command run as they do for Return. A field editor sends ⌘Return as
+`noop:` (docs/NOTES.md ▸ Key equivalents), so `PaletteKey` reads it off the event, with the file list's
+own rule: Return or keypad Enter with ⌘ alone among the four modifier keys. A test confirms this macOS
+still sends `noop:`, and mapping `noop:` to nothing failed the test that watches it. **Run live** in
+`build/live-copy`: View ▸ Command Palette… from the background brought the copy to the front with the
+new placeholder drawn, "alpha" typed into the field left "Alpha Pin" alone under Go, and a real
+⌘Return opened it as a second tab in the left pane, the first tab and the right pane untouched. No TCC
+request. **Not seen:** the ⌘-click, since a background click carries no modifier.
+
 The app's share of selling Dirnex (the private companion repo `dirnex-home`, milestones C1–C15) was
 two milestones, **M29** (a license, and the reminder it removes) and **M30** (Report a Bug), both
 shipped and archived in [docs/HISTORY.md](docs/HISTORY.md). Neither changed what Dirnex *is*: it
