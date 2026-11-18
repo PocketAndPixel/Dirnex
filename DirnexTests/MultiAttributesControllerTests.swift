@@ -14,8 +14,8 @@ import Testing
 struct MultiAttributesControllerTests {
     private let epoch = Date(timeIntervalSince1970: 1_000_000)
 
-    /// An item owned by the running user, so ``MultiAttributesController/canEdit`` is true and the
-    /// controls are live.
+    /// An item owned by the running user, so a Save changes it without the administrator dialog.
+    /// A selection holding someone else's is in `AttributeBatchEscalationTests`.
     private func item(name: String, mode: UInt16, flags: BSDFileFlags = []) -> MultiAttributesController.Item {
         let attributes = FileAttributes(
             permissions: POSIXPermissions(rawValue: mode),
@@ -157,31 +157,5 @@ struct MultiAttributesControllerTests {
         row.enable.state = .on
         row.picker.dateValue = epoch.addingTimeInterval(3600)
         #expect(controller.buildPatch().modificationDate == epoch.addingTimeInterval(3600))
-    }
-
-    // MARK: - Not owned
-
-    @Test("a selection with a foreign-owned item is read-only")
-    func foreignOwnedIsReadOnly() {
-        var foreign = item(name: "x", mode: 0o644)
-        foreign = .init(
-            entry: foreign.entry,
-            attributes: FileAttributes(
-                permissions: foreign.attributes.permissions,
-                flags: foreign.attributes.flags,
-                ownerID: getuid() == 0 ? 1 : 0, // someone who is not the (non-root) caller
-                groupID: foreign.attributes.groupID,
-                accessDate: epoch, modificationDate: epoch, creationDate: epoch
-            ),
-            isSymlink: false,
-            hasAccessControlList: false
-        )
-        let controller = controller([item(name: "a", mode: 0o644), foreign])
-        // Root owns everything, so this claim only holds for a normal user.
-        if !UserContext.current().isSuperUser {
-            #expect(!controller.canEdit)
-            #expect(controller.saveButton == nil) // read-only footer has Done, no Save
-            #expect(modeBox(controller, .owner, .read).isEnabled == false)
-        }
     }
 }

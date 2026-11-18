@@ -17,7 +17,7 @@ extension BrowserWindowController {
     /// Journal and report a finished attributes job. Called from `finalizeCompletedJobs` for every
     /// terminal job; any other kind has `nil` here and falls straight through.
     func presentAttributeApplyOutcome(of report: OperationReport, kind: FileOperation.Kind) {
-        guard case .attributes = kind, let outcome = report.attributeApply else { return }
+        guard case let .attributes(job) = kind, let outcome = report.attributeApply else { return }
 
         // Journal before reporting, so ⌘Z is live by the time the user has read the sentence. A
         // canceled run still journals what it managed to change — there is no half-written file to
@@ -25,7 +25,7 @@ extension BrowserWindowController {
         if let record = UndoRecord.attributeBatchChange(outcome.changed) {
             recordUndoableAction(record)
         }
-        presentSummary(outcome, report: report)
+        presentSummary(outcome, report: report, job: job)
     }
 
     /// What happened, in one sentence, in the status line — unless something needs the user to stop.
@@ -37,9 +37,13 @@ extension BrowserWindowController {
     /// run, so the only place it can surface is here. And a run **too large to undo**, which was
     /// agreed to before it started and is worth confirming afterwards, since ⌘Z will now reverse
     /// some *older* action instead.
-    private func presentSummary(_ outcome: AttributeApplyOutcome, report: OperationReport) {
+    private func presentSummary(
+        _ outcome: AttributeApplyOutcome,
+        report: OperationReport,
+        job: AttributeApplyJob
+    ) {
         guard report.failures.isEmpty else {
-            presentPartialSummary(outcome, report: report)
+            presentPartialSummary(outcome, report: report, job: job)
             return
         }
         let changed = outcome.changedCount
@@ -75,7 +79,14 @@ extension BrowserWindowController {
     /// Some items could not be changed. Names the first and counts the rest, the shape every other
     /// per-item failure summary in the app uses — a modal storm over a tree walk is the one thing
     /// this must not become.
-    private func presentPartialSummary(_ outcome: AttributeApplyOutcome, report: OperationReport) {
+    ///
+    /// Items the run left because they need root are offered to an administrator from here (PLAN.md
+    /// §M40 Slice 4), since this is the one place the user learns of them.
+    private func presentPartialSummary(
+        _ outcome: AttributeApplyOutcome,
+        report: OperationReport,
+        job: AttributeApplyJob
+    ) {
         let failed = report.failures.count
         var lines = [String(
             localized: "\(failed) items couldn’t be changed: \(describe(report.failures[0]))",
@@ -87,13 +98,15 @@ extension BrowserWindowController {
                 comment: "Recursive apply note when a partly-failed run also exceeded the limit."
             ))
         }
-        presentIssues(
-            title: String(
-                localized: "Changed \(outcome.changedCount) items, with issues",
-                comment: "Recursive apply partial-failure title; %lld is how many changed. Plural."
-            ),
-            lines: lines
+        let title = String(
+            localized: "Changed \(outcome.changedCount) items, with issues",
+            comment: "Recursive apply partial-failure title; %lld is how many changed. Plural."
         )
+        guard !outcome.rootOnly.isEmpty else {
+            presentIssues(title: title, lines: lines)
+            return
+        }
+        offerAdministrator(title: title, lines: lines, rootOnly: outcome.rootOnly, job: job)
     }
 
     private func describe(_ failure: OperationItemFailure) -> String {

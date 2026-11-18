@@ -204,7 +204,7 @@ extension BrowserWindowController {
         RemoteFileCache.sweepStagedTrees(sources.map { URL(fileURLWithPath: $0.onDiskPath) })
     }
 
-    private func refreshPanes() {
+    func refreshPanes() {
         leftPanel.refreshCurrentDirectory()
         rightPanel.refreshCurrentDirectory()
     }

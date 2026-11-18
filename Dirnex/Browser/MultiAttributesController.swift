@@ -73,11 +73,15 @@ final class MultiAttributesController: NSViewController {
     let items: [Item]
     let actor: UserContext
 
-    /// Whether the offered controls are live. Bulk editing is unprivileged only when the caller owns
-    /// **every** selected item (or is root); a selection that mixes owners would need Slice 5's
-    /// escalation, so until then the controls are shown disabled with a note. A per-item root-only case
-    /// an owner can still reach (a system-immutable file among the set) is caught at Save.
+    /// Whether the sheet offers editing at all. Always true now, as on the single-item sheet: an
+    /// item the caller cannot change unprivileged — someone else's, or a system-immutable one of their
+    /// own — goes through the administrator dialog at Save (PLAN.md §M40 Slice 4). The field stays so
+    /// every control-liveness site reads as "is editing offered" rather than hard-coding `true`.
     let canEdit: Bool
+
+    /// Whether the caller owns every selected item, or is root. When not, the tabs say a Save will
+    /// ask for the administrator password, as the single-item sheet does for one item.
+    let ownsEveryItem: Bool
 
     /// Journal the committed batch so one Cmd+Z reverses it — set by the pane to its window's undo
     /// surface, exactly as the single-item sheet's is.
@@ -111,7 +115,9 @@ final class MultiAttributesController: NSViewController {
         // capture `self` before `super.init`, which two-phase init forbids.
         let actor = UserContext.current()
         self.actor = actor
-        canEdit = actor.isSuperUser || items.allSatisfy { $0.attributes.ownerID == actor.userID }
+        ownsEveryItem = actor.isSuperUser
+            || items.allSatisfy { $0.attributes.ownerID == actor.userID }
+        canEdit = true
         super.init(nibName: nil, bundle: nil)
         title = DialogTitle.ofCommand("file.attributes")
     }
@@ -145,7 +151,7 @@ final class MultiAttributesController: NSViewController {
     /// The "Apply to enclosed items" row, offered when at least one selected item is a folder — a
     /// selection of plain files has nothing enclosed to reach.
     private func makeRecursiveOptions() -> NSView? {
-        guard canEdit, items.contains(where: { $0.entry.kind == .directory }) else { return nil }
+        guard items.contains(where: { $0.entry.kind == .directory }) else { return nil }
         let options = RecursiveApplyOptions()
         options.onChange = { [weak self] in self?.refreshSaveEnabled() }
         recursiveOptions = options
@@ -266,8 +272,8 @@ final class MultiAttributesController: NSViewController {
     func makeNotOwnerNote() -> NSView {
         AttributeRow.note(String(
             localized: """
-            You can view these, but they can only be changed when you own every selected item — one \
-            or more of these belongs to someone else.
+            Some of these items belong to someone else, so saving a change to them will ask for your \
+            administrator password.
             """,
             comment: "Info panel note when a multi-selection includes items the user does not own."
         ))

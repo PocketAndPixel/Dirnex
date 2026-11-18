@@ -266,9 +266,12 @@ Decided before Slice 1 (2026-11-18, Oleg, on the probes above):
 
 Proposed with them, open until the slice that builds each:
 
-- **Escalation for a batch and a recursive change.** The report's root-only items get Apply as
-  Administrator…: one prompt for all of them up to the `argv` bound, each item's command built from
-  its own diff, and the escalated items an undo step of their own.
+- **Escalation for a batch and a recursive change.** Decided at Slice 4 (2026-11-18, Oleg, on its
+  probes): a multi-selection Save asks **before** anything is written, in one dialog for every
+  root-only item, and Authenticate changes those as root and then the user's own, as one undo step;
+  Cancel leaves the sheet unchanged. A recursive run's report offers its root-only items with **Apply
+  as Administrator…**, and those become **an undo step of their own**. Past the `argv` bound the bodies
+  go to **one `osascript` over stdin**, so one password covers any number of items.
 - **An undo that needs root asks**, in the same administrator sheet with its command, instead of
   refusing. Cancel leaves the step where it was.
 - **The stutter.** A search that no term names reads "Search Results" in the path bar, without
@@ -416,6 +419,47 @@ sits in the share's `#recycle`.
 Final runs: core 5929 tests green, both CI-pinned linters clean, and the full app suite green but for
 `QuickViewScrollPageTests` (as in Slices 1 and 2; it passed alone), with this suite at 44 s and all 73
 saved preference keys unchanged by content.
+
+**2026-11-18: Slice 4 landed, core and app, and was run live** (escalation for a batch and a recursive
+change). **Probed first:** `do shell script` keeps stdout only on success and stderr only on failure,
+so it cannot say which items of a batch landed; a body passes `execve`, 1 040 000 bytes ran and
+1 048 000 did not; and a JXA `osascript` reads NUL-separated bodies from stdin and runs each with
+`doShellScript`, any number in one process (NOTES.md ▸ Attribute escalation). **Decided with Oleg:**
+a multi-selection Save asks before anything is written, a recursive run's report offers its root-only
+items, and those are an undo step of their own (the record above). Core: `AttributeItemChange` is what
+a recursive job asks of one item, shared by the run and the retry, so the two cannot drift;
+`AttributeApplyOutcome.rootOnly` keeps the items the run left, deepest first; `EscalatedAttributeBatch`
+builds each item's command through the single-item translation, joins items so a failed one does not
+stop the next (`… || s=1; exit $s`, the exit status bringing the tools' stderr back), chunks at half of
+`ARG_MAX`, offers the copyable `sudo` line only when the batch is one body, and judges what landed by
+reading every item back and journaling only the fields its plan writes. App: `AdministratorShell`
+feeds the bodies to one JXA `osascript` over stdin (the single-item sheet too), and
+`AdministratorEscalationAlert` is the one dialog both sheets and the report draw. A selection holding
+someone else's items is editable now, with the single-item sheet's note, and someone else's folder
+offers Apply to enclosed items. Three new strings and one rewritten note in 14 languages; the refusal's
+five sentences ("Dirnex can't ask for those privileges yet") are gone. Core: 20 tests, running the
+real bodies unprivileged, five negative controls each failing the tests that watch them; app: 11, the
+transport run through the same script with its administrator flag off.
+**Run live** in `build/live-copy` with Oleg typing his password: a Save over two of his files and one
+of root's asked once for 1 item, with the command to copy, and changed all three, as one ⌘Z step. A
+recursive Group ▸ Write on a folder of 6 000 root-owned files changed the folder, reported "6 000 items
+couldn't be changed" with Apply as Administrator…, whose dialog said the command is too long to run in
+Terminal, and changed all 6 000 after **one** password across its two bodies: `authd` logged one
+authentication and both bodies authorized for the same process, 15 s apart, while three separate
+`osascript`s a minute apart had each asked again. The run took about 20 s, one `fork`/`exec` an item.
+⌘Z then took back the administrator step alone (refused by name, Slice 5's) and a second ⌘Z the
+folder. **Found live and fixed:** a real Cancel reached the script as `-60006`, not `-128`, so it read
+as a failure and the Save went on to change Oleg's own files; both numbers are a cancel now, a probe
+read `-60006 User canceled.` on the next try, and the sheet stayed open with nothing changed. The
+probes, the fixture and the copy's domain are gone; the copy made no TCC request. **After the live
+run**, `AdministratorShell` moved off `DispatchQueue.global` to a serial queue of its own, the rule
+`ProcessWaiting.pipeQueue` records; that build ran only the unprivileged transport tests. Final runs:
+core 5949 green, both CI-pinned linters clean, and of six full app runs the last two green but for
+`QuickViewScrollPageTests` once, as in Slices 1–3; `PanelPassiveRefreshTests` failed three of the
+first four and passed alone every time, too few runs to name a cause (NOTES.md ▸ Waits). All 73
+saved preference keys unchanged by content. **Not seen:** a system-immutable item, an ACL carried to
+root-only items, a cancel on a second body's dialog, and a translation. The undo still refuses, which
+is Slice 5.
 
 The app's share of selling Dirnex (the private companion repo `dirnex-home`, milestones C1–C15) was
 two milestones, **M29** (a license, and the reminder it removes) and **M30** (Report a Bug), both

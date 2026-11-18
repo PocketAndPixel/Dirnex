@@ -36,31 +36,21 @@ extension AttributesController {
             for: plan, path: snapshot.entry.path.path, current: old
         )
 
-        let alert = NSAlert()
-        alert.messageText = String(
-            localized: "This change needs an administrator",
-            comment: "Attributes save alert title: the change requires root privileges."
-        )
-        alert.informativeText = escalationInformativeText(command)
-        if let terminal = command.terminalCommand {
-            alert.accessoryView = makeEscalationAccessory(terminal)
-        }
-
         let canRun = command.hasCommands
-        if canRun {
-            alert.addButton(withTitle: String(
-                localized: "Authenticate…",
-                comment: "Button that runs a change through the macOS administrator auth dialog."
-            ))
-            alert.addButton(
-                withTitle: String(localized: "Cancel", comment: "Button that discards an edit.")
-            )
-        } else {
-            // The only change was one the elevated command cannot reproduce (see the omission notes),
-            // so there is nothing to authenticate — just acknowledge.
-            alert.addButton(withTitle: String(localized: "OK", comment: "Dismiss button."))
-        }
-        alert.enableEscapeToCancel()
+        let alert = AdministratorEscalationAlert.make(
+            body: canRun
+                ? String(
+                    localized: """
+                    Authenticate to make this change as an administrator, or run the command below \
+                    yourself.
+                    """,
+                    comment: "Attributes escalation body: how to apply a root-only change."
+                )
+                : AdministratorEscalationAlert.nothingToRun,
+            omissions: command.omissions,
+            terminalCommand: command.terminalCommand,
+            canRun: canRun
+        )
 
         let onAuthenticate: (NSApplication.ModalResponse) -> Void = { [weak self] response in
             guard let self, canRun, response == .alertFirstButtonReturn else { return }
@@ -79,93 +69,6 @@ extension AttributesController {
         }
     }
 
-    // MARK: - The dialog's words
-
-    /// The body: what the escalation will do, then a whole sentence per aspect it will *not*.
-    private func escalationInformativeText(_ command: EscalatedAttributeCommand) -> String {
-        var lines: [String] = []
-        if command.hasCommands {
-            lines.append(String(
-                localized: """
-                Authenticate to make this change as an administrator, or run the command below \
-                yourself.
-                """,
-                comment: "Attributes escalation body: how to apply a root-only change."
-            ))
-        } else {
-            lines.append(String(
-                localized: "This change can’t be made as an administrator from here.",
-                comment: "Attributes escalation body when nothing the elevated command can do remains."
-            ))
-        }
-        if command.omissions.contains(.creationDate) {
-            lines.append(String(
-                localized: "The Created date can’t be changed this way and will be left as it is.",
-                comment: "Attributes escalation note: the birth date is not set by the elevated command."
-            ))
-        }
-        if command.omissions.contains(.accessControlList) {
-            lines.append(String(
-                localized: """
-                The access-control list can’t be changed this way and will be left as it is.
-                """,
-                comment: "Attributes escalation note: the ACL is not reproduced by the elevated command."
-            ))
-        }
-        return lines.joined(separator: "\n\n")
-    }
-
-    /// The copyable "or run it yourself" field and its Copy button.
-    private func makeEscalationAccessory(_ terminalCommand: String) -> NSView {
-        let label = NSTextField(labelWithString: String(
-            localized: "Or run this yourself in Terminal:",
-            comment: "Label above the copyable administrator command in the attributes escalation."
-        ))
-        label.font = .systemFont(ofSize: NSFont.smallSystemFontSize)
-        label.textColor = .secondaryLabelColor
-
-        let field = NSTextField(string: terminalCommand)
-        field.isEditable = false
-        field.isSelectable = true
-        field.font = .monospacedSystemFont(ofSize: NSFont.smallSystemFontSize, weight: .regular)
-        field.keepToOneLine(truncating: .byTruncatingMiddle)
-        // A fixed width so the command truncates rather than stretching the alert, and so the stack
-        // below has a definite size to report.
-        field.widthAnchor.constraint(equalToConstant: 320).isActive = true
-        escalationCommandField = field
-
-        let copy = NSButton(
-            title: String(localized: "Copy", comment: "Button that copies text to the clipboard."),
-            target: self,
-            action: #selector(copyEscalationCommand(_:))
-        )
-        copy.bezelStyle = .rounded
-        copy.setContentHuggingPriority(.required, for: .horizontal)
-
-        let commandRow = NSStackView(views: [field, copy])
-        commandRow.orientation = .horizontal
-        commandRow.spacing = 8
-        commandRow.alignment = .firstBaseline
-
-        let stack = NSStackView(views: [label, commandRow])
-        stack.orientation = .vertical
-        stack.alignment = .leading
-        stack.spacing = 6
-        // An NSAlert reserves vertical space for its accessory from the view's *frame*, so give the
-        // stack a concrete one sized to its content — a pure-Auto-Layout view reports a zero frame and
-        // the alert then draws it overlapping the informative text (found live).
-        stack.layoutSubtreeIfNeeded()
-        stack.frame = NSRect(origin: .zero, size: stack.fittingSize)
-        return stack
-    }
-
-    @objc func copyEscalationCommand(_ sender: Any?) {
-        guard let text = escalationCommandField?.stringValue, !text.isEmpty else { return }
-        let pasteboard = NSPasteboard.general
-        pasteboard.clearContents()
-        pasteboard.setString(text, forType: .string)
-    }
-
     // MARK: - Running it
 
     private func authenticateAndApply(
@@ -177,7 +80,7 @@ extension AttributesController {
     ) {
         Task { @MainActor in
             do {
-                try await AdministratorShell.run(command.scriptBody)
+                try await AdministratorShell.run([command.scriptBody])
                 journalEscalatedChange(command, old: old, aclChanged: aclChanged, newList: newList)
                 onApplied?()
                 dismiss(sender)

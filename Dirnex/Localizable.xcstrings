@@ -18342,6 +18342,95 @@
         }
       }
     },
+    "Apply as Administrator…": {
+      "comment": "Button in a recursive attributes report: change the items that need root, after the administrator password.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Als Administrator anwenden…"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apply as Administrator…"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aplicar como administrador…"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Appliquer en tant qu’administrateur…"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Applica come amministratore…"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "管理者として適用…"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "관리자로 적용…"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Toepassen als beheerder…"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zastosuj jako administrator…"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aplicar como administrador…"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Применить от имени администратора…"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Застосувати від імені адміністратора…"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "以管理员身份应用…"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "以管理者身分套用…"
+          }
+        }
+      }
+    },
     "Apply to all remaining conflicts": {
       "comment": "Conflict sheet: suppression checkbox.",
       "localizations": {
@@ -19228,6 +19317,824 @@
           "stringUnit": {
             "state": "translated",
             "value": "認證："
+          }
+        }
+      }
+    },
+    "Authenticate to change %lld items as an administrator, or run the command below yourself.": {
+      "comment": "Batch attributes escalation body; %lld is how many items need root. Plural.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Authentifizieren Sie sich, um %#@items@ als Administrator zu ändern, oder führen Sie den folgenden Befehl selbst aus."
+          },
+          "substitutions": {
+            "items": {
+              "argNum": 1,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "one": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg Objekt"
+                    }
+                  },
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg Objekte"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Authenticate to change %#@items@ as an administrator, or run the command below yourself."
+          },
+          "substitutions": {
+            "items": {
+              "argNum": 1,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "one": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg item"
+                    }
+                  },
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg items"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Autentícate para cambiar %#@items@ como administrador, o ejecuta tú mismo el comando de abajo."
+          },
+          "substitutions": {
+            "items": {
+              "argNum": 1,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "one": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg ítem"
+                    }
+                  },
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg ítems"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Authentifiez-vous pour modifier %#@items@ en tant qu’administrateur, ou exécutez vous-même la commande ci-dessous."
+          },
+          "substitutions": {
+            "items": {
+              "argNum": 1,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "one": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg élément"
+                    }
+                  },
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg éléments"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Autenticati per modificare %#@items@ come amministratore, oppure esegui tu stesso il comando qui sotto."
+          },
+          "substitutions": {
+            "items": {
+              "argNum": 1,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "one": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg elemento"
+                    }
+                  },
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg elementi"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%#@items@を管理者として変更するには認証してください。または、下のコマンドを自分で実行してください。"
+          },
+          "substitutions": {
+            "items": {
+              "argNum": 1,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg項目"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "관리자 권한으로 %#@items@을(를) 변경하려면 인증하거나 아래 명령을 직접 실행하십시오."
+          },
+          "substitutions": {
+            "items": {
+              "argNum": 1,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg개 항목"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Authenticeer om %#@items@ als beheerder te wijzigen, of voer de onderstaande opdracht zelf uit."
+          },
+          "substitutions": {
+            "items": {
+              "argNum": 1,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "one": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg onderdeel"
+                    }
+                  },
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg onderdelen"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Uwierzytelnij się, aby zmienić %#@items@ jako administrator, lub wykonaj poniższe polecenie samodzielnie."
+          },
+          "substitutions": {
+            "items": {
+              "argNum": 1,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "one": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg element"
+                    }
+                  },
+                  "few": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg elementy"
+                    }
+                  },
+                  "many": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg elementów"
+                    }
+                  },
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg elementu"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Autentique-se para alterar %#@items@ como administrador, ou execute você mesmo o comando abaixo."
+          },
+          "substitutions": {
+            "items": {
+              "argNum": 1,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "one": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg item"
+                    }
+                  },
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg itens"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Пройдите аутентификацию, чтобы изменить %#@items@ с правами администратора, или выполните команду ниже самостоятельно."
+          },
+          "substitutions": {
+            "items": {
+              "argNum": 1,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "one": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg объект"
+                    }
+                  },
+                  "few": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg объекта"
+                    }
+                  },
+                  "many": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg объектов"
+                    }
+                  },
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg объекта"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Пройдіть автентифікацію, щоб змінити %#@items@ з правами адміністратора, або виконайте команду нижче самостійно."
+          },
+          "substitutions": {
+            "items": {
+              "argNum": 1,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "one": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg об’єкт"
+                    }
+                  },
+                  "few": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg об’єкти"
+                    }
+                  },
+                  "many": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg об’єктів"
+                    }
+                  },
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg об’єкта"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "请通过认证以管理员身份更改 %#@items@，或自行运行下面的命令。"
+          },
+          "substitutions": {
+            "items": {
+              "argNum": 1,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg 个项目"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "請通過認證以管理者身分更改 %#@items@，或自行執行下方的指令。"
+          },
+          "substitutions": {
+            "items": {
+              "argNum": 1,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg 個項目"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "Authenticate to change %lld items as an administrator. The command is too long to run in Terminal yourself.": {
+      "comment": "Batch attributes escalation body when the command does not fit one command line; %lld is how many items need root. Plural.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Authentifizieren Sie sich, um %#@items@ als Administrator zu ändern. Der Befehl ist zu lang, um ihn selbst im Terminal auszuführen."
+          },
+          "substitutions": {
+            "items": {
+              "argNum": 1,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "one": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg Objekt"
+                    }
+                  },
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg Objekte"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Authenticate to change %#@items@ as an administrator. The command is too long to run in Terminal yourself."
+          },
+          "substitutions": {
+            "items": {
+              "argNum": 1,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "one": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg item"
+                    }
+                  },
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg items"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Autentícate para cambiar %#@items@ como administrador. El comando es demasiado largo para ejecutarlo tú mismo en Terminal."
+          },
+          "substitutions": {
+            "items": {
+              "argNum": 1,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "one": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg ítem"
+                    }
+                  },
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg ítems"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Authentifiez-vous pour modifier %#@items@ en tant qu’administrateur. La commande est trop longue pour l’exécuter vous-même dans Terminal."
+          },
+          "substitutions": {
+            "items": {
+              "argNum": 1,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "one": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg élément"
+                    }
+                  },
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg éléments"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Autenticati per modificare %#@items@ come amministratore. Il comando è troppo lungo per eseguirlo tu stesso nel Terminale."
+          },
+          "substitutions": {
+            "items": {
+              "argNum": 1,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "one": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg elemento"
+                    }
+                  },
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg elementi"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%#@items@を管理者として変更するには認証してください。コマンドが長すぎるため、ターミナルで自分で実行することはできません。"
+          },
+          "substitutions": {
+            "items": {
+              "argNum": 1,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg項目"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "관리자 권한으로 %#@items@을(를) 변경하려면 인증하십시오. 명령이 너무 길어 터미널에서 직접 실행할 수 없습니다."
+          },
+          "substitutions": {
+            "items": {
+              "argNum": 1,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg개 항목"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Authenticeer om %#@items@ als beheerder te wijzigen. De opdracht is te lang om zelf in Terminal uit te voeren."
+          },
+          "substitutions": {
+            "items": {
+              "argNum": 1,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "one": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg onderdeel"
+                    }
+                  },
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg onderdelen"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Uwierzytelnij się, aby zmienić %#@items@ jako administrator. Polecenie jest zbyt długie, aby wykonać je samodzielnie w Terminalu."
+          },
+          "substitutions": {
+            "items": {
+              "argNum": 1,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "one": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg element"
+                    }
+                  },
+                  "few": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg elementy"
+                    }
+                  },
+                  "many": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg elementów"
+                    }
+                  },
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg elementu"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Autentique-se para alterar %#@items@ como administrador. O comando é longo demais para você executá-lo no Terminal."
+          },
+          "substitutions": {
+            "items": {
+              "argNum": 1,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "one": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg item"
+                    }
+                  },
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg itens"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Пройдите аутентификацию, чтобы изменить %#@items@ с правами администратора. Команда слишком длинная, чтобы выполнить её самостоятельно в Терминале."
+          },
+          "substitutions": {
+            "items": {
+              "argNum": 1,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "one": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg объект"
+                    }
+                  },
+                  "few": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg объекта"
+                    }
+                  },
+                  "many": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg объектов"
+                    }
+                  },
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg объекта"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Пройдіть автентифікацію, щоб змінити %#@items@ з правами адміністратора. Команда задовга, щоб виконати її самостійно в Терміналі."
+          },
+          "substitutions": {
+            "items": {
+              "argNum": 1,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "one": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg об’єкт"
+                    }
+                  },
+                  "few": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg об’єкти"
+                    }
+                  },
+                  "many": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg об’єктів"
+                    }
+                  },
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg об’єкта"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "请通过认证以管理员身份更改 %#@items@。该命令太长，无法在“终端”中自行运行。"
+          },
+          "substitutions": {
+            "items": {
+              "argNum": 1,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg 个项目"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "請通過認證以管理者身分更改 %#@items@。此指令太長，無法在「終端機」中自行執行。"
+          },
+          "substitutions": {
+            "items": {
+              "argNum": 1,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg 個項目"
+                    }
+                  }
+                }
+              }
+            }
           }
         }
       }
@@ -80615,95 +81522,6 @@
         }
       }
     },
-    "Only an administrator can give “%@” to another user, and Dirnex can’t ask for those privileges yet.": {
-      "comment": "Root-only save alert body: a chown across users; %@ is the item name.",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Nur ein Administrator kann „%@“ an einen anderen Benutzer übergeben, und Dirnex kann diese Rechte noch nicht anfordern."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Only an administrator can give “%@” to another user, and Dirnex can’t ask for those privileges yet."
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Solo un administrador puede ceder “%@” a otro usuario, y Dirnex aún no puede solicitar esos privilegios."
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Seul un administrateur peut céder « %@ » à un autre utilisateur, et Dirnex ne peut pas encore demander ces privilèges."
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Solo un amministratore può assegnare “%@” a un altro utente e Dirnex non può ancora richiedere quei privilegi."
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "“%@”を別のユーザーに譲渡できるのは管理者だけで、Dirnex はまだその権限を要求できません。"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "“%@”을(를) 다른 사용자에게 넘길 수 있는 것은 관리자뿐이며, Dirnex는 아직 해당 권한을 요청할 수 없습니다."
-          }
-        },
-        "nl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Alleen een beheerder kan ‘%@’ aan een andere gebruiker geven, en Dirnex kan die rechten nog niet aanvragen."
-          }
-        },
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Tylko administrator może przekazać „%@” innemu użytkownikowi, a Dirnex nie może jeszcze poprosić o te uprawnienia."
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Só um administrador pode passar “%@” para outro usuário, e o Dirnex ainda não pode solicitar esses privilégios."
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Передать «%@» другому пользователю может только администратор, а Dirnex пока не может запросить эти права."
-          }
-        },
-        "uk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Передати «%@» іншому користувачеві може лише адміністратор, а Dirnex поки що не може запитати ці права."
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "只有管理员才能将“%@”转交给其他用户，Dirnex 暂时无法请求这些权限。"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "只有管理者才能將「%@」轉交給其他使用者，Dirnex 暫時無法請求這些權限。"
-          }
-        }
-      }
-    },
     "Only files on this Mac can be edited — copy it out first (F5).": {
       "comment": "Status when F4 is pressed on an archive member or remote file.",
       "localizations": {
@@ -81056,95 +81874,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "只有左側檔案以位元組順序標記（BOM）開頭。"
-          }
-        }
-      }
-    },
-    "Only the owner of “%@” or an administrator can change it, and Dirnex can’t ask for those privileges yet.": {
-      "comment": "Root-only save alert body: the item belongs to somebody else; %@ is its name.",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Nur der Eigentümer von „%@“ oder ein Administrator kann das Objekt ändern, und Dirnex kann diese Rechte noch nicht anfordern."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Only the owner of “%@” or an administrator can change it, and Dirnex can’t ask for those privileges yet."
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Solo el propietario de “%@” o un administrador puede cambiarlo, y Dirnex aún no puede solicitar esos privilegios."
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Seul le propriétaire de « %@ » ou un administrateur peut le modifier, et Dirnex ne peut pas encore demander ces privilèges."
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Solo il proprietario di “%@” o un amministratore può modificarlo e Dirnex non può ancora richiedere quei privilegi."
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "“%@”を変更できるのは所有者か管理者だけで、Dirnex はまだその権限を要求できません。"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "“%@”을(를) 변경할 수 있는 것은 소유자나 관리자뿐이며, Dirnex는 아직 해당 권한을 요청할 수 없습니다."
-          }
-        },
-        "nl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Alleen de eigenaar van ‘%@’ of een beheerder kan dit wijzigen, en Dirnex kan die rechten nog niet aanvragen."
-          }
-        },
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Tylko właściciel „%@” lub administrator może to zmienić, a Dirnex nie może jeszcze poprosić o te uprawnienia."
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Só o proprietário de “%@” ou um administrador pode alterá-lo, e o Dirnex ainda não pode solicitar esses privilégios."
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Изменить «%@» может только владелец или администратор, а Dirnex пока не может запросить эти права."
-          }
-        },
-        "uk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Змінити «%@» може лише власник або адміністратор, а Dirnex поки що не може запитати ці права."
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "只有“%@”的所有者或管理员才能更改它，Dirnex 暂时无法请求这些权限。"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "只有「%@」的擁有者或管理者才能更改它，Dirnex 暫時無法請求這些權限。"
           }
         }
       }
@@ -105187,6 +105916,95 @@
           "stringUnit": {
             "state": "translated",
             "value": "其中一些項目還有存取控制列表，此處未顯示。單獨開啟某個項目即可查看和編輯其列表。"
+          }
+        }
+      }
+    },
+    "Some of these items belong to someone else, so saving a change to them will ask for your administrator password.": {
+      "comment": "Info panel note when a multi-selection includes items the user does not own.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Einige dieser Objekte gehören jemand anderem, daher werden Sie beim Sichern einer Änderung nach einem Administratorpasswort gefragt."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Some of these items belong to someone else, so saving a change to them will ask for your administrator password."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Algunos de estos ítems pertenecen a otra persona, así que al guardar un cambio en ellos se te pedirá una contraseña de administrador."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Certains de ces éléments appartiennent à quelqu’un d’autre : enregistrer une modification les concernant demandera un mot de passe administrateur."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Alcuni di questi elementi appartengono a qualcun altro, quindi salvare una modifica su di essi richiederà una password di amministratore."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "これらの項目の一部はほかのユーザのものであるため、それらへの変更を保存するときに管理者パスワードの入力を求められます。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 항목 중 일부는 다른 사람의 소유이므로 해당 항목의 변경 사항을 저장하면 관리자 암호를 묻습니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sommige van deze onderdelen zijn van iemand anders, dus bij het bewaren van een wijziging eraan wordt om een beheerderswachtwoord gevraagd."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Niektóre z tych elementów należą do kogoś innego, więc zachowanie ich zmiany będzie wymagać hasła administratora."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Alguns destes itens pertencem a outra pessoa, portanto salvar uma alteração neles pedirá uma senha de administrador."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Некоторые из этих объектов принадлежат другому пользователю, поэтому при сохранении их изменения потребуется пароль администратора."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Деякі з цих об’єктів належать іншому користувачу, тому для збереження їхньої зміни знадобиться пароль адміністратора."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "其中一些项目属于其他人，因此存储对它们的更改时会要求输入管理员密码。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "其中一些項目屬於其他人，因此儲存對它們的更改時會要求輸入管理者密碼。"
           }
         }
       }
@@ -134900,95 +135718,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "你可以檢視這些內容，但只有該項目的擁有者或管理者才能更改。"
-          }
-        }
-      }
-    },
-    "You can view these, but they can only be changed when you own every selected item — one or more of these belongs to someone else.": {
-      "comment": "Info panel note when a multi-selection includes items the user does not own.",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Sie können diese ansehen, aber ändern lassen sie sich nur, wenn Ihnen jedes ausgewählte Objekt gehört – eines oder mehrere gehören jemand anderem."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "You can view these, but they can only be changed when you own every selected item — one or more of these belongs to someone else."
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Puedes verlos, pero solo puedes cambiarlos si eres el propietario de todos los ítems seleccionados: uno o varios pertenecen a otra persona."
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Vous pouvez les consulter, mais vous ne pouvez les modifier que si vous êtes propriétaire de tous les éléments sélectionnés — un ou plusieurs appartiennent à quelqu’un d’autre."
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Puoi visualizzarli, ma puoi modificarli solo se sei il proprietario di tutti gli elementi selezionati: uno o più appartengono a qualcun altro."
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "これらは表示できますが、変更できるのは選択したすべての項目を所有している場合のみです。1つ以上が別のユーザーの所有です。"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "이 항목은 볼 수 있지만, 선택한 모든 항목을 소유한 경우에만 변경할 수 있습니다. 하나 이상이 다른 사용자의 소유입니다."
-          }
-        },
-        "nl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Je kunt deze bekijken, maar je kunt ze alleen wijzigen als je elk geselecteerd object bezit — een of meer horen bij iemand anders."
-          }
-        },
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Możesz je wyświetlić, ale zmienić je możesz tylko wtedy, gdy jesteś właścicielem wszystkich zaznaczonych elementów — co najmniej jeden należy do kogoś innego."
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Их можно просматривать, но изменить их можно, только если вы владелец всех выбранных объектов — один или несколько принадлежат другому пользователю."
-          }
-        },
-        "uk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Їх можна переглядати, але змінити їх можна, лише якщо ви власник усіх вибраних об’єктів — один або кілька належать іншому користувачу."
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Você pode visualizá-los, mas só pode alterá-los se for o proprietário de todos os itens selecionados — um ou mais pertencem a outra pessoa."
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "你可以查看这些内容，但只有当你拥有所有选定项目时才能更改，其中一个或多个属于他人。"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "你可以檢視這些內容，但只有當你擁有所有選取項目時才能更改，其中一個或多個屬於他人。"
           }
         }
       }
@@ -175731,95 +176460,6 @@
         }
       }
     },
-    "“%@” can only be moved to a group you belong to, unless you are an administrator.": {
-      "comment": "Root-only save alert body: a chgrp to a foreign group; %@ is the item name.",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "„%@“ kann nur einer Gruppe zugewiesen werden, der Sie angehören – es sei denn, Sie sind Administrator."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "“%@” can only be moved to a group you belong to, unless you are an administrator."
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "“%@” solo puede pasar a un grupo al que pertenezcas, a menos que seas administrador."
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "« %@ » ne peut être attribué qu’à un groupe dont vous êtes membre, sauf si vous êtes administrateur."
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "“%@” può passare solo a un gruppo di cui fai parte, a meno che tu non sia un amministratore."
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "“%@”を移せるのは自分が所属するグループだけです（管理者を除く）。"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "관리자가 아니라면 “%@”은(는) 자신이 속한 그룹으로만 옮길 수 있습니다."
-          }
-        },
-        "nl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "‘%@’ kan alleen naar een groep waartoe u behoort, tenzij u beheerder bent."
-          }
-        },
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "„%@” można przenieść tylko do grupy, do której należysz — chyba że jesteś administratorem."
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "“%@” só pode ir para um grupo ao qual você pertence, a menos que você seja administrador."
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "«%@» можно передать только группе, в которой вы состоите, — если вы не администратор."
-          }
-        },
-        "uk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "«%@» можна передати лише групі, до якої ви належите, — якщо ви не адміністратор."
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "除非您是管理员，否则“%@”只能移至您所属的群组。"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "除非您是管理者，否則「%@」只能移至您所屬的群組。"
-          }
-        }
-      }
-    },
     "“%@” can’t be moved into itself.": {
       "comment": "Rename failure detail: a folder renamed to a path inside itself; %@ is its name.",
       "localizations": {
@@ -176172,95 +176812,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "「%1$@」目前無法登入「%2$@」。該帳號可能已停用，或因失敗嘗試次數過多而被鎖定。"
-          }
-        }
-      }
-    },
-    "“%@” carries a system flag that only an administrator can change, and Dirnex can’t ask for those privileges yet.": {
-      "comment": "Attributes save alert body when a change is root-only; %@ is the item name.",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "„%@“ trägt eine Systemmarkierung, die nur ein Administrator ändern kann, und Dirnex kann diese Rechte noch nicht anfordern."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "“%@” carries a system flag that only an administrator can change, and Dirnex can’t ask for those privileges yet."
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "“%@” tiene un indicador de sistema que solo un administrador puede cambiar, y Dirnex aún no puede solicitar esos privilegios."
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "« %@ » porte un indicateur système que seul un administrateur peut modifier, et Dirnex ne peut pas encore demander ces privilèges."
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "“%@” ha un contrassegno di sistema che solo un amministratore può modificare e Dirnex non può ancora richiedere quei privilegi."
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "“%@”には管理者だけが変更できるシステムフラグが設定されており、Dirnex はまだその権限を要求できません。"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "“%@”에는 관리자만 변경할 수 있는 시스템 플래그가 있으며, Dirnex는 아직 해당 권한을 요청할 수 없습니다."
-          }
-        },
-        "nl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "‘%@’ heeft een systeemvlag die alleen een beheerder kan wijzigen, en Dirnex kan die rechten nog niet aanvragen."
-          }
-        },
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "„%@” ma flagę systemową, którą może zmienić tylko administrator, a Dirnex nie może jeszcze poprosić o te uprawnienia."
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "«%@» имеет системный флаг, изменить который может только администратор, а Dirnex пока не может запросить эти права."
-          }
-        },
-        "uk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "«%@» має системний прапорець, змінити який може лише адміністратор, а Dirnex поки що не може запитати ці права."
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "“%@” tem um sinalizador de sistema que só um administrador pode alterar, e o Dirnex ainda não pode solicitar esses privilégios."
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "“%@”带有只有管理员才能更改的系统标志，Dirnex 暂时无法请求这些权限。"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "「%@」帶有只有管理者才能更改的系統旗標，Dirnex 暫時無法請求這些權限。"
           }
         }
       }

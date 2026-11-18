@@ -559,6 +559,14 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
 
 ### Waits, run loops and timing
 
+- **A test's "passed after" includes its wait for the main actor, so a slow figure is not a slow
+  child.** Seen 2026-11-18 (M40 Slice 4): the `@MainActor` tests that run an `osascript` took 30–47 s
+  in full runs against well under a second alone, and each pair finished within 10 ms of each other.
+  Moving `AdministratorShell` from `DispatchQueue.global` to a serial queue of its own (the rule
+  `ProcessWaiting.pipeQueue` records) left them at 33–42 s, so the child was never the wait.
+  `PanelPassiveRefreshTests` failed 3 of 4 full runs while those tests ran from the global queue, 0 of
+  2 with them skipped and 0 of 2 after the move. That is too few runs to name a cause; the move stays
+  for the rule's sake.
 - **Await a gesture through the decision the test needs to see.** In a full run on 2026-11-17,
   the ⇧F4 create task waited 19.1 s for its first main-actor turn and 17.2 s for its next turn
   after the first `stat`. The backend answered each call in under 0.1 ms. A sample of the main
@@ -10280,6 +10288,41 @@ probed live (2026-08-01/02) before any Swift; several results decided the shape.
   (`touch -a` / `touch -m` separately, since `touch -t` writes one value) so an untouched neighbor
   keeps its sub-second value. `chmod`/`chflags`/`chown`/`chgrp`/`touch` all take `-h` to act on a
   symlink itself, matching the `l*` syscalls the read path uses.
+- **`do shell script` hands back stdout only on success and stderr only on failure, so it cannot say
+  which items of a batch landed.** Probed 2026-11-18 (M40 Slice 4): `echo out; echo err >&2` returned
+  `out` and dropped `err`, and the same body ending `exit 3` raised `execution error: err… (3)` and
+  dropped `out`, with every newline turned into `\r`. A batch therefore reads its items back to
+  journal what is on disk (`EscalatedAttributeBatch.outcome`), and ends each body `exit $s`, with
+  `s=1` set by any item that failed, so the tools' stderr comes back at all.
+- **A body is bounded by `ARG_MAX`, 1 MiB with the environment, on its way to `/bin/sh -c`.** Probed
+  the same day: a 1 040 000-byte body ran, and 1 048 000 failed with "Argument list too long" from
+  `osascript` itself, or `An error occurred. (100013)` from `doShellScript` when the body arrived some
+  other way. `EscalatedAttributeBatch.bodyLimit` keeps a body to half of that.
+- **Many bodies go to one `osascript` over stdin, through JXA.** `osascript -l JavaScript` reads
+  `$.NSFileHandle.fileHandleWithStandardInput.readDataToEndOfFile`, splits on NUL and calls
+  `app.doShellScript(body, {administratorPrivileges: true})` per body: three 600 000-byte bodies ran in
+  one process, a body after a failing one still ran, and a body holding `$(…)` reached the shell
+  inert. Plain AppleScript cannot do this: `read (POSIX file "/dev/stdin")` fails with `-1700`. In
+  JXA a failed call throws an error whose `message` is the tool's stderr and whose `errorNumber` is
+  the exit status; `ObjC.import('stdlib')` gives `$.exit(n)`. Set `F_SETNOSIGPIPE` on the pipe Dirnex
+  writes, as for any child that may exit before reading.
+- **In JXA a cancelled password dialog is `-60006`, not `-128`.** Measured live 2026-11-18 with a
+  probe writing `errorNumber`: a real Cancel arrived as `-60006 User canceled.`, the Authorization
+  Services code (`errAuthorizationCanceled`) that `authd` logs as `Evaluate cancelled or failed
+  -60006`, where AppleScript's `do shell script` reports `-128` with the same words. A check on `-128`
+  alone read the Cancel as a failure, and the multi-selection Save went on to change the user's own
+  items. `AdministratorShell` treats both as a cancel.
+- **One password covers every `doShellScript` call in one `osascript` process, and no other process.**
+  Measured the same day through `authd`'s log (`log show --predicate 'process == "authd"'`): a
+  6 000-item batch in two bodies logged one `authenticated as user` and then `Succeeded authorizing`
+  for both bodies, 15 s apart, from the same `osascript`. Three separate `osascript`s a minute apart
+  each asked again: `authd` found no shared credential younger than its 300 s. So a batch goes to one
+  process. Its log is also the witness for whether a dialog was authenticated or cancelled, which a
+  capture of the app's own window cannot show: three runs meant as cancels read in it as
+  `authenticated as user oleg`, because the password had been typed.
+- **Each item's command is its own `fork`/`exec`, about 3 ms an item.** The 6 000 `chmod`s took
+  some 20 s as root. Joining items that take the same command into one call
+  (`/bin/chmod 775 a b c …`) would cut that, and is not done.
 - **Verify the translation on an *owned* file, unprivileged.** The whole point is that the *same*
   commands the root path runs are ordinary CLI, so a throwaway harness can run the generated body on a
   file the tester owns and let `ls -le@` / `stat -f` judge — the locked-file unlock/relock, the setuid
