@@ -19,18 +19,24 @@ final class CommandPaletteController: NSObject {
     let tableView = CommandPaletteTableView()
     private let scrollView = NSScrollView()
 
+    /// Everything this opening offers: the registry, the user's scripts, and the places and
+    /// workspaces (PLAN.md §M40 Slice 1). Built once when the palette opens and ranked on every
+    /// keystroke, since the places come from the stores and the mounted volumes.
+    private(set) var offered: [Command] = []
+    /// The ids in ``offered``, which is what the recents are kept to.
+    private(set) var offeredIDs: Set<String> = []
     /// The current ranked results the list renders. Rebuilt on every keystroke.
     var matches: [CommandMatch] = []
     /// The highlighted row, kept in step with `tableView.selectedRow`.
     var selectedIndex = 0
 
-    private let recents = CommandRecents()
+    let recents = CommandRecents()
     /// Resolves each command's effective (possibly rebound) shortcut so the palette shows the
     /// same glyph the menu does. Read live on each open, so a rebind is reflected next time.
     let keyBindings = KeyBindingStore.shared
     /// The window the palette floats over and re-keys on dismiss, so the dispatched command
     /// runs against that window's focused pane rather than the palette.
-    private weak var targetWindow: NSWindow?
+    private(set) weak var targetWindow: NSWindow?
 
     private static let panelWidth: CGFloat = 620
     private static let panelHeight: CGFloat = 420
@@ -52,6 +58,8 @@ final class CommandPaletteController: NSObject {
         // The search field is reused across opens, so clear last time's query before
         // ranking — otherwise the field shows stale text while the list resets to recents.
         searchField.stringValue = ""
+        offered = commandsOffered()
+        offeredIDs = Set(offered.map(\.id))
         reload(query: "")
         position(panel, over: window)
         panel.makeKeyAndOrderFront(nil)
@@ -74,7 +82,11 @@ final class CommandPaletteController: NSObject {
     func runSelected() {
         guard matches.indices.contains(selectedIndex) else { return }
         let id = matches[selectedIndex].command.id
-        recents.record(id)
+        if PaletteDestination.isDestination(commandID: id) {
+            runDestination(id)
+            return
+        }
+        recents.record(id, among: offeredIDs)
         dismiss()
         // A user script has no static selector — route it to the focused pane's `runUserScript`,
         // carrying the script name in a synthetic sender's `representedObject` (the same shape the
@@ -100,13 +112,10 @@ final class CommandPaletteController: NSObject {
 
     // MARK: - Results
 
-    /// Re-rank against `query` and refresh the list, landing the highlight on the top result.
-    /// The registry commands are joined with the user's saved scripts (read fresh each open, so a
-    /// script created in the organizer is searchable immediately) — they rank and render alongside
-    /// the built-ins, and `runSelected` routes a `userScript.*` pick to the script runner.
+    /// Re-rank ``offered`` against `query` and refresh the list, landing the highlight on the top
+    /// result.
     func reload(query: String) {
-        let commands = LocalizedCatalog.all + UserScriptStore.load().paletteCommands
-        matches = CommandMatcher.search(query, in: commands, recents: recents.ids)
+        matches = CommandMatcher.search(query, in: offered, recents: recents.ids(among: offeredIDs))
         selectedIndex = matches.isEmpty ? -1 : 0
         tableView.reloadData()
         if selectedIndex >= 0 {
@@ -160,7 +169,10 @@ final class CommandPaletteController: NSObject {
     }
 
     private func makeContentView() -> NSView {
-        searchField.placeholderString = String(localized: "Run a command…")
+        searchField.placeholderString = String(
+            localized: "Run a command or go to a place…",
+            comment: "Command palette search-field placeholder: it runs commands and opens places and workspaces."
+        )
         searchField.font = .systemFont(ofSize: 20, weight: .regular)
         searchField.keepToOneLine()
         searchField.isBezeled = false

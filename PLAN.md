@@ -325,6 +325,26 @@ linearly, so it was timed with 150 extra rows: 0.2–0.5 ms a keystroke in Relea
 it stays as it is. **For the app half:** `CommandRecents.ids` keeps only registry ids, which is why a
 user script never shows as recent today, so it has to learn destination ids too.
 
+**2026-11-18: Slice 1 landed** (the app half). ⌘K builds its list once per opening, from the registry,
+the user's scripts, and `PalettePlaces`, which names each place with `SidebarPlacePresentation` and
+gives it its section's name as a keyword, in the user's language and in English; a workspace is its
+name, found by the word Workspace. A pick of a destination resolves its id again, records it unless
+it is inside an unlocked vault (`VaultMounts.shared`), and opens through `BrowserWindowController.open`,
+which hands a place to the sidebar's `activate(_:)` and a workspace to `applyWorkspace`; one that has
+gone beeps. `CommandRecents` now keeps whatever the palette offers, so a user script shows as recent
+too, and a place that has gone drops out at the next pick. The placeholder reads "Run a command or go
+to a place…", in 14 languages. 8 app tests; filtering the recents to the registry again failed the
+one that watches it. **Run live** in `build/live-copy` with the screen locked, so through a temporary
+env-gated probe that opened the palette, set the query, ranked and picked, with no keys pressed: from
+a pin "Alpha Pin" and a workspace "M40 Probe" seeded through the core's encoders, "alpha" ranked the
+pin first and opened it in the left pane, "m40 probe" put the panes at Beta and Gamma, and the next
+opening's resting list led with the workspace and the pin. "fav" found the pin by its section, below
+Favorites… and Add to Favorites, whose titles match: a title hit outranks a keyword hit. No TCC request,
+and the probe is gone. **Not seen:** ⌘K, typing and Return pressed for real, the list drawn, a place
+inside a vault, and a translation. The full app suite failed once in `QuickViewScrollPageTests` (a
+converted workbook's frame did not load within its 10 s under the whole suite's load), and the suite
+passed alone twice.
+
 The app's share of selling Dirnex (the private companion repo `dirnex-home`, milestones C1–C15) was
 two milestones, **M29** (a license, and the reminder it removes) and **M30** (Report a Bug), both
 shipped and archived in [docs/HISTORY.md](docs/HISTORY.md). Neither changed what Dirnex *is*: it
