@@ -4,6 +4,10 @@ import DirnexCore
 /// The copy and move dialog's view (PLAN.md §M41): first the question, then, in the same sheet, the
 /// progress. ``TransferDialog`` drives it; this only lays out, draws and reports its buttons.
 ///
+/// **The question's folder is a field** (asked 2026-11-19): it opens on the other pane's folder with
+/// the path selected, as Total Commander's F5 does, so typing replaces it and an arrow key edits it.
+/// The progress names the folder in a plain label instead, since it can no longer change.
+///
 /// **Return and Escape are the same two buttons in both phases**, retitled rather than replaced:
 /// OK becomes Background and Cancel stays Cancel. So Return, Return starts a copy and sends it to the
 /// queue bar, Escape on the question copies nothing, and Escape, Return on the progress stops it.
@@ -28,6 +32,14 @@ final class TransferDialogController: NSViewController {
     private static let inset: CGFloat = 20
 
     let titleLabel = NSTextField(wrappingLabelWithString: "")
+    /// Where the items go, while the dialog asks: a path on the destination's own location, with `~`
+    /// for home on this Mac, and the path on the server for a server, whose name stands in front of
+    /// the field in ``locationLabel``.
+    let destinationField = NSTextField.singleLine(truncating: .byTruncatingMiddle)
+    let locationLabel = NSTextField(labelWithString: "")
+    /// Why the typed folder cannot take the items, under the field.
+    let refusalLabel = NSTextField(wrappingLabelWithString: "")
+    /// The folder the progress is writing into.
     let pathLabel = NSTextField(labelWithString: "")
     let statusLabel = NSTextField(labelWithString: "")
     let fileBar = NSProgressIndicator()
@@ -38,6 +50,10 @@ final class TransferDialogController: NSViewController {
     let cancelButton = NSButton(title: "", target: nil, action: nil)
     let defaultButton = NSButton(title: "", target: nil, action: nil)
     private let progressGroup = NSStackView()
+    private let destinationRow = NSStackView()
+    private let content = NSStackView()
+    /// What the field opened with, so an untouched field answers the summary's own folder exactly.
+    private var initialDestinationText = ""
 
     private(set) var phase: Phase = .asking
     private let summary: TransferSummary
@@ -57,15 +73,19 @@ final class TransferDialogController: NSViewController {
         // Width fixed, height from the content: presented with `presentAsSheet`, the sheet follows the
         // constraints, so it grows when the progress rows appear.
         let root = NSView()
-        let content = NSStackView(views: [titleLabel, pathLabel, progressGroup, buttonRow()])
+        for view in [titleLabel, destinationRow, refusalLabel, pathLabel, progressGroup, buttonRow()] {
+            content.addArrangedSubview(view)
+        }
         content.orientation = .vertical
         content.alignment = .leading
         content.spacing = 8
-        content.setCustomSpacing(16, after: progressGroup)
-        content.setCustomSpacing(16, after: pathLabel)
+        for view in [destinationRow, refusalLabel, pathLabel, progressGroup] {
+            content.setCustomSpacing(16, after: view)
+        }
         content.translatesAutoresizingMaskIntoConstraints = false
         root.addSubview(content)
         buildLabels()
+        buildDestination()
         buildProgressGroup()
         NSLayoutConstraint.activate([
             root.widthAnchor.constraint(equalToConstant: Self.width),
@@ -88,13 +108,22 @@ final class TransferDialogController: NSViewController {
         showAsking()
     }
 
+    override func viewDidAppear() {
+        super.viewDidAppear()
+        // Return and Escape still answer the buttons: key equivalents run ahead of the field editor
+        // (docs/LIVE-VERIFICATION.md, the field editor and a button's Escape).
+        if phase == .asking { destinationField.selectText(nil) }
+    }
+
     // MARK: - Phases
 
     private func showAsking() {
         phase = .asking
         title = TransferDialogText.question(summary)
         titleLabel.stringValue = TransferDialogText.question(summary)
-        pathLabel.stringValue = TransferDialogText.location(summary.destination)
+        destinationRow.isHidden = false
+        refusalLabel.isHidden = true
+        pathLabel.isHidden = true
         progressGroup.isHidden = true
         dontAskCheckbox.isHidden = false
         pauseButton.isHidden = true
@@ -108,11 +137,19 @@ final class TransferDialogController: NSViewController {
         )
     }
 
-    /// Turn the question into the progress dialog, in place.
-    func showProgress() {
+    /// Turn the question into the progress dialog, in place, naming `destination`: the folder the
+    /// field named when OK was pressed, the summary's own when none is given.
+    func showProgress(destination: VFSPath? = nil) {
         phase = .progress
-        title = TransferDialogText.title(kind: summary.kind, destination: summary.destination)
+        let destination = destination ?? summary.destination
+        title = TransferDialogText.title(kind: summary.kind, destination: destination)
         titleLabel.stringValue = title ?? ""
+        // The field goes, and the keys with it: a hidden field editor would still take typing.
+        view.window?.makeFirstResponder(nil)
+        destinationRow.isHidden = true
+        refusalLabel.isHidden = true
+        pathLabel.stringValue = TransferDialogText.location(destination)
+        pathLabel.isHidden = false
         progressGroup.isHidden = false
         dontAskCheckbox.isHidden = true
         pauseButton.isHidden = false
@@ -166,7 +203,9 @@ final class TransferDialogController: NSViewController {
     private func buildLabels() {
         titleLabel.font = .boldSystemFont(ofSize: NSFont.systemFontSize)
         titleLabel.preferredMaxLayoutWidth = Self.width - 2 * Self.inset
-        pathLabel.font = .systemFont(ofSize: NSFont.smallSystemFontSize)
+        // The title's size, in regular weight: at the small size the destination read as a footnote
+        // (asked 2026-11-19), though it is the half of the question the dialog is there to confirm.
+        pathLabel.font = .systemFont(ofSize: NSFont.systemFontSize)
         pathLabel.textColor = .secondaryLabelColor
         pathLabel.lineBreakMode = .byTruncatingMiddle
         pathLabel.isSelectable = true
@@ -232,6 +271,56 @@ final class TransferDialogController: NSViewController {
         return row
     }
 
+    // MARK: - The destination field
+
+    /// The folder the field names: the summary's own while the field reads as it opened, so the round
+    /// trip through `~` cannot move it, and otherwise the typed path on the same location.
+    var typedDestination: VFSPath {
+        let text = destinationField.stringValue
+        return text == initialDestinationText
+            ? summary.destination
+            : TypedFolder.resolve(text, from: summary.destination)
+    }
+
+    /// Say why the typed folder cannot take the items, and put the insertion point back in the field.
+    func showRefusal(_ sentence: String) {
+        refusalLabel.stringValue = sentence
+        refusalLabel.isHidden = false
+        content.setCustomSpacing(6, after: destinationRow)
+        view.window?.makeFirstResponder(destinationField)
+    }
+
+    /// The field opens on the summary's folder. Empty, it means that folder too, which the
+    /// placeholder shows.
+    private func buildDestination() {
+        let destination = summary.destination
+        let server = destination.backendRootTitle
+        initialDestinationText = server == nil
+            ? (destination.path as NSString).abbreviatingWithTildeInPath
+            : destination.path
+        destinationField.stringValue = initialDestinationText
+        destinationField.placeholderString = initialDestinationText
+        destinationField.delegate = self
+        destinationField.setAccessibilityTitleUIElement(titleLabel)
+        destinationField.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        destinationField.widthAnchor.constraint(greaterThanOrEqualToConstant: 200).isActive = true
+        locationLabel.stringValue = server ?? ""
+        locationLabel.isHidden = server == nil
+        locationLabel.textColor = .secondaryLabelColor
+        locationLabel.lineBreakMode = .byTruncatingMiddle
+        locationLabel.setContentHuggingPriority(.required, for: .horizontal)
+        locationLabel.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+        destinationRow.orientation = .horizontal
+        destinationRow.alignment = .firstBaseline
+        destinationRow.spacing = 6
+        for view in [locationLabel, destinationField] {
+            destinationRow.addArrangedSubview(view)
+        }
+        refusalLabel.font = .systemFont(ofSize: NSFont.smallSystemFontSize)
+        refusalLabel.textColor = .systemRed
+        refusalLabel.preferredMaxLayoutWidth = Self.width - 2 * Self.inset
+    }
+
     // MARK: - Buttons
 
     @objc private func confirm(_ sender: Any?) {
@@ -247,5 +336,14 @@ final class TransferDialogController: NSViewController {
 
     @objc private func pause(_ sender: Any?) {
         onPause?()
+    }
+}
+
+extension TransferDialogController: NSTextFieldDelegate {
+    /// An edit answers the refusal: the sentence was about what the field said before.
+    func controlTextDidChange(_ obj: Notification) {
+        guard !refusalLabel.isHidden else { return }
+        refusalLabel.isHidden = true
+        content.setCustomSpacing(16, after: destinationRow)
     }
 }

@@ -33,7 +33,11 @@ protocol PanelHost: ClosedTabHost {
     /// otherwise, and for a script, `start` runs at once with ``TransferTracker/untracked``. `start`
     /// queues the jobs, taking each one's id from the tracker it is given, then calls `finish()` on
     /// it. It does not run at all if the user cancels the question.
-    func runTransfer(_ summary: TransferSummary, start: @escaping (TransferTracker) -> Void)
+    ///
+    /// `start` is handed the folder the items go into: the summary's own, or the one typed into the
+    /// dialog's field in its place, which ``TransferSummary/refusal`` has passed and which may not
+    /// be there yet (2026-11-19).
+    func runTransfer(_ summary: TransferSummary, start: @escaping (TransferTracker, VFSPath) -> Void)
 
     /// Queue `operations` in this order, then return once the window's queue has nothing left to do.
     /// A sync's record is kept after its copies have landed, and `enqueue` cannot say when that is.

@@ -40,7 +40,10 @@ extension PanelViewController {
                 message: failureTitle,
                 detail: String(
                     localized: "“\(shownName)” can’t be moved into itself.",
-                    comment: "Rename failure detail: a folder renamed to a path inside itself; %@ is its name."
+                    comment: """
+                    Failure detail: a folder would be moved inside itself, by a rename to a path inside \
+                    it or a move into a folder inside it; %@ is its name.
+                    """
                 )
             )
             focusTable()

@@ -446,7 +446,11 @@ leaves nothing behind. **F2 takes a path too**, since 2026-11-18: `Archive/2025/
 item below its own folder under the last name, making the folders on the way, and one ⌘Z puts it back
 and removes them. Occupied names are refused, as is a folder moved into itself; an S3 prefix goes to the
 queue as a rename job into the new folder, and inside an archive the folders and the move are one
-rewrite. ⇧F2 still refuses a `/`. Run live on this Mac's disk (F7, its undo and redo, ⇧F4, ⌥F5 into
+rewrite. ⇧F2 still refuses a `/`. **F5 and F6 take a folder** in their dialog's field, since
+2026-11-19: a path on the other pane's location, relative to its folder or from a root, which is made
+with the folders on its way on OK and journaled for ⌘Z; the marks' own folder and one inside a marked
+folder are refused under the field. Run live on this Mac's disk (F5, its undo, and the refusal); a
+server destination is pinned by `TransferDialogFieldTests` only. Run live on this Mac's disk (F7, its undo and redo, ⇧F4, ⌥F5 into
 `backups/2026` and against a file in the way, and F2 with its undo and redo). A server and an archive are pinned by tests
 (`NestedCreateRouteTests`, `PathRenameTests`, `ArchiveCreateTests`, and the core's
 `NestedCreationTests`, `NestedMoveTests` and `PackFoldersTests`); a cloud mount goes through the same local backend and was not run live.

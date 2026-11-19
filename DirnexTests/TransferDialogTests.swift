@@ -266,7 +266,7 @@ struct TransferDialogTests {
 // MARK: - DialogFixture
 
 @MainActor
-private final class DialogFixture {
+final class DialogFixture {
     static let summary = TransferSummary(
         kind: .copy,
         sources: [entry("a.txt", kind: .file)],
@@ -293,18 +293,21 @@ private final class DialogFixture {
     let window: NSWindow
     private(set) var starts = 0
     private(set) var ids: [OperationJobID] = []
+    /// The folder each start was handed.
+    private(set) var destinations: [VFSPath] = []
 
-    init() {
+    init(summary: TransferSummary = DialogFixture.summary) {
         dialog = TransferDialog(
-            summary: Self.summary,
+            summary: summary,
             control: queue.control,
             preferences: preferences,
             onClose: {}
         )
         window = NSWindow(contentViewController: dialog.controller)
         window.isReleasedWhenClosed = false
-        dialog.wire { [unowned self] tracker in
+        dialog.wire { [unowned self] tracker, destination in
             starts += 1
+            destinations.append(destination)
             ids.append(tracker.nextID())
             tracker.finish()
         }
@@ -358,7 +361,7 @@ private final class DialogFixture {
 
 /// What the dialog asked of the queue.
 @MainActor
-private final class QueueRecorder {
+final class QueueRecorder {
     private(set) var paused: [OperationJobID] = []
     private(set) var resumed: [OperationJobID] = []
     private(set) var cancelled: [OperationJobID] = []

@@ -22821,6 +22821,36 @@ renamed the wrong row, a folder, because a seeded `cursorPath` was absolute wher
 was a check of a folder's move nobody planned. **Not seen live**: the refusals, whose alerts no
 background capture reaches; an archive member; a server, and an S3 prefix's job; a translation.
 
+**2026-11-19: F5 and F6 take a typed folder** (Oleg's request, with a screenshot of the question, and his
+call to make a missing folder at once where Export asks first; core and app). The question's folder was a
+label; first it went from 11 pt to the title's 13 pt, then it became a field. It opens on the other pane's
+folder with the path selected, as Total Commander's F5 does, so typing replaces it and Return still
+answers OK, since key equivalents run ahead of the field editor. A server's folder is its path, with the
+server's name beside the field. The path is read by `TypedFolder` (core), which Export's folder field now
+shares: empty is the other pane's folder, a relative path is taken from it, `~` is this Mac's home on this
+disk only, and `.` and `..` are resolved by their spelling, so `dest/..` cannot pass as a folder the
+refusals do not see. With the dialog still up, the summary's `refusal` turns down the marks' own folder
+and a folder inside a marked one, said in red under the field, and an edit clears it. The second refusal
+is also asked before the dialog now, of the other pane's own folder, since F5 had no such check and the
+dialog can be off. On OK, a folder that is not there is made with the folders on its way
+(`NestedCreation.makeFolders(upTo:)`) and journaled as a New Folder of its own before the jobs are queued,
+so ⌘Z takes back the copy and then the folders, as Export's are. A file in the way is the create's failure
+alert, and the tracker is told nothing is coming. `start` is handed the chosen folder
+(`PanelHost.runTransfer`), and the progress names it. One sentence is new in all 14 languages ("can't be
+copied into itself"), and the move twin shares F2's, whose comment now covers both.
+
+Tests: 4 core (`TypedFolderTests`) and 8 app: `TransferDialogFieldTests` through the dialog in a plain
+window, and `TransferDestinationTests` through F5 and F6 on real files, with `StubPanelHost.typedDestination`
+standing in for the field. Negative controls failed by name: without the `..` step, without the create,
+and without the recursion refusal. 6 003 core tests in 592 suites and 2 758 app tests in 430 suites pass
+(one known issue, declared by its test), both linters and the localization check are clean, and Oleg's
+defaults domain was unchanged. Seen live in `app.dirnex.Dirnex.live`: F5 from the function bar opened the
+question on the other pane's folder with the path selected; `new folder/deeper` typed in made both folders
+and copied the file into them byte for byte; one Undo removed the copy and a second removed both folders;
+`../src` kept the question up with "Can’t copy into the same folder" under the field. **Not seen live**: a
+real key in the field (the background tools write the field's value), a server, F6, ⇧F5 into a typed
+folder, the create's failure alert, the light appearance and a translation.
+
 ### After M19 — the follow-on log (2026-08-07 → 2026-09-21)
 
 Ninety-one dated passes that landed outside a milestone of their own, between M18's close on

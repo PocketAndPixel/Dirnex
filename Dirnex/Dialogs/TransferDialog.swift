@@ -64,15 +64,19 @@ final class TransferDialog {
         controller = TransferDialogController(summary: summary)
     }
 
-    /// Ask, as a sheet on `presenter`'s window. `start` runs on OK, and never on Cancel.
-    func present(from presenter: NSViewController, start: @escaping (TransferTracker) -> Void) {
+    /// Ask, as a sheet on `presenter`'s window. `start` runs on OK, and never on Cancel, with the
+    /// folder the field names.
+    func present(
+        from presenter: NSViewController,
+        start: @escaping (TransferTracker, VFSPath) -> Void
+    ) {
         self.presenter = presenter
         wire(start: start)
         presenter.presentAsSheet(controller)
     }
 
     /// The buttons, apart from presenting, so a test can drive the dialog without a sheet.
-    func wire(start: @escaping (TransferTracker) -> Void) {
+    func wire(start: @escaping (TransferTracker, VFSPath) -> Void) {
         controller.onConfirm = { [weak self] dontAskAgain in
             self?.confirm(dontAskAgain: dontAskAgain, start: start)
         }
@@ -99,25 +103,36 @@ final class TransferDialog {
 
     // MARK: - Asking
 
-    private func confirm(dontAskAgain: Bool, start: (TransferTracker) -> Void) {
+    /// OK: check the folder the field names with the dialog still up, then start. A folder that is
+    /// not there yet is the pane's to make, as Oleg asked on 2026-11-19, so it passes here; one the
+    /// items cannot go into is said under the field, and the dialog keeps asking.
+    private func confirm(dontAskAgain: Bool, start: (TransferTracker, VFSPath) -> Void) {
         guard !isClosed else { return }
+        let destination = controller.typedDestination
+        if let refusal = summary.refusal(destination) {
+            controller.showRefusal(refusal)
+            return
+        }
         if dontAskAgain {
             // The box answers this copy too: someone who wants no dialogs gets none now either.
             preferences.confirmTransfers = false
             close()
-            start(.untracked)
+            start(.untracked, destination)
             return
         }
         confirmedAt = uptime()
-        controller.showProgress()
+        controller.showProgress(destination: destination)
         startDetailTimer()
-        start(TransferTracker(
-            onTrack: { [weak self] id in self?.ids.append(id) },
-            onFinish: { [weak self] in
-                self?.isSubmitting = false
-                self?.refresh()
-            }
-        ))
+        start(
+            TransferTracker(
+                onTrack: { [weak self] id in self?.ids.append(id) },
+                onFinish: { [weak self] in
+                    self?.isSubmitting = false
+                    self?.refresh()
+                }
+            ),
+            destination
+        )
     }
 
     // MARK: - Following the jobs
