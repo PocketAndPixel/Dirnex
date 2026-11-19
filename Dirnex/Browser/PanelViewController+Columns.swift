@@ -13,10 +13,6 @@ extension PanelViewController {
         /// the *directory* rather than the tab; it is a badge in the name cell now (`GitBadgeView`),
         /// which is why the bookkeeping below still sums a footprint over a set of one.
         case sizeBar
-        /// A server's own description of each of its shares, shown only while a pane lists an SMB
-        /// server's shares (PLAN.md §M40 Slice 8, `PanelViewController+ShareComments`). Contextual
-        /// like the bar, and for the same reason: everywhere else it would be a column of blanks.
-        case comment
 
         var title: String {
             switch self {
@@ -38,14 +34,6 @@ extension PanelViewController {
             // Deliberately blank: the column is a picture of the Size column beside it, and a
             // second "Size" heading would read as a second quantity. Its tooltip names it.
             case .sizeBar: return ""
-            case .comment:
-                return String(
-                    localized: "Comment",
-                    comment: """
-                    File-list column header on a server's list of shared folders: the server's \
-                    description of each one.
-                    """
-                )
             }
         }
 
@@ -69,7 +57,7 @@ extension PanelViewController {
         /// it comes and goes with its mode.
         var isContextual: Bool {
             switch self {
-            case .sizeBar, .comment: return true
+            case .sizeBar: return true
             case .name, .size, .date: return false
             }
         }
@@ -83,9 +71,6 @@ extension PanelViewController {
             // Not `nil` for want of a meaning — the bar *is* size, and clicking it plainly means
             // "sort by that". It routes to the same key the Size header does, so the two agree.
             case .sizeBar: return .size
-            // A list of a few shares, sorted by name; nothing to gain from sorting by what the
-            // server says about them.
-            case .comment: return nil
             }
         }
 
@@ -113,9 +98,6 @@ extension PanelViewController {
             // number right-aligns, into the reserved slot in Both), and the user can drag it wider for
             // a longer bar. Deliberately not scaled below `minWidth`, which stays the floor for Both.
             case .sizeBar: return 84
-            // In a tree only: on a flat list it takes the room Size and Date leave
-            // (`PanelViewController+ShareComments`).
-            case .comment: return 200
             }
         }
 
@@ -127,7 +109,6 @@ extension PanelViewController {
             // Below this the track is shorter than the label beside it and the bar stops being a
             // comparison at all.
             case .sizeBar: return 80
-            case .comment: return 80
             }
         }
     }
@@ -193,10 +174,7 @@ extension PanelViewController {
         guard paneWidth > 0, index >= 0 else { return }
         let name = tableView.tableColumns[index]
         let spacing = tableView.intercellSpacing.width
-        // A hidden column takes no room: Size and Date on a list of shares
-        // (`PanelViewController+ShareComments`).
-        let others = tableView.tableColumns.filter { !$0.isHidden }
-            .reduce(0) { $0 + $1.width + spacing } - name.width
+        let others = tableView.tableColumns.reduce(0) { $0 + $1.width + spacing } - name.width
         let width = max(name.minWidth, paneWidth - others)
         if name.width != width { name.width = width }
     }
@@ -227,7 +205,6 @@ extension PanelViewController {
     private var contextualColumnFootprint: Double {
         var total = 0.0
         if isSizeBarColumnInstalled { total += Double(sizeBarColumnFootprint) }
-        total += Double(commentColumnFootprint)
         return total
     }
 
@@ -264,12 +241,10 @@ extension PanelViewController {
             // they are absent from every stored layout, so the reordering below would otherwise
             // shuffle them to the far end of the table, one column at a time.
             updateSizeBarColumn()
-            updateCommentColumn()
             // The widths below were stored at whatever width the pane had then.
             fitNameColumnToPane()
         }
         setSizeBarColumnInstalled(false)
-        removeCommentColumn()
 
         var targetIndex = 0
         for item in layout {

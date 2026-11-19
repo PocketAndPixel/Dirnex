@@ -3078,6 +3078,17 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
   the folder where the truth is a claim about the question. Drop such rows from the projection
   entirely, including from any pending-work set, or a row with no total is pending forever and
   gets re-queued on every render.
+- **A tab switched to before its first listing leaves the table drawing the tab it replaced.** The
+  panes share one `NSTableView` across their tabs, and only a reload asks the data source again, so
+  until the new tab's listing landed and `reloadEverything` ran, the previous tab's rows and path stayed
+  on screen under the new tab's chip. Seen 2026-11-19 opening a server into a new tab, where the listing
+  takes a second or more. Anything changed at activation that follows the listing showed against the old
+  rows too: the share list's Comment column of the time appeared over a local folder's files. A tab with
+  no listing now draws itself, empty, unless the table already shows its folder (`renderedPath`, set by
+  both reloads), and the status line stays blank until it lists. Not at the pane's first activation,
+  though, when nothing stale is on screen: drawing there synced the cursor before any listing, and four
+  suites whose panes set their rows before the view loads failed (a `..` cursor, sheets that never
+  attached). Change what follows the listing in the same pass as the reload, not at activation.
 
 #### A table of billions of rows
 

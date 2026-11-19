@@ -259,7 +259,8 @@ Decided before Slice 1 (2026-11-18, Oleg, on the probes above):
   account, or opens the Connect sheet filled in when there is none. Never by the plugin's listing
   without `OpenSession`, which M35 refused.
 - **A Comment column in a server's share list**, in place of Size and Modified, which a share row
-  leaves empty, shown only while a pane lists shares.
+  leaves empty, shown only while a pane lists shares. Replaced after the slice by the comment after
+  the share's name, the columns unchanged (Oleg, 2026-11-19, below).
 - **The stock tag names are measured before anything is built**: a clone of `dirnex-ci-base` set to
   German, a file tagged in Finder, and what Finder wrote read back. The runner's own VM is not
   touched. The design follows what Finder writes.
@@ -620,6 +621,32 @@ redacted at once and deleted, and LIVE-VERIFICATION.md now says how not to. The 
 **Not handled:** a share the mount spells in another case than the server lists it lands the cursor on
 the first row; and a source whose account was dropped for length is tried as a guest. **Not seen:** a
 guest mount, a share with a space in its name, a mount of a folder inside a share, and a translation.
+
+**2026-11-19: the comment moved into the name, and a tab draws itself before its listing** (Oleg, after
+Slice 8). Two things showed up opening the NAS from the sidebar into a new tab. The new tab sat under the
+previous tab's files and path for the second its listing took. That was older than the slice: a tab
+activated before its first listing left the table as it was. And in a tree the Comment column, paid for
+out of Name, pushed Date off a narrow pane. **Decided with Oleg:** no Comment column. A share's comment
+is drawn after its name, in the secondary label color (on the cursor's fill, its ink at 70 %), and the
+name label's tail truncation shortens it before the name (`FileCellView+Comment`); the comment rides in
+the label's own text, its run marked by an attribute so a restyle finds where the name ends. Size, Date
+and the size bars are back as they were on a share list, dashes on a share's row. And a tab activated
+before its first listing draws itself, empty, with its own path, unless the table already shows its
+folder (⌘T), where the same rows stay, or nothing has been drawn yet (the pane's first activation, where
+drawing synced the cursor before any listing and failed four suites); its status line stays blank rather
+than say "0 items" until it lists, so `PaneReconnectTests` now marks its tab listed where it clears the
+reason, as the load that clears it does. The Comment column's code, its header and its 14 translations are gone. **Asked with it:** whether
+Size and Date can be had for a share row. They cannot: the share list carries no size or date
+(`NetShareEnum` answers name, type and comment, and with admin rights path and permissions), and a
+share's capacity or its root's date needs a session to that share, which here would mean mounting each
+one to list them. They stay for the files under an expanded share in a tree. App: 5 tests replacing the
+column's, five negative controls each failing the test that watches it (no comment drawn, a restyle not
+finding the comment's run, the unlisted tab not drawn, drawn on its own folder too, the status counting
+an unlisted tab). Final runs: both CI-pinned linters clean, the full app suite green (2750 tests),
+`check_localization_keys.py` clean (1396 keys), and all 73 saved preference keys unchanged by content.
+**Seen by Oleg** in the rebuilt `build/debug-dd` the same day: the server opened from the sidebar into a
+new tab showed `olegasd@nas` with an empty list until the shares arrived, and in a tree `home` read "Home
+directory of olegasd" after its name, with Size and Date filled for the folders inside it.
 
 The app's share of selling Dirnex (the private companion repo `dirnex-home`, milestones C1–C15) was
 two milestones, **M29** (a license, and the reminder it removes) and **M30** (Report a Bug), both

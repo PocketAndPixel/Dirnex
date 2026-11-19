@@ -71,13 +71,15 @@ extension PanelViewController {
         cell.activeTreeGuideLevel = nil
         cell.onDisclosureToggle = nil
         cell.applyTreeLayout()
+        // Recycled from real rows, a share's among them, whose comment would follow the name.
+        cell.comment = nil
         switch column {
         case .name:
             cell.imageView?.image = FileIconProvider.parentIcon
             cell.textField?.stringValue = ".."
             cell.textField?.alignment = .natural
         // `..` is a way out, not a file: it has no size and no date.
-        case .size, .date, .comment:
+        case .size, .date:
             cell.textField?.stringValue = ""
         // Unreachable: the bar column is answered by `sizeBarCell` before the parent row is ever
         // considered, because its cell is not a `FileCellView`. Listed for exhaustiveness.

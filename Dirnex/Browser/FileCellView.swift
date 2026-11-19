@@ -34,6 +34,10 @@ final class FileCellView: NSTableCellView {
     /// gutter the letter *was* the information and it had nowhere else to go; now that the letter
     /// rides in `GitBadgeView`, which carries its own color, no Git state reaches the text at all.
     var typeColor: NSColor?
+    /// What the server says about this row, drawn after the name in a quieter ink: an SMB share's
+    /// comment on its server's list (PLAN.md §M40 Slice 8, `FileCellView+Comment`). Set on every
+    /// render, `nil` included, since a cell is recycled from row to row.
+    var comment: String?
 
     /// The Finder-tag dots at the right edge of the name (PLAN.md §M6), or `nil` on the cells that
     /// aren't the name. Where Finder puts them, and their own view rather than styled text, because
@@ -398,6 +402,7 @@ final class FileCellView: NSTableCellView {
         // reach a white-on-pale-yellow row on their first try. Untouched, this *is*
         // `.alternateSelectedControlTextColor` — see `PanelPalette.cursorForeground`.
         textField.textColor = backgroundStyle == .emphasized ? palette.cursorForeground : resting
+        applyComment()
         // An open rename field is a text box on the row, not text on the cursor's fill, and the row
         // view pushes its style *after* the field opens, which runs this again. The cursor's ink
         // drew the name white on the box's white in the light appearance (reported 2026-11-11).

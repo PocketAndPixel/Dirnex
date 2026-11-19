@@ -28,6 +28,10 @@ final class PanelViewController: NSViewController {
     /// this at a scratch domain too, because `persistState()` also runs on its own after a
     /// navigation lands, later than any cleanup the test could do.
     var tabStateDefaults: UserDefaults = .standard
+    /// The folder whose rows the table last drew, set by the two renders that reload it
+    /// (`PanelViewController+Render`), and `nil` until the first. A tab activated before its first
+    /// listing draws itself only when this is somewhere else (`activateTab`).
+    var renderedPath: VFSPath?
     weak var host: PanelHost?
 
     var isActivePanel = false {

@@ -45,6 +45,13 @@ extension PanelViewController {
             // them off must not inherit the outgoing tab's column.
             updateSizeVisualization()
         } else {
+            // Not listed yet. The rows on screen are still the tab that was showing, and a server's
+            // listing takes a second or more, so a server opened in a new tab sat under the
+            // previous tab's files and path until its own arrived (reported 2026-11-19). It draws
+            // itself, empty, until then. Not when the table already shows its folder, as after ⌘T,
+            // where the same rows are right and an empty pane would only flash, and not at the
+            // pane's first activation, when nothing has been drawn that could be stale.
+            if let renderedPath, renderedPath != panel.path { reloadEverything() }
             navigate(to: panel.path, unasked: unasked)
         }
         // Re-point the remote poll at whichever tab is now on screen. It cannot ride
