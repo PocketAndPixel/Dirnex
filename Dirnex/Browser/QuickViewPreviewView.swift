@@ -282,11 +282,12 @@ final class QuickViewPreviewView: NSView {
             showConvertedDocument(url)
         } else if let url, Self.isRichTextDocument(url) {
             showRichText(url)
-        } else if let url, Self.isUnclaimed(url) || Self.isMistypedSource(url) {
+        } else if let url, Self.isUnclaimed(url) && !Self.isMedia(url) || Self.isMistypedSource(url) {
             // `VERSION`, `.gitignore`, `nginx.conf`: no type says what they are, so their bytes do,
             // and a binary goes on to Quick Look as it did before. A `.ts` reaches the same test from
             // the other side — macOS types it as an MPEG-2 transport stream, and its bytes are what
-            // separate the TypeScript file from the video (`isMistypedSource`).
+            // separate the TypeScript file from the video (`isMistypedSource`). A container macOS
+            // leaves untyped (a `.mkv` without VLC) goes straight on to the player (PLAN.md §M42).
             showText(url, refusingPlaceholders: true)
         } else {
             showBinary(url)
@@ -330,9 +331,10 @@ final class QuickViewPreviewView: NSView {
         refreshCaption()
     }
 
-    /// Draw the caption again, as `captionForHeader` adjusts it for what is on screen now.
+    /// Draw the caption again, as `captionForHeader` and `withMediaReadout` adjust it for what is on
+    /// screen now.
     func refreshCaption() {
-        headerView?.caption = captionForHeader(shownCaption)
+        headerView?.caption = withMediaReadout(captionForHeader(shownCaption))
     }
 
     // MARK: - Appearance
@@ -406,7 +408,7 @@ final class QuickViewPreviewView: NSView {
                 webSurface?.interactiveSubtree,
                 tableSurface,
                 treeSurface,
-                mediaView,
+                mediaView?.playerView,
                 headerView,
                 placeholderCard?.downloadButton,
                 placeholderCard?.stopButton

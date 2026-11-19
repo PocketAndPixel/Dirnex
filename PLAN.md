@@ -220,7 +220,41 @@ a movie's controls cannot be clicked, and no key reaches it.
 2. **What the file holds.** Length, picture size and codecs in the header, and where the player is
    and whether it is playing, since AVKit's controls fade with the pointer away. A card in place of Quick
    Look's icon for a file nothing here can play, naming the container, and the codecs where they are
-   known.
+   known. **Landed 2026-11-20.** Core: `MediaContainer`, read from a file's first 4 KiB (Matroska and
+   WebM by the EBML `DocType`, AVI, ASF, Ogg, RealMedia, MXF, FLV, MPEG-4 and QuickTime) and named by
+   extension for the containers macOS may leave untyped; `MediaCodecName` (Core Media's four-character
+   codes, an unknown one shown as itself); `MediaSummary.facts` ("2560×1440 · H.264 · AAC", a codec once
+   however many tracks carry it); and `MediaTimecode`, whose clock takes its shape from the length so it
+   keeps its width past the hour. App: "▶ 0:42 / 1:35:20" at the header's leading edge, a button that
+   plays and pauses as ⌘P does, and the facts before the position. Short of room the facts give way
+   first, then the name, and the clock and the position not at all; the facts stay whole in a tooltip.
+   ⌘P and the ⇧-keys bring a faded full-screen header back. `QuickViewMediaCard` takes Quick Look's place
+   for a refused file: its icon, its name, the container and "Dirnex can’t play this file." (14
+   languages). The surface swallows the mouse over the card as over the remote placeholder, since only
+   the player itself is exempt. Twelve core tests, over the captured first bytes of all the samples and
+   the film, and twelve app tests, with Slice 1's refusal test rewritten for the card. Negative controls:
+   without the time observer the seek never reached the header, without the extension rule an untyped
+   `.mk3d` went through the text sniff, with the whole media view exempt the card took the mouse, and
+   with the facts' priority raised the position was pushed off its edge. Live in `build/live-copy`, the
+   pane preview: the MP4 read "⏸ 0:00 / 0:53" and "2560×1440 · H.264 · AAC"; View ▸ Play/Pause on the
+   silent MTS ran the clock from 0:01 to 0:10, a click on it paused at 0:19 and held, and ⇧→ read
+   "0:53 / 0:53" with the cursor on its row; the Matroska sample, the film, the WebM and the AVI each got
+   the card naming their container; the voice clip read "0:00 / 0:04" and "AAC"; and full window drew the
+   same header. Found:
+   - **AVFoundation reports nothing about a file it refuses**, not its tracks either, so the card's
+     codecs come from AVFoundation only for a file it opens and still will not play (pinned on the
+     card's line, since no system encoder writes such a file). Matroska's and WebM's reach the card
+     with Slice 3's reader. AVI, Ogg and ASF headers are flat enough to read for theirs if wanted.
+   - **`org.matroska.mkv` is VLC's type, not macOS's**, so on a Mac without VLC a `.mkv` conformed to
+     nothing and would have gone to Quick Look. The containers AVFoundation refuses now route by name
+     too. `.spx`, Speex in Ogg, is left off that list: macOS types it as a System Profiler report.
+   - **A full app run let a one-second clip play out before the test's poll saw "playing"**, since
+     AVFoundation tells its time observer of a start only once playback has begun. ⌘P tells the readout
+     itself, and the test plays a minute-long clip.
+
+   **Not run live**: full screen (the floating header's return on ⌘P), the light appearance, a
+   translation, a narrow pane with a long name (pinned by a layout test), and a file AVFoundation opens
+   and will not play.
 3. **Matroska and WebM, read** (core). An EBML reader in `DirnexCore`: the segment's info, its tracks
    (codec, codec private data, language, default flag), its cues, and its clusters as an index of
    samples. Tested against generated files and against headers captured from real ones.

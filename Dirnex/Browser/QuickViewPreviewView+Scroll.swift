@@ -14,7 +14,10 @@ import DirnexCore
 extension QuickViewPreviewView {
     func scrollContent(_ move: QuickViewScroll) {
         switch contentTarget {
-        case let .media(view): view.seek(move)
+        case let .media(view):
+            view.seek(move)
+            // The header is where the new place is read, and in full screen it has faded.
+            revealFloatingHeader()
         case let .web(surface): surface.scrollPage(move)
         case let .pdf(surface): surface.scrollDocument(move)
         case let .text(surface): surface.scrollView.scrollDocument(move)

@@ -13,10 +13,31 @@ import DirnexCore
 ///
 /// Nothing plays until it is asked to, and `stop()` is what every way off the file calls, so a sound
 /// never goes on after the cursor or the mode has left it.
+///
+/// A file AVFoundation will not play gets `card` in the player's place, naming what it is kept in
+/// (PLAN.md §M42 ▸ Slice 2).
 @MainActor
 final class QuickViewMediaView: NSView {
     let playerView = AVPlayerView()
     let player = AVPlayer()
+    /// What a file nothing here can play shows instead of the player. Internal, for the tests.
+    let card = QuickViewMediaCard()
+
+    /// What the file on screen holds, for the header, or `nil` before it has been read.
+    private(set) var summary: MediaSummary?
+    /// Told whenever what the header says about the player may have moved: a second of playback, a
+    /// start or a stop, a seek, a new file. Set by the surface, which redraws its caption.
+    var onReadoutChange: (() -> Void)?
+    /// The player's periodic report, attached while a file is up and taken off by `stop()`, so a player
+    /// with nothing in it reports nothing.
+    private var timeObserver: Any?
+    /// Set between `prepareForNext()` and the next file going up: the previous file stays on screen,
+    /// paused, while the next one opens, but the header already names the next one and must not
+    /// carry the previous one's place beside it.
+    private var isAwaitingNext = false
+    /// How often the readout is asked again while a file plays. It shows whole seconds, and four
+    /// asks a second keep its tick within a quarter of one.
+    private static let readoutInterval = CMTime(value: 1, timescale: 4)
 
     init() {
         super.init(frame: .zero)
@@ -38,6 +59,15 @@ final class QuickViewMediaView: NSView {
             playerView.topAnchor.constraint(equalTo: topAnchor),
             playerView.bottomAnchor.constraint(equalTo: bottomAnchor)
         ])
+        card.isHidden = true
+        card.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(card)
+        NSLayoutConstraint.activate([
+            card.leadingAnchor.constraint(equalTo: leadingAnchor),
+            card.trailingAnchor.constraint(equalTo: trailingAnchor),
+            card.topAnchor.constraint(equalTo: topAnchor),
+            card.bottomAnchor.constraint(equalTo: bottomAnchor)
+        ])
     }
 
     @available(*, unavailable)
@@ -50,22 +80,85 @@ final class QuickViewMediaView: NSView {
 
     var isPlaying: Bool { player.rate != 0 }
 
-    /// Put `item` up, paused at its start.
-    func show(_ item: AVPlayerItem) {
+    /// Pause the file on screen and leave it there while the next one opens, as a picture stays until
+    /// the next has decoded. Only the sound has to stop at once, and the header's readout goes blank.
+    func prepareForNext() {
+        player.pause()
+        isAwaitingNext = true
+        onReadoutChange?()
+    }
+
+    /// Whether the card is up in the player's place.
+    var showsCard: Bool { !card.isHidden }
+
+    /// Put `item` up, paused at its start, with what it holds for the header.
+    func show(_ item: AVPlayerItem, summary: MediaSummary) {
+        isAwaitingNext = false
+        card.isHidden = true
+        playerView.isHidden = false
+        self.summary = summary
         player.replaceCurrentItem(with: item)
+        observeTime()
+        onReadoutChange?()
+    }
+
+    /// Put the card up for a file nothing here plays, letting go of whatever the player held.
+    func showCard(_ content: QuickViewMediaCard.Content, icon: NSImage?) {
+        stop()
+        playerView.isHidden = true
+        card.show(content, icon: icon)
+        card.isHidden = false
     }
 
     /// Pause and let the file go. Called when the cursor leaves it, when Quick View closes, and before
     /// the next file is opened, so no sound outlives the file it belongs to.
     func stop() {
+        isAwaitingNext = false
         player.pause()
         player.replaceCurrentItem(with: nil)
+        if let timeObserver { player.removeTimeObserver(timeObserver) }
+        timeObserver = nil
+        summary = nil
+        card.isHidden = true
+        onReadoutChange?()
+    }
+
+    /// What the header says about the player: whether it plays, where it is in the file and how long
+    /// the file is, and what the file holds. `nil` with no file up, which leaves the header as it is
+    /// for every other file.
+    var readout: QuickViewMediaReadout? {
+        guard hasItem, !isAwaitingNext else { return nil }
+        return QuickViewMediaReadout(
+            isPlaying: isPlaying,
+            time: MediaTimecode.readout(
+                at: player.currentTime().seconds,
+                of: summary?.duration
+            ),
+            facts: summary?.facts ?? ""
+        )
+    }
+
+    /// Ask for the readout again every `readoutInterval` of playback. AVFoundation also calls the block
+    /// when the time jumps and when playback starts or stops, so ⌘P, a seek and the end of the file
+    /// reach the header at once rather than at the next tick.
+    private func observeTime() {
+        if let timeObserver { player.removeTimeObserver(timeObserver) }
+        timeObserver = player.addPeriodicTimeObserver(
+            forInterval: Self.readoutInterval,
+            queue: .main
+        ) { [weak self] _ in
+            MainActor.assumeIsolated { self?.onReadoutChange?() }
+        }
     }
 
     /// ⌘P. At the end it plays again from the start, as QuickTime Player does, rather than doing
     /// nothing at all.
+    ///
+    /// The header is told at once as well as by the time observer, which hears of the start only once
+    /// playback has begun, and under load that can be after the clip has ended.
     func togglePlayback() {
         guard let item = player.currentItem else { return }
+        defer { onReadoutChange?() }
         if isPlaying {
             player.pause()
             return

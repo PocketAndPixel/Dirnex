@@ -5,9 +5,10 @@ import Foundation
 /// Files for Quick View's player tests (PLAN.md §M42), written by the system's own encoders so nothing
 /// binary is checked in, and small enough to make in a test's time.
 enum QuickViewMediaFixtures {
-    /// A one-second H.264 movie, 64 × 64 at ten frames a second, each frame a different grey so a
-    /// decoder has something to decode.
-    nonisolated static func writeMovie(to url: URL) async throws {
+    /// An H.264 movie `seconds` long, 64 × 64 in ten frames, each frame a different grey so a decoder
+    /// has something to decode. One second unless a test needs playback to outlast a slow poll: under
+    /// a full run the main actor has been seen to wait past ten seconds for its turn.
+    nonisolated static func writeMovie(to url: URL, seconds: Int = 1) async throws {
         let writer = try AVAssetWriter(outputURL: url, fileType: .mp4)
         let input = AVAssetWriterInput(
             mediaType: .video,
@@ -32,13 +33,13 @@ enum QuickViewMediaFixtures {
                 try await Task.sleep(for: .milliseconds(5))
             }
             let buffer = try pixelBuffer(grey: UInt8(40 + frame * 20))
-            let time = CMTime(value: CMTimeValue(frame), timescale: 10)
+            let time = CMTime(value: CMTimeValue(frame * seconds), timescale: 10)
             guard adaptor.append(buffer, withPresentationTime: time) else {
                 throw writer.error ?? CocoaError(.fileWriteUnknown)
             }
         }
         input.markAsFinished()
-        writer.endSession(atSourceTime: CMTime(value: 10, timescale: 10))
+        writer.endSession(atSourceTime: CMTime(value: CMTimeValue(10 * seconds), timescale: 10))
         await writer.finishWriting()
         guard writer.status == .completed else {
             throw writer.error ?? CocoaError(.fileWriteUnknown)

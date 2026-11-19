@@ -8,7 +8,8 @@ import AppKit
 /// discoverable, rebindable and disabled when there is nothing to play.
 extension BrowserWindowController {
     @objc func toggleQuickViewPlayback(_ sender: Any?) {
-        playableQuickViewMedia?.togglePlayback()
+        guard playableQuickViewMedia != nil else { return }
+        visibleQuickViewSurface?.toggleMediaPlayback()
     }
 
     /// The player on the surface the user is looking at, when it holds a file. The one question the

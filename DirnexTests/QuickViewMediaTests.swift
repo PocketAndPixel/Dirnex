@@ -73,20 +73,22 @@ struct QuickViewMediaTests {
     }
 
     /// The fallback, and the control for the two above: the same route with a file AVFoundation will
-    /// not open ends where every movie ended before this slice.
-    @Test("a file AVFoundation refuses goes on to Quick Look")
-    func refusedFileFallsBackToQuickLook() async throws {
+    /// not open puts no file in the player. Since Slice 2 it gets the card rather than Quick Look's icon.
+    @Test("a file AVFoundation refuses gets the card, with nothing in the player")
+    func refusedFileGetsTheCard() async throws {
         let tree = try TempDirectory()
         defer { tree.cleanup() }
         let url = tree.root.appendingPathComponent("film.mkv")
         try QuickViewMediaFixtures.matroskaHeader.write(to: url)
-        #expect(QuickViewPreviewView.isMedia(url), "the premise: macOS types Matroska as a movie")
+        #expect(QuickViewPreviewView.isMedia(url))
         let view = surface()
         try await show(url, on: view)
-        #expect(view.mediaView?.isHidden != false)
-        #expect(view.mediaView?.hasItem != true)
-        #expect(view.previewView?.isHidden == false)
-        #expect((view.previewView?.previewItem as? NSURL) == url as NSURL)
+        let media = try #require(view.mediaView)
+        #expect(!media.hasItem)
+        #expect(media.showsCard)
+        #expect(media.playerView.isHidden, "AVKit's controls must not be drawn under the card")
+        #expect(view.previewView?.isHidden != false, "Quick Look is put away")
+        #expect(view.contentTarget == nil, "⌘P and the ⇧-keys have nothing to act on")
     }
 
     @Test("stepping to another file stops the player and lets the movie go")
@@ -157,7 +159,7 @@ struct QuickViewMediaTests {
         let refused = tree.root.appendingPathComponent("film.mkv")
         try QuickViewMediaFixtures.matroskaHeader.write(to: refused)
         try await show(refused, on: view)
-        #expect(view.hitTest(center) === view, "over Quick Look the surface keeps swallowing")
+        #expect(view.hitTest(center) === view, "over the card the surface keeps swallowing")
     }
 
     @Test("⇧→ goes to the end and ⇧← back to the start")

@@ -4167,6 +4167,16 @@ Measured 2026-11-08 for M37's byte view, whose table has a row for every 16 byte
   sample of each common container (PLAN.md §M42): `public.avi` is among `AVURLAsset.audiovisualTypes()`
   and an AVI holding H.264 is refused all the same, while Matroska, WebM and WMV are not on the list.
   `asset.load(.isPlayable)` is the test, and it answers in milliseconds for a local file.
+  - **It reports nothing at all about a file it refuses.** Every refused sample failed `load(.tracks)`
+    with the same "Cannot Open" as `load(.duration)` (`-11828`, or `-11829` "may be damaged" for an AVI
+    holding H.264, which is not damaged). So a card naming what such a file holds reads its bytes
+    itself (`MediaContainer.sniff`), and its error code cannot tell an unsupported file from a broken one.
+  - **A periodic time observer also fires when playback starts or stops and when the time jumps**, as
+    its documentation says, so one observer keeps a readout of the place current through a seek and
+    the stop at the end with no KVO on `rate` (`QuickViewMediaView.observeTime`, Slice 2). It hears of
+    a start only once playback has begun, though: in a full app run a test toggled play on a one-second
+    clip, and the clip had played out before the poll saw "playing". ⌘P now tells the readout itself,
+    and the test plays a minute-long clip.
   - **An `AVPlayerItem` reports no duration until its status is `.readyToPlay`**, even when the asset
     it was made from has loaded its own. A seek that needs the length (Quick View's ⇧→ to the end) has
     nothing to go to before then. A test that seeks right after putting the item up passes alone and
@@ -4529,6 +4539,16 @@ Measured 2026-11-08 for M37's byte view, whose table has a row for every 16 byte
     `~/Dev`: 9 nginx, 23 fontconfig XML, and the rest Apache, `key value` and `key=value`. nginx's own
     files are as often `default.conf` or a bare `default` as `nginx.conf`, so the name cannot find
     them and the contents can (`SyntaxNginxScanner.looksLikeConfiguration`).
+- **A movie's type can belong to an app rather than to macOS, so a Mac without that app sees a
+  different file.** Read from `lsregister -dump` on 2026-11-20 (PLAN.md §M42 ▸ Slice 2):
+  `org.matroska.mkv`, `org.matroska.mka` and `org.xiph.ogg-video` were declared by VLC alone, while
+  CoreTypes itself declares WebM, ASF, WMV, WMA, RealMedia, MXF, Flash Video and Ogg audio. So on this Mac a `.mkv` conforms to
+  `public.audiovisual-content`, and on one without VLC it is a `dyn.…` type that conforms to nothing,
+  where a type gate sends it through the text sniff to Quick Look. `.mk3d` is dynamic here and stands in
+  for that Mac in a test. Quick View routes the containers AVFoundation refuses by name as well
+  (`MediaContainer(fileExtension:)`).
+  - **`.spx`, Speex in Ogg, is `com.apple.systemprofiler.document`.** A list of Ogg extensions has to
+    leave it out, or every System Profiler report opens as a movie that will not play.
 - **A text file with no extension is `public.data`, and one with an extension nothing declares is a
   dynamic type, so a type gate cannot tell either from a binary.** Probed 2026-09-15: `VERSION`,
   `NOTICE`, `Dockerfile`, `.gitignore` and `.zshrc` resolve to bare `public.data` whatever they hold;
