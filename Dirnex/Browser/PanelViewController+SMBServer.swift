@@ -153,49 +153,99 @@ extension PanelViewController {
 
     // MARK: - Leaving a share
 
-    /// Whether this pane stands at the root of a share Dirnex mounted, where `..` goes up to the
-    /// server's shares rather than to `/Volumes` (PLAN.md §M35).
+    /// Whether this pane stands at the root of a share, where `..` goes up to the server's shares
+    /// rather than to `/Volumes`: one Dirnex mounted (PLAN.md §M35), or since §M40 Slice 8 one Finder
+    /// or anything else did, read from the mount table.
     var leavesShareForItsServer: Bool {
-        panel.path.backend == .local && SMBMounter.shared.share(mountedAt: panel.path.path) != nil
+        panel.path.backend == .local && SMBMounter.shared.shareRoot(at: panel.path.path) != nil
+    }
+
+    /// What `..` at a share's root does, once the share's server and account are known.
+    enum ShareExit: Equatable {
+        /// The server is connected in this window: list it again, and nothing more.
+        case list
+        /// Connect the server as the share's account, with this password, or as a guest with none.
+        case connect(password: String?)
+        /// An account with no password saved for it: the Connect sheet, filled in, asks for one.
+        case askForPassword
+    }
+
+    /// The way up from `share`, decided from what this window holds and what the Keychain has.
+    /// `savedPassword` is asked only for an account, and only when the server is not connected.
+    static func shareExit(
+        for share: SMBLocation,
+        isConnected: Bool,
+        savedPassword: () -> String?
+    ) -> ShareExit {
+        if isConnected { return .list }
+        guard share.username != nil else { return .connect(password: nil) }
+        return savedPassword().map { .connect(password: $0) } ?? .askForPassword
     }
 
     /// Go up from a share's root to its server's list, with the cursor on the share.
     ///
     /// A server already connected in this window is listed again and nothing more. Otherwise it is
-    /// connected with the password the share was mounted with, read back from the share's Keychain
-    /// item, or the server's when the share was reached from the list.
+    /// connected as the account the mount names, with the password saved for the share or for its
+    /// server, which is where one reached from the server's list is filed. With none saved, which is
+    /// the usual case for a share Finder mounted, the Connect sheet opens on that server and account
+    /// and lands on the list once it connects. Never by listing without a session, which M35 refused
+    /// because such a list answers as an account nobody asked for (docs/NOTES.md ▸ SMB).
     func leaveShareForItsServer() {
-        guard let share = SMBMounter.shared.share(mountedAt: panel.path.path),
+        guard let share = SMBMounter.shared.shareRoot(at: panel.path.path),
               let shareName = share.share
         else { return }
         let server = share.server
-        let focus = VFSPath(backend: .smbServer(server), path: "/\(shareName)")
-        if let composite = backend as? CompositeBackend, composite.isConnected(.smbServer(server)) {
+        let isConnected = (backend as? CompositeBackend)?.isConnected(.smbServer(server)) == true
+        switch Self.shareExit(
+            for: share,
+            isConnected: isConnected,
+            savedPassword: { Self.storedPassword(forShare: share) }
+        ) {
+        case .list:
             navigate(
                 to: VFSPath(backend: .smbServer(server), path: "/"),
-                focus: focus,
+                focus: VFSPath(backend: .smbServer(server), path: "/\(shareName)"),
                 inNewTab: false
             )
-            return
-        }
-        var password: String?
-        if server.username != nil {
-            password = SecretKeychain.password(for: share) ?? SecretKeychain.password(for: server)
-            guard password != nil else {
-                presentOperationFailure(
-                    message: connectFailureTitle(server.host),
-                    detail: Self.genericConnectError
-                )
-                return
+        case let .connect(password):
+            let request = SMBConnectRequest(
+                location: server,
+                password: password,
+                saveName: nil,
+                activityName: nil
+            )
+            runConnect(host: server.host) { [self] in
+                await connectSMBServer(request, focus: Self.shareRow(shareName, on: server))
             }
+        case .askForPassword:
+            askToConnect(server, landingOn: shareName)
         }
-        let request = SMBConnectRequest(
-            location: server,
-            password: password,
-            saveName: nil,
-            activityName: nil
+    }
+
+    /// The Connect sheet, filled in with `server` and its account and with no name to save it under,
+    /// whose Connect lands on the server's list with the cursor on `shareName`. A server or account
+    /// changed in the sheet still lands on the share's row of whatever list it connects; a share
+    /// typed into it mounts that share instead, as the sheet always does.
+    private func askToConnect(_ server: SMBLocation, landingOn shareName: String) {
+        guard let window = view.window else { return }
+        ConnectServerPrompt.present(
+            over: window,
+            prefill: ServerConnection(name: "", endpoint: .smb(server)),
+            attempt: { [weak self] form in
+                guard let self else { return .failed(Self.genericConnectError) }
+                let request = Self.connectRequest(for: form, inNewTab: false)
+                guard case let .smb(smb) = request, smb.location.share == nil else {
+                    return await apply(form)
+                }
+                return await connectSMBServer(smb, focus: Self.shareRow(shareName, on: smb.location))
+            },
+            onSucceeded: { [weak self] in self?.focusTable() }
         )
-        runConnect(host: server.host) { [self] in await connectSMBServer(request, focus: focus) }
+    }
+
+    /// The row `shareName` has on `server`'s list.
+    private static func shareRow(_ shareName: String, on server: SMBLocation) -> VFSPath {
+        VFSPath(backend: .smbServer(server), path: "/\(shareName)")
     }
 
     // MARK: - Restoring a tree inside a share

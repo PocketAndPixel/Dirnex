@@ -111,6 +111,10 @@ public struct FileEntry: Sendable, Hashable, Identifiable {
     /// the date `mdfind` reported). So `nil` means "not read", never "never opened", and
     /// ``ListingDate`` shows it as no date rather than as a guess.
     public private(set) var lastUsedDate: Date?
+    /// The server's own description of this row, when its listing carried one — an SMB share's
+    /// comment (`NetCommentStr`) on a server's list of shares today, `nil` for every other row
+    /// (PLAN.md §M40 Slice 8). An empty comment is `nil`, so a row has one spelling for "none".
+    public let comment: String?
 
     public init(
         path: VFSPath,
@@ -131,7 +135,8 @@ public struct FileEntry: Sendable, Hashable, Identifiable {
         symlinkTargetKind: Kind? = nil,
         isDataless: Bool = false,
         entityTag: String? = nil,
-        lastUsedDate: Date? = nil
+        lastUsedDate: Date? = nil,
+        comment: String? = nil
     ) {
         self.path = path
         self.name = name
@@ -152,6 +157,7 @@ public struct FileEntry: Sendable, Hashable, Identifiable {
         self.isDataless = isDataless
         self.entityTag = entityTag
         self.lastUsedDate = lastUsedDate
+        self.comment = comment.flatMap { $0.isEmpty ? nil : $0 }
     }
 
     /// The same entry, now knowing when it was last opened — how a Recents hit, statted like any
@@ -189,7 +195,8 @@ public struct FileEntry: Sendable, Hashable, Identifiable {
             symlinkTargetKind: symlinkTargetKind,
             isDataless: isDataless,
             entityTag: entityTag,
-            lastUsedDate: lastUsedDate
+            lastUsedDate: lastUsedDate,
+            comment: comment
         )
     }
 

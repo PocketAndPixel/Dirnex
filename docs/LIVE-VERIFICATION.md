@@ -610,6 +610,11 @@ so a trap goes here only if it can bite any live run; one tied to an area goes u
     WezTerm is spawned with `Process` and inherits it whole, and a terminal `open` starts gets it too, so a
     secret in the variable would have sat in the very terminal whose "no secret in `argv` or on disk" was
     under test. The variable holds a path, and the file is gone after the first read.
+  - **A probe that logs a value's description logs every secret inside it.** Seen 2026-11-19 on M40
+    Slice 8: a probe wrote `exit=\(exit)` for `..`'s decision, whose `.connect(password:)` case carries
+    the password read from the Keychain, and Oleg's NAS password landed in a scratch log and in the
+    session's tool output. Log a case name you spell out (`exit=connect`), never `\(value)` of a type
+    that holds a secret, and read the probe's line over before the first run that reads the Keychain.
 - **computer-use refuses a key aimed at a point inside a text view, saying it "belongs to a different
   process".** Seen 2026-10-08 on both of Report a Bug…'s text boxes: `app_key tab` at the box's center
   was refused twice, before and after a fix to the boxes' accessibility tree, while the app's own
@@ -740,6 +745,13 @@ so a trap goes here only if it can bite any live run; one tied to an area goes u
     connection, is why Local Network privacy never comes into it. A check that only reads a mounted share can use the copy, and
     needs no NAS account; one where Dirnex itself connects (its own SMB, SFTP, FTP or WebDAV) still
     runs in `build/debug-dd`.
+    - **`build/debug-dd` listing that share raised macOS's network-volume prompt.** Seen 2026-11-19 on
+      M40 Slice 8, with a tab seeded at `/Volumes/media`: tccd logged `AUTHREQ_PROMPTING` for
+      `kTCCServiceSystemPolicyNetworkVolumes` at launch, since the ad-hoc build "failed to match existing
+      code requirement" (the release's team-signed one), and Oleg allowed it 2 s later. The answer was
+      filed as a new grant for `app.dirnex.Dirnex`, so the release may ask once more the next time it
+      reads a network volume. Tell Oleg before a `build/debug-dd` run that opens on a share. The copy
+      above made no such request.
   - **Every copy that tries the LAN leaves a row in Local Network that macOS 26 cannot remove.** The
     pane has toggles and no remove button, and switching a row off keeps it. By 2026-11-11 the list
     held seven "Dirnex.app" rows from copies long deleted. Apple's forums put remove buttons in macOS

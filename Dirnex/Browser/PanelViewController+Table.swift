@@ -102,6 +102,12 @@ extension PanelViewController: NSTableViewDelegate {
                 in: ListingDate(listing: panel.path)
             )
             cell.textField?.alignment = .natural
+        case .comment:
+            cell.textField?.stringValue = entry.comment ?? ""
+            cell.textField?.alignment = .natural
+            // A comment can outrun its column. Assigned on every render, `nil` included, for the
+            // reuse-pool reason the size cell gives above.
+            cell.toolTip = entry.comment
         case .sizeBar:
             // Handled above — it isn't a `FileCellView` at all.
             break

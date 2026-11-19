@@ -15,6 +15,8 @@ extension PanelViewController {
         // Before `reloadData`, which asks for the bars row by row: the projection has to describe
         // the row set about to be drawn, not the one that was.
         rebuildSizeVisualization()
+        // Before `reloadData` too, so the rows are asked for the columns this listing shows.
+        updateCommentColumn()
         tableView.reloadData()
         updateColumnHeaders()
         syncCursorToTable()
