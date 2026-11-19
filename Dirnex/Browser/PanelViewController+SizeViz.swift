@@ -78,12 +78,8 @@ extension PanelViewController {
     /// `SizeVisualization(tree:)` groups each row against its own parent directory, so an expanded
     /// folder's children are measured against each other and the shares stay meaningful across
     /// levels (PLAN.md §M15).
-    ///
-    /// Nor a flat list of an SMB server's shares, where Size is hidden for the Comment column
-    /// (PLAN.md §M40 Slice 8): a share has no size until it is mounted, and a bar would stand beside
-    /// nothing.
     var canShowSizeBars: Bool {
-        !isResultsListing && !commentReplacesSizeAndDate
+        !isResultsListing
     }
 
     // MARK: - .gitignore-aware totals

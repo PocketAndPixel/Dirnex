@@ -71,6 +71,9 @@ extension PanelViewController: NSTableViewDelegate {
             // instead. Inline rename reads this text back, and compares it in this form.
             cell.textField?.stringValue = FileNameDisplay.visible(entry.name)
             cell.textField?.alignment = .natural
+            // A share's comment rides after its name rather than in a column of its own: Size and
+            // Date stay where they are, and the tab's columns never change shape with the listing.
+            cell.comment = entry.comment
             // Finder tags, the cloud badge and Git's status letter all ride at the name's right
             // edge (PLAN.md §M6) — none of them a column of their own, in Finder's order for the
             // two it has: dots first, then the cloud, with Git outermost.
@@ -102,12 +105,6 @@ extension PanelViewController: NSTableViewDelegate {
                 in: ListingDate(listing: panel.path)
             )
             cell.textField?.alignment = .natural
-        case .comment:
-            cell.textField?.stringValue = entry.comment ?? ""
-            cell.textField?.alignment = .natural
-            // A comment can outrun its column. Assigned on every render, `nil` included, for the
-            // reuse-pool reason the size cell gives above.
-            cell.toolTip = entry.comment
         case .sizeBar:
             // Handled above — it isn't a `FileCellView` at all.
             break

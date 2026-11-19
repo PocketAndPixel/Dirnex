@@ -91,6 +91,9 @@ extension PanelViewController {
         // also the only thing on screen that says the empty pane is not an empty folder. Above the
         // counts and below a transient message, since a message is something that just happened.
         if let offline = tabs[activeTabIndex].offlineReason { return Self.sentence(for: offline) }
+        // A tab still waiting for its first listing has counted nothing, and "0 items" would say its
+        // folder is empty.
+        guard tabs[activeTabIndex].hasLoaded else { return "" }
         let total = panel.count
         let marked = panel.selectionCount
         let counts: String
