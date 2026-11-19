@@ -22853,6 +22853,61 @@ and copied the file into them byte for byte; one Undo removed the copy and a sec
 real key in the field (the background tools write the field's value), a server, F6, ⇧F5 into a typed
 folder, the create's failure alert, the light appearance and a translation.
 
+**2026-11-19: Eject says who is using the volume** (Oleg's request, with Dirnex's alert beside Finder's;
+core and app). Ejecting the NAS's `media` share while VLC played from it gave *"The operation couldn’t
+be completed. (OSStatus error -47.)"*, where Finder says *"because “VLC” is using it"*. The probe found
+that `unmountAndEjectDevice` carries nothing more than `fBsyErr`, and that DiskArbitration has the pid
+only behind a symbol its header leaves out (docs/NOTES.md ▸ SMB). So after a failed eject, still off the
+main thread, `VolumeUserProbe` asks the kernel with `proc_listpidspath` which processes have a file, a
+working directory or a mapped image on the volume. `VolumeUsers` (core) decides which failures mean "in
+use" (-47, or `EBUSY`) and names each holder. An app keeps its own name. A process that is not an app
+takes the name of the nearest app above it, so a shell sitting in the volume reads as Terminal; the walk
+stops at `launchd`, and without an app above it a process keeps its own name. Each name appears once,
+first seen first. The alert keeps its title and its body names them: *"“VLC” is using the disk. Quit
+it, or close what it has open there, and try again."* Several names use a second sentence, joined by
+`ListFormatter`. When nobody can be named (another account's process, or a holder already gone) the body
+says only that the disk is still in use. Any other failure keeps the error's own words. Three sentences
+are new, in all 14 languages.
+
+Tests: 8 core (`VolumeUsersTests`) and 6 app (`EjectFailureTests`). One app test runs the real probe on
+the volume the test host's own binary is on, and the host has to name itself. A negative control that
+stopped the walk at the holder failed the three tests that need it, by name. 6 011 core tests in 593
+suites and 2 765 app tests in 431 suites pass (one known issue, declared by its test). Both linters and
+the localization check are clean, and Oleg's defaults domain was unchanged. Seen live in
+`app.dirnex.Dirnex.live`: Eject on a disk image held open by a `sleep` left it mounted and raised
+*"“sleep” is using the disk…"* under *Couldn’t eject “DirnexEjectCheck”*. The shipped probe, compiled
+out of the two source files on its own, then named `sleep` and `Claude` on that image: the second holder
+was a shell's working directory, walked up through the claude CLI and its `disclaimer`. On the `media`
+share it named `VLC`, the reported case. **Not seen live**: the two-name alert itself, and a clean eject
+after the change, since Oleg's full-screen Space put the copy's sheet out of reach of the background
+tools; a shell in Terminal; and a translation.
+
+**2026-11-19: Lock says who is using the vault** (Oleg's go-ahead on the follow-up named above; app).
+A vault in use said only *"“Secret” is still in use, so it couldn’t be locked. Close anything open
+inside it."* The probe showed that `hdiutil detach` refuses a busy image in 0.16 s, with exit 16 and
+*couldn't unmount "disk11" - Resource busy*, and that the holder is still there afterwards
+(docs/NOTES.md ▸ SMB). So `lock` puts the same question as Eject, in the same off-main body as the
+detach: `VaultLockFailure` reads the error and, for `volumeInUse` alone, takes the names from
+`VolumeUserProbe`. The alert keeps its title, *Couldn’t lock the vault*, and its body names the holders
+and the vault: *"“VLC” is using “Secret”. Quit it, or close what it has open there, and try again."*
+Several names use a second sentence. With nobody to name it keeps the old sentence. Two sentences are
+new, in all 14 languages, with positional arguments.
+
+Tests: 6 app (`VaultLockFailureTests`). One runs the real probe on the test host's own volume, and one
+checks that a failure for another reason asks nobody, on that same volume, where a probe would have
+named the host. `VaultTests` also pins the measured exit 16 spelling. 6 011 core tests in 593 suites
+and 2 771 app tests in 432 suites pass (one known issue, declared by its test). Both linters and the
+localization check are clean, and Oleg's defaults domain was unchanged. Seen live in
+`app.dirnex.Dirnex.live`, on a throwaway encrypted sparse bundle attached from the shell and seeded
+into `Dirnex.vaults` through `SavedVaults`' own encoder. No passphrase reached the Keychain. With
+Oleg in a full-screen Space the sheet was out of reach, so a temporary env-gated line wrote the
+alert's title and body to a file. `reveal` into the vault, then `run operation "go.lockVault"`, ran
+the shipped `lock`. Three runs gave three bodies. A `sleep` holding a file plus a shell's working
+directory read *"sleep and Claude are using “LockCheck”…"*. The `sleep` alone read *"“sleep” is using
+“LockCheck”…"*. With no holder the vault unmounted and detached, and no alert came up. **Not seen
+live**: the sheet itself on screen, the sidebar's lock button (a background click on the off-Space
+window did not arrive), a shell in Terminal and a translation.
+
 ### After M19 — the follow-on log (2026-08-07 → 2026-09-21)
 
 Ninety-one dated passes that landed outside a milestone of their own, between M18's close on

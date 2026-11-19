@@ -245,6 +245,11 @@ struct VaultTests {
         #expect(VaultError.fromDetachFailure(
             exitCode: 1, stderr: "hdiutil: detach failed - Resource busy", name: "V"
         ) == .volumeInUse(name: "V"))
+        // Measured 2026-11-19 with a file held open on the image: exit 16, and the disk named.
+        #expect(VaultError.fromDetachFailure(
+            exitCode: 16, stderr: "hdiutil: couldn't unmount \"disk11\" - Resource busy\n",
+            name: "V"
+        ) == .volumeInUse(name: "V"))
     }
 
     @Test("every error carries a distinct key and a sentence with matching placeholders")

@@ -38065,6 +38065,273 @@
         }
       }
     },
+    "“%@” is using the disk. Quit it, or close what it has open there, and try again.": {
+      "comment": "Body of the eject-failure alert when one app or process holds the disk; %@ is its name (an app such as VLC or Terminal, or a process name). The title names the disk.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "„%@“ verwendet den Datenträger. Beenden Sie das Programm oder schließen Sie, was es dort geöffnet hat, und versuchen Sie es erneut."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” is using the disk. Quit it, or close what it has open there, and try again."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "«%@» está usando el disco. Ciérralo, o cierra lo que tenga abierto allí, e inténtalo de nuevo."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "«%@» utilise le disque. Quittez-le ou fermez ce qu’il a ouvert sur le disque, puis réessayez."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” sta usando il disco. Chiudilo, o chiudi ciò che ha aperto lì, e riprova."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@”がディスクを使用しています。終了するか、そこで開いているものを閉じてから、やり直してください。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@”이(가) 디스크를 사용 중입니다. 종료하거나 그곳에서 열려 있는 항목을 닫은 후 다시 시도하십시오."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” gebruikt de schijf. Stop het, of sluit wat het daar geopend heeft, en probeer het opnieuw."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "„%@” używa dysku. Zakończ go lub zamknij to, co ma tam otwarte, i spróbuj ponownie."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” está usando o disco. Encerre-o, ou feche o que ele tem aberto ali, e tente novamente."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "«%@» использует диск. Завершите эту программу или закройте в ней файлы с диска и повторите попытку."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "«%@» використовує диск. Завершіть цю програму або закрийте в ній файли з диска й повторіть спробу."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@”正在使用该磁盘。请退出它，或关闭它在那里打开的内容，然后重试。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "「%@」正在使用此磁碟。請結束它，或關閉它在那裡開啟的內容，然後重試。"
+          }
+        }
+      }
+    },
+    "%@ are using the disk. Quit them, or close what they have open there, and try again.": {
+      "comment": "Body of the eject-failure alert when several apps or processes hold the disk; %@ is their names, as a list (\"VLC and Terminal\"). The title names the disk.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ verwenden den Datenträger. Beenden Sie sie oder schließen Sie, was sie dort geöffnet haben, und versuchen Sie es erneut."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ are using the disk. Quit them, or close what they have open there, and try again."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ están usando el disco. Ciérralos, o cierra lo que tengan abierto allí, e inténtalo de nuevo."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ utilisent le disque. Quittez-les ou fermez ce qu’ils ont ouvert sur le disque, puis réessayez."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ stanno usando il disco. Chiudili, o chiudi ciò che hanno aperto lì, e riprova."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@がディスクを使用しています。それらを終了するか、そこで開いているものを閉じてから、やり直してください。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@이(가) 디스크를 사용 중입니다. 종료하거나 그곳에서 열려 있는 항목을 닫은 후 다시 시도하십시오."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ gebruiken de schijf. Stop ze, of sluit wat ze daar geopend hebben, en probeer het opnieuw."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ używają dysku. Zakończ je lub zamknij to, co mają tam otwarte, i spróbuj ponownie."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ estão usando o disco. Encerre-os, ou feche o que eles têm aberto ali, e tente novamente."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ используют диск. Завершите эти программы или закройте в них файлы с диска и повторите попытку."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ використовують диск. Завершіть ці програми або закрийте в них файли з диска й повторіть спробу."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@正在使用该磁盘。请退出它们，或关闭它们在那里打开的内容，然后重试。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@正在使用此磁碟。請結束它們，或關閉它們在那裡開啟的內容，然後重試。"
+          }
+        }
+      }
+    },
+    "The disk is still in use. Quit any app that may have files open on it, and try again.": {
+      "comment": "Body of the eject-failure alert when the disk is in use and no process holding it could be named. The title names the disk.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Der Datenträger wird noch verwendet. Beenden Sie alle Apps, die dort Dateien geöffnet haben könnten, und versuchen Sie es erneut."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The disk is still in use. Quit any app that may have files open on it, and try again."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El disco todavía está en uso. Cierra cualquier app que pueda tener archivos abiertos en él e inténtalo de nuevo."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le disque est encore utilisé. Quittez toute app susceptible d’y avoir des fichiers ouverts, puis réessayez."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Il disco è ancora in uso. Chiudi le app che potrebbero avervi file aperti e riprova."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ディスクはまだ使用中です。ディスク上のファイルを開いている可能性のあるAppを終了してから、やり直してください。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "디스크가 아직 사용 중입니다. 디스크의 파일을 열고 있을 수 있는 앱을 종료한 후 다시 시도하십시오."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "De schijf is nog in gebruik. Stop alle apps die er bestanden geopend kunnen hebben en probeer het opnieuw."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dysk jest nadal używany. Zakończ aplikacje, które mogą mieć na nim otwarte pliki, i spróbuj ponownie."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O disco ainda está em uso. Encerre os apps que possam ter arquivos abertos nele e tente novamente."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Диск всё ещё используется. Завершите приложения, у которых могут быть открыты файлы на нём, и повторите попытку."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Диск досі використовується. Завершіть програми, у яких можуть бути відкриті файли на ньому, і повторіть спробу."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "该磁盘仍在使用中。请退出可能在其中打开了文件的 App，然后重试。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "此磁碟仍在使用中。請結束可能在其中開啟了檔案的 App，然後重試。"
+          }
+        }
+      }
+    },
     "Couldn’t erase %lld items": {
       "comment": "Empty-Trash failure for several items; %lld is the count.",
       "localizations": {
@@ -39321,6 +39588,184 @@
           "stringUnit": {
             "state": "translated",
             "value": "無法鎖定保險庫"
+          }
+        }
+      }
+    },
+    "“%@” is using “%@”. Quit it, or close what it has open there, and try again.": {
+      "comment": "Body of the alert when a vault couldn't be locked because one app or process is using it. %1$@ is that app or process (VLC, Terminal, or a process name), %2$@ the vault's name. The title says the vault couldn't be locked.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "„%1$@“ verwendet „%2$@“. Beenden Sie das Programm oder schließen Sie, was es dort geöffnet hat, und versuchen Sie es erneut."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” is using “%@”. Quit it, or close what it has open there, and try again."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "«%1$@» está usando «%2$@». Ciérralo, o cierra lo que tenga abierto allí, e inténtalo de nuevo."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "«%1$@» utilise «%2$@». Quittez-le ou fermez ce qu’il a ouvert dedans, puis réessayez."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%1$@” sta usando “%2$@”. Chiudilo, o chiudi ciò che ha aperto lì, e riprova."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%1$@”が“%2$@”を使用しています。終了するか、そこで開いているものを閉じてから、やり直してください。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%1$@”이(가) “%2$@”을(를) 사용 중입니다. 종료하거나 그곳에서 열려 있는 항목을 닫은 후 다시 시도하십시오."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%1$@” gebruikt “%2$@”. Stop het, of sluit wat het daar geopend heeft, en probeer het opnieuw."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "„%1$@” używa „%2$@”. Zakończ go lub zamknij to, co ma tam otwarte, i spróbuj ponownie."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%1$@” está usando “%2$@”. Encerre-o, ou feche o que ele tem aberto ali, e tente novamente."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "«%1$@» использует «%2$@». Завершите эту программу или закройте открытые в ней файлы оттуда и повторите попытку."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "«%1$@» використовує «%2$@». Завершіть цю програму або закрийте відкриті в ній файли звідти й повторіть спробу."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%1$@”正在使用“%2$@”。请退出它，或关闭它在那里打开的内容，然后重试。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "「%1$@」正在使用「%2$@」。請結束它，或關閉它在那裡開啟的內容，然後重試。"
+          }
+        }
+      }
+    },
+    "%@ are using “%@”. Quit them, or close what they have open there, and try again.": {
+      "comment": "Body of the alert when a vault couldn't be locked because several apps or processes are using it. %1$@ is their names, as a list (\"VLC and Terminal\"), %2$@ the vault's name. The title says the vault couldn't be locked.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ verwenden „%2$@“. Beenden Sie sie oder schließen Sie, was sie dort geöffnet haben, und versuchen Sie es erneut."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ are using “%@”. Quit them, or close what they have open there, and try again."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ están usando «%2$@». Ciérralos, o cierra lo que tengan abierto allí, e inténtalo de nuevo."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ utilisent «%2$@». Quittez-les ou fermez ce qu’ils y ont ouvert, puis réessayez."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ stanno usando “%2$@”. Chiudili, o chiudi ciò che hanno aperto lì, e riprova."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@が“%2$@”を使用しています。それらを終了するか、そこで開いているものを閉じてから、やり直してください。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@이(가) “%2$@”을(를) 사용 중입니다. 종료하거나 그곳에서 열려 있는 항목을 닫은 후 다시 시도하십시오."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ gebruiken “%2$@”. Stop ze, of sluit wat ze daar geopend hebben, en probeer het opnieuw."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ używają „%2$@”. Zakończ je lub zamknij to, co mają tam otwarte, i spróbuj ponownie."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ estão usando “%2$@”. Encerre-os, ou feche o que eles têm aberto ali, e tente novamente."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ используют «%2$@». Завершите эти программы или закройте открытые в них файлы оттуда и повторите попытку."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ використовують «%2$@». Завершіть ці програми або закрийте відкриті в них файли звідти й повторіть спробу."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@正在使用“%2$@”。请退出它们，或关闭它们在那里打开的内容，然后重试。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@正在使用「%2$@」。請結束它們，或關閉它們在那裡開啟的內容，然後重試。"
           }
         }
       }
