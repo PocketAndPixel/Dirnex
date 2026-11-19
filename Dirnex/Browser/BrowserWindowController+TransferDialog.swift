@@ -6,14 +6,17 @@ import DirnexCore
 extension BrowserWindowController {
     // MARK: - PanelHost
 
-    func runTransfer(_ summary: TransferSummary, start: @escaping (TransferTracker) -> Void) {
+    func runTransfer(
+        _ summary: TransferSummary,
+        start: @escaping (TransferTracker, VFSPath) -> Void
+    ) {
         guard AppPreferences.shared.confirmTransfers,
               // A script cannot press Return, and would wait on the question for ever.
               !Scripting.isAutomating,
               transferDialog == nil,
               let window, window.attachedSheet == nil,
               let presenter = window.contentViewController
-        else { return start(.untracked) }
+        else { return start(.untracked, summary.destination) }
         let queue = queue
         let dialog = TransferDialog(
             summary: summary,

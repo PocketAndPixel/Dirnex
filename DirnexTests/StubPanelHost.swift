@@ -75,9 +75,20 @@ final class StubPanelHost: PanelHost {
     /// What a transfer's tracker was told, when a test hands one in through ``trackTransfers``.
     var trackTransfers: (() -> TransferTracker)?
 
-    func runTransfer(_ summary: TransferSummary, start: @escaping (TransferTracker) -> Void) {
+    /// A folder "typed into the dialog's field" in place of the summary's, when a test sets one: it is
+    /// checked as the dialog checks it, and a refusal lands in ``transferRefusals`` with nothing
+    /// started, as the dialog keeps asking.
+    var typedDestination: VFSPath?
+    private(set) var transferRefusals: [String] = []
+
+    func runTransfer(_ summary: TransferSummary, start: @escaping (TransferTracker, VFSPath) -> Void) {
         transfers.append(summary)
-        start(trackTransfers?() ?? .untracked)
+        let destination = typedDestination ?? summary.destination
+        if typedDestination != nil, let refusal = summary.refusal(destination) {
+            transferRefusals.append(refusal)
+            return
+        }
+        start(trackTransfers?() ?? .untracked, destination)
     }
 
     func runToCompletion(

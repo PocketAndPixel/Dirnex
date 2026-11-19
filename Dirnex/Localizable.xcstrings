@@ -176905,8 +176905,97 @@
         }
       }
     },
+    "“%@” can’t be copied into itself.": {
+      "comment": "Copy failure detail: the destination folder is a marked folder or inside one; %@ is its name.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "„%@“ kann nicht in sich selbst kopiert werden."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” can’t be copied into itself."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "«%@» no se puede copiar dentro de sí misma."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "«%@» ne peut pas être copié dans lui-même."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” non può essere copiato dentro sé stesso."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@”をそれ自身の中にコピーすることはできません。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@”을(를) 자기 자신 안으로 복사할 수 없습니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” kan niet naar zichzelf worden gekopieerd."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nie można skopiować „%@” do jego wnętrza."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” não pode ser copiado para dentro de si mesmo."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Нельзя скопировать «%@» внутрь самого себя."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не можна скопіювати «%@» усередину самого себе."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法将“%@”拷贝到其自身内部。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "無法將「%@」拷貝到其自身內部。"
+          }
+        }
+      }
+    },
     "“%@” can’t be moved into itself.": {
-      "comment": "Rename failure detail: a folder renamed to a path inside itself; %@ is its name.",
+      "comment": "Failure detail: a folder would be moved inside itself, by a rename to a path inside it or a move into a folder inside it; %@ is its name.",
       "localizations": {
         "de": {
           "stringUnit": {

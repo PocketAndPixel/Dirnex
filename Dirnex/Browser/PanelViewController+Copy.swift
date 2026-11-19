@@ -141,7 +141,7 @@ extension PanelViewController {
         // copying it would be the "<name> copy" duplicate `submit` keeps for ⌘V, so it is dropped,
         // as paste drops a same-folder move. Keeping folders cannot land one on itself once the two
         // panes differ: every group keeps its relative path under a different folder.
-        let landing = keepingFolders ? sources : sources.filter { $0.path.parent != destination }
+        let landing = Self.landing(sources, keepingFolders: keepingFolders, into: destination)
         // Copying/moving a selection onto the folder it already lives in would collide
         // with every item; point the user at a real destination instead.
         guard destination != panel.path, !landing.isEmpty else {
@@ -162,6 +162,62 @@ extension PanelViewController {
             )
             return
         }
+        // The other pane showing a folder inside a marked one is refused here too, before anything
+        // is asked, since the dialog may be switched off (2026-11-19).
+        if let looped = Self.looped(sources, into: destination) {
+            presentOperationFailure(
+                message: transferFailureTitle(kind),
+                detail: Self.intoItselfSentence(kind, looped.name)
+            )
+            return
+        }
+        // The host asks first and follows the jobs in a dialog, or starts this at once (PLAN.md §M41).
+        // Nothing below runs if the user cancels the question, so the marks stay for another try.
+        // The dialog's field can name another folder, checked by `refusal` with the dialog still up
+        // and made, with the folders on its way, before anything is queued into it (2026-11-19).
+        let summary = TransferSummary(
+            kind: kind,
+            sources: landing,
+            destination: destination,
+            refusal: { [weak self] typed in
+                self?.transferRefusal(
+                    kind: kind,
+                    sources: sources,
+                    keepingFolders: keepingFolders,
+                    into: typed
+                )
+            }
+        )
+        host?.runTransfer(summary) { [weak self] tracker, chosen in
+            guard let self else { return tracker.finish() }
+            let queue = { [weak self] in
+                guard let self else { return tracker.finish() }
+                queueTransfer(
+                    kind: kind,
+                    sources: sources,
+                    keepingFolders: keepingFolders,
+                    into: chosen,
+                    tracker: tracker
+                )
+            }
+            if chosen == destination {
+                queue()
+            } else {
+                makeTransferFolder(chosen, kind: kind, tracker: tracker, then: queue)
+            }
+        }
+    }
+
+    /// Queue the transfer into `destination`, the folder the user settled on: one job when it is
+    /// flat, or the branch's folders and one job per level when it keeps them.
+    private func queueTransfer(
+        kind: FileOperation.Kind,
+        sources: [FileEntry],
+        keepingFolders: Bool,
+        into destination: VFSPath,
+        tracker: TransferTracker
+    ) {
+        let landing = Self.landing(sources, keepingFolders: keepingFolders, into: destination)
         // In tree mode the marked set can span levels. Flat is one job whatever the levels; keeping
         // folders reproduces each item's path *relative to this pane's directory* under the
         // destination (TC's branch view, PLAN.md §M15), one job per destination subdirectory. A
@@ -169,28 +225,22 @@ extension PanelViewController {
         // path, which is every list-mode transfer and takes the single-job path either way.
         let groups = TreeSelection.transferGroups(landing, relativeTo: panel.path)
         let isFlat = !keepingFolders || (groups.count == 1 && groups[0].relativeComponents.isEmpty)
-        // The host asks first and follows the jobs in a dialog, or starts this at once (PLAN.md §M41).
-        // Nothing below runs if the user cancels the question, so the marks stay for another try.
-        let summary = TransferSummary(kind: kind, sources: landing, destination: destination)
-        host?.runTransfer(summary) { [weak self] tracker in
-            guard let self else { return tracker.finish() }
-            if isFlat {
-                submitTransfer(
-                    kind: kind,
-                    sources: landing,
-                    destination: destination,
-                    tracker: tracker
-                )
-                tracker.finish()
-                consumeTransferMarks()
-            } else {
-                submitBranchTransfer(
-                    kind: kind,
-                    groups: groups,
-                    destination: destination,
-                    tracker: tracker
-                )
-            }
+        if isFlat {
+            submitTransfer(
+                kind: kind,
+                sources: landing,
+                destination: destination,
+                tracker: tracker
+            )
+            tracker.finish()
+            consumeTransferMarks()
+        } else {
+            submitBranchTransfer(
+                kind: kind,
+                groups: groups,
+                destination: destination,
+                tracker: tracker
+            )
         }
     }
 
@@ -278,7 +328,7 @@ extension PanelViewController {
 
     /// The alert title for a copy/move that can't proceed — one definition, so the two strings are
     /// looked up (and translated) once however many sites raise them.
-    private func transferFailureTitle(_ kind: FileOperation.Kind) -> String {
+    func transferFailureTitle(_ kind: FileOperation.Kind) -> String {
         kind == .copy
             ? String(
                 localized: "Can’t copy here",
