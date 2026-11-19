@@ -202,10 +202,12 @@ extension BrowserWindowController {
     /// The title names *which* of the three things failed rather than saying "Vault", because the
     /// sentence under it explains a cause and the title is the only place the user is told what was
     /// being attempted — and by the time an alert appears they may have clicked something else.
-    func presentVaultError(_ error: VaultError) {
+    ///
+    /// `users` names whatever was holding a vault that refused to lock (``VaultLockFailure``).
+    func presentVaultError(_ error: VaultError, users: [String] = []) {
         presentVaultProblem(
             title: Self.title(for: error),
-            detail: LocalizedCatalog.sentence(for: error)
+            detail: VaultLockFailure.detail(for: error, users: users)
         )
     }
 

@@ -6033,6 +6033,34 @@ do not share a resolver, and neither half of that is obvious from either call si
     In diskarbitrationd's log, each unmount reads *queued solicitation … kind = disk unmount*, then a
     *not responding* line naming the approver that held it up.
 
+- **When an eject fails because the volume is in use, NSWorkspace says only `fBsyErr` (-47). The
+  kernel can name who holds the volume.** Measured 2026-11-19. `unmountAndEjectDevice` threw
+  `NSOSStatusErrorDomain` -47 with an empty `userInfo` in two cases: a disk image held open by a
+  `sleep`, and the NAS's `media` share while VLC played from it. So the sidebar's alert read
+  *"OSStatus error -47"*, where Finder's reads *"because “VLC” is using it"*. `VolumeUsers` and
+  `VolumeUserProbe` are the fix.
+  - **DiskArbitration has the pid, but the header doesn't declare the accessor for it.**
+    `DADiskUnmount`'s dissenter came back with status `0xc010` (`unix_err(EBUSY)`), and
+    `DADissenterGetProcessID` read through `dlsym` named the `sleep`. diskarbitrationd runs as root
+    and does the lookup itself. The symbol is in the framework's `.tbd` and missing from
+    `DADissenter.h`.
+  - **`proc_listpidspath` (`libproc.h`) is the public route, and it found both holders.** It takes
+    `PROC_ALL_PIDS`, any path on the volume and `PATH_IS_VOLUME | EXCLUDE_EVTONLY`. It counts open
+    files, working directories and mapped images. `EXCLUDE_EVTONLY` drops descriptors opened only
+    to watch a folder (`O_EVTONLY`), which never hold a volume. It reads every process: 283 ms over
+    793 in a release build. It sees only this account's processes, so a holder from another account
+    leaves the list empty. The scan runs only after an eject has failed, off the main thread.
+  - **`proc_pidinfo(PROC_PIDTBSDINFO)` is refused (`EPERM`) on the root-owned `login` between
+    Terminal and the shell it starts.** `sysctl(KERN_PROC_PID)` returns any process's parent. So the
+    walk from a shell sitting in the volume up to the app that owns it, Terminal, goes through
+    `sysctl`.
+  - **A vault's Lock meets the same refusal from `hdiutil detach`, and the holder is still there
+    after it.** On an image held open by a `sleep`, the detach exited **16** with *"hdiutil:
+    couldn't unmount "disk11" - Resource busy"* after 0.16 s, and the probe named the `sleep`
+    afterwards. That is not the exit 1 and *"detach failed - Resource busy"* the vault tests had
+    captured. `VaultError.fromDetachFailure` keys on "busy", so it read both as in use.
+    `VaultLockFailure` asks who holds the vault right after the detach.
+
 ### bsdtar
 
 - **Each extract member is a shell-glob pattern, not a literal** — a name containing `* ? [`

@@ -56,30 +56,33 @@ extension SidebarViewController {
     /// DiskArbitration's whole timeout: 10.7 s on 2026-11-02 (docs/NOTES.md ▸ SMB). It is the same
     /// call, so it ejects and fails as it did. Off the main thread it was probed against a disk
     /// image, clean and busy, with the Main Thread Checker loaded, which reported nothing.
+    ///
+    /// A volume in use is asked who is using it in the same off-main body, while the file that
+    /// refused the eject is still open (``EjectFailure``).
     private func eject(_ volume: MountedVolume) {
         let url = volume.path.localURL
         guard Self.ejectsInFlight.insert(url.path).inserted else { return }
         Task { @MainActor in
-            let failure = await BlockingWork.run { () -> String? in
+            let failure = await BlockingWork.run { () -> EjectFailure? in
                 do {
                     try NSWorkspace.shared.unmountAndEjectDevice(at: url)
                     return nil
                 } catch {
-                    return error.localizedDescription
+                    return EjectFailure.reading(error, volumeAt: url.path)
                 }
             }
             Self.ejectsInFlight.remove(url.path)
-            if let failure { presentEjectFailure(of: volume, reason: failure) }
+            if let failure { presentEjectFailure(of: volume, failure: failure) }
         }
     }
 
-    private func presentEjectFailure(of volume: MountedVolume, reason: String) {
+    private func presentEjectFailure(of volume: MountedVolume, failure: EjectFailure) {
         let alert = NSAlert()
         alert.messageText = String(
             localized: "Couldn’t eject “\(volume.name)”",
             comment: "Eject-failure alert title; %@ is the volume's name."
         )
-        alert.informativeText = reason
+        alert.informativeText = failure.detail
         alert.alertStyle = .warning
         alert.enableEscapeToCancel() // ⎋ → OK; the only button, so it dismisses either way.
         if let window = view.window {
