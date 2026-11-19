@@ -297,6 +297,33 @@ open -n /Applications/Dirnex.app --args -SUFeedURL http://127.0.0.1:8766/appcast
   real preferences. A release build accepts only keys signed with the production key; a Debug build
   also accepts test keys.
 
+### Revoking a license
+
+Dirnex checks keys offline, so a license the store took back reaches the app in a release: the list
+is compiled in (`LicenseRevocations.compiled` in
+`DirnexCore/Sources/DirnexCore/Services/LicenseRevocations.swift`, PLAN.md §M40). It applies from the
+release that carries it on. A build released earlier goes on accepting the key.
+
+Add one line per license, as the store's admin page shows it:
+
+- **`.license("<id>")`** for a revoked license: a full refund, a chargeback, or a revocation by hand.
+  No key of it counts, Settings ▸ License says it's no longer valid, and the reminder treats the Mac
+  as unlicensed.
+- **`.renewal("<id>", until: "YYYY-MM-DD")`** for a renewal that was refunded, with the end day the
+  license has now. The server only puts the old dates back, and the renewed key, with the same id
+  and a later end day, would otherwise cover the renewed year. A key of that license is read as
+  ending on that day.
+
+A trailing comment may give the day the line was added, and nothing else: not the reason, which a
+public list shouldn't pair with an id, and never a name or an address. The store's Privacy Policy
+says the list holds only the id. `LicenseRevocationTests` fails on an id the signer couldn't
+have written and on a day that doesn't read. A revoked key stays stored, so taking its line out
+restores it in the next release.
+
+To try a line in a Debug build, add one for a test key's id (`tools/license sign --test`), build, and
+launch with that key as a launch argument (`-Dirnex.pref.licenseKey dnx1.…`). Take the line out before
+committing.
+
 ## Report a Bug's address
 
 A third value baked into `Info.plist` (PLAN.md §M30): **`DirnexBugReportURL`**, where *Help ▸ Report
