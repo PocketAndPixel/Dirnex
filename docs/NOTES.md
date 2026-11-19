@@ -4163,6 +4163,20 @@ Measured 2026-11-08 for M37's byte view, whose table has a row for every 16 byte
     downscale is a second operation and it is the one being measured. (Core Image's own default output
     is that untagged `DeviceRGB`, so tag it explicitly or the preview's colour is whatever the display
     assumes.)
+- **What AVFoundation plays is decided by opening the file, not by its type.** Measured 2026-11-19 over a
+  sample of each common container (PLAN.md §M42): `public.avi` is among `AVURLAsset.audiovisualTypes()`
+  and an AVI holding H.264 is refused all the same, while Matroska, WebM and WMV are not on the list.
+  `asset.load(.isPlayable)` is the test, and it answers in milliseconds for a local file.
+  - **An `AVPlayerItem` reports no duration until its status is `.readyToPlay`**, even when the asset
+    it was made from has loaded its own. A seek that needs the length (Quick View's ⇧→ to the end) has
+    nothing to go to before then. A test that seeks right after putting the item up passes alone and
+    fails in a full run; wait for the status first.
+  - **AVKit's `.inline` controls fade out while the pointer is away**, and the elements stay in the
+    accessibility tree (a play/pause toggle and an `AXSlider` titled "timeline"), so a background
+    screenshot shows a bare picture with the controls still findable. A video's position can be read
+    from two zoomed captures a few seconds apart; the shell's `screencapture -l` needs Screen
+    Recording, which it does not have here. Use a clip with no audio track (`sample-1080p.mts` in
+    `~/swtest/video`) when a live run has to play something.
 
 ### Previews: web views
 

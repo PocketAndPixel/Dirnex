@@ -2,7 +2,8 @@ import AppKit
 import Quartz
 
 /// Quick View's `QLPreviewView` backend: everything none of the in-process backends claims — a
-/// binary, a font, a movie, an archive. Split from `QuickViewPreviewView` when the PDF backend
+/// binary, a font, an archive, a movie AVFoundation will not open (PLAN.md §M42). Split from
+/// `QuickViewPreviewView` when the PDF backend
 /// gained a find bar and took the class past SwiftLint's `type_body_length`, and split this way
 /// because every other backend already lives in a file of its own.
 ///
@@ -13,7 +14,8 @@ import Quartz
 /// Filter cannot offer to find in, for the same reason: its text is in another process.
 extension QuickViewPreviewView {
     /// Show `url` in the Quick Look backend, standing the others down.
-    /// Internal: `QuickViewPreviewView+Text` falls back here for a file that isn't text after all.
+    /// Internal: `showBinary` and the player fall back here, for a file that isn't text after all or
+    /// that AVFoundation will not open.
     func showQuickLook(_ url: URL?) {
         guard let preview = ensureQuickLookPreview() else { return }
         standDownPDF()

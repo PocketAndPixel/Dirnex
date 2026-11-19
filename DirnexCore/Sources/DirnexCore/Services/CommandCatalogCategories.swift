@@ -160,6 +160,16 @@ extension CommandCatalog {
             shortcut: CommandShortcut(key: "s", modifiers: [.command, .shift])
         ),
         Command(
+            id: "view.quickViewPlayPause",
+            title: "Play/Pause",
+            category: .view,
+            keywords: [
+                "quick view", "video", "movie", "audio", "music", "sound", "play", "pause", "cmd p"
+            ],
+            // ⌘P, Oleg's choice (PLAN.md §M42). Free, since Dirnex prints nothing.
+            shortcut: CommandShortcut(key: "p", modifiers: .command)
+        ),
+        Command(
             id: "view.quickViewSource",
             title: "View Source",
             category: .view,

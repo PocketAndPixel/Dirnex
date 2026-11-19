@@ -111,6 +111,8 @@ final class QuickViewPreviewView: NSView {
     private var shownCaption: QuickViewCaption?
     /// Internal for the same reason, from `QuickViewPreviewView+Placeholder`.
     var placeholderCard: QuickViewPlaceholderCard?
+    /// Internal for the same reason, from `QuickViewPreviewView+Media`.
+    var mediaView: QuickViewMediaView?
     /// The office-document conversion in flight, so the next one — or putting the surface away —
     /// stops the `qlmanage` it spawned rather than letting it finish for nobody. Internal, from
     /// `QuickViewPreviewView+Document`.
@@ -242,6 +244,7 @@ final class QuickViewPreviewView: NSView {
             standDownTable()
             standDownTree()
         }
+        standDownMedia(unlessShowing: url)
         // The one funnel every render goes through, which is why the card is raised and lowered here
         // rather than at each backend: a fifth stand-down in four hand-written lists is four chances
         // to forget one, and the one forgotten leaves the card drawn over a real preview.
@@ -286,7 +289,7 @@ final class QuickViewPreviewView: NSView {
             // separate the TypeScript file from the video (`isMistypedSource`).
             showText(url, refusingPlaceholders: true)
         } else {
-            showQuickLook(url)
+            showBinary(url)
         }
     }
 
@@ -301,6 +304,7 @@ final class QuickViewPreviewView: NSView {
         standDownPlaceholder()
         cancelDocumentConversion()
         previewView?.previewItem = nil
+        mediaView?.stop()
         pdfSurface?.documentDidChange()
         pdfView?.document = nil
         // Retire any pending fade-out: the surface is going away, and a stray one landing on the
@@ -402,6 +406,7 @@ final class QuickViewPreviewView: NSView {
                 webSurface?.interactiveSubtree,
                 tableSurface,
                 treeSurface,
+                mediaView,
                 headerView,
                 placeholderCard?.downloadButton,
                 placeholderCard?.stopButton

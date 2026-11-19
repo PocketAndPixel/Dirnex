@@ -4,7 +4,7 @@ A dual-pane, keyboard-first file manager for macOS in the spirit of Total Comman
 built native (Swift), with macOS-only superpowers TC never had: Quick Look, Spotlight
 search, APFS clones, Finder tags, a command palette, and universal undo.
 
-Status: **M0–M41 shipped** (14 languages; M29's licensing is on in betas, off in stable until the
+Status: **M0–M41 shipped, M42 open** (14 languages; M29's licensing is on in betas, off in stable until the
 store opens; M30's Report a Bug is in every release built while `DIRNEX_BUG_REPORT_URL` is set) ·
 Created: 2026-07-05 ·
 Log: [docs/HISTORY.md](docs/HISTORY.md) · What works where:
@@ -152,13 +152,89 @@ decided, and rejected — live in **[docs/HISTORY.md](docs/HISTORY.md)**; source
 
 ### Next
 
-**No milestone is planned.** M36–M40, planned 2026-11-07 to take up what earlier milestones had left
-undone by choice rather than for a hard limit, have all closed: M36 (drag and paste, where M23 stopped)
-2026-11-08, M37 (compare and merge, past M31 and M34) 2026-11-09, M38 (remote: what M8, M22, M24, M25
-and M32 left) 2026-11-11, M39 (Quick View) 2026-11-15 and M40 (everything else) 2026-11-19. M41 (copy
-and move dialogs), asked by users coming from Total Commander, opened and closed 2026-11-17, ahead of
-M40. All six are archived in [docs/HISTORY.md](docs/HISTORY.md). The next milestone opens with its
-probes, and its slices are written then (CLAUDE.md ▸ How to work here).
+**M42 is open.** M36–M41 are archived in [docs/HISTORY.md](docs/HISTORY.md).
+
+#### M42 — Video and audio in Quick View (L)
+
+Asked 2026-11-19 (Oleg): Quick View for MKV, MP4 "and maybe the other video files". His samples, one
+file per container, are in `~/swtest/video`. A real film, `~/Movies/Treasure Planet.2002.BDRip.1080.mkv`
+(10.5 GB), is the other fixture.
+
+**Today** no backend claims a movie or a sound, so both fall through to `QLPreviewView`. Quick View has
+to swallow the mouse over that out-of-process view (docs/NOTES.md ▸ AppKit, "winning the hit test"), so
+a movie's controls cannot be clicked, and no key reaches it.
+
+**Probed 2026-11-19** (P0, a scratch tool over the samples):
+
+- **AVFoundation opens and decodes a frame from** MP4, MOV and M4V (H.264, AAC), 3GP (MPEG-4 Part 2),
+  MPG, MPEG and VOB (MPEG-1 and MPEG-2 video, MP2 audio), TS and MTS (H.264).
+- **It refuses** MKV (VP8 and AAC), WebM (VP8 and Vorbis), AVI (H.264), ASF and WMV, OGV (Theora and
+  Vorbis), RM, MXF (H.264), and the bare `.hevc` and `.mjpeg` streams. Matroska, WebM and WMV are not
+  among the 104 `AVURLAsset.audiovisualTypes()`. `public.avi` is, and the H.264 AVI is refused anyway,
+  so the type list does not decide what plays. Opening the file does.
+- **Decoders on this Mac**: video H.264, HEVC, VP9, AV1, MPEG-1, MPEG-2, MPEG-4 Part 2, JPEG and ProRes;
+  audio AAC, MP1 to MP3, AC-3, E-AC-3, FLAC, Opus, Vorbis, ALAC and PCM. **None for VP8, Theora, VC-1 or
+  WMV3, or DTS.** VP9 and AV1 report hardware decoding here; other Macs still to check.
+- **The film holds H.264, 5 AC-3 tracks, 4 DTS tracks and 3 SRT subtitle tracks.** Everything but the
+  DTS tracks is in reach of the system's decoders. Oleg's MKV and WebM samples are VP8, which is not.
+
+**Decided 2026-11-19 (Oleg):** **⌘P** plays and pauses. **Audio files take the same player.**
+
+**Proposed with them, held when Slice 1 landed:**
+
+- **Nothing plays on its own.** Stepping to another file, or closing Quick View, stops the player.
+- **The ⇧-keys move along the timeline the way they move down a document**: ⇧↑ / ⇧↓ 10 s, ⇧Page Up /
+  ⇧Page Down a minute, ⇧← / ⇧→ the start and the end. They stay in the file table, so the cursor can
+  walk on (`QuickViewScroll`).
+- **A cloud placeholder is not opened**, since opening it downloads it. It keeps Quick Look's icon.
+- **What AVFoundation refuses goes to Quick Look as today**, until the slice that reads it.
+
+#### Slices
+
+1. **The player** (core, then app). Core: the timeline rule for the ⇧-keys beside `QuickViewScroll`'s
+   distances, and the Play/Pause command with ⌘P. App: an in-process `AVPlayerView` backend for any
+   type conforming to `public.audiovisual-content` that AVFoundation opens. It takes the mouse, so it
+   joins the hit-test exemptions. It routes after the TypeScript sniff (`isMistypedSource`), so a `.ts`
+   that is a transport stream reaches the player and one that is TypeScript still reaches the text.
+   Anything refused falls back to Quick Look. **Landed 2026-11-19**, and the four proposals above held.
+   Core: `QuickViewScroll.timelineTarget` (10 s, a minute, the two ends, clamped, with an unknown length
+   holding only the start) and `view.quickViewPlayPause` on ⌘P, with View ▸ Play/Pause in 14 languages.
+   App: `QuickViewMediaView` and `QuickViewPreviewView+Media`. `show` stands the player down for every
+   other file, so no backend has to remember it, and `clear()` stops it, which covers closing the mode,
+   Tab and a change of size. The player joined `ContentTarget`, so the ⇧-keys reach it and zoom answers
+   it as nothing to zoom. Nine app tests and six core ones. Negative controls: without the clamp three
+   core tests fail, and without the player in the hit-test exemptions the mouse test fails. Live in
+   `build/live-copy`, the pane preview: the MP4 opened paused on its first frame, ⌘P from the View menu
+   played the silent MTS (frames changed over 3 s) and paused it (frames held), ⇧→ and ⇧← went to the
+   last and first frames with the cursor on its row, and the MKV fell back to Quick Look's icon. Two
+   things found:
+   - **An `AVPlayerItem` has no duration until it is ready to play**, so a ⇧→ pressed before then stays
+     put by the timeline rule. Alone the item was ready before the test's key, and in a full run it was
+     not; the test now waits for `.readyToPlay`. A person cannot press the key that fast.
+   - **AVKit's inline controls fade out while the pointer is away from the player**, so in a
+     keyboard-only session nothing on screen says where in the file the player is, or whether it is
+     playing. Slice 2's header is where that belongs.
+
+   **Not run live**: the full-window and full-screen sizes, a sound, the light appearance, a translation,
+   a cloud placeholder, and a movie on a server.
+2. **What the file holds.** Length, picture size and codecs in the header, and where the player is
+   and whether it is playing, since AVKit's controls fade with the pointer away. A card in place of Quick
+   Look's icon for a file nothing here can play, naming the container, and the codecs where they are
+   known.
+3. **Matroska and WebM, read** (core). An EBML reader in `DirnexCore`: the segment's info, its tracks
+   (codec, codec private data, language, default flag), its cues, and its clusters as an index of
+   samples. Tested against generated files and against headers captured from real ones.
+4. **Matroska and WebM, played.** Opens with probe P1, which decides between two routes. One is a
+   MediaExtension format reader (macOS 15 and later, out of process, `AVPlayerView` unchanged). The
+   other is sample-buffer rendering, which works from macOS 14 (`AVSampleBufferDisplayLayer`,
+   `AVSampleBufferAudioRenderer`, a render synchronizer). Either way it plays the codecs listed above,
+   picks the first audio track the system can decode, and names the rest.
+5. **AVI and MXF that hold a codec macOS decodes.** A candidate, decided after Slice 4.
+
+**Left undone so far:** VP8, Theora, VC-1 and WMV, RealVideo and DTS, which macOS cannot decode. Any
+codec library (ffmpeg, libVLC, libvpx), for the licence, the size, and §2's rule that bytes go through
+the core. Subtitles. Streaming a server's file without fetching it, since the remote preview's size
+allowance still applies. Video in the slideshow.
 
 The app's share of selling Dirnex (the private companion repo `dirnex-home`, milestones C1–C15) was
 two milestones, **M29** (a license, and the reminder it removes) and **M30** (Report a Bug), both

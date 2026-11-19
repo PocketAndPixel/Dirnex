@@ -156877,6 +156877,96 @@
         }
       }
     },
+    "command.view.quickViewPlayPause.keywords": {
+      "comment": "Extra command-palette search terms, comma-separated. Added to the English terms, not replacing them, so the English words keep working. Synonyms a user might type — not a translation of the title.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "video, film, audio, musik, ton, abspielen, wiedergabe, pause, schnellansicht, cmd p"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "quick view, video, movie, audio, music, sound, play, pause, cmd p"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "vídeo, película, audio, música, sonido, reproducir, pausa, vista rápida, cmd p"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "vidéo, film, audio, musique, son, lire, lecture, pause, coup d’œil, cmd p"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "video, filmato, audio, musica, suono, riproduci, pausa, anteprima rapida, cmd p"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ビデオ, 動画, ムービー, オーディオ, 音楽, サウンド, 再生, 一時停止, クイックビュー, cmd p"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "비디오, 동영상, 영화, 오디오, 음악, 사운드, 재생, 일시 정지, 빠른 보기, cmd p"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "video, film, audio, muziek, geluid, afspelen, pauzeren, snelle weergave, cmd p"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "wideo, film, audio, muzyka, dźwięk, odtwórz, pauza, wstrzymaj, szybki przegląd, cmd p"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "vídeo, filme, áudio, música, som, reproduzir, pausar, visualização rápida, cmd p"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "видео, фильм, кино, аудио, музыка, звук, воспроизвести, играть, пауза, быстрый просмотр, cmd p"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "відео, фільм, аудіо, музика, звук, відтворити, пауза, швидкий перегляд, cmd p"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "视频, 影片, 电影, 音频, 音乐, 声音, 播放, 暂停, 快速查看, cmd p"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "影片, 視訊, 電影, 音訊, 音樂, 聲音, 播放, 暫停, 快速查看, cmd p"
+          }
+        }
+      }
+    },
     "command.view.quickViewSlideshow.title": {
       "comment": "Menu and command-palette title for the “view.quickViewSlideshow” command.",
       "extractionState": "manual",
@@ -156963,6 +157053,96 @@
           "stringUnit": {
             "state": "translated",
             "value": "幻燈片秀"
+          }
+        }
+      }
+    },
+    "command.view.quickViewPlayPause.title": {
+      "comment": "Menu and command-palette title for the “view.quickViewPlayPause” command.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wiedergabe/Pause"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Play/Pause"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reproducir/Pausa"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lecture/Pause"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Riproduci/Pausa"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "再生/一時停止"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "재생/일시 정지"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Afspelen/Pauzeren"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Odtwórz/Wstrzymaj"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reproduzir/Pausar"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Воспроизвести/Пауза"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Відтворити/Пауза"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "播放/暂停"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "播放/暫停"
           }
         }
       }
