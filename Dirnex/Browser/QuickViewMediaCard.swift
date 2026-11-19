@@ -17,7 +17,8 @@ final class QuickViewMediaCard: NSView {
         /// The container's name, from the file's bytes, its extension or its type, or `nil` when none
         /// of them says.
         let container: String?
-        /// What AVFoundation read of it, when it opened the file and still would not play it. A file it
+        /// What AVFoundation read of it, when it opened the file and still would not play it, or what a
+        /// Matroska or WebM file's own tracks say (`MatroskaFile`, Slice 3). A file AVFoundation
         /// refuses outright tells it nothing (PLAN.md §M42 ▸ P0).
         let summary: MediaSummary?
 

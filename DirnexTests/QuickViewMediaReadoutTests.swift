@@ -148,6 +148,21 @@ struct QuickViewMediaReadoutTests {
         #expect(readout(of: view) == nil, "nothing plays, so nothing says where it has got to")
     }
 
+    /// AVFoundation says nothing about a Matroska file, so before Slice 3 the card stopped at
+    /// "Matroska". The file's own tracks say the rest.
+    @Test("a Matroska file's card names its picture and codecs from the file's own tracks")
+    func cardReadsMatroskaTracks() async throws {
+        let tree = try TempDirectory()
+        defer { tree.cleanup() }
+        let url = tree.root.appendingPathComponent("film.mkv")
+        try QuickViewMediaFixtures.matroskaHead.write(to: url)
+        let view = surface()
+        try await show(url, on: view)
+        let card = try #require(view.mediaView?.card)
+        #expect(view.mediaView?.showsCard == true)
+        #expect(card.detailLabel.stringValue == "Matroska · 1816×1080 · H.264 · AC-3, DTS")
+    }
+
     /// The bytes decide over the name: a WebM file named `.mkv` is called WebM.
     @Test("the card names what the bytes say, not what the name says")
     func cardReadsTheBytes() async throws {

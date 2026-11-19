@@ -257,7 +257,43 @@ a movie's controls cannot be clicked, and no key reaches it.
    and will not play.
 3. **Matroska and WebM, read** (core). An EBML reader in `DirnexCore`: the segment's info, its tracks
    (codec, codec private data, language, default flag), its cues, and its clusters as an index of
-   samples. Tested against generated files and against headers captured from real ones.
+   samples. Tested against generated files and against headers captured from real ones. **Landed
+   2026-11-20.** Probed first over this Mac's corpus: the film, the samples, three TV seasons from
+   mkvmerge 6.8, 57 and 88, and 23 WebMs from libwebm and Lavf. Core: `RandomAccessByteSource`
+   (`pread`, so readers share a file), `EBMLReader` (a 16–64 KiB window over it), `MatroskaFile`,
+   `MatroskaTrack`, `MatroskaCuePoint` and `MatroskaCluster`. Opening reads the head alone, the EBML
+   header to the first cluster plus what the `SeekHead` names, and notes where the cues are: under a
+   millisecond for the film, whose cues `cues()` then reads in 1 ms. `cluster(from:)` indexes one
+   cluster's blocks (track, time, key, duration, each frame's byte range after Xiph, EBML or fixed
+   lacing), steps over what lies between clusters, and ends a cluster of unknown size where the next
+   begins; `frame(_:of:)` reads a frame, putting header-stripped bytes back, and refuses a zlib or
+   encrypted track by name. Walking all 6 902 of the film's clusters took 10.4 s, I/O-bound, and found
+   the same 6 902 its own second `SeekHead` lists. `MediaSummary(matroska:)` and
+   `MediaCodecName.name(matroskaCodecID:)` give the card what AVFoundation would not: the film's card now
+   reads "Matroska · 1816×1080 · H.264 · AC-3, DTS" (one app test). 47 core tests, six of them over
+   sparse captures of real files (NOTES.md ▸ Testing ▸ Fixtures), with expected numbers from a separate
+   Python walk and every laced AC-3 and DTS frame landing on its codec's sync word. Negative controls,
+   each failing its tests: an EBML lace bias off by one, fixed lacing read as Xiph, a second `SeekHead`
+   always followed (every film test failed at the open, the capture not holding it), an absent
+   `Language` read as `und`, cue positions not counted from the segment, an empty
+   `ContentCompression` read as none, and a `SeekHead` pointing at bytes that are no `SeekHead` refusing
+   the file rather than being passed over. Found:
+   - **Muxers leave out every element at its default**, so absent means the default: mkvmerge drops
+     `Language` for English tracks and libwebm writes none, and mkvmerge 6.8's PGS subtitles are zlib
+     through an empty `ContentCompression` (NOTES.md ▸ AppKit ▸ Previews).
+   - **mkvmerge 3.4 gave the film's DTS tracks no default duration**, so a laced DTS frame after the
+     first has no time the container states (`frameTime` answers `nil`); its codec will have to say.
+   - **Cues after the clusters that no `SeekHead` names are not looked for.** Every muxer seen names
+     them; finding them otherwise would mean stepping over every cluster at the open.
+
+   Live in `build/live-copy`, the pane preview: the film's card read "Matroska · 1816×1080 · H.264 ·
+   AC-3, DTS", the WebM sample's "WebM · 2560×1440 · VP8 · Vorbis" and Prism's MKV "Matroska · 2560×1440
+   · VP8 · AAC". The copy, seeded at `~/Movies`, raised a Media & Apple Music prompt at launch, before
+   Quick View opened (docs/LIVE-VERIFICATION.md).
+
+   **Not met in a real file on this Mac**, so held by generated ones only: Xiph and EBML lacing, header
+   stripping, and the segment and clusters of unknown size a live recording writes. **Not run live**: a
+   Steam WebM (VP9 and Opus) on the card, a translation, and a file on a server.
 4. **Matroska and WebM, played.** Opens with probe P1, which decides between two routes. One is a
    MediaExtension format reader (macOS 15 and later, out of process, `AVPlayerView` unchanged). The
    other is sample-buffer rendering, which works from macOS 14 (`AVSampleBufferDisplayLayer`,

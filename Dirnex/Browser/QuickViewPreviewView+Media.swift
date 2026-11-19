@@ -76,15 +76,23 @@ extension QuickViewPreviewView {
         }
     }
 
-    /// What the card says for `url`: its name, the container its first bytes name, and what
-    /// AVFoundation read of it, if anything. The bytes are read off the main actor; a cloud placeholder
-    /// never gets this far.
+    /// What the card says for `url`: its name, the container its first bytes name, and what it holds,
+    /// as AVFoundation read it or, for Matroska and WebM, which AVFoundation refuses without a word, as
+    /// the file's own tracks say (PLAN.md §M42 ▸ Slice 3). The bytes are read off the main actor; a
+    /// cloud placeholder never gets this far.
+    ///
+    /// Opening a Matroska file reads its head and nothing else: the film's tracks are in its first
+    /// 6 KiB, and its cues, 10 GB further on, are left where they are.
     private static func cardContent(for url: URL, _ summary: MediaSummary?) async -> QuickViewMediaCard.Content {
-        let sniffed = await BlockingWork.run { () -> MediaContainer? in
-            guard let handle = try? FileHandle(forReadingFrom: url) else { return nil }
+        let (sniffed, read) = await BlockingWork.run { () -> (MediaContainer?, MediaSummary?) in
+            guard let handle = try? FileHandle(forReadingFrom: url) else { return (nil, nil) }
             defer { try? handle.close() }
             let prefix = (try? handle.read(upToCount: MediaContainer.sniffLength)) ?? Data()
-            return MediaContainer.sniff(prefix)
+            let container = MediaContainer.sniff(prefix)
+            guard container == .matroska || container == .webM,
+                  let file = try? MatroskaFile(source: FileByteSource(url: url))
+            else { return (container, nil) }
+            return (container, MediaSummary(matroska: file))
         }
         let container = sniffed ?? MediaContainer(fileExtension: url.pathExtension)
         let typeName = (try? url.resourceValues(forKeys: [.contentTypeKey]).contentType)
@@ -92,7 +100,7 @@ extension QuickViewPreviewView {
         return QuickViewMediaCard.Content(
             name: url.lastPathComponent,
             container: container?.displayName ?? typeName,
-            summary: summary
+            summary: read ?? summary
         )
     }
 

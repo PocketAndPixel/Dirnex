@@ -105,6 +105,13 @@ so a trap goes here only if it can bite any live run; one tied to an area goes u
     Documents favorites reach the providers. Seeding both tabs at the fixture and `Dirnex.favorites` to
     the fixture alone (`-data`, with the copy quit) made a launch with no request in the log
     (`function=TCCAccessRequestIndirect` counts them).
+    - **A copy whose pane opens on `~/Movies` asks for Media & Apple Music.** Seen 2026-11-20 for M42
+      Slice 3: with the left tab seeded at `~/Movies`, the copy logged `AUTHREQ_PROMPTING` for
+      `kTCCServiceMediaLibrary` seconds after launch, before Quick View opened or any input arrived,
+      and it was allowed 4.8 s later. `~/Movies` holds the TV app's `TV` folder; which read set it off
+      was not traced. Seed a folder outside `~/Movies` and `~/Music`, and grep the log for
+      `AUTHREQ_PROMPTING` after a launch: this one was a plain `TCCAccessRequest`, so a count of
+      `TCCAccessRequestIndirect` misses it.
     - **An AppleEvent sent to the copy logs one too, so read the target before counting.** Seen
       2026-11-18: after a launch with no request, each `osascript … run operation` logged a
       `TCCAccessRequestIndirect` in the copy, 15 lines across the two sends. Each named

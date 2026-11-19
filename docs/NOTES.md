@@ -402,6 +402,11 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
   the assertion its point: here it would have let a stroke drawn inside the field through. With the
   scale pinned at 2x, a stroke moved 1 pt inside still fails the test.
 
+- **A `#require` inside another `#require` does not compile.** Seen 2026-11-20:
+  `try #require(try file.cluster(from: #require(file.firstClusterOffset)))` failed with "recursive
+  expansion of macro 'require'", and the error came out among dozens of "SwiftCompile … failed" lines
+  for other files in the same batch, none of them at fault. Take the inner value into a `let` first.
+
 ### Windows, sheets and key events in a test
 
 - **Showing a preview window does not guarantee a text layout before the next test poll.** Measured
@@ -1665,6 +1670,20 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
   `0 0 0 0` everywhere, and Quick Look faithfully returned a transparent thumbnail, so the test failed on
   the loader. Fill a `CGContext` in sRGB instead, and check a drawn fixture's pixels before the code under
   test sees it, so a bad fixture fails as itself.
+
+- **A real file too large to check in can be captured as the bytes a reader needs, with the gaps read
+  as a byte the format cannot start an element with.** Done 2026-11-20 for M42 Slice 3: the 10.5 GB
+  film became 51 KB of `Fixtures/Matroska/film.mkv.sparse`, holding its head, its cues, every element
+  and block header of its first cluster and the first eight bytes of each frame, at their real offsets
+  (`SparseCaptureSource`). The gaps read as zeros, and a zero is never the first byte of an EBML
+  header, so a reader that strays into bytes nobody captured fails instead of reading something
+  plausible. That caught a negative control nobody aimed at: making the reader always follow the film's
+  second `SeekHead`, which the capture leaves out, failed every film test at the open.
+  - **Expect numbers from a second implementation, and find a witness neither controls.** The expected
+    counts came from a separate walk in Python. The frames' first bytes are the witness: each laced
+    AC-3 frame must begin with `0B77` and each DTS frame with `7FFE8001`, which only the right lace
+    boundaries land on, and the walk's cluster count matched the 6 902 the film's own second
+    `SeekHead` lists.
 
 ### Live suites
 
@@ -4187,6 +4206,22 @@ Measured 2026-11-08 for M37's byte view, whose table has a row for every 16 byte
     from two zoomed captures a few seconds apart; the shell's `screencapture -l` needs Screen
     Recording, which it does not have here. Use a clip with no audio track (`sample-1080p.mts` in
     `~/swtest/video`) when a live run has to play something.
+- **Matroska muxers leave out every element whose value is the default, so an absent element means its
+  default, not "unknown".** Read 2026-11-20 across mkvmerge 3.4, 6.8, 57 and 88, libwebm, Lavf and NCH
+  Prism (PLAN.md §M42 ▸ Slice 3). mkvmerge omits `Language` for an English track (default `eng`) and
+  `FlagDefault` for a default one (default 1), and libwebm writes no `Language` at all. mkvmerge 6.8
+  wrote an *empty* `ContentCompression` for every PGS subtitle track, and `ContentCompAlgo`'s default
+  is 0, zlib, so those tracks are compressed although nothing in the file says the word. RFC 8794 reads
+  an empty integer element as its default too (`EBMLReader.unsigned` answers `nil` for it).
+  - **Every muxer seen put `Info` and `Tracks` before the first cluster and the cues after the last,
+    named by a `SeekHead` at the start.** Positions in a `SeekHead` and in the cues count from the
+    segment's data, not the file. mkvmerge 3.4 also wrote a second `SeekHead` at the end of the film
+    naming each of its 6 902 clusters (121 KiB); it is worth reading only when the first left something
+    out (`MatroskaHead.followSeekHead`).
+  - **mkvmerge laces every audio track, eight frames to a block with fixed-size lacing, and gave the
+    film's DTS tracks no `DefaultDuration`**, so a laced DTS frame after the first has no time the
+    container states. Lavf writes every VP9 frame that carries alpha as a `BlockGroup`, where a key frame
+    is one naming no `ReferenceBlock`; the `SimpleBlock` key flag does not exist there.
 
 ### Previews: web views
 
