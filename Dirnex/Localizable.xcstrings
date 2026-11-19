@@ -101024,8 +101024,8 @@
         }
       }
     },
-    "Search results": {
-      "comment": "A search's crumb when only a size or date filter names it.",
+    "Search Results": {
+      "comment": "A search's name in its tab and the path bar when no term the user typed names it.",
       "extractionState": "manual",
       "localizations": {
         "de": {
@@ -101037,7 +101037,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Search results"
+            "value": "Search Results"
           }
         },
         "es": {

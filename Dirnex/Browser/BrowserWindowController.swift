@@ -225,7 +225,7 @@ final class BrowserWindowController: NSWindowController, PanelHost, PaneKeyWindo
             backing: .buffered,
             defer: false
         )
-        window.title = "Dirnex"
+        window.title = "Dirnex" // swiftlint:disable:this bare_ui_literal
         window.minSize = NSSize(width: 640, height: 360)
 
         // Modern chrome (like Notes/Xcode/Claude): no visible title bar. The content —

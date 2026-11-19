@@ -129,7 +129,7 @@ extension SidebarViewController {
             tag
         ))
         // No Delete for the stock seven: `FinderTag.isSystem` covers why it could not do anything.
-        // They are a constant, not a sighting, so the row would be back on the next rebuild.
+        // Finder offers them whatever wears them, so the row would be back on the next rebuild.
         guard !tag.isSystem else { return }
         menu.addItem(.separator())
         menu.addItem(tagMenuItem(

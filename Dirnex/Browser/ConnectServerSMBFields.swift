@@ -11,9 +11,12 @@ import DirnexCore
 /// carries one's values, or one's defaults, into another.
 @MainActor
 final class ConnectServerSMBFields: NSObject, NSTextFieldDelegate {
+    // Examples of what goes in each field, in the protocol's own syntax, so not text to translate.
+    // swiftlint:disable bare_ui_literal
     let address = ConnectFormFactory.textField(placeholder: "smb://nas.local/Media")
     let host = ConnectFormFactory.textField(placeholder: "nas.local")
     let share = ConnectFormFactory.textField(placeholder: "Media")
+    // swiftlint:enable bare_ui_literal
     let user = ConnectFormFactory.textField(placeholder: ConnectText.smbUserHint)
     let password = ConnectFormFactory.secureField(placeholder: ConnectText.smbPasswordHint)
 

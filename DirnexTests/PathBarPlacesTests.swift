@@ -122,6 +122,31 @@ struct PathBarPlacesTests {
         }
     }
 
+    @Test("a search no term names reads its own name, not “Results for” it (M40 Slice 6)")
+    func unnamedSearchLabelHasNoPrefix() throws {
+        // Size alone, and tags alone, are both searches no term names.
+        for query in [FileQuery(minSizeBytes: 10), FileQuery(tags: ["Work"])] {
+            let summary = LocalizedCatalog.summary(of: query)
+            #expect(summary == LocalizedCatalog.unnamedSearchTitle)
+            let label = try #require(
+                virtualLabel(bar(VFSPath(backend: .search, path: "/" + summary))) as? NSButton,
+                "\(query)"
+            )
+            #expect(label.title == LocalizedCatalog.unnamedSearchTitle, "\(query)")
+        }
+
+        // The control: a search a typed term names keeps the phrasing, whatever the language.
+        let named = LocalizedCatalog.summary(of: FileQuery(nameContains: "report"))
+        let label = try #require(
+            virtualLabel(bar(VFSPath(backend: .search, path: "/" + named))) as? NSButton
+        )
+        #expect(label.title == String(
+            localized: "Results for \(named)",
+            comment: "Path-bar label for a search-results snapshot; %@ is the query."
+        ))
+        #expect(label.title != named)
+    }
+
     /// Which pane a place opens in, and which tab a search edit runs in, are the pane's business
     /// (`PathBarViewDelegate`'s contract) — the bar only counts what it was asked.
     private final class Spy: NSObject, PathBarViewDelegate {

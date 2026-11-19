@@ -60,6 +60,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // And the versions a sync kept: what no record names is left over from a crash.
         SyncRecordStorage.purgeUnreferenced()
 
+        // The stock tags are this account's own: Finder's favorites, colored by the system, which is
+        // what Finder writes (PLAN.md §M40 Slice 6). Read once, before the sidebar or the tag provider
+        // first looks; 5–10 ms measured.
+        FinderStockTags.current = FinderStockTagLookup.forThisAccount()
+
         // Merge the standard places into the pin list before any window builds its sidebar
         // (PLAN.md §M8) — the Favorites section reads the favorites now, so an un-seeded store
         // would render an empty section for one launch.

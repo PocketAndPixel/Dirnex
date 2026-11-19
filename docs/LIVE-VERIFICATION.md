@@ -130,6 +130,23 @@ so a trap goes here only if it can bite any live run; one tied to an area goes u
       copy dialog: after the function bar's F5 and the sheet's OK, Pause or Stop, `lsappinfo front`
       named the copy more often than not, though not every time. Batch a sheet's presses into one
       `app_batch` and put Oleg's app back after each batch rather than after each press.
+- **A check that needs another language or a fresh account runs in a clone of the CI VM, driven from
+  inside it.** Done 2026-11-19 for M40 Slice 6: `tart clone dirnex-ci-base <name>`, `tart set` to 4
+  CPUs and 8 GB, `tart run --no-graphics --no-audio`. The base never loads the runner, so the clone
+  takes no jobs, and nothing reaches this Mac or Oleg's screen. The image has SIP off, and its
+  `tart-guest-agent` holds Accessibility, PostEvent and ScreenCapture, so a tool it runs through
+  `tart exec` can see and drive the VM's screen. `screencapture -x` shrunk to 1024×768 gives
+  screenshots in points. A CGEvent poster compiled there with `swiftc` clicks and presses keys,
+  which also answered macOS's own prompts. The first capture raises a "bypass the system private
+  window picker" prompt, and an AppleScript to Finder raises an Automation one (Finder's own menus
+  need neither). Spotlight is off in the image. `tart delete` the clone afterwards.
+  - **An app gets in by `tar` over `tart exec -i`, and `/tmp` does not survive the VM's restart.** The
+    image has assessment disabled, so `build/live-copy`'s ad-hoc build and the Developer ID release
+    both opened from `/tmp` with nothing to answer. A tool compiled there before a `tart stop` was
+    gone after the next boot, and `tart exec` answered 125.
+  - **A menu Dirnex opened from the keyboard ignored a posted click on its item.** ⌃T's menu stayed
+    up after the click; a posted Down and Return chose the item. Finder's context menu, opened by a
+    posted right-click, did take a posted click.
 - **A measurement at scale needs a Release build, and an ad-hoc signed one needs the hardened runtime
   off.** A Debug `DirnexCore` is `-Onone`, far too slow to say anything about a 256 MiB comparison.
   Seen 2026-11-08: `xcodebuild -configuration Release CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual

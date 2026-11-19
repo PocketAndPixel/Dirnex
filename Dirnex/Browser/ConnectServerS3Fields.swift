@@ -40,10 +40,13 @@ final class ConnectServerS3Fields {
     /// `Amazon S3` | `S3-Compatible` — which one decides whether the endpoint is derived or typed.
     let serviceControl = NSPopUpButton(frame: .zero, pullsDown: false)
 
+    // The endpoint, region and key placeholders are example values, so not text to translate.
+    // swiftlint:disable bare_ui_literal
     let endpoint = ConnectFormFactory.textField(placeholder: "minio.local:9000")
     let region = ConnectFormFactory.textField(placeholder: "us-east-1")
     let bucket = ConnectFormFactory.textField(placeholder: ConnectText.bucketHint)
     let accessKeyID = ConnectFormFactory.textField(placeholder: "AKIA…")
+    // swiftlint:enable bare_ui_literal
     let secretKey = ConnectFormFactory.secureField(placeholder: ConnectText.secretKeyHint)
 
     let pathStyleCheckbox = NSButton(

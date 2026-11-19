@@ -53,4 +53,28 @@ file_length:
 cyclomatic_complexity:
   warning: 15
 
+custom_rules:
+  # A literal of two or more letters handed straight to an AppKit text sink in the app is English on
+  # every screen, and an English screenshot never shows it (docs/NOTES.md ▸ Localization ▸ Finding
+  # untranslated strings). PLAN.md §M40 Slice 6. Matched: an assignment to a title, message,
+  # tooltip, placeholder, string value or toolbar label; the same words as an argument label, which
+  # also catches a wrapped `NSMenuItem(\n title: "…")`; the `withTitle:`/`labelWithString:`
+  # constructors; and the three `setAccessibility…` text setters. Letters inside an interpolation
+  # do not count. Not matched, by design: SwiftUI literals and `@Parameter(title:)`, which the
+  # compiler extracts, and text that reaches a sink through a variable or a return value, which only
+  # a sweep finds. A deliberate literal (a sample value, a proper name) carries an inline
+  # `swiftlint:disable:next bare_ui_literal` with its reason.
+  bare_ui_literal:
+    name: "Bare UI literal"
+    regex: '(?:\.(?:title|messageText|informativeText|toolTip|placeholderString|stringValue|label|paletteLabel)\s*=\s*|(?<!@Parameter\()\b(?:title|message|messageText|informativeText|toolTip|placeholder|placeholderString|withTitle|labelWithString|wrappingLabelWithString|checkboxWithTitle|radioButtonWithTitle)\s*:\s*|\bsetAccessibility(?:Label|Title|Help)\(\s*)"(?:[^"\\]|\\\([^()]*(?:\([^()]*\)[^()]*)*\)|\\[^(])*?\p{L}\p{L}'
+    excluded: '/(DirnexTests|DirnexCore)/'
+    excluded_match_kinds:
+      - comment
+      - comment.mark
+      - comment.url
+      - doccomment
+      - doccomment.field
+    message: "Text shown to the user goes through String(localized:), or carries an inline disable saying why not."
+    severity: error
+
 reporter: "xcode"

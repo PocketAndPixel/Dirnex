@@ -5359,6 +5359,21 @@ and hands its English over as data. `LocalizedCatalog` is the join, `L10n` its o
     a Russian build for its key hands back the Russian. A second test guards that table against
     drifting off the strings it names, and skips itself under a non-English pin — which means on this
     Mac it is CI that runs it, so prove it with a negative control rather than a green run.
+- **`bare_ui_literal` in `.swiftlint.yml` holds the line the sweeps drew** (M40 Slice 6). It
+  fails `swiftlint --strict` on a literal of two letters or more handed straight to an AppKit text
+  sink in the app: an assignment to `title`, `messageText`, `toolTip`, `stringValue` and the like;
+  the same words as an argument label, which covers the wrapped `NSMenuItem(\n title: "…")` that
+  fooled the first sweep; `withTitle:` and `labelWithString:`; and `setAccessibilityLabel(`.
+  Letters inside an interpolation don't count. On the day it went in it found 14, all deliberate
+  (example hosts in placeholders, `UTC`, `Dirnex`, a sizing sample, one line for git's terminal),
+  and each carries an inline disable with its reason.
+  - **It can't see the classes above**: a string that reaches a sink through a variable or a return
+    value, or a ternary. So `scripts/check_localization_keys.py` and the prose-literal sweep stay.
+  - Three choices that look arbitrary. `label:` is not a sink, because in the app it only ever names
+    a queue or a scratch folder. `@Parameter(title:)` is skipped by a lookbehind, because the
+    compiler extracts it. The core and the tests are left out with `excluded:
+    '/(DirnexTests|DirnexCore)/'` rather than an `included:` of `/Dirnex/`, since the checkout folder
+    is itself named `Dirnex` and that pattern matches every file.
 - **`plutil -extract` reads a dotted key as a keypath.** Checking `vfs.unsupported.trash` against a
   compiled `Localizable.strings` reported every one of 27 keys MISSING from a bundle that contained
   all of them — a wrong answer in the alarming direction, right after a passing coverage test, which
@@ -5459,6 +5474,37 @@ and hands its English over as data. `LocalizedCatalog` is the join, `L10n` its o
   shown to be in that language. Only the role-carrying spelling was measured, not a cancel button
   without one. `scripts/check_alert_escape.py` doesn't see these alerts. `LicenseRemovalTests` pins
   the one measured.
+
+### Stock Finder tags
+
+- **The stock tags' names on disk belong to the account, are set once, and follow neither English
+  nor the UI language.** Measured 2026-11-19 (M40 Slice 6) by tagging through Finder's own context
+  menu in a clone of `dirnex-ci-base` (macOS 26.6.2) and reading `_kMDItemUserTags` back. The VM's
+  US-English account wrote `Red\n6` and `Gray\n1`, and this Mac's favorites read `Grey`. Switched
+  to German, with a German menu bar, Finder still wrote and showed Red and Gray. Only after its list
+  was made again under German did it write `Rot\n6` and `Grau\n1`.
+  - **The list is `~/Library/Application Support/com.apple.sharedfilelist/com.apple.LSSharedFileList.ProjectsItems.sfl4`**
+    (tags were once "projects"): an `NSKeyedArchiver` whose items each carry a `Name` and, for a
+    colored tag, `kLSSharedTagFileListItemLabel`. It is made when the account first runs Finder.
+    Moved aside, German Finder made it again as Rot, Orange, Gelb, Grün, Blau, Lila, Grau, Büro,
+    Benutzerordner, Wichtig, and rewrote `FavoriteTagNames` to match.
+  - **Don't read the `.sfl4` for the stock names.** On this Mac it opens with a custom purple
+    `Zebra`, so "the first tag of each color" picks the wrong one. It is a private archive whose
+    extension has moved with releases (sfl2, sfl3, sfl4), and Dirnex runs on 14.
+- **Finder's menu dots are `com.apple.finder` ▸ `FavoriteTagNames`.** That's an empty string and
+  then seven names in Finder's order, read with `CFPreferencesCopyAppValue`. Replacing one with a
+  new name turned its dot hollow, and that dot wrote the bare name. So the favorites are what
+  Finder writes, and `FinderStockTagLookup` reads them.
+- **`NSURLTagNamesKey` colors a name from the account's own list, which makes it the public
+  lookup.** On the German list `Rot` came back 6, and `Red`, `Gray` and `Grey` all 0. Call it
+  through `NSURL.setResourceValue(_:forKey:)`, which 14 has; `URLResourceValues.tagNames`' setter
+  is 26+ (`FinderTagStorage`). One scratch file holding every name answers them all: 4–7 ms in a
+  cold process, plus 2–4 ms for the preference.
+- **`NSWorkspace.fileLabels` follows the app bundle's localization, not the account's list** (M40's
+  opening probe), so it gives the names a fresh account in the app's language would have, not
+  the names this account has. It also says "Gray" where this Mac's list says "Grey".
+- Spotlight is off in the CI image, so a tag's view in Finder's sidebar finds nothing there. Read
+  the attribute instead.
 
 ## Lint ceilings and file splitting
 

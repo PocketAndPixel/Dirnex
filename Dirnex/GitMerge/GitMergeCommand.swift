@@ -40,8 +40,10 @@ enum GitMergeCommand {
             return GitMergeClient.Finished(exitCode: 1, message: GitMergeArguments.usage)
         }
         guard let socket else {
+            // Command-line output for git's terminal, in English beside the core's usage line.
             return GitMergeClient.Finished(
                 exitCode: 1,
+                // swiftlint:disable:next bare_ui_literal
                 message: "this account's home folder has too long a path for Dirnex's socket."
             )
         }
