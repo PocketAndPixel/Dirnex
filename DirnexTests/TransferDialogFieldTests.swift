@@ -32,6 +32,22 @@ struct TransferDialogFieldTests {
         #expect(controller.destinationField.superview?.isHidden == true, "the progress has no field")
     }
 
+    /// Asked 2026-11-19: typing adds to the path rather than replacing it. The control is the
+    /// field's own default, which selects every character when it takes the keys.
+    @Test("the field takes the keys with the insertion point after the path and nothing selected")
+    func insertionPointAtTheEnd() throws {
+        let fixture = DialogFixture()
+        let controller = fixture.dialog.controller
+        let field = controller.destinationField
+        let length = (field.stringValue as NSString).length
+        #expect(fixture.window.makeFirstResponder(field))
+        #expect(field.currentEditor()?.selectedRange == NSRange(location: 0, length: length))
+
+        controller.focusDestinationField()
+        let editor = try #require(field.currentEditor())
+        #expect(editor.selectedRange == NSRange(location: length, length: 0))
+    }
+
     @Test("a typed folder is handed over, taken from the other pane's folder when it is relative")
     func typedFolderIsHandedOver() throws {
         let fixture = DialogFixture()
