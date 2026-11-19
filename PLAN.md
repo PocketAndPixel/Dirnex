@@ -281,6 +281,8 @@ Proposed with them, open until the slice that builds each:
 - **Revoked keys.** The refunded ids are compiled into the core, starting empty. A key on the list
   verifies and is then refused as revoked: Settings ▸ License says it is no longer valid, the reminder
   treats the install as unlicensed, and the key stays stored, so taking it off the list restores it.
+  Widened at Slice 7 (2026-11-19, Oleg, on the server's renewal record): a line can also take back a
+  refunded renewal, naming the end day the license was put back to.
 - **A place inside a vault stays out of the palette's recents**, as `VaultPrivacy` keeps it out of
   every memory the user did not ask for.
 
@@ -526,6 +528,48 @@ app suite green (2732 tests), `check_localization_keys.py` clean (1393 keys), an
 keys unchanged by content after restoring `SULastCheckTime`. **Not seen:** whether Finder groups a `Red`
 file under its `Rot` tag (Spotlight is off in the image), favorites the user has changed, the label drawn
 in the running app (the test reads the real `PathBarView`), and a translation on screen.
+
+**2026-11-19: Slice 7 landed, core and app, and was run live** (revoked keys). **Found first**, in the
+store's server (`dirnex-home/web/src/licenses/licenses.ts`): a renewal keeps the license's id and changes
+only its dates, and `undoRenewal` takes a refunded one back by putting the old dates back. The customer
+still holds the renewed key, same id and a later end day, so a list of ids alone could take that year
+back only by revoking the license's original key with it. A renamed license is a new key with the same id
+too, so revoking by id covers every key of a license. **Decided with Oleg:** the list holds what the
+server records, `.license(id)` for a revoked license (a refund, a chargeback or by hand) and
+`.renewal(id, until:)` with the end day the license has now. Core: `LicenseRevocations.thisBuild` is the
+compiled list, empty, applied only to a key that verified. A revoked license refuses every key of it as
+`LicenseRefusal.revoked`, kept apart from `LicenseKeyError`, which is the contract with the signer and
+whose vector test wants a signer-made vector for every case. A renewal line reads a later key as ending
+on its day, so the key is licensed, or lapsed with Renew, as the server has it. Of two lines for one
+license the strictest counts. A line the signer could not have written is left out: an id is 26
+characters of RFC 4648 base32 whose last carries two zero bits (`encodeBase32` in the private repo), so
+a mistyped renewal day can't turn into a revocation. `LicenseStatus.revoked` counts for nothing and
+reminds as no key does. App: `LicenseStore` holds a revoked key and keeps it stored, so a list without it
+restores it, and its `key` is the one that counts, which the update notice, the reminder's Renew link and
+the bug report read. A revoked key pasted or opened from a link is refused and replaces nothing. Settings
+▸ License says "This license is no longer valid", that Dirnex counts the Mac as unlicensed, and where to
+write, with the license ID, Remove and Buy; About reads as for no key. Three strings in 14 languages, and
+RELEASING.md ▸ Revoking a license says how to add a line. Core: 11 tests, five negative controls each
+failing the test that watches it (no trailing-bits check, the newest line kept over the strictest, a
+renewal cutting an earlier key, the well-formed filter removed, the status ignoring the list); app: 9
+tests, four controls (the store's check ignoring the list, `key` returning the held key, About and
+Settings drawing a revoked key as licensed and as lapsed). SwiftUI builds no accessibility tree in the
+test host, so the Settings tests read the tab's buttons (NOTES.md ▸ Windows, sheets and key events in a
+test). **Run live** in `build/live-copy`, with two temporary lines in the compiled list, the test keys as
+launch arguments and the reminder's clock 31 days ahead. A key not on the list read "Licensed to Control
+Probe" with no reminder, and the revoked key pasted into its field drew the refusal and left it
+licensed. The revoked key brought the Buy reminder at launch and "Unlicensed" in the titlebar, Settings
+drew the revoked section, and About read "Not licensed · Buy a License". A renewed key ending 2028-09-29,
+whose renewal the list took back to 2027-09-29, on a build dated 2028-01-01, brought the Renew reminder
+naming 29 September 2027, and Settings "Covers every version released until 29 September 2027" with the
+lapsed note. **Found live and fixed:** SwiftUI's Markdown makes the support address a mail link, and the
+Korean line had 으로 straight after it; it reads "support@dirnex.app 주소로" now, and the link drew at the
+English width. No provider TCC request (the two logged named the AppleEvent sender), and the lines, the
+gate and the copy's domain are gone. Final runs: core 5983 green, both CI-pinned linters clean, the full
+app suite green twice (2741 tests), `check_localization_keys.py` clean (1396 keys), and all 73 saved
+preference keys unchanged by content. **Not seen:** a key opened from a `dirnex://` link, which
+with the release build running Launch Services could have handed to it; a production-signed key; and the
+other 12 translations drawn.
 
 The app's share of selling Dirnex (the private companion repo `dirnex-home`, milestones C1–C15) was
 two milestones, **M29** (a license, and the reminder it removes) and **M30** (Report a Bug), both

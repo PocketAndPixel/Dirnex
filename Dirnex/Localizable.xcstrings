@@ -49140,6 +49140,95 @@
         }
       }
     },
+    "Dirnex counts this Mac as unlicensed. If you think that’s a mistake, write to support@dirnex.app and include the license ID below.": {
+      "comment": "Settings ▸ License, under the heading for a revoked license.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex behandelt diesen Mac als nicht lizenziert. Wenn Sie glauben, dass das ein Irrtum ist, schreiben Sie an support@dirnex.app und geben Sie die Lizenz-ID unten an."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex counts this Mac as unlicensed. If you think that’s a mistake, write to support@dirnex.app and include the license ID below."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex considera este Mac sin licencia. Si crees que es un error, escribe a support@dirnex.app e incluye el ID de licencia que aparece abajo."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex considère ce Mac comme sans licence. Si vous pensez qu’il s’agit d’une erreur, écrivez à support@dirnex.app en indiquant l’identifiant de licence ci-dessous."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex considera questo Mac senza licenza. Se pensi che sia un errore, scrivi a support@dirnex.app indicando l’ID licenza qui sotto."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex はこの Mac をライセンス未登録として扱います。誤りだと思われる場合は、下のライセンスIDを添えて support@dirnex.app までご連絡ください。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex는 이 Mac을 라이선스가 없는 것으로 처리합니다. 잘못되었다고 생각되면 아래 라이선스 ID를 적어 support@dirnex.app 주소로 문의하세요."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex behandelt deze Mac alsof er geen licentie is. Denk je dat dit een vergissing is, schrijf dan naar support@dirnex.app en vermeld de licentie-ID hieronder."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex traktuje tego Maca jako komputer bez licencji. Jeśli uważasz, że to pomyłka, napisz na support@dirnex.app i podaj poniższe ID licencji."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O Dirnex considera este Mac sem licença. Se você acha que é um engano, escreva para support@dirnex.app e informe o ID da licença abaixo."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "На этом Mac Dirnex работает как без лицензии. Если вы считаете, что это ошибка, напишите на support@dirnex.app и укажите ID лицензии ниже."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "На цьому Mac Dirnex працює як без ліцензії. Якщо ви вважаєте, що це помилка, напишіть на support@dirnex.app і вкажіть ID ліцензії нижче."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex 将此 Mac 视为未获许可。如果你认为这是误会，请写信至 support@dirnex.app，并附上下方的许可证 ID。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex 將此 Mac 視為未獲授權。如果你認為這是誤會，請寫信至 support@dirnex.app，並附上下方的授權 ID。"
+          }
+        }
+      }
+    },
     "Dirnex doesn’t download a file automatically without knowing how large it is.": {
       "comment": "Quick View placeholder hint for a remote file whose size the server never reported.",
       "localizations": {
@@ -124480,6 +124569,95 @@
         }
       }
     },
+    "This license is no longer valid": {
+      "comment": "Settings ▸ License: heading when the license held was revoked (refunded or taken back).",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diese Lizenz ist nicht mehr gültig"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This license is no longer valid"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esta licencia ya no es válida"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cette licence n’est plus valide"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Questa licenza non è più valida"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "このライセンスは有効ではなくなりました"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 라이선스는 더 이상 유효하지 않습니다"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Deze licentie is niet meer geldig"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ta licencja nie jest już ważna"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esta licença não é mais válida"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Лицензия больше недействительна"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ліцензія більше не дійсна"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "此许可证已失效"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "此授權已失效"
+          }
+        }
+      }
+    },
     "This license key can’t be read. Please reply to the email it came in.": {
       "comment": "License key refused: signed, but its contents are unreadable (a store bug).",
       "localizations": {
@@ -124654,6 +124832,95 @@
           "stringUnit": {
             "state": "translated",
             "value": "此授權金鑰不完整。請從郵件中重新完整拷貝。"
+          }
+        }
+      }
+    },
+    "This license key is no longer valid. If you think that’s a mistake, reply to the email it came in.": {
+      "comment": "License key refused: it is genuine, but its license was revoked (refunded or taken back).",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dieser Lizenzschlüssel ist nicht mehr gültig. Wenn Sie glauben, dass das ein Irrtum ist, antworten Sie auf die E-Mail, mit der er kam."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This license key is no longer valid. If you think that’s a mistake, reply to the email it came in."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esta clave de licencia ya no es válida. Si crees que es un error, responde al correo en el que llegó."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cette clé de licence n’est plus valide. Si vous pensez qu’il s’agit d’une erreur, répondez à l’e-mail qui la contenait."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Questa chiave di licenza non è più valida. Se pensi che sia un errore, rispondi all’email con cui è arrivata."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "このライセンスキーは有効ではなくなりました。誤りだと思われる場合は、キーが届いたメールに返信してください。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 라이선스 키는 더 이상 유효하지 않습니다. 잘못되었다고 생각되면 키가 담긴 이메일에 회신해 주세요."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Deze licentiesleutel is niet meer geldig. Denk je dat dit een vergissing is, beantwoord dan de e-mail waarin hij zat."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ten klucz licencyjny nie jest już ważny. Jeśli uważasz, że to pomyłka, odpowiedz na e-mail, w którym przyszedł."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esta chave de licença não é mais válida. Se você acha que é um engano, responda ao e-mail em que ela veio."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Лицензионный ключ больше недействителен. Если вы считаете, что это ошибка, ответьте на письмо, в котором он пришёл."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ліцензійний ключ більше не дійсний. Якщо ви вважаєте, що це помилка, дайте відповідь на лист, у якому він прийшов."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "此许可证密钥已失效。如果你认为这是误会，请回复发送该密钥的邮件。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "此授權金鑰已失效。如果你認為這是誤會，請回覆寄送該金鑰的郵件。"
           }
         }
       }

@@ -563,6 +563,13 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
   start it on a small folder of the fixture's own: a loaded view asks `RowIconLoader.shared` for every row it
   lists, which the temporary directory has hundreds of.
 
+- **A hosted SwiftUI view's text can't be read back in the test host.** Seen 2026-11-19 on
+  `LicenseSettingsView` in an `NSHostingView`: the hosting view answered `AXGroup` with **0**
+  accessibility children, so a walk of labels and values found nothing, before and after
+  `orderFront` and `displayIfNeeded()`. SwiftUI's `Text` is no `NSTextField` either. Its `Button`s
+  are, when built as `SettingsButton`, so a test tells a view's states apart by the button titles
+  it draws (`LicenseRevocationAppTests.buttons(over:)`) and leaves the words to a live run.
+
 ### Waits, run loops and timing
 
 - **A test's "passed after" includes its wait for the main actor, so a slow figure is not a slow

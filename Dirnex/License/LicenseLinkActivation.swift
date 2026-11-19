@@ -76,7 +76,7 @@ enum LicenseLinkActivation {
     }
 
     /// Why a link's key was refused, with one OK.
-    static func refusalAlert(for error: LicenseKeyError) -> NSAlert {
+    static func refusalAlert(for error: LicenseRefusal) -> NSAlert {
         let alert = NSAlert()
         alert.alertStyle = .warning
         alert.messageText = String(

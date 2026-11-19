@@ -36,7 +36,7 @@ struct LicenseStoreTests {
             verifiers: [.production],
             buildReleaseDay: nil
         )
-        #expect(try store.activate(TestLicenseKeys.key()) == .failure(.badSignature))
+        #expect(try store.activate(TestLicenseKeys.key()) == .failure(.invalid(.badSignature)))
         #expect(store.key == nil)
     }
 
@@ -81,7 +81,7 @@ struct LicenseStoreTests {
     func refusalKeepsHeldKey() throws {
         let store = LicenseStore(defaults: ScratchDefaults.fresh(), buildReleaseDay: nil)
         let held = try store.activate(TestLicenseKeys.key()).get()
-        #expect(store.activate("dnx1.garbage.garbage") == .failure(.malformed))
+        #expect(store.activate("dnx1.garbage.garbage") == .failure(.invalid(.malformed)))
         #expect(store.key == held)
     }
 
