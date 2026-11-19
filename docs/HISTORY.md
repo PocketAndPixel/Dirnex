@@ -22824,8 +22824,10 @@ background capture reaches; an archive member; a server, and an S3 prefix's job;
 **2026-11-19: F5 and F6 take a typed folder** (Oleg's request, with a screenshot of the question, and his
 call to make a missing folder at once where Export asks first; core and app). The question's folder was a
 label; first it went from 11 pt to the title's 13 pt, then it became a field. It opens on the other pane's
-folder with the path selected, as Total Commander's F5 does, so typing replaces it and Return still
-answers OK, since key equivalents run ahead of the field editor. A server's folder is its path, with the
+folder with the insertion point after the path and nothing selected, so typing adds a folder below it
+(Oleg's call, over the whole path selected as Total Commander's F5 has it; a field made first responder
+selects all of its text, so the range is set after). Return still answers OK, since key equivalents run
+ahead of the field editor. A server's folder is its path, with the
 server's name beside the field. The path is read by `TypedFolder` (core), which Export's folder field now
 shares: empty is the other pane's folder, a relative path is taken from it, `~` is this Mac's home on this
 disk only, and `.` and `..` are resolved by their spelling, so `dest/..` cannot pass as a folder the
@@ -22845,7 +22847,7 @@ standing in for the field. Negative controls failed by name: without the `..` st
 and without the recursion refusal. 6 003 core tests in 592 suites and 2 758 app tests in 430 suites pass
 (one known issue, declared by its test), both linters and the localization check are clean, and Oleg's
 defaults domain was unchanged. Seen live in `app.dirnex.Dirnex.live`: F5 from the function bar opened the
-question on the other pane's folder with the path selected; `new folder/deeper` typed in made both folders
+question on the other pane's folder; `new folder/deeper` typed in made both folders
 and copied the file into them byte for byte; one Undo removed the copy and a second removed both folders;
 `../src` kept the question up with "Can’t copy into the same folder" under the field. **Not seen live**: a
 real key in the field (the background tools write the field's value), a server, F6, ⇧F5 into a typed

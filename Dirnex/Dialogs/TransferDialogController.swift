@@ -5,7 +5,8 @@ import DirnexCore
 /// progress. ``TransferDialog`` drives it; this only lays out, draws and reports its buttons.
 ///
 /// **The question's folder is a field** (asked 2026-11-19): it opens on the other pane's folder with
-/// the path selected, as Total Commander's F5 does, so typing replaces it and an arrow key edits it.
+/// the insertion point after the path, so typing adds a folder below it (Oleg's call the same day,
+/// over selecting the whole path as Total Commander's F5 does).
 /// The progress names the folder in a plain label instead, since it can no longer change.
 ///
 /// **Return and Escape are the same two buttons in both phases**, retitled rather than replaced:
@@ -112,7 +113,7 @@ final class TransferDialogController: NSViewController {
         super.viewDidAppear()
         // Return and Escape still answer the buttons: key equivalents run ahead of the field editor
         // (docs/LIVE-VERIFICATION.md, the field editor and a button's Escape).
-        if phase == .asking { destinationField.selectText(nil) }
+        if phase == .asking { focusDestinationField() }
     }
 
     // MARK: - Phases
@@ -271,8 +272,27 @@ final class TransferDialogController: NSViewController {
         return row
     }
 
-    // MARK: - The destination field
+    // MARK: - Buttons
 
+    @objc private func confirm(_ sender: Any?) {
+        switch phase {
+        case .asking: onConfirm?(dontAskCheckbox.state == .on)
+        case .progress: onBackground?()
+        }
+    }
+
+    @objc private func cancel(_ sender: Any?) {
+        onCancel?()
+    }
+
+    @objc private func pause(_ sender: Any?) {
+        onPause?()
+    }
+}
+
+// MARK: - The destination field
+
+extension TransferDialogController {
     /// The folder the field names: the summary's own while the field reads as it opened, so the round
     /// trip through `~` cannot move it, and otherwise the typed path on the same location.
     var typedDestination: VFSPath {
@@ -287,7 +307,16 @@ final class TransferDialogController: NSViewController {
         refusalLabel.stringValue = sentence
         refusalLabel.isHidden = false
         content.setCustomSpacing(6, after: destinationRow)
-        view.window?.makeFirstResponder(destinationField)
+        focusDestinationField()
+    }
+
+    /// Put the insertion point after the path, with nothing selected. A field made first responder
+    /// selects all of its text, so the range is set once its editor exists.
+    func focusDestinationField() {
+        guard view.window?.makeFirstResponder(destinationField) == true,
+              let editor = destinationField.currentEditor() else { return }
+        let end = (destinationField.stringValue as NSString).length
+        editor.selectedRange = NSRange(location: end, length: 0)
     }
 
     /// The field opens on the summary's folder. Empty, it means that folder too, which the
@@ -319,23 +348,6 @@ final class TransferDialogController: NSViewController {
         refusalLabel.font = .systemFont(ofSize: NSFont.smallSystemFontSize)
         refusalLabel.textColor = .systemRed
         refusalLabel.preferredMaxLayoutWidth = Self.width - 2 * Self.inset
-    }
-
-    // MARK: - Buttons
-
-    @objc private func confirm(_ sender: Any?) {
-        switch phase {
-        case .asking: onConfirm?(dontAskCheckbox.state == .on)
-        case .progress: onBackground?()
-        }
-    }
-
-    @objc private func cancel(_ sender: Any?) {
-        onCancel?()
-    }
-
-    @objc private func pause(_ sender: Any?) {
-        onPause?()
     }
 }
 
