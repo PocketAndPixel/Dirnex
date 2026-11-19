@@ -5944,6 +5944,28 @@ do not share a resolver, and neither half of that is obvious from either call si
     reads as the NAS being unreachable, on a host that pings and whose 445 is open. Percent-encode
     the password before believing any `smbutil` failure.
 
+- **The mount table names every share and its account, Finder's included, and the source is a
+  percent-escaped URL without its scheme.** Measured 2026-11-19 for M40 Slice 8 with the NAS's `media`
+  share Finder had mounted: `getmntinfo` gave `smbfs` and `//olegasd@nas/media` for `/Volumes/media`, and
+  `volumeURLForRemountingKey` gave `smb://olegasd@nas/media`. That is no coincidence: the SMB plugin builds
+  the remount URL as `smb://` plus the source with its leading slashes stripped (`netfs.c` in
+  apple-oss-distributions/SMBClient). How the source is written was read from `CreateSMBFromName` and
+  `smb_dictionary_to_urlstring` (`lib/smb/parse_url.c`), since no share on the NAS needs escaping:
+  - `//[domain;][user[:]@]host[:port]/share[/path]`, each part escaped on its own. The account escapes
+    `@ : ; / ?`, so the one literal `@` ends it, and a literal `:` before that is a password, written only
+    when it is empty. The share escapes every URL-reserved character, a space included (`My%20Share`); a
+    `/` inside a share name arrives as `%2F`.
+  - **A guest mount is the account `GUEST` with that empty password** (`GUEST:@nas/Public`), and the
+    client takes any account spelled `guest`, in any case, as guest access (`smb_ctx_setuser`).
+  - The account is dropped when the whole URL would pass `MAXPATHLEN`, so a source with no account need
+    not have been a guest.
+  - A path after the share is a mount of a folder inside it; macOS can mount one.
+  - `SMBMountSource` reads it. **`SMBMounter.existingMountPoint` had compared the raw source** with
+    `hasSuffix("/" + share)`, so a share called "My Share", written `My%20Share`, was never found, and a
+    second Return on it asked NetFS for a share already mounted, which answers `EEXIST` with no mount
+    point; and a mount of `media/Movies` matched a share called `Movies`. Found by reading the source, not
+    seen, since no share here has a space in its name.
+
 - **A share can grant the `opendir` and refuse the `readdir`, and a loop that stops on `NULL` shows
   that refusal as an empty folder.** Measured 2026-10-11 on the NAS's `media` share, whose
   `#recycle` the mounting account may not list: `opendir` succeeds, the first `readdir` returns

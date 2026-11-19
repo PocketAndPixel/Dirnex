@@ -43,7 +43,7 @@ public struct SMBServerBackend: ConnectionScopedBackend {
         try requireOwnBackend(path)
         guard path.isRoot else { throw VFSError.notFound(path) }
         return try mapping(path) { try enumerator.shares() }.map { share in
-            shareEntry(named: share.name, at: VFSPath(backend: path.backend, path: "/\(share.name)"))
+            shareEntry(share, at: VFSPath(backend: path.backend, path: "/\(share.name)"))
         }
     }
 
@@ -56,27 +56,30 @@ public struct SMBServerBackend: ConnectionScopedBackend {
         guard !path.isRoot else { return rootEntry(at: path) }
         guard let parent = path.parent, parent.isRoot else { throw VFSError.notFound(path) }
         let name = path.lastComponent
-        guard try listDirectory(at: parent).contains(where: { $0.name == name }) else {
+        guard let row = try listDirectory(at: parent).first(where: { $0.name == name }) else {
             throw VFSError.notFound(path)
         }
-        return shareEntry(named: name, at: path)
+        return row
     }
 
     // MARK: - Entries
 
     /// One share as a row: a directory, since Return goes into it. It has no size and no dates of its
-    /// own, so the columns draw the dash an unmeasured folder gets (``FileEntry/unknownDate``).
-    private func shareEntry(named name: String, at path: VFSPath) -> FileEntry {
+    /// own, so the columns draw the dash an unmeasured folder gets (``FileEntry/unknownDate``). What
+    /// it does have is the server's comment, which the pane shows in place of both (PLAN.md §M40
+    /// Slice 8).
+    private func shareEntry(_ share: SMBShare, at path: VFSPath) -> FileEntry {
         FileEntry(
             path: path,
-            name: name,
+            name: share.name,
             kind: .directory,
             byteSize: 0,
             modificationDate: FileEntry.unknownDate,
             creationDate: FileEntry.unknownDate,
             isHidden: false,
             permissions: 0o755,
-            inode: 0
+            inode: 0,
+            comment: share.comment
         )
     }
 

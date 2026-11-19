@@ -571,6 +571,56 @@ preference keys unchanged by content. **Not seen:** a key opened from a `dirnex:
 with the release build running Launch Services could have handed to it; a production-signed key; and the
 other 12 translations drawn.
 
+**2026-11-19: Slice 8 landed, core and app** (SMB: the Comment column and the way up). **Probed
+first:** the mount table held `smbfs` and `//olegasd@nas/media` for the share Finder had mounted, and how
+that source is written for anything harder was read from Apple's SMB client rather than guessed
+(`CreateSMBFromName`, apple-oss-distributions/SMBClient): a URL without its scheme, every part
+percent-escaped, a literal `:` only for an empty password, and a guest written as `GUEST:@`, the account
+the client takes as guest access in any case (NOTES.md ▸ SMB). Core: `MountTableEntry` carries each file
+system's type and source; `SMBMountSource` reads a source into the share, its account (a guest as none)
+and any folder below the share, undoing each part's escapes; `FileEntry.comment` holds a share's
+`NetCommentStr`, an empty one as none, and `SMBServerBackend` puts it on each row. App: a flat list of
+shares hides Size and Date, which every share row left as dashes, and gives their room to a **Comment**
+column, so Name does not move and the tab's stored columns stay the user's own; leaving the list shows
+them again. `..` at the root of a share Finder mounted now goes up to that server's list with the cursor
+on the share, as the account the mount names: listed again when that server is connected in the window,
+connected with Dirnex's saved password for the share or the server, and otherwise through the Connect
+sheet filled in with the server and account, which lands on the list. One header in 14 languages.
+**Decided in the slice:** a tree on a server's list keeps Size and Date, since the rows under an expanded
+share are files, and puts Comment after Name, paid for out of Name as the size bar is; a flat list of
+shares draws no size bars; a mount of a folder inside a share keeps `..` to its parent; and a share
+Dirnex mounted whose account has no saved password now opens the same filled-in sheet, where it used to
+raise "The connection couldn't be set up." **Found in passing and fixed:** `SMBMounter` matched a share
+already mounted against the raw source, so a share named with a space (`My%20Share` there) was never
+found and a second Return on it asked NetFS again, and a mount of `media/Movies` matched a share called
+`Movies`; it reads the source through `SMBMountSource` now, and the mount table without waiting where it
+asked `statfs` of every volume. Read from the source, not seen. `SMBMountError` moved to a file of its
+own for the line ceiling. Core: 16 tests, six negative controls each failing the tests that watch them
+(no password split, no decoding, no whole-share check in the reuse, no guest rule, no comment on the row,
+the comment dropped by a copy of the entry); app: 8 tests, five controls (no mount-table fallback, Size
+and Date never hidden, Name fitted with hidden columns counted, no update on reload, the comment's room
+left out of the stored layout). Final runs: core 5999 green, both CI-pinned linters clean, the full app
+suite green (2749 tests), `check_localization_keys.py` clean (1397 keys), and all 73 saved preference keys
+unchanged by content. **Run live on the NAS** the same day, at Oleg's word after first leaving it for
+Slice 9, in `build/debug-dd` (the one build that reaches the LAN) with the release quit, both tabs seeded
+at `/Volumes/media` and `/Volumes`, and two temporary env-gated probes: no cloud rows, and a marker file
+that, while it existed, made `..` treat the server as not connected with no saved password. From the root
+of the share Finder had mounted, `..` read Dirnex's `olegasd@nas` item (Oleg answered the Keychain
+prompt) and landed on `olegasd@nas` showing Name and Comment alone, "Home directory of olegasd" beside
+`home`, the cursor on `media`. Return on `media` went back into `/Volumes/media` with the mount table still
+holding the one Finder mount, no `media-1` and no alert, which is the rewritten reuse finding it. With the
+marker, `..` opened the Connect sheet on SMB, `smb://olegasd@nas`, host `nas`, user `olegasd`, an empty
+Share and no name to save under, and Connect landed on the list with the cursor on `media`. View ▸ Tree
+View on the list drew Name, Comment, Size, Date. After the quit Finder's share was still mounted. No File
+Provider request; listing the share at launch raised macOS's network-volume prompt for the ad-hoc build,
+which Oleg allowed (LIVE-VERIFICATION.md). **The first probe logged the exit's description, which printed
+the password the `.connect` case carries**, into a scratch log and the session's tool output; the log was
+redacted at once and deleted, and LIVE-VERIFICATION.md now says how not to. The probes are gone,
+`build/debug-dd` was rebuilt without them, and all 73 saved preference keys are back by content.
+**Not handled:** a share the mount spells in another case than the server lists it lands the cursor on
+the first row; and a source whose account was dropped for length is tried as a guest. **Not seen:** a
+guest mount, a share with a space in its name, a mount of a folder inside a share, and a translation.
+
 The app's share of selling Dirnex (the private companion repo `dirnex-home`, milestones C1–C15) was
 two milestones, **M29** (a license, and the reminder it removes) and **M30** (Report a Bug), both
 shipped and archived in [docs/HISTORY.md](docs/HISTORY.md). Neither changed what Dirnex *is*: it

@@ -77,7 +77,7 @@ extension PanelViewController {
             cell.textField?.stringValue = ".."
             cell.textField?.alignment = .natural
         // `..` is a way out, not a file: it has no size and no date.
-        case .size, .date:
+        case .size, .date, .comment:
             cell.textField?.stringValue = ""
         // Unreachable: the bar column is answered by `sizeBarCell` before the parent row is ever
         // considered, because its cell is not a `FileCellView`. Listed for exhaustiveness.
