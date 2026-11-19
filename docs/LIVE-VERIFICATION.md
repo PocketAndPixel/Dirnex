@@ -431,6 +431,11 @@ so a trap goes here only if it can bite any live run; one tied to an area goes u
   before the responder chain *and* before a raw `NSEvent` local keyDown monitor. Any
   Escape-driven behavior needs a physical key press to verify. Letters arrive as `keyCode = 0`
   with the character set, so route typed input by character, not keyCode.
+  - **A background `app_key escape` did arrive.** Seen 2026-11-19 on ⌘K's palette in
+    `build/live-copy`, with the copy in front after a `run operation`: the tool reported it "delivered
+    via raw input" to the palette's field, and the palette closed. So the swallowing above belongs to
+    the full-screen takeover. Not tried with the copy behind another app, and the palette's close is
+    not a test of any other window's Escape.
   - **`NSApp.postEvent` is the documented way in for a *monitor*, and it does not reach
     key-equivalent dispatch at all** — so it cannot verify a button's Escape or ⌘-key binding, and
     it fails in the quiet direction: the sheet simply stays open, which reads as a broken binding.

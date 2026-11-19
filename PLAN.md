@@ -4,7 +4,7 @@ A dual-pane, keyboard-first file manager for macOS in the spirit of Total Comman
 built native (Swift), with macOS-only superpowers TC never had: Quick Look, Spotlight
 search, APFS clones, Finder tags, a command palette, and universal undo.
 
-Status: **M0–M39 and M41 shipped**, **M40 open** (14 languages; M29's licensing is on in betas, off in stable until the
+Status: **M0–M41 shipped** (14 languages; M29's licensing is on in betas, off in stable until the
 store opens; M30's Report a Bug is in every release built while `DIRNEX_BUG_REPORT_URL` is set) ·
 Created: 2026-07-05 ·
 Log: [docs/HISTORY.md](docs/HISTORY.md) · What works where:
@@ -99,9 +99,9 @@ Dirnex/
 Sizes are relative (S ≈ days, M ≈ 1–2 weeks, L ≈ 3+ weeks of focused work).
 Each milestone ends in something runnable; no milestone depends on a later one.
 
-### Shipped: M0 → M39, and M41 (2026-07-05 → 2026-11-17)
+### Shipped: M0 → M41 (2026-07-05 → 2026-11-19)
 
-Every milestone in the table is closed; M40, planned earlier, is still under *Next*. The checklists and the full per-pass progress log — what was probed,
+Every milestone is closed. The checklists and the full per-pass progress log — what was probed,
 decided, and rejected — live in **[docs/HISTORY.md](docs/HISTORY.md)**; source comments citing
 `PLAN.md §M5` and the like refer to those sections.
 
@@ -110,24 +110,24 @@ decided, and rejected — live in **[docs/HISTORY.md](docs/HISTORY.md)**; source
 | M0 | Scaffolding | 07-05 | — |
 | M1 | Read-only dual-pane browser | 07-06 | — |
 | M2 | Operation engine | 07-07 | Side-by-side text diff in the conflict dialog — **since shipped** 2026-10-22 with M31 Slice 4, as Compare Contents… for two local files whose bytes are here |
-| M3 | Discoverability layer | 07-08 | SQLite stores (JSON is fine); per-workspace palette entries |
-| M4 | VFS payoff | 07-12 | libarchive C-module gate (`bsdtar` instead); search tag chip + content-grep fallback |
+| M3 | Discoverability layer | 07-08 | SQLite stores (JSON is fine); per-workspace palette entries — **since shipped** 2026-11-18 with M40 Slice 1 |
+| M4 | VFS payoff | 07-12 | libarchive C-module gate (`bsdtar` instead); search tag chip + content-grep fallback — the chip **since shipped** with M6, the fallback 2026-11-18 with M40 Slice 3, for a folder Spotlight does not index |
 | M5 | Network and sync | 07-14 | — |
 | M6 | Mac-native power features | 07-19 | — |
 | M7 | Release readiness | 07-19 | — |
-| M8 | The sidebar as a first-class surface | 07-21 | Dragging a *remote* (SFTP) folder into the sidebar — stays menu-only, **since shipped** 2026-11-10 with M38 Slice 4, for SFTP, FTP, WebDAV and S3; Recents ordered by modification date, not the true last-used stamp |
+| M8 | The sidebar as a first-class surface | 07-21 | Dragging a *remote* (SFTP) folder into the sidebar — stays menu-only, **since shipped** 2026-11-10 with M38 Slice 4, for SFTP, FTP, WebDAV and S3; Recents ordered by modification date, not the true last-used stamp — **since shipped** 2026-11-18 with M40 Slice 2 |
 | M9 | iCloud Drive, for real | 07-21 | Per-item download percentage (macOS exposes none through the URL resource keys); Put Back inside the iCloud trash — the origin is an opaque provider reference with no path in it |
 | M10 | Google Drive and Docs | 07-22 | A real Drive API backend (OAuth + Drive v3, native Docs export/import) — dropped 2026-07-22; sync status in Drive's *mirror* mode, which macOS exposes to no one but Finder |
 | M11 | F4 Edit, and Quick View at full size | 07-22 (text preview 07-27) | A built-in text editor (F4 hands the file to the user's own); write-back for archive and SFTP files — **both since shipped**, archives 2026-08-09 and SFTP with M21 Slice 10; a slideshow timer or thumbnail filmstrip in the preview — the timer **since shipped** 2026-11-15 with M39 Slice 16, the filmstrip left to M15's grid |
-| M12 | Localization — 14 languages | 07-29 | The stock Finder-tag *names* in the ⌃T menu (`DirnexCore` `systemTagName` data); the AppleScript `.sdef` *terminology*, since renaming a verb breaks users' scripts (its error messages did translate); a lint rule keeping bare literals out of UI files (the repeated sweeps stand in for it); the "Results for Search results" stutter, a wording decision rather than a translation gap; RTL — none in the shipped set |
+| M12 | Localization — 14 languages | 07-29 | The stock Finder-tag *names* in the ⌃T menu (`DirnexCore` `systemTagName` data) — **since shipped** 2026-11-19 with M40 Slice 6, as the account's own Finder favorites; the AppleScript `.sdef` *terminology*, since renaming a verb breaks users' scripts (its error messages did translate); a lint rule keeping bare literals out of UI files (the repeated sweeps stand in for it) — **since shipped** with M40 Slice 6; the "Results for Search results" stutter, a wording decision rather than a translation gap — **since shipped** with M40 Slice 6, as "Search Results"; RTL — none in the shipped set |
 | M13 | FTP and FTPS | 07-25 | `MLSD` (`curl` cannot send it) — **wrong, and since shipped** 2026-10-19: `curl -X MLSD` works, and it now times every row of a server that answers it, with a per-server time zone for those that do not; FTP-side `DirectorySync` by timestamp (unreliable by construction — LIST stamps are year- and zone-less); write-back for files edited in place over FTP — **since shipped** with M21 Slice 10, which generalized the remote edit path to every backend that accepts uploads; an opportunistic "TLS optional" client mode (a password-downgrade vector — rejected 2026-07-26) |
-| M14 | Checksums and attributes | 07-30 (escalation 08-02) | Split/combine files (dropped 2026-07-29 — FAT32's ceiling, floppy/CD spanning and mail limits are all gone on macOS); multi-selection and recursive **privilege escalation** (the flat single-item path proves the mechanism; those sheets refuse a root-only change by name); escalating the *undo* of a non-owned change (still refused with `attributeRestoreNeedsAdministrator`, not escalated) |
+| M14 | Checksums and attributes | 07-30 (escalation 08-02) | Split/combine files (dropped 2026-07-29 — FAT32's ceiling, floppy/CD spanning and mail limits are all gone on macOS); multi-selection and recursive **privilege escalation** (the flat single-item path proves the mechanism; those sheets refuse a root-only change by name) — **since shipped** 2026-11-18 with M40 Slice 4, one password for any number of items; escalating the *undo* of a non-owned change (still refused with `attributeRestoreNeedsAdministrator`, not escalated) — **since shipped** 2026-11-19 with M40 Slice 5 |
 | M15 | The tree view, and color the user chooses | 08-02 | The **thumbnail grid, brief view and the `PaneSurface` extraction** (cut 2026-08-02 — the three are one unit, and `FileTableView` is a 25-method contract a grid satisfies none of); a memo in front of `fnmatch` (measured unnecessary — 0.46 ms per full reload for 5 rules); size bars in tree mode, withdrawn at close and re-scoped per parent directory in a follow-up (`SizeVisualization(tree:)`) |
 | M16 | Quick View: source or page | 08-06 | Markdown and RTF as dual-style types — markdown was taken up at M18, RTF **since shipped** 2026-11-12 with M39 Slice 3 — and `.webarchive` / `.mhtml`, which need `loadData` rather than a file load — **since shipped** 2026-11-12 with M39 Slices 1–2, sealed in the core; the JavaScript mark in the *pane*-size preview, which had no header to carry it — **since shipped** 2026-10-14, when ⌃Q took the full-window header |
 | M17 | Syntax highlighting in Quick View | 08-06 | A **theme picker** (the colors are a fixed light/dark table, no Settings surface) — **since shipped** 2026-11-14 with M39 Slice 10: VS Code, Xcode and GitHub; the constructs a regex-free single pass cannot reach — string interpolation, JS regex literals, heredocs, Swift raw strings, JSX, and semantic coloring of any kind; **line numbers, folding and a minimap**, which are editor features Dirnex hands to the user's own editor; highlighting inside the *rendered* HTML style, which is the page's own business; a **key-vs-value** distinction in JSON, and Markdown's **setext headings** and **indented code blocks**, all three of which need a lookahead or a previous line the single pass does not keep, and Ruby's `=begin` block comment — all four **since shipped** 2026-11-14 with M39 Slice 9, still with no state stack; and any third-party highlighter — Highlightr (a JS engine on every cursor step) and tree-sitter (a C dependency plus a grammar per language), both rejected 2026-08-06 |
 | M18 | Quick View: Markdown as a document | 08-07 | **Raw HTML passthrough** — CommonMark says to pass it and a preview that renders on *cursor movement* must not, which is also what keeps the generated page inert; **full CommonMark conformance** (the target is what the file's author sees on GitHub for an ordinary document, pinned by a corpus of real files, with an unreadable construct rendering as its literal text); **math and LaTeX, footnotes, definition lists, emoji shortcodes and wiki links** — **since shipped** 2026-11-13 → 11-14 with M39 Slices 6–8, math as MathML; every mermaid diagram type outside **flowchart and sequence** (a class diagram, gantt, state chart or ER diagram falls back to a code fence naming itself, as does an unsupported construct *inside* a supported type) — state, class, ER and gantt **since shipped** 2026-11-15 with M39 Slices 13–15; **following a link to another file**, since turning a preview into a browser needs its own history and its own way out — **since shipped** 2026-11-13 with M39 Slices 4–5, by moving the pane, whose Back is the way out; **RTF**, the other type M16 left in the same sentence — `NSAttributedString`'s job, sharing nothing with a renderer — **since shipped** 2026-11-12 with M39 Slice 3; **rendering as you type** and editing of any kind (§M11's call, unchanged); and **exporting the rendered page** to HTML or PDF, which is a file operation and belongs in the operation engine with a destination and a conflict policy — **since shipped** 2026-11-14 with M39 Slices 11–12, through F5's queue |
 | M19 | Encryption | 08-09 | **`zipcrypt` and AES-128** (the first is broken, the second buys nothing on hardware AES — both taken at open); **encryption for any container but zip**, since libarchive's 7-Zip writer refuses it and tar has no notion of it; **a passphrase for the paths that are not F5** — preview and *nested*-archive entry failed with `passphraseRequired` rather than prompting, and the encrypted route extracted the whole archive rather than the requested members, so a member filter plus a per-archive passphrase held for the session was its own slice (the passphrase half **landed 2026-08-09**, user-reported — see HISTORY.md ▸ After M19; the **member filter landed 2026-08-25**, closing the milestone: `ArchiveMemberFilter` skips what nobody asked for, and one member of a 600 MB archive costs 0.001 s against 1.53 s); **encrypting in place**, or any gesture that removes the plaintext afterwards, because that delete belongs to the user with the Trash's own rules in view; and **vault paths in anything the user saved on purpose** — a named workspace or a favorite pointing inside a vault is kept, since §6's rule is about what Dirnex remembers *without being asked* (the derived-data clause itself was closed 08-09 by fixing the frecency index and session restore, not by stating the leak — see HISTORY.md §M19 ▸ Follow-up) |
-| M20 | Every place reachable without the sidebar | 08-12 | Individual places as ⌘K palette results (the palette is a registry of *commands*, places are live data — a different mechanism, worth its own decision); reordering or editing places from the menu, which stays the sidebar's job; a Finder-style "Computer" or "Network" destination, which is not a place Dirnex has; and a **Help menu** — Slice 2 claimed Help ▸ Search made "Trash" findable and the app declares no Help menu at all, so adding one is its own decision and was not taken |
+| M20 | Every place reachable without the sidebar | 08-12 | Individual places as ⌘K palette results (the palette is a registry of *commands*, places are live data — a different mechanism, worth its own decision) — **since shipped** 2026-11-18 with M40 Slice 1, as rows of the one list, the way user scripts already were; reordering or editing places from the menu, which stays the sidebar's job; a Finder-style "Computer" or "Network" destination, which is not a place Dirnex has; and a **Help menu** — Slice 2 claimed Help ▸ Search made "Trash" findable and the app declares no Help menu at all, so adding one is its own decision and was not taken |
 | M21 | Amazon S3, and the mounts we already reach | 08-19 | **Atomicity of any kind** — a prefix rename or delete is N copies and N deletes, so stopping partway leaves items under both names, and no layer can make it otherwise; **a byte counter during a server-side copy**, which would cost a round trip per object (~25 min of pure latency on a 50 000-file prefix), so those jobs report items; **`copyMetadata` and `DirectorySync` by timestamp**, since S3 has no settable mtime, no permissions and no symlinks; **a File Provider mount** (Mountain Duck / `rclone mount` territory — a different product with a different lifecycle); **AES-style client-side encryption, versioning, lifecycle rules and storage-class changes**, none of which a file manager's ten verbs have a place for; and **the 200-committed multipart refusal seen from Amazon**, which AWS documents and answers `412` with the code in practice, so it stays pinned against our own SigV4-verifying endpoint |
 | M22 | Find Files on a connected server | 08-16 | **Content-grep and tags remotely** — no remote backend can answer either without reading every file, so `SearchFields` withholds them rather than skipping the clause (which would return *more* results under the same name); **an exact remote timestamp**, since FTP's `LIST` stamps are year- and zone-less on the server's clock — **since shipped** over FTP for servers that answer `MLSD` (2026-10-19); **searching an S3 *account* pane**, whose rows are buckets — "search every bucket" is a different and much more expensive question than the one ⌥F7 asks — **since shipped** 2026-11-10 with M38 Slice 5, each bucket up to a bound stated before the search; and GNU `find -printf`, retired at the probe rather than handled, since choosing it would have shipped the common case unverified — POSIX `find … -exec ls -ldn {} +` instead, at the cost of the date column |
 | M23 | Copy, paste and drag, wherever the file is | 08-26 | Dragging a *folder* out of a server as a promise (a promise is one file; a recursive fetch behind a Finder drop has no progress surface and no way to stop it) and dragging an archive **member** out to another app, for the same reason one layer along — an encrypted archive would have to raise a passphrase sheet behind somebody else's drop, and `extractArchiveSources` reports failures with an alert rather than through a completion handler, so it would need Slice 4's always-answers contract first (taken by the user 2026-08-26, F5 copy-out being the route); `⌥⌘V` move-paste into an archive, which stays gated where it was; a *drop* into a browsed archive, where ⌘V adds by repacking and a drag does not; and the pasteboard as an automation surface — nothing here is scriptable that F5 was not. **Left for a human**, since a drag *session* cannot be synthesized: an actual drag between two panes and a Finder drag onto a connected server. A drag from a server into Finder **ran live 2026-10-24**, where a marked set dropped nothing until it was fixed (HISTORY.md §M32) |
@@ -136,517 +136,29 @@ decided, and rejected — live in **[docs/HISTORY.md](docs/HISTORY.md)**; source
 | M26 | Move to Trash, wherever the file lives | 08-31 | **The remote backends**, which have no Trash at all and are already degraded to a confirmed permanent delete (§M5, and M25 §7's decision not to invent one); **chasing the refusal further into TCC and `fileproviderd`**, which is not observable from here past the three candidates already eliminated — the fix does not depend on knowing which policy denies; and **Put Back for an item *Finder* deleted out of a provider domain**, or for anything trashed before the store shipped, both of which keep the honest answer the restore flow already gives by name. A **third** origin source landed 2026-09-20 — a network share's own `#recycle`, where the bin mirrors the original path so there is no record to be missing (HISTORY.md ▸ the follow-on log) |
 | M27 | Legacy code-page archive names | 09-09 | **Inferring** the code page — no reader can, and a wrong guess is a plausible name for the wrong file, so it is a chooser over a preview and never a detector; **preserving an un-representable name byte-for-byte**, the rejected streaming rewrite, which keeps bytes nobody can read and still cannot extract that row *out* of the archive; and **persisting the declaration** across sessions, since it is a guess the user made about one archive and a wrong one silently outliving the session is worse than being asked again |
 | M28 | iCloud Photos, as folders of originals | 09-13 | **Import, delete and album edits**, each a write Photos mediates with its own confirmation; **smart albums** — one a person made is returned by no PhotoKit fetch, and the system ones are views over the library rather than places; **shared albums, the Shared Library and hidden photos**, left out as Photos' own Library view leaves them out; **a per-asset time zone**, which PhotoKit does not expose, so months are cut in the Mac's; **⌘L inside the library**, which has no real directory to start from; and **Photos' lowercase `.mov`** for a Live Photo's movie, since a row's name is part of its path. **Exercised later that evening**: the download of an original that is only in iCloud, on clips recorded for it — the bar sat at zero and Stop was ignored until the request carried a progress handler (HISTORY.md §M28); after that fix a 219 MB copy arrived byte-identical and Stop on a 276 MB one stored nothing |
-| M29 | A license, and the reminder it removes | 10-01 | **Revoking a refunded key inside the app** (the server marks it; an in-app list waits until refunds are actually abused); **trials that stop working, and activation limits**; **any copy protection beyond the signature**, since the source is open and the reminder is a request, not a lock; and **the Keychain** for the key, which is signed rather than secret. **Seen only in tests or a Debug build**: the Renew reminder on a release build, the prominent Renew… in Settings ▸ License, a pasted production key, and the 13:00 rule |
+| M29 | A license, and the reminder it removes | 10-01 | **Revoking a refunded key inside the app** (the server marks it; an in-app list waits until refunds are actually abused) — **since shipped** 2026-11-19 with M40 Slice 7, as a list compiled into the core, starting empty; **trials that stop working, and activation limits**; **any copy protection beyond the signature**, since the source is open and the reminder is a request, not a lock; and **the Keychain** for the key, which is signed rather than secret. **Seen only in tests or a Debug build**: the Renew reminder on a release build, the prominent Renew… in Settings ▸ License, a pasted production key, and the 13:00 rule |
 | M30 | Report a Bug, and a Help menu to hold it | 10-07 | **Anything the user didn't type or tick** in a report: no logs, no screenshots, no file names or paths, one crash report at most; **the website** naming Help ▸ Report a Bug…, until a stable release has it (the private repo's C8). **Seen only in tests**: Email Instead's draft, since this Mac's Mail has no account |
 | M31 | A compare window of our own | 10-22 | **Editing, copying a block across and saving**, a later milestone's decision — **since shipped** as M33, for whole lines; **a three-way merge** — **since shipped** as M34; **a file over 64 MiB** in the window, refused by name and left to the external tools; **a binary comparison**. **Seen only through a probe**: a Mac with no external diff tool. **Not run live**: an external tool from the conflict dialog, FTP and S3 pairs, and Escape |
 | M32 | WebDAV | 10-24 | **Depth infinity**; **locks of our own**, which M38's probe found add nothing worth holding one; **NTLM, Negotiate and OAuth**, NTLM and Negotiate **since shipped** 2026-11-10 with M38 Slice 6; **setting a time on Apache**, which has no way to take one (Nextcloud's `X-OC-Mtime` is used where it is answered); **Apache's offset PUT** as a segmented upload; **quota**, **since shipped** 2026-11-10 with M38 Slice 7 where the server reports one; **CalDAV, CardDAV, versioning and WebDAV ACLs**; **a Trash**, which the protocol does not have, so a NAS's `#recycle` softens the delete sheet instead. **All run live 2026-10-24**, on the NAS and a throwaway Apache, which found and fixed three bugs: ⌥F5 with a server folder in the set, Put Back into a folder deleted since, and dragging a marked set out (HISTORY.md §M32) |
 | M33 | Copy a change across, and save | 10-26 | **Typing in a pane** and **find and replace**, M11's call; **copying every change at once**, which is F5; **a save that changes the encoding or the line endings**, since a save keeps both; **editing in the conflict dialog's window**, whose right-hand file waits on that dialog. **Not run live**: FTP and S3 sides, a Synchronize row compared again after a save, a side with nowhere to save, and an editor's unsaved edit met by a save |
 | M34 | A three-way merge | 10-27 | **Synchronize as an entry point**, until a sync keeps a record of the last one; **three files picked by hand**, whose base would be a guess; **an archive member** changed behind an edit; **being git's merge tool**, which needs a command-line entry point; **conflict markers** in any form; **a merge that ignores whitespace**; **a binary file**. **Not run live**: FTP in the app, a batch's question, a file past the content check's limit, the take keys and the light appearance. Over SFTP and FTP a write between the check and the upload goes unseen, since that upload carries no condition |
-| M35 | An SMB server's shares, as a pane | 11-05 | **Anything that writes to the list**: creating, renaming or deleting a share, or copying onto it; **a comment column**; **a way up from a share Finder mounted**, which keeps `..` → `/Volumes`. **Not run live**: the plain permission sentence, since no share is listed to `dirnex-test` and refused; ⌘Return into the other pane; a saved sidebar row; `..` from a share typed into the sheet while its server is not connected; and marks inside a share after a relaunch |
+| M35 | An SMB server's shares, as a pane | 11-05 | **Anything that writes to the list**: creating, renaming or deleting a share, or copying onto it; **a comment column** — **since shipped** 2026-11-19 with M40 Slice 8, as the comment after the share's name; **a way up from a share Finder mounted**, which keeps `..` → `/Volumes` — **since shipped** with M40 Slice 8, to that server's share list. **Not run live**: the plain permission sentence, since no share is listed to `dirnex-test` and refused; ⌘Return into the other pane; a saved sidebar row; `..` from a share typed into the sheet while its server is not connected; and marks inside a share after a relaunch |
 | M36 | Drag and paste, where M23 stopped | 11-08 | **A folder for Teams, Chrome and the rest of Chromium**, which refuse a promise — **since shipped** the same day as a zip of the folder for every app but Finder, after Gmail answered "Attachment failed" for a folder, and **since 2026-11-09 as the folder itself, with the zip for an app the pointer enters with ⇧ held**, after VLC was handed a zip of a whole season (HISTORY.md, after §M36); **a folder inside an archive**, which probe P1 answers for too, leaving the extraction of a subtree behind the promise; **a folder dragged with files** losing its promise once the pointer has been over another app, the board's rewrite to file URLs being one way. **Not run live**: Edit ▸ Move Items Here being enabled, F5 from a server into an archive, an archive member into a Chromium app, and a server folder crossing another app on its way to Finder |
 | M37 | Compare and merge, past M31 and M34 | 11-09 | **Aligning a byte comparison across insertions**, which needs gaps in the rows and a size limit, and has no oracle; **whitespace in a merge's regions**, labelled and offered as a take instead, so no edit goes missing in silence; **a sync's record with a side on a server**, **since shipped** 2026-11-11 with M38 Slices 8–9, keeping only what each sync copied; Go to Offset, copying bytes and Swap Sides in the byte view |
 | M38 | Remote: what M8, M22, M24, M25 and M32 left | 11-11 | **WebDAV locks of our own**, since a lock around the save cannot see a write made before it, and one held from the download on would lock everyone else out while an editor is open; **OAuth for WebDAV**, which needs a sign-in flow and a token store; **a faster Find Files walk in Photos**, which saves about 1 ms a month while a name costs 2.0 ms an asset; **a quota over SFTP**, which the protocol does not carry. **Not run live**: real AWS, IIS, a Windows domain and a hosted Nextcloud; root over GNU coreutils; a password pin reconnecting through the Keychain itself; and the NAS for Open in Terminal, whose accounts may not run a command |
 | M39 | Quick View | 11-15 | **A thumbnail filmstrip**, a second file list, which is M15's grid under *Still open*; **a second style for `.rtfd` and `.odt`**, neither of which is text; **a history of the preview's own**, since a followed link moves the pane and its Back is the way back; **anything Mermaid reads as config** — front matter's `config`, the today marker's style, `classDef`, `style` and `click` are skipped or named in the caption; **an Obsidian vault search** for a wiki link, which looks only in the document's folder; **a sibling image in an export** of a server's or an archive's document, since the export holds what the preview drew. **Not run live**: full screen, apart from following a link and the slideshow; the light appearance for several slices; a server as the location for most, which reach the same render through the file's bytes; a web link opening the browser; an export to or from a server; the compare and merge windows under a new theme; and a translation |
+| M40 | Everything else | 11-19 | **Text inside a PDF or a Word file** where Spotlight does not index, since the walk reads plain text only, and **"Everywhere"**, which stays Spotlight's index; **a revocation list fetched from a server**, since Dirnex never asks one whether a license is real; **a Created date in an escalated step**, which no stock tool sets; **joining items that take the same command into one call**, not needed at 3 ms an item; **Size and Date on a share's row**, which the share list does not carry. **Not handled**: a share the mount spells in another case, and a source whose account was dropped for length. **Not run live**: a place inside a vault in ⌘K's recents and the ⌘-click; Recents over the whole index; a system-immutable item, an ACL carried to root and a cancel on a second body's dialog; a `dirnex://` license link and a production key; a guest mount, a share with a space and a folder mounted inside a share; and every translation but German |
 | M41 | Copy and move dialogs | 11-17 | **Drag and drop and ⌘V**, which keep the queue bar alone, since the gesture names the destination and Finder does not ask; **F5 into or out of an archive**, which adds or extracts by its own route; **a count of the jobs ahead**, since a snapshot does not say which disks a job shares; **an undo record for a folder an error dialog's Abort leaves**, which nothing promises. **Not run live**: ⇧F5, ⇧F6 and a Copy rebound to a chord, all pinned by tests; a server at either end; a keeping-folders transfer across tree levels; the queue bar's Pause while the dialog is up; the error dialog on the progress sheet; the light appearance; and a translation |
 
 ### Next
 
-**Planned 2026-11-07: M36–M40.** These five milestones take up what earlier milestones left undone by
-choice rather than for a hard limit, in the order Oleg set: drag and paste, compare and merge, remote,
-Quick View, and everything else. Each item names the milestone that left it and the reason given
-then, because that reason is what the design has to answer. Nothing left here has been probed yet. Each
-milestone opens with its probes, and its slices are written then (CLAUDE.md ▸ How to work here). An
-item whose reason still holds after the probe goes back to the *undone* column with what the probe
-found.
-
-M36 (drag and paste, where M23 stopped) closed 2026-11-08, M37 (compare and merge, past M31 and M34)
-2026-11-09, M38 (remote: what M8, M22, M24, M25 and M32 left) 2026-11-11 and M39 (Quick View) 2026-11-15,
-and all four are archived in [docs/HISTORY.md](docs/HISTORY.md). M41 (copy and move dialogs), asked by
-users coming from Total Commander, opened and closed 2026-11-17, ahead of M40, and is archived there too.
-
-#### M40 — Everything else (M)
-
-- **Places as ⌘K results** (M20). The palette is a registry of commands and places are live data, so
-  this is a second mechanism and its own decision.
-- **Per-workspace palette entries** (M3). Workspaces are reached through the Workspaces… popup
-  today.
-- **Privilege escalation for a multi-selection, and recursively** (M14). The single-item path proved
-  the mechanism, and those sheets refuse a root-only change by name.
-- **Escalating the undo of a non-owned change** (M14), refused today with
-  `attributeRestoreNeedsAdministrator`.
-- **Recents ordered by when each item was last used** (M8). Modification date stands in today,
-  because `mdfind` returns paths in no useful order and a statted `FileEntry` carries no last-used
-  date.
-- **Find Files: a content-grep fallback for volumes Spotlight does not index** (M4). M4 left a tag
-  chip beside it, and that shipped with M6 (the sheet's Tags field, `FileQuery.tags`).
-- **Localization** (M12): the stock Finder tag names in the ⌃T menu, which are
-  `FinderTag.systemTagName` data in the core and stay English; a lint rule keeping bare literals out
-  of UI files, which the sweeps stand in for; and the "Results for Search results" stutter, a wording
-  decision rather than a translation gap.
-- **Revoking a refunded key inside the app** (M29). The server marks a refunded key, and M29 set the
-  in-app list to wait until refunds are actually abused. Dirnex never asks a server whether a license
-  is real, so the list ships in the app.
-- **SMB** (M35): a comment column on a server's share list, from the `NetCommentStr` that
-  `EnumerateShares` already returns; and a way up from a share Finder mounted, which keeps `..` →
-  `/Volumes`.
-
-**Opened 2026-11-18.** Probed on this Mac, with the NAS share Finder had mounted at `/Volumes/media`:
-
-- **Places and workspaces in ⌘K: the second mechanism already exists.** User scripts ride in the
-  palette as `Command`s (`UserScripts.paletteCommands`), ranked by the same `CommandMatcher` and routed
-  by their id prefix in `CommandPaletteController.runSelected`. A place comes from the window's
-  `placeSources()` and opens through the sidebar's `activate(_:)`, as Go ▸ Places does, and a
-  workspace opens through `applyWorkspace`. So both can be rows of the one list.
-- **Recents: `mdfind -attr kMDItemLastUsedDate` returns the date with each path, in the same call.**
-  A record is the path, three spaces, and `kMDItemLastUsedDate = 2026-11-17 18:40:34 +0000`, or
-  `(null)`. With `-0` a record ends in NUL rather than a newline; the runner splits on newlines today,
-  so a name holding one breaks it. The query the runner already sends answered 50 items in 0.13 s.
-  The dates are whole seconds, in UTC.
-- **Find Files: Spotlight answers nothing for a place it does not index, and says nothing.**
-  `mdutil -s` reads "Indexing disabled." for `/Volumes/media`. For any folder that is not a volume
-  root it answers "unknown indexing state", so it cannot see the scratchpad under `/private/tmp`,
-  which sits on an indexed volume and is left out of the index. What tells them apart:
-  `mdfind -onlyin <parent> 'kMDItemFSName == "<name>"'` finds an indexed folder itself
-  (`~/Dev/Common/Dirnex`, 0.06 s) and nothing for the scratchpad (0.04 s). `kMDItemPath` cannot be
-  queried, and `mdls` is no witness, since it reads a file's attributes whether or not it is indexed.
-  M22's walk (`SearchPredicate`) answers name, kind, size and date; on a local disk it can also read
-  tags (`FinderTagStorage`) and bytes.
-- **Escalation for many items.** `AttributeApplyRunner` refuses each root-only item with
-  `attributeChangeNeedsAdministrator` and goes on, so the batch's report already holds the list, and
-  `EscalatedAttributeCommand` can build each item's command from that item's own diff, as the
-  single-item sheet does. `osascript` carries the body in `argv`, whose limit is 1 MiB
-  (`getconf ARG_MAX`): about 5 000 items at some 200 bytes each. Whether a second `osascript` within
-  five minutes asks for the password again needs a password typed, so it waits for the live run.
-- **Escalating an undo.** `UndoJournal+Attributes` refuses at two sites with
-  `attributeRestoreNeedsAdministrator`, holding the before-state the same command builder takes.
-- **Stock tag names.** `NSWorkspace.shared.fileLabels` names the seven in the app's language, but
-  only from a bundle with that localization: a bare tool got English under every `-AppleLanguages`,
-  and a bundle carrying `de`, `fr`, `ja` and `uk` gave "Rot", "Rouge", "レッド" and "Червоний". In
-  English it says "Gray", while Finder's `FavoriteTagNames` here, and every file Finder tags, say
-  "Grey". So it gives the names Finder *shows*, which is not proof of what Finder *writes* on a
-  localized Mac. This Mac runs in English and cannot show that; a clone of the CI VM set to German
-  could.
-- **The stutter.** The path bar puts "Results for " before `LocalizedCatalog.summary(of:)`, which is
-  "Search results" when only a size or date chip names the search.
-- **A lint rule.** A scan for a literal of two or more letters given to a title, message, label,
-  tooltip, placeholder or `stringValue` in the app finds about fifteen, all deliberate: interpolations
-  of parts already localized, proper names (`Dirnex`, `UTC`), `F\(number)`, a sizing sample. So
-  SwiftLint's `custom_rules` can hold the line, with an inline disable at each of those.
-- **Revocation.** A key's `id` is 128 random bits in base32 and already the only part of a key that
-  goes into a URL (`LicenseKey`), so a list of refunded ids can ship in the open repository without
-  naming anyone.
-- **SMB.** `SMBShare.comment` is parsed and nothing shows it. A Finder mount names its server and
-  account: `volumeURLForRemountingKey` answered `smb://olegasd@nas/media` for `/Volumes/media`, and
-  `statfs` gave `//olegasd@nas/media`, whose share-less form is a `VFSBackendID.smbServer`. Listing
-  that server's shares needs a session as `olegasd`, whose password is in Finder's Keychain item,
-  not Dirnex's. M35 measured that the plugin lists with no `OpenSession` at all, as the mounted
-  identity, and decided not to rely on it.
-
-Decided before Slice 1 (2026-11-18, Oleg, on the probes above):
-
-- **Places and workspaces are rows of the palette's one list**, as user scripts are: every place the
-  sidebar offers and every saved workspace, ranked with the commands, the recently picked ones on top
-  of the empty list. A pick opens through the sidebar's `activate(_:)` or `applyWorkspace`, never a
-  dispatch of its own. Their ids are stable and are resolved against the stores when picked, so a
-  place that has gone is not offered.
-- **Recents orders by last opened, and its date column shows that date under "Last Opened".** Every
-  other tab is unchanged.
-- **Find Files on a place Spotlight does not index walks it**, for name, kind, size, date and tags,
-  and for "Containing" by reading the bytes, case-insensitively, in UTF-8 and UTF-16, skipping
-  binaries. Plain text only, so nothing inside a PDF or a Word file, and the sheet says so.
-- **`..` at the root of a share Finder mounted goes up to that server's share list**, with the cursor
-  on the share, as the account the mount names. It signs in with Dirnex's saved password for that
-  account, or opens the Connect sheet filled in when there is none. Never by the plugin's listing
-  without `OpenSession`, which M35 refused.
-- **A Comment column in a server's share list**, in place of Size and Modified, which a share row
-  leaves empty, shown only while a pane lists shares. Replaced after the slice by the comment after
-  the share's name, the columns unchanged (Oleg, 2026-11-19, below).
-- **The stock tag names are measured before anything is built**: a clone of `dirnex-ci-base` set to
-  German, a file tagged in Finder, and what Finder wrote read back. The runner's own VM is not
-  touched. The design follows what Finder writes.
-
-Proposed with them, open until the slice that builds each:
-
-- **Escalation for a batch and a recursive change.** Decided at Slice 4 (2026-11-18, Oleg, on its
-  probes): a multi-selection Save asks **before** anything is written, in one dialog for every
-  root-only item, and Authenticate changes those as root and then the user's own, as one undo step;
-  Cancel leaves the sheet unchanged. A recursive run's report offers its root-only items with **Apply
-  as Administrator…**, and those become **an undo step of their own**. Past the `argv` bound the bodies
-  go to **one `osascript` over stdin**, so one password covers any number of items.
-- **An undo that needs root asks**, in the same administrator sheet with its command, instead of
-  refusing. Cancel leaves the step where it was.
-- **The stutter.** A search that no term names reads "Search Results" in the path bar, without
-  "Results for".
-- **The lint rule** is a SwiftLint custom rule over `Dirnex/`, with an inline disable at each
-  deliberate literal.
-- **Revoked keys.** The refunded ids are compiled into the core, starting empty. A key on the list
-  verifies and is then refused as revoked: Settings ▸ License says it is no longer valid, the reminder
-  treats the install as unlicensed, and the key stays stored, so taking it off the list restores it.
-  Widened at Slice 7 (2026-11-19, Oleg, on the server's renewal record): a line can also take back a
-  refunded renewal, naming the end day the license was put back to.
-- **A place inside a vault stays out of the palette's recents**, as `VaultPrivacy` keeps it out of
-  every memory the user did not ask for.
-
-#### Slices
-
-1. **⌘K: places and workspaces** (core, then app). The ids and their resolution, pure over
-   `SidebarPlaceGroup`s and `Workspace`s; then the palette's list, titles from the sidebar's own
-   presentation, the dispatch, the recents, 14 languages.
-2. **Recents by last opened** (core, then app). The `-0 -attr` parse, the date on an entry and its
-   sort, the Last Opened column, 14 languages.
-3. **Find Files where Spotlight does not index** (core, then app). The index check, the local walk
-   with tags and the byte grep, the sheet's sentence.
-4. **Escalation for a batch and a recursive change** (core, then app).
-5. **An undo that needs root** (app).
-6. **Localization.** The tag-name measurement and what it decides, the stutter, the lint rule.
-7. **Revoked keys** (core, then app).
-8. **SMB: the Comment column and the way up** (core, then app).
-9. **Live, and the record.**
-
-**Done when:**
-- a place's or a workspace's name typed in ⌘K opens it, and a place that has gone is not offered;
-- Recents lists by last opened and shows the date;
-- ⌥F7 on the NAS share and under `/private/tmp` finds by name, tag and text;
-- a multi-selection or recursive change with root-only items applies after one password, and ⌘Z on
-  it asks rather than refuses;
-- the stock tags follow what Finder writes, or the item goes back to *undone* with the measurement;
-- a search no term names reads without the stutter, and `swiftlint --strict` fails on a new bare
-  literal in a UI file;
-- a key on the revoked list reads as no longer valid;
-- a server's share list shows its comments, and `..` from a share Finder mounted lands on that list.
-
-#### Progress
-
-**2026-11-18: Slice 1's core half landed** (the app is untouched). `PaletteDestination` gives each of
-the eleven kinds of `SidebarPlace`, and each saved workspace, a stable id under `place.` or
-`openWorkspace.`, keyed on the identity its own store uses: a pin and a volume on their path, a cloud
-mount on its directory, a vault on its image, a search, a server and a workspace on their names, a tag
-on its name in lower case. `resolve` finds the place again in the stores as they are when picked, so a
-pin renamed since resolves to its new name and one removed resolves to nothing. `isRememberable` keeps a
-place inside an unlocked vault, the vault's own volume included, out of the palette's recents. The app
-supplies each row's title and keywords, since both are words in the user's language. 18 tests; three
-negative controls each failed the test that watches them (a tag id keeping its case, the vault check
-removed, the de-duplication removed). Places lengthen the list the matcher sorts, and its tie-break scans
-linearly, so it was timed with 150 extra rows: 0.2–0.5 ms a keystroke in Release, 5–9 ms in Debug, so
-it stays as it is. **For the app half:** `CommandRecents.ids` keeps only registry ids, which is why a
-user script never shows as recent today, so it has to learn destination ids too.
-
-**2026-11-18: Slice 1 landed** (the app half). ⌘K builds its list once per opening, from the registry,
-the user's scripts, and `PalettePlaces`, which names each place with `SidebarPlacePresentation` and
-gives it its section's name as a keyword, in the user's language and in English; a workspace is its
-name, found by the word Workspace. A pick of a destination resolves its id again, records it unless
-it is inside an unlocked vault (`VaultMounts.shared`), and opens through `BrowserWindowController.open`,
-which hands a place to the sidebar's `activate(_:)` and a workspace to `applyWorkspace`; one that has
-gone beeps. `CommandRecents` now keeps whatever the palette offers, so a user script shows as recent
-too, and a place that has gone drops out at the next pick. The placeholder reads "Run a command or go
-to a place…", in 14 languages. 8 app tests; filtering the recents to the registry again failed the
-one that watches it. **Run live** in `build/live-copy` with the screen locked, so through a temporary
-env-gated probe that opened the palette, set the query, ranked and picked, with no keys pressed: from
-a pin "Alpha Pin" and a workspace "M40 Probe" seeded through the core's encoders, "alpha" ranked the
-pin first and opened it in the left pane, "m40 probe" put the panes at Beta and Gamma, and the next
-opening's resting list led with the workspace and the pin. "fav" found the pin by its section, below
-Favorites… and Add to Favorites, whose titles match: a title hit outranks a keyword hit. No TCC request,
-and the probe is gone. **Not seen:** ⌘K, typing and Return pressed for real, the list drawn, a place
-inside a vault, and a translation. The full app suite failed once in `QuickViewScrollPageTests` (a
-converted workbook's frame did not load within its 10 s under the whole suite's load), and the suite
-passed alone twice.
-
-**2026-11-18: ⌘Return and a ⌘-click open a place in a new tab** (Oleg's request, the same day). As ⌘
-on a sidebar row or a Go ▸ Places item does, a place opens in a new tab of the active pane; a workspace,
-which sets both panes' tabs, and a command run as they do for Return. A field editor sends ⌘Return as
-`noop:` (docs/NOTES.md ▸ Key equivalents), so `PaletteKey` reads it off the event, with the file list's
-own rule: Return or keypad Enter with ⌘ alone among the four modifier keys. A test confirms this macOS
-still sends `noop:`, and mapping `noop:` to nothing failed the test that watches it. **Run live** in
-`build/live-copy`: View ▸ Command Palette… from the background brought the copy to the front with the
-new placeholder drawn, "alpha" typed into the field left "Alpha Pin" alone under Go, and a real
-⌘Return opened it as a second tab in the left pane, the first tab and the right pane untouched. No TCC
-request. **Not seen:** the ⌘-click, since a background click carries no modifier.
-
-**2026-11-18: Slice 2 landed, core and app** (Recents by last opened). `mdfind -0 -attr
-kMDItemLastUsedDate` gives each hit's date in the same call; `RecentsQuery.hits(fromOutput:)` reads
-it, splitting at the *last* separator since a name can hold it unescaped, and `RecentsListing` sorts
-the hits newest first before the 5 000 cap, so the cap now keeps the most recently opened rather than
-whichever paths `mdfind` printed first, then stats them and puts the date on `FileEntry.lastUsedDate`.
-**Decided in the slice:** no sort key of its own. `ListingDate` reads off the listing's path which date
-its Date column holds, the last-opened one for `search:/Recents` and the modification date everywhere
-else, and `.modified` sorts by that. A tab carries its sort into the next listing, so a `lastOpened`
-key would have arrived in a folder opened from Recents' tab, or in the Trash shown over it, naming a
-date none of its rows has (NOTES.md ▸ Virtual listings, the `showHidden` leak). The header reads
-"Last Opened" in Recents, in 14 languages, most of them Finder's or Spotlight's own words, and the
-Date column's default width now fits both titles. The pane set its sort indicator only at launch and
-on a header click, so a tab switch left it on whatever was clicked last; the header's title and
-indicator are now set on every reload. Core: 15 tests, three negative controls (the first separator,
-no newest-first sort, the listing's date ignored) each failing the tests that watch them. App: 4
-tests, plus both titles in the width tests; leaving the reload's header update out failed three of
-the four, and drawing the modification date failed the one that reads the cells. The probe's
-fixtures and the new `mdfind` facts are in NOTES.md ▸ External CLI tools ▸ mdfind, among them that
-it prints every path decomposed. **Run live** in `build/live-copy`, with two temporary env-gated
-probes (no cloud rows; Recents' `mdfind` scoped with `-onlyin` to a fixture whose files had their
-last-opened dates written into `com.apple.lastuseddate#PS`, opposite to their modification order):
-Recents listed all nine hits newest opened first under "Last Opened ↓", `watched.mov`, modified in
-2025, second, and the names holding a newline and the separator came through whole. Go ▸ Back put
-"Date Modified" and Name ↑ back, a tab switch moved title and arrow both ways, and a header click
-turned the list oldest first. **Found live and fixed:** in Russian the title drew as "Последнее
-открыт…", because the tab's Date width was stored before, as every existing user's is. Measured in
-all 14 languages, only Russian and Ukrainian were wider than both the old header and the date, so
-they became "Дата открытия" and Finder's "Відкривався", and a test now reads each compiled `.lproj`
-and fails on the long Russian title. No TCC request, the probes and the fixture are gone, and the
-defaults domain is unchanged. The full app suite failed two Quick View web-page tests
-(`QuickViewScrollPageTests`, as in Slice 1, and `QuickViewPageFindTests`) that passed alone.
-**Not seen:** Recents over the whole index rather than a scoped fixture, and the other 12
-translations drawn.
-
-**2026-11-18: Slice 3 landed and was run live** (Find Files where Spotlight
-does not index). `SpotlightCoverage` asks first: `mdutil -s` for a volume's root, otherwise
-`mdfind -0 -onlyin <parent> 'kMDItemFSName == "<name>"'` and whether the folder itself is among the hits
-(the probe found `/Users/oleg` among six `oleg` folders, and could not see `/System/Volumes/Data` as an
-item at all). A local "This Folder" scope it does not cover is walked (`performSearch` asks at run time,
-so saved searches and edits follow), and `SearchPredicate.walking` gives the walk a `LocalSearchInspector`
-reading tags (`FinderTagStorage`) and text (`TextContentSearch`: UTF-8 or UTF-16 by mark or by where
-its NULs fall, binary skipped on a NUL in the first 8 KiB, case- and diacritic-insensitive through
-`NSString`, measured at 240 MB/s against Swift `String`'s 13). A predicate with no reader for tags or
-content refuses them, so none can be ignored. Find Files shows a sentence once Spotlight has answered,
-rather than delaying the dialog. The refusal on a server no longer says content "needs the Spotlight
-index". Core: 41 tests, eleven negative controls each failing its test; app: 4 tests, routing removed
-failing the end-to-end one. The first full app run hung: the end-to-end test's walk outlived its 30 s
-wait, the test deleted its folder, and the late walk's failure alert was `runModal()`. It now waits
-120 s and keeps its pane and folder when it gives up (NOTES.md ▸ Waits). **Live**, in `build/live-copy`
-under `/private/tmp`: the dialog showed its sentence and found both "minutes" files, the saved tag
-search found the one tagged file, the text search found the UTF-8 and the UTF-16 file and not the PNG
-holding the same word, and an edit reran with the sentence up. An indexed folder showed no sentence and
-its search found a PDF's text, which only Spotlight can. **On the NAS's SMB share** that Finder
-mounted, where Spotlight answered 0 for name, tag and text, the copy found the same hits from the
-dialog and the saved searches, with the tag and the text read over SMB, and the share's root showed the
-sentence through `mdutil -s`. The copy made no network-volume request. Fixtures removed; the NAS one
-sits in the share's `#recycle`.
-Final runs: core 5929 tests green, both CI-pinned linters clean, and the full app suite green but for
-`QuickViewScrollPageTests` (as in Slices 1 and 2; it passed alone), with this suite at 44 s and all 73
-saved preference keys unchanged by content.
-
-**2026-11-18: Slice 4 landed, core and app, and was run live** (escalation for a batch and a recursive
-change). **Probed first:** `do shell script` keeps stdout only on success and stderr only on failure,
-so it cannot say which items of a batch landed; a body passes `execve`, 1 040 000 bytes ran and
-1 048 000 did not; and a JXA `osascript` reads NUL-separated bodies from stdin and runs each with
-`doShellScript`, any number in one process (NOTES.md ▸ Attribute escalation). **Decided with Oleg:**
-a multi-selection Save asks before anything is written, a recursive run's report offers its root-only
-items, and those are an undo step of their own (the record above). Core: `AttributeItemChange` is what
-a recursive job asks of one item, shared by the run and the retry, so the two cannot drift;
-`AttributeApplyOutcome.rootOnly` keeps the items the run left, deepest first; `EscalatedAttributeBatch`
-builds each item's command through the single-item translation, joins items so a failed one does not
-stop the next (`… || s=1; exit $s`, the exit status bringing the tools' stderr back), chunks at half of
-`ARG_MAX`, offers the copyable `sudo` line only when the batch is one body, and judges what landed by
-reading every item back and journaling only the fields its plan writes. App: `AdministratorShell`
-feeds the bodies to one JXA `osascript` over stdin (the single-item sheet too), and
-`AdministratorEscalationAlert` is the one dialog both sheets and the report draw. A selection holding
-someone else's items is editable now, with the single-item sheet's note, and someone else's folder
-offers Apply to enclosed items. Three new strings and one rewritten note in 14 languages; the refusal's
-five sentences ("Dirnex can't ask for those privileges yet") are gone. Core: 20 tests, running the
-real bodies unprivileged, five negative controls each failing the tests that watch them; app: 11, the
-transport run through the same script with its administrator flag off.
-**Run live** in `build/live-copy` with Oleg typing his password: a Save over two of his files and one
-of root's asked once for 1 item, with the command to copy, and changed all three, as one ⌘Z step. A
-recursive Group ▸ Write on a folder of 6 000 root-owned files changed the folder, reported "6 000 items
-couldn't be changed" with Apply as Administrator…, whose dialog said the command is too long to run in
-Terminal, and changed all 6 000 after **one** password across its two bodies: `authd` logged one
-authentication and both bodies authorized for the same process, 15 s apart, while three separate
-`osascript`s a minute apart had each asked again. The run took about 20 s, one `fork`/`exec` an item.
-⌘Z then took back the administrator step alone (refused by name, Slice 5's) and a second ⌘Z the
-folder. **Found live and fixed:** a real Cancel reached the script as `-60006`, not `-128`, so it read
-as a failure and the Save went on to change Oleg's own files; both numbers are a cancel now, a probe
-read `-60006 User canceled.` on the next try, and the sheet stayed open with nothing changed. The
-probes, the fixture and the copy's domain are gone; the copy made no TCC request. **After the live
-run**, `AdministratorShell` moved off `DispatchQueue.global` to a serial queue of its own, the rule
-`ProcessWaiting.pipeQueue` records; that build ran only the unprivileged transport tests. Final runs:
-core 5949 green, both CI-pinned linters clean, and of six full app runs the last two green but for
-`QuickViewScrollPageTests` once, as in Slices 1–3; `PanelPassiveRefreshTests` failed three of the
-first four and passed alone every time, too few runs to name a cause (NOTES.md ▸ Waits). All 73
-saved preference keys unchanged by content. **Not seen:** a system-immutable item, an ACL carried to
-root-only items, a cancel on a second body's dialog, and a translation. The undo still refuses, which
-is Slice 5.
-
-**2026-11-19: Slice 5 landed, core and app, and was run live through a probe** (an undo that needs
-root). ⌘Z and ⇧⌘Z on a change only an administrator can put back now ask in Slice 4's dialog, titled
-"Undoing this change needs an administrator" or "Redoing…", with the batch's body and the command to
-copy, instead of refusing. Core: `LocalAttributeRestore` measures a step against its item as it is,
-dropping the fields and the list the item already holds, and the executor and `EscalatedUndo` both
-measure through it, so a step the escalation leaves to the executor is never refused there for root,
-and someone who ran the command in Terminal and pressed Cancel meets a ⌘Z with nothing left to ask.
-`EscalatedUndo` takes the steps that need root out of the record, one batch item per path with its
-list, in the record's order, and leaves every other step where it was; a redo is the same question
-asked of the inverted record. `UndoJournal.takeForUndo(_:)` and `takeForRedo(_:)` take an entry by
-identity. App: `UndoController` looks at the top, measures off the main thread, asks, runs the root
-part through `AdministratorShell` and then the rest, and only then takes the step; Cancel in the
-dialog, or at the password before anything ran, leaves it where it was. **Decided in the slice:**
-redo asks as undo does; a step only a Created date makes need root has no command, so it is reverted
-as before and the executor names it; a step recorded by a queued job while the dialog is up stays on
-top, and the one asked about is taken from beneath it; and ⌘Z and ⇧⌘Z run one at a time
-(`UndoController.enqueue`), since a second press while the first asked would have found the same
-entry. Before this, two quick presses reverted their records at the same time on two threads. Two
-titles in 14 languages. Core: 14 tests, five negative controls each failing the tests that watch them
-(no narrowing of fields, none of the list, escalated steps left in the remainder, the list dropped
-from the item, a take only from the top); app: 8 tests, four controls (Cancel taking the step, a
-password cancel read as a failure, the top taken rather than the entry asked about, no serializing).
-**Run live** in `build/live-copy`, without a password, through a temporary env-gated probe that
-measured as a user who owns nothing and ran the bodies unprivileged, as the tests do. From a journal
-seeded through the core's encoders (two files changed 0644 → 0600), ⌘Z drew the dialog for 2 items;
-Cancel left both files at 0600 and the step on the undo stack; a second ⌘Z asked again, and
-Authenticate put both back to 0644 and moved the step to redo; ⇧⌘Z asked under "Redoing…" and
-re-applied 0600. Relaunched without the probe, ⌘Z on the same files, which are Oleg's own, ran with
-no dialog. No provider TCC request (the six logged named the AppleEvent sender), and the probe, the
-fixture and the copy's domain are gone. Found in passing: listing an inactive app's Edit menu kept
-the title from before the undo (LIVE-VERIFICATION.md). Final runs: core 5963 green, both CI-pinned
-linters clean, the full app suite green (2731 tests), and all 73 saved preference keys unchanged by
-content. **Not seen:** the macOS password dialog, so a root-owned item put back by a real ⌘Z, left
-for Slice 9's live run (Oleg, 2026-11-19); an ACL carried to root by an undo; a translation.
-
-**2026-11-19: Slice 6 landed and was run live** (localization). **The tag measurement came first**, in a
-clone of `dirnex-ci-base` (macOS 26.6.2) driven from inside by posted events, tagging through Finder's own
-context menu (LIVE-VERIFICATION.md; NOTES.md ▸ Localization ▸ Stock Finder tags). Finder writes neither
-English nor the UI's language. It writes the names in the account's tag list, made once when the account
-first runs Finder: `Red\n6` and `Gray\n1` on the VM's US-English account, `Grey` on this Mac, `Rot\n6` and
-`Grau\n1` once the list was made under German. Switching to German afterwards changed nothing. Its menu's
-dots are `com.apple.finder` ▸ `FavoriteTagNames`, and `NSURLTagNamesKey` colors a name from the same list,
-so the hard-coded Red … Grey was a second, colorless tag on a German account, and its `Grey` split from
-Finder's `Gray` on a fresh US-English one. **Decided with Oleg:** follow Finder's favorites. Core:
-`FinderStockTags` is the favorites in the colors the system gives them, through `NSURL`'s setter on one
-scratch file (`URLResourceValues.tagNames`' setter is 26+). The English seven stay only as the fallback
-when there is no preference. `FinderTag.systemTags` and `isSystem` read the process's set, and
-`FinderTagIndex(stock:)` seeds and protects whatever set it is given. App: `AppDelegate` reads the set
-before the sidebar or the tag provider first looks, 5–10 ms measured; under XCTest it stays the fallback.
-**The stutter:** a search no term names is called "Search Results", in its tab and alone in the path bar,
-from one `LocalizedCatalog.unnamedSearchTitle`. The catalog key moved from "Search results" with its 13
-translations unchanged. **The lint rule:** `bare_ui_literal` in `.swiftlint.yml`, over the app only. It
-found 14 literals, all deliberate, each now with an inline disable and its reason. Core: 9 tests, four
-negative controls each failing the test that watches it (the empty favorite kept, the index protecting the
-process's set rather than its own, no de-duplication, the lookup skipped). App: 1 test, and removing the
-path-bar branch failed it. A scratch file of eight shapes under `Dirnex/` was flagged on exactly the five
-bare ones. **Run live in the German VM**, the copy built in `build/live-copy` beside Oleg's installed
-1.1.9 as the control. The new build's sidebar listed Rot, Orange, Gelb, Grün, Blau, and ⌃T offered the
-seven German names and then Gray, Red and Zebrafink found on the probe's files. Rot wrote `Rot\n6`, byte
-for byte Finder's own. The release, on the same account, listed Red … Grey, offered three grays, and its
-Red wrote `Red\n6`. The VM is deleted. Final runs: core 5972 green, both CI-pinned linters clean, the full
-app suite green (2732 tests), `check_localization_keys.py` clean (1393 keys), and all 73 saved preference
-keys unchanged by content after restoring `SULastCheckTime`. **Not seen:** whether Finder groups a `Red`
-file under its `Rot` tag (Spotlight is off in the image), favorites the user has changed, the label drawn
-in the running app (the test reads the real `PathBarView`), and a translation on screen.
-
-**2026-11-19: Slice 7 landed, core and app, and was run live** (revoked keys). **Found first**, in the
-store's server (`dirnex-home/web/src/licenses/licenses.ts`): a renewal keeps the license's id and changes
-only its dates, and `undoRenewal` takes a refunded one back by putting the old dates back. The customer
-still holds the renewed key, same id and a later end day, so a list of ids alone could take that year
-back only by revoking the license's original key with it. A renamed license is a new key with the same id
-too, so revoking by id covers every key of a license. **Decided with Oleg:** the list holds what the
-server records, `.license(id)` for a revoked license (a refund, a chargeback or by hand) and
-`.renewal(id, until:)` with the end day the license has now. Core: `LicenseRevocations.thisBuild` is the
-compiled list, empty, applied only to a key that verified. A revoked license refuses every key of it as
-`LicenseRefusal.revoked`, kept apart from `LicenseKeyError`, which is the contract with the signer and
-whose vector test wants a signer-made vector for every case. A renewal line reads a later key as ending
-on its day, so the key is licensed, or lapsed with Renew, as the server has it. Of two lines for one
-license the strictest counts. A line the signer could not have written is left out: an id is 26
-characters of RFC 4648 base32 whose last carries two zero bits (`encodeBase32` in the private repo), so
-a mistyped renewal day can't turn into a revocation. `LicenseStatus.revoked` counts for nothing and
-reminds as no key does. App: `LicenseStore` holds a revoked key and keeps it stored, so a list without it
-restores it, and its `key` is the one that counts, which the update notice, the reminder's Renew link and
-the bug report read. A revoked key pasted or opened from a link is refused and replaces nothing. Settings
-▸ License says "This license is no longer valid", that Dirnex counts the Mac as unlicensed, and where to
-write, with the license ID, Remove and Buy; About reads as for no key. Three strings in 14 languages, and
-RELEASING.md ▸ Revoking a license says how to add a line. Core: 11 tests, five negative controls each
-failing the test that watches it (no trailing-bits check, the newest line kept over the strictest, a
-renewal cutting an earlier key, the well-formed filter removed, the status ignoring the list); app: 9
-tests, four controls (the store's check ignoring the list, `key` returning the held key, About and
-Settings drawing a revoked key as licensed and as lapsed). SwiftUI builds no accessibility tree in the
-test host, so the Settings tests read the tab's buttons (NOTES.md ▸ Windows, sheets and key events in a
-test). **Run live** in `build/live-copy`, with two temporary lines in the compiled list, the test keys as
-launch arguments and the reminder's clock 31 days ahead. A key not on the list read "Licensed to Control
-Probe" with no reminder, and the revoked key pasted into its field drew the refusal and left it
-licensed. The revoked key brought the Buy reminder at launch and "Unlicensed" in the titlebar, Settings
-drew the revoked section, and About read "Not licensed · Buy a License". A renewed key ending 2028-09-29,
-whose renewal the list took back to 2027-09-29, on a build dated 2028-01-01, brought the Renew reminder
-naming 29 September 2027, and Settings "Covers every version released until 29 September 2027" with the
-lapsed note. **Found live and fixed:** SwiftUI's Markdown makes the support address a mail link, and the
-Korean line had 으로 straight after it; it reads "support@dirnex.app 주소로" now, and the link drew at the
-English width. No provider TCC request (the two logged named the AppleEvent sender), and the lines, the
-gate and the copy's domain are gone. Final runs: core 5983 green, both CI-pinned linters clean, the full
-app suite green twice (2741 tests), `check_localization_keys.py` clean (1396 keys), and all 73 saved
-preference keys unchanged by content. **Not seen:** a key opened from a `dirnex://` link, which
-with the release build running Launch Services could have handed to it; a production-signed key; and the
-other 12 translations drawn.
-
-**2026-11-19: Slice 8 landed, core and app** (SMB: the Comment column and the way up). **Probed
-first:** the mount table held `smbfs` and `//olegasd@nas/media` for the share Finder had mounted, and how
-that source is written for anything harder was read from Apple's SMB client rather than guessed
-(`CreateSMBFromName`, apple-oss-distributions/SMBClient): a URL without its scheme, every part
-percent-escaped, a literal `:` only for an empty password, and a guest written as `GUEST:@`, the account
-the client takes as guest access in any case (NOTES.md ▸ SMB). Core: `MountTableEntry` carries each file
-system's type and source; `SMBMountSource` reads a source into the share, its account (a guest as none)
-and any folder below the share, undoing each part's escapes; `FileEntry.comment` holds a share's
-`NetCommentStr`, an empty one as none, and `SMBServerBackend` puts it on each row. App: a flat list of
-shares hides Size and Date, which every share row left as dashes, and gives their room to a **Comment**
-column, so Name does not move and the tab's stored columns stay the user's own; leaving the list shows
-them again. `..` at the root of a share Finder mounted now goes up to that server's list with the cursor
-on the share, as the account the mount names: listed again when that server is connected in the window,
-connected with Dirnex's saved password for the share or the server, and otherwise through the Connect
-sheet filled in with the server and account, which lands on the list. One header in 14 languages.
-**Decided in the slice:** a tree on a server's list keeps Size and Date, since the rows under an expanded
-share are files, and puts Comment after Name, paid for out of Name as the size bar is; a flat list of
-shares draws no size bars; a mount of a folder inside a share keeps `..` to its parent; and a share
-Dirnex mounted whose account has no saved password now opens the same filled-in sheet, where it used to
-raise "The connection couldn't be set up." **Found in passing and fixed:** `SMBMounter` matched a share
-already mounted against the raw source, so a share named with a space (`My%20Share` there) was never
-found and a second Return on it asked NetFS again, and a mount of `media/Movies` matched a share called
-`Movies`; it reads the source through `SMBMountSource` now, and the mount table without waiting where it
-asked `statfs` of every volume. Read from the source, not seen. `SMBMountError` moved to a file of its
-own for the line ceiling. Core: 16 tests, six negative controls each failing the tests that watch them
-(no password split, no decoding, no whole-share check in the reuse, no guest rule, no comment on the row,
-the comment dropped by a copy of the entry); app: 8 tests, five controls (no mount-table fallback, Size
-and Date never hidden, Name fitted with hidden columns counted, no update on reload, the comment's room
-left out of the stored layout). Final runs: core 5999 green, both CI-pinned linters clean, the full app
-suite green (2749 tests), `check_localization_keys.py` clean (1397 keys), and all 73 saved preference keys
-unchanged by content. **Run live on the NAS** the same day, at Oleg's word after first leaving it for
-Slice 9, in `build/debug-dd` (the one build that reaches the LAN) with the release quit, both tabs seeded
-at `/Volumes/media` and `/Volumes`, and two temporary env-gated probes: no cloud rows, and a marker file
-that, while it existed, made `..` treat the server as not connected with no saved password. From the root
-of the share Finder had mounted, `..` read Dirnex's `olegasd@nas` item (Oleg answered the Keychain
-prompt) and landed on `olegasd@nas` showing Name and Comment alone, "Home directory of olegasd" beside
-`home`, the cursor on `media`. Return on `media` went back into `/Volumes/media` with the mount table still
-holding the one Finder mount, no `media-1` and no alert, which is the rewritten reuse finding it. With the
-marker, `..` opened the Connect sheet on SMB, `smb://olegasd@nas`, host `nas`, user `olegasd`, an empty
-Share and no name to save under, and Connect landed on the list with the cursor on `media`. View ▸ Tree
-View on the list drew Name, Comment, Size, Date. After the quit Finder's share was still mounted. No File
-Provider request; listing the share at launch raised macOS's network-volume prompt for the ad-hoc build,
-which Oleg allowed (LIVE-VERIFICATION.md). **The first probe logged the exit's description, which printed
-the password the `.connect` case carries**, into a scratch log and the session's tool output; the log was
-redacted at once and deleted, and LIVE-VERIFICATION.md now says how not to. The probes are gone,
-`build/debug-dd` was rebuilt without them, and all 73 saved preference keys are back by content.
-**Not handled:** a share the mount spells in another case than the server lists it lands the cursor on
-the first row; and a source whose account was dropped for length is tried as a guest. **Not seen:** a
-guest mount, a share with a space in its name, a mount of a folder inside a share, and a translation.
-
-**2026-11-19: the comment moved into the name, and a tab draws itself before its listing** (Oleg, after
-Slice 8). Two things showed up opening the NAS from the sidebar into a new tab. The new tab sat under the
-previous tab's files and path for the second its listing took. That was older than the slice: a tab
-activated before its first listing left the table as it was. And in a tree the Comment column, paid for
-out of Name, pushed Date off a narrow pane. **Decided with Oleg:** no Comment column. A share's comment
-is drawn after its name, in the secondary label color (on the cursor's fill, its ink at 70 %), and the
-name label's tail truncation shortens it before the name (`FileCellView+Comment`); the comment rides in
-the label's own text, its run marked by an attribute so a restyle finds where the name ends. Size, Date
-and the size bars are back as they were on a share list, dashes on a share's row. And a tab activated
-before its first listing draws itself, empty, with its own path, unless the table already shows its
-folder (⌘T), where the same rows stay, or nothing has been drawn yet (the pane's first activation, where
-drawing synced the cursor before any listing and failed four suites); its status line stays blank rather
-than say "0 items" until it lists, so `PaneReconnectTests` now marks its tab listed where it clears the
-reason, as the load that clears it does. The Comment column's code, its header and its 14 translations are gone. **Asked with it:** whether
-Size and Date can be had for a share row. They cannot: the share list carries no size or date
-(`NetShareEnum` answers name, type and comment, and with admin rights path and permissions), and a
-share's capacity or its root's date needs a session to that share, which here would mean mounting each
-one to list them. They stay for the files under an expanded share in a tree. App: 5 tests replacing the
-column's, five negative controls each failing the test that watches it (no comment drawn, a restyle not
-finding the comment's run, the unlisted tab not drawn, drawn on its own folder too, the status counting
-an unlisted tab). Final runs: both CI-pinned linters clean, the full app suite green (2750 tests),
-`check_localization_keys.py` clean (1396 keys), and all 73 saved preference keys unchanged by content.
-**Seen by Oleg** in the rebuilt `build/debug-dd` the same day: the server opened from the sidebar into a
-new tab showed `olegasd@nas` with an empty list until the shares arrived, and in a tree `home` read "Home
-directory of olegasd" after its name, with Size and Date filled for the folders inside it.
+**No milestone is planned.** M36–M40, planned 2026-11-07 to take up what earlier milestones had left
+undone by choice rather than for a hard limit, have all closed: M36 (drag and paste, where M23 stopped)
+2026-11-08, M37 (compare and merge, past M31 and M34) 2026-11-09, M38 (remote: what M8, M22, M24, M25
+and M32 left) 2026-11-11, M39 (Quick View) 2026-11-15 and M40 (everything else) 2026-11-19. M41 (copy
+and move dialogs), asked by users coming from Total Commander, opened and closed 2026-11-17, ahead of
+M40. All six are archived in [docs/HISTORY.md](docs/HISTORY.md). The next milestone opens with its
+probes, and its slices are written then (CLAUDE.md ▸ How to work here).
 
 The app's share of selling Dirnex (the private companion repo `dirnex-home`, milestones C1–C15) was
 two milestones, **M29** (a license, and the reminder it removes) and **M30** (Report a Bug), both
@@ -658,12 +170,12 @@ your key?" link in Settings ▸ License.
 
 ### Still open
 
-Everything through M39, and M41, is shipped, and the record of it — the milestone checklists, the dated
+Everything through M41 is shipped, and the record of it — the milestone checklists, the dated
 passes that landed outside a milestone of their own, and the reasoning behind every decision — is in
 **[docs/HISTORY.md](docs/HISTORY.md)**, which also tells how everything else on this list came off
-it (HISTORY.md ▸ the follow-on log). What is still open, rather than merely imaginable, is M40
-under *Next*, which takes up the items in the table's *undone* column that were left by choice, plus
-the list below. The column itself stays as each milestone's record.
+it (HISTORY.md ▸ the follow-on log). M36–M40 took up the items in the table's *undone* column that
+were left by choice; what is still open, rather than merely imaginable, is the list below. The column
+itself stays as each milestone's record.
 
 - **The thumbnail grid, brief view and the `PaneSurface` extraction** — M15's cut, and one unit
   rather than three items, argued in HISTORY.md §M15. Any future grid inherits two constraints from
