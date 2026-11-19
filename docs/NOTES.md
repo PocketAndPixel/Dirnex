@@ -10448,6 +10448,11 @@ probed live (2026-08-01/02) before any Swift; several results decided the shape.
   process. Its log is also the witness for whether a dialog was authenticated or cancelled, which a
   capture of the app's own window cannot show: three runs meant as cancels read in it as
   `authenticated as user oleg`, because the password had been typed.
+- **A root-owned fixture for a live run costs one `sudo chown` and no cleanup password.** Done
+  2026-11-19 (M40 Slice 9): Oleg ran `sudo chown root:wheel` on one file in a git-ignored folder of his
+  own under `build/`, typed into a Terminal-panel tab so the password stayed with him, and a plain
+  `rm -rf` of the folder removed it afterwards, since unlinking asks the folder's permission and not the
+  file's. Not under `/private/tmp` itself, whose sticky bit lets only the owner remove a file.
 - **Each item's command is its own `fork`/`exec`, about 3 ms an item.** The 6 000 `chmod`s took
   some 20 s as root. Joining items that take the same command into one call
   (`/bin/chmod 775 a b c …`) would cut that, and is not done.
