@@ -92,8 +92,8 @@ extension SidebarViewController {
     /// *table* while remaining in the assembly every other surface reads.
     ///
     /// The stock seven come from `FinderTag.systemTags` rather than from the front of the list,
-    /// because they are a constant that exists before anything has been scanned — which is what
-    /// keeps the section from ever being empty-and-useless.
+    /// because they are the account's own, read from Finder's favorites at launch, before anything
+    /// has been scanned — which is what keeps the section from ever being empty-and-useless.
     private func displayed(_ places: [SidebarPlace], in section: SidebarSection) -> [SidebarPlace] {
         guard section == .tags, !showsAllTags else { return places }
         return FinderTag.systemTags.map(SidebarPlace.tag)

@@ -21,6 +21,8 @@ import DirnexCore
 /// when a named account meets a Kerberos-only server.
 @MainActor
 final class ConnectServerWebDAVFields: NSObject, NSTextFieldDelegate {
+    // An example address, so not text to translate.
+    // swiftlint:disable:next bare_ui_literal
     let host = ConnectFormFactory.textField(placeholder: "https://nas.local:5006")
     let port = ConnectFormFactory.textField(placeholder: "443")
     let path = ConnectFormFactory.textField(placeholder: "/")

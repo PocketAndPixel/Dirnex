@@ -236,10 +236,7 @@ enum LocalizedCatalog {
         case let .kind(kind):
             return title(for: kind)
         case .generic:
-            return String(
-                localized: "Search results",
-                comment: "A search's crumb when only a size or date filter names it."
-            )
+            return unnamedSearchTitle
         }
     }
 
@@ -252,11 +249,18 @@ enum LocalizedCatalog {
         case let .kind(kind):
             return title(for: kind)
         case .generic:
-            return String(
-                localized: "Search results",
-                comment: "A search's crumb when only a size or date filter names it."
-            )
+            return unnamedSearchTitle
         }
+    }
+
+    /// The name of a search no term names (a size, a date, several kinds, or tags on their own): its
+    /// tab, and its path-bar label, which says this alone rather than "Results for Search Results"
+    /// (`PathBarView.rebuildVirtualLabel`). One site, so the two cannot drift apart.
+    static var unnamedSearchTitle: String {
+        String(
+            localized: "Search Results",
+            comment: "A search's name in its tab and the path bar when no term the user typed names it."
+        )
     }
 
     /// English keywords plus the **English title** plus the translated ones, English first and

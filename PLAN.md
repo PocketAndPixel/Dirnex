@@ -496,6 +496,37 @@ linters clean, the full app suite green (2731 tests), and all 73 saved preferenc
 content. **Not seen:** the macOS password dialog, so a root-owned item put back by a real ⌘Z, left
 for Slice 9's live run (Oleg, 2026-11-19); an ACL carried to root by an undo; a translation.
 
+**2026-11-19: Slice 6 landed and was run live** (localization). **The tag measurement came first**, in a
+clone of `dirnex-ci-base` (macOS 26.6.2) driven from inside by posted events, tagging through Finder's own
+context menu (LIVE-VERIFICATION.md; NOTES.md ▸ Localization ▸ Stock Finder tags). Finder writes neither
+English nor the UI's language. It writes the names in the account's tag list, made once when the account
+first runs Finder: `Red\n6` and `Gray\n1` on the VM's US-English account, `Grey` on this Mac, `Rot\n6` and
+`Grau\n1` once the list was made under German. Switching to German afterwards changed nothing. Its menu's
+dots are `com.apple.finder` ▸ `FavoriteTagNames`, and `NSURLTagNamesKey` colors a name from the same list,
+so the hard-coded Red … Grey was a second, colorless tag on a German account, and its `Grey` split from
+Finder's `Gray` on a fresh US-English one. **Decided with Oleg:** follow Finder's favorites. Core:
+`FinderStockTags` is the favorites in the colors the system gives them, through `NSURL`'s setter on one
+scratch file (`URLResourceValues.tagNames`' setter is 26+). The English seven stay only as the fallback
+when there is no preference. `FinderTag.systemTags` and `isSystem` read the process's set, and
+`FinderTagIndex(stock:)` seeds and protects whatever set it is given. App: `AppDelegate` reads the set
+before the sidebar or the tag provider first looks, 5–10 ms measured; under XCTest it stays the fallback.
+**The stutter:** a search no term names is called "Search Results", in its tab and alone in the path bar,
+from one `LocalizedCatalog.unnamedSearchTitle`. The catalog key moved from "Search results" with its 13
+translations unchanged. **The lint rule:** `bare_ui_literal` in `.swiftlint.yml`, over the app only. It
+found 14 literals, all deliberate, each now with an inline disable and its reason. Core: 9 tests, four
+negative controls each failing the test that watches it (the empty favorite kept, the index protecting the
+process's set rather than its own, no de-duplication, the lookup skipped). App: 1 test, and removing the
+path-bar branch failed it. A scratch file of eight shapes under `Dirnex/` was flagged on exactly the five
+bare ones. **Run live in the German VM**, the copy built in `build/live-copy` beside Oleg's installed
+1.1.9 as the control. The new build's sidebar listed Rot, Orange, Gelb, Grün, Blau, and ⌃T offered the
+seven German names and then Gray, Red and Zebrafink found on the probe's files. Rot wrote `Rot\n6`, byte
+for byte Finder's own. The release, on the same account, listed Red … Grey, offered three grays, and its
+Red wrote `Red\n6`. The VM is deleted. Final runs: core 5972 green, both CI-pinned linters clean, the full
+app suite green (2732 tests), `check_localization_keys.py` clean (1393 keys), and all 73 saved preference
+keys unchanged by content after restoring `SULastCheckTime`. **Not seen:** whether Finder groups a `Red`
+file under its `Rot` tag (Spotlight is off in the image), favorites the user has changed, the label drawn
+in the running app (the test reads the real `PathBarView`), and a translation on screen.
+
 The app's share of selling Dirnex (the private companion repo `dirnex-home`, milestones C1–C15) was
 two milestones, **M29** (a license, and the reminder it removes) and **M30** (Report a Bug), both
 shipped and archived in [docs/HISTORY.md](docs/HISTORY.md). Neither changed what Dirnex *is*: it

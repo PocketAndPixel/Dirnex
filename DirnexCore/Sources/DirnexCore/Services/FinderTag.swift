@@ -48,23 +48,17 @@ public enum FinderTagColor: Int, Sendable, Hashable, CaseIterable, Codable {
         }
     }
 
-    /// The name of the stock system tag carrying this color, or `nil` for `.none`.
+    /// The English name `FinderStockTags.fallback` gives this color, or `nil` for `.none`.
     ///
-    /// These seven are the tags macOS ships with, and the only names the system itself knows a
-    /// color for (see `FinderTagStorage` on why that lookup is something we must *not* rely on
-    /// when writing).
+    /// Only a fallback. The stock names are the account's own, read from Finder's favorites at
+    /// launch (`FinderStockTagLookup`), because Finder writes whatever names the account's list was
+    /// made with: `Gray` on a fresh US-English macOS 26 account, `Grey` on this Mac, `Grau` on one set
+    /// up in German (PLAN.md §M40 Slice 6).
     ///
-    /// **`.gray`'s stock name is spelled `Grey`, and that is macOS's spelling, not ours.**
-    /// It is the one British word left in the codebase, and it is data: probed against the live
-    /// `FavoriteTagNames` list, which reads `Grey`. `Grey` resolves to a color and `Gray` does not
-    /// — `Gray` is simply an unknown custom name and lands on `.none`. So this is deliberately
-    /// *not* `title`: that one is the word Dirnex shows the user (`Gray`, matching the rest of the
-    /// UI and every other American spelling here), while this one has to match what is on disk.
-    /// Collapsing the two back together stops the seven stock tags being recognized at all.
-    ///
-    /// Caveat: these are the English names. On a localized system the stock tags are stored under
-    /// their localized spellings, so this is a sensible default set to *offer*, not a claim about
-    /// what a given file will hold.
+    /// **`.gray` is spelled `Grey` here, and that is this Mac's list, not ours.** Probed against its
+    /// `FavoriteTagNames`, which reads `Grey`; on that list `Grey` resolves to a color and `Gray` does
+    /// not. So this is deliberately *not* `title`: that one is the word Dirnex shows the user (`Gray`,
+    /// matching the rest of the UI), while this one has to match what is on disk.
     public var systemTagName: String? {
         switch self {
         case .none: return nil
@@ -118,28 +112,25 @@ public struct FinderTag: Sendable, Hashable, Codable {
         self.color = color
     }
 
-    /// The seven tags macOS ships with, in Finder's display order (`FinderTagColor.displayOrder`).
+    /// The tags this account's Finder offers, in its order: `FinderStockTags.current`, which the app
+    /// reads from Finder's favorites at launch (seven, unless the user has changed the favorites).
     ///
-    /// These are the only tags that exist without anyone having made them, which is what makes them
-    /// the right thing to *offer* — in the sidebar's Tags section, or the ⌃T menu — before a single
-    /// file has been scanned. Everything past these seven has to be discovered by looking at files.
-    public static let systemTags: [FinderTag] = FinderTagColor.displayOrder.compactMap { color in
-        color.systemTagName.map { FinderTag(name: $0, color: color) }
+    /// These exist without any file wearing them, which is what makes them the right thing to
+    /// *offer*, in the sidebar's Tags section or the ⌃T menu, before a single file has been scanned.
+    /// Everything past them has to be discovered by looking at files.
+    public static var systemTags: [FinderTag] {
+        FinderStockTags.current.tags
     }
 
-    /// Whether this is one of the seven macOS ships with — by name, case-insensitively, since that
-    /// is the identity rule `==` already applies.
+    /// Whether this is one of `systemTags`, by name and case-insensitively, since that is the
+    /// identity rule `==` already applies.
     ///
     /// The distinction is what makes *deleting* a tag a coherent operation for one kind and not the
     /// other. A custom tag exists only because files carry it, so stripping it from all of them is
-    /// deletion. A stock tag exists whether or not anything wears it (`systemTags` is a constant),
-    /// so there is nothing there to delete: untag every file on the volume and Red is still offered.
-    ///
-    /// Carries the same localization caveat as `FinderTagColor.systemTagName` — these are the
-    /// English names, so on a localized system a stock tag stored under its localized spelling reads
-    /// as custom here.
+    /// deletion. A stock tag exists whether or not anything wears it, so there is nothing there to
+    /// delete: untag every file on the volume and Finder still offers it.
     public var isSystem: Bool {
-        Self.systemTags.contains(self)
+        FinderStockTags.current.contains(self)
     }
 
     // Name-as-identity, case-insensitive: the color is deliberately excluded. Two tags spelled
@@ -209,22 +200,27 @@ public struct FinderTag: Sendable, Hashable, Codable {
 ///
 /// So the color byte on an iCloud file is **the provider's fingerprint, not the user's intent**,
 /// and a pane that trusts it paints every tagged file in iCloud Drive gray. This type is the
-/// approximation of Finder's database that the app can honestly build: the stock seven, which are
-/// known for free, plus what browsing turns up.
+/// approximation of Finder's database that the app can honestly build: the account's stock tags,
+/// which the system colored at launch (`FinderStockTags`), plus what browsing turns up.
 public struct FinderTagIndex: Sendable {
     /// Keyed by the lowercased name — the case-folded identity the system itself uses, and the one
     /// `FinderTag.==` applies.
     private var byName: [String: FinderTag]
 
-    /// The stock names, case-folded, so a sighting can be told from a certainty.
-    private static let stockNames = Set(FinderTag.systemTags.map { $0.name.lowercased() })
+    /// The stock tags in their order, and their names case-folded, so a sighting can be told from a
+    /// certainty.
+    private let stock: [FinderTag]
+    private let stockNames: Set<String>
 
-    /// Seeded with the seven macOS ships with, which is the whole reason this fixes anything: their
-    /// colors are constants (`FinderTag.systemTags`), so they are known before a single file is
-    /// read and are never in doubt afterwards. Every other name has to be learned.
-    public init() {
+    /// Seeded with the stock tags, which is the whole reason this fixes anything: their colors are
+    /// the system's own answer, known before a single file is read and never in doubt afterwards.
+    /// Every other name has to be learned.
+    public init(stock: FinderStockTags = .current) {
+        self.stock = stock.tags
+        stockNames = Set(stock.tags.map { $0.name.lowercased() })
         byName = Dictionary(
-            uniqueKeysWithValues: FinderTag.systemTags.map { ($0.name.lowercased(), $0) }
+            stock.tags.map { ($0.name.lowercased(), $0) },
+            uniquingKeysWith: { first, _ in first }
         )
     }
 
@@ -232,7 +228,7 @@ public struct FinderTagIndex: Sendable {
     ///
     /// Two things it deliberately refuses to believe:
     ///
-    /// - **A stock name is never overwritten.** Red is 6 because `FinderTag.systemTags` says so, and
+    /// - **A stock name is never overwritten.** Red is 6 because the system said so at launch, and
     ///   a file carrying `Red\n1` — which is every tagged file in iCloud Drive — is evidence about
     ///   iCloud, not about Red.
     /// - **Gray never displaces a color already known.** Gray is what iCloud normalizes *to*, so a
@@ -247,7 +243,7 @@ public struct FinderTagIndex: Sendable {
     /// file whose byte survives is the best evidence available.
     public mutating func learn(_ tag: FinderTag) {
         let key = tag.name.lowercased()
-        guard !Self.stockNames.contains(key) else { return }
+        guard !stockNames.contains(key) else { return }
         if tag.color == .gray, let existing = byName[key], existing.color != .gray, existing.color != .none {
             return
         }
@@ -259,11 +255,12 @@ public struct FinderTagIndex: Sendable {
     }
 
     /// Drop a custom name entirely — the map half of deleting a tag. A stock tag is refused for the
-    /// reason `FinderTag.isSystem` gives: the seven are seeded at init, so forgetting one would only
-    /// bring it straight back.
+    /// reason `FinderTag.isSystem` gives: the stock tags are seeded at init, so forgetting one would
+    /// only bring it straight back.
     public mutating func forget(_ tag: FinderTag) {
-        guard !tag.isSystem else { return }
-        byName.removeValue(forKey: tag.name.lowercased())
+        let key = tag.name.lowercased()
+        guard !stockNames.contains(key) else { return }
+        byName.removeValue(forKey: key)
     }
 
     /// `tag` as it should be **drawn**: the name exactly as the file spells it, in the color the
@@ -282,13 +279,13 @@ public struct FinderTagIndex: Sendable {
         tags.map(resolve)
     }
 
-    /// Every name known, with its color: the stock seven in Finder's rainbow, then the custom ones
-    /// by name. This is what a list of tags should show.
+    /// Every name known, with its color: the stock tags in Finder's order, then the custom ones by
+    /// name. This is what a list of tags should show.
     public var tags: [FinderTag] {
         let custom = byName.values
-            .filter { !Self.stockNames.contains($0.name.lowercased()) }
+            .filter { !stockNames.contains($0.name.lowercased()) }
             .sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
-        return FinderTag.systemTags + custom
+        return stock + custom
     }
 
     /// Just the names, in the spelling they were seen in — for completion, which matches by name.

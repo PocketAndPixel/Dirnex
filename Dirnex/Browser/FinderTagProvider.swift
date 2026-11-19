@@ -43,7 +43,7 @@ final class FinderTagProvider {
         }
     )
 
-    /// Every tag seen this session, plus the seven macOS ships with — the app's approximation of the
+    /// Every tag seen this session, plus the account's stock tags — the app's approximation of the
     /// name → color database Finder resolves dots against. The tag editor offers these, the
     /// sidebar's Tags section lists them, the search sheet completes against them, and `resolve`
     /// paints with them.
@@ -51,9 +51,11 @@ final class FinderTagProvider {
     /// There is no public API for "the user's tags": the system's own list lives in a private synced
     /// store that is Finder's business, not a contract. So this accumulates tags as directories are
     /// scanned, which is honest about what it knows — it grows as the user browses rather than
-    /// pretending to be authoritative, and the stock seven are always offered because they always
-    /// exist. The rules for what a sighting is allowed to teach it — and why an iCloud file's color
-    /// byte teaches it nothing — live in the core's `FinderTagIndex`.
+    /// pretending to be authoritative. The stock tags are always offered: they are Finder's
+    /// favorites, in the colors the system gave them, which `AppDelegate` reads at launch before
+    /// this is first touched (`FinderStockTags`). The rules for what a sighting is allowed to teach
+    /// it — and why an iCloud file's color byte teaches it nothing — live in the core's
+    /// `FinderTagIndex`.
     private var index = FinderTagIndex()
 
     /// Every known tag with its color: the stock seven in Finder's order, then the custom ones
@@ -114,7 +116,7 @@ final class FinderTagProvider {
     /// which is the only thing that actually changed.
     ///
     /// A stock tag is refused: `FinderTag.isSystem` explains why there is nothing there to forget —
-    /// `known` is seeded with the seven at launch, so removing one would only make it reappear.
+    /// the index is seeded with the stock tags, so removing one would only make it reappear.
     func forget(_ tag: FinderTag) {
         guard !tag.isSystem else { return }
         index.forget(tag)

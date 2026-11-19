@@ -251,7 +251,7 @@ final class TabChipView: NSView {
     /// The shortest label a chip keeps before its tab goes to the overflow menu: about six letters
     /// and an ellipsis, measured as a label so the field's own padding is in it.
     static let minimumLabelWidth: CGFloat = {
-        let sample = NSTextField(labelWithString: "xxxxxx…")
+        let sample = NSTextField(labelWithString: "xxxxxx…") // swiftlint:disable:this bare_ui_literal
         sample.font = .systemFont(ofSize: NSFont.smallSystemFontSize)
         return sample.intrinsicContentSize.width
     }()
