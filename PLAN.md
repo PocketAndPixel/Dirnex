@@ -169,7 +169,7 @@ a movie's controls cannot be clicked, and no key reaches it.
 - **AVFoundation opens and decodes a frame from** MP4, MOV and M4V (H.264, AAC), 3GP (MPEG-4 Part 2),
   MPG, MPEG and VOB (MPEG-1 and MPEG-2 video, MP2 audio), TS and MTS (H.264).
 - **It refuses** MKV (VP8 and AAC), WebM (VP8 and Vorbis), AVI (H.264), ASF and WMV, OGV (Theora and
-  Vorbis), RM, MXF (H.264), and the bare `.hevc` and `.mjpeg` streams. Matroska, WebM and WMV are not
+  Vorbis), RM, and the bare `.hevc` and `.mjpeg` streams. Matroska, WebM and WMV are not
   among the 104 `AVURLAsset.audiovisualTypes()`. `public.avi` is, and the H.264 AVI is refused anyway,
   so the type list does not decide what plays. Opening the file does.
 - **Decoders on this Mac**: video H.264, HEVC, VP9, AV1, MPEG-1, MPEG-2, MPEG-4 Part 2, JPEG and ProRes;
@@ -221,7 +221,7 @@ a movie's controls cannot be clicked, and no key reaches it.
    and whether it is playing, since AVKit's controls fade with the pointer away. A card in place of Quick
    Look's icon for a file nothing here can play, naming the container, and the codecs where they are
    known. **Landed 2026-11-20.** Core: `MediaContainer`, read from a file's first 4 KiB (Matroska and
-   WebM by the EBML `DocType`, AVI, ASF, Ogg, RealMedia, MXF, FLV, MPEG-4 and QuickTime) and named by
+   WebM by the EBML `DocType`, AVI, ASF, Ogg, RealMedia, FLV, MPEG-4 and QuickTime) and named by
    extension for the containers macOS may leave untyped; `MediaCodecName` (Core Media's four-character
    codes, an unknown one shown as itself); `MediaSummary.facts` ("2560×1440 · H.264 · AAC", a codec once
    however many tracks carry it); and `MediaTimecode`, whose clock takes its shape from the length so it
@@ -374,25 +374,24 @@ a movie's controls cannot be clicked, and no key reaches it.
    hit testing). Live in `build/live-copy` with the split probe: a rendered page left a 317 pt pane at
    317, reading "1 Source · 2 Page index.html ⊗ 1 of 1" with the mark gone; at 267 pt the name gave way
    to "…" and the styles stayed whole; with Quick View closed the pane went to 608.5, 267 and 517 pt.
-5. **AVI.** Slice 5 was "AVI and MXF that hold a codec macOS decodes", left to decide after Slice 4;
-   **decided 2026-11-20 (Oleg): AVI, then MXF as Slice 6.** **Landed 2026-11-20.** Probed first over the
-   AVI sample (Lavf, x264 core 164 with three B-frames and a B-pyramid, AAC behind ADTS headers):
-   every frame decodes through VideoToolbox once its start codes are lengths and an `avcC` is made from
-   its parameter sets, and **an AVI keeps no presentation times**, so the order frames are shown in has
-   to come from the codec. A Python walk of the slice headers gave it, and in that order the decoded
-   frames change half as much from one to the next (a mean step of 1 376 against 2 538). Core:
-   `AVIFile` (the RIFF walk to the headers, `avih`, each `strl`, OpenDML's `dmlh` and `AVIX` RIFFs);
-   `AVIIndex` (OpenDML's standard indexes, else `idx1` with its base found by the chunk its first entry
-   names, else a walk of the `movi` lists that tells key frames by their first bytes); `AVIStreamFormat`
-   (H.264, MPEG-4 Part 2 under DivX's and Xvid's dozen codes, Motion JPEG; PCM, MP1 to MP3, AC-3, and
-   AAC raw or behind ADTS); `H264PictureOrder` (all three picture order types); `MPEG4Visual` (the
-   layer's time increment width, plane headers, DivX's packed B-frames, the `esds`); `MotionJPEG`
-   (Annex K's tables put back into a frame without them); `AudioFrameHeader` and its splitter (whole
-   frames however the chunks cut them); `PresentationReorder` (decoding order in and out, each picture
-   given the tick it is shown at); and `AVIDemuxer` (pictures timed by ticks, sound by chunks or by
-   bytes as `dwSampleSize` says, each stream seeking in its own index). Slice 4's plan became
-   `MediaPlaybackPlan`, and `MediaDemuxing` lets one player take either demuxer. App: `MatroskaPlayer`
-   became `SampleBufferPlayer` (with `SampleBufferFeed`, `SampleBufferPreparation` and
+5. **AVI.** Left to decide after Slice 4, and **decided 2026-11-20 (Oleg).** **Landed 2026-11-20.**
+   Probed first over the AVI sample (Lavf, x264 core 164 with three B-frames and a B-pyramid, AAC behind
+   ADTS headers): every frame decodes through VideoToolbox once its start codes are lengths and an
+   `avcC` is made from its parameter sets, and **an AVI keeps no presentation times**, so the order
+   frames are shown in has to come from the codec. A Python walk of the slice headers gave it, and in
+   that order the decoded frames change half as much from one to the next (a mean step of 1 376 against
+   2 538). Core: `AVIFile` (the RIFF walk to the headers, `avih`, each `strl`, OpenDML's `dmlh` and
+   `AVIX` RIFFs); `AVIIndex` (OpenDML's standard indexes, else `idx1` with its base found by the chunk
+   its first entry names, else a walk of the `movi` lists that tells key frames by their first bytes);
+   `AVIStreamFormat` (H.264, MPEG-4 Part 2 under DivX's and Xvid's dozen codes, Motion JPEG; PCM, MP1 to
+   MP3, AC-3, and AAC raw or behind ADTS); `H264PictureOrder` (all three picture order types);
+   `MPEG4Visual` (the layer's time increment width, plane headers, DivX's packed B-frames, the `esds`);
+   `MotionJPEG` (Annex K's tables put back into a frame without them); `AudioFrameHeader` and its
+   splitter (whole frames however the chunks cut them); `PresentationReorder` (decoding order in and
+   out, each picture given the tick it is shown at); and `AVIDemuxer` (pictures timed by ticks, sound by
+   chunks or by bytes as `dwSampleSize` says, each stream seeking in its own index). Slice 4's plan
+   became `MediaPlaybackPlan`, and `MediaDemuxing` lets one player take either demuxer. App:
+   `MatroskaPlayer` became `SampleBufferPlayer` (with `SampleBufferFeed`, `SampleBufferPreparation` and
    `QuickViewSampleBufferView`); a refused file whose first bytes say AVI plays there when something in
    it decodes, and gets the card otherwise, which now names its codecs from its own headers. 60 core
    tests, over a 117 KB sparse capture of the sample, whose 1 344 display ticks match the Python walk,
@@ -402,12 +401,12 @@ a movie's controls cannot be clicked, and no key reaches it.
    its tests: a reorder depth of 0, sound not timed again at a chunk boundary, constant-rate sound timed
    by chunks, a packed B-frame not held for the next tick, `idx1` counted from the `movi` list alone,
    the AVI route taken out, the table insertion off, and the ADTS check of before the fix below. Live in
-   `build/live-copy`, the pane preview, with no permission request in the log: the sample read
-   "⏸ 0:00 / 0:53" and "1920×1080 · H.264 · AAC" on its first frame, Play/Pause ran the clock to 0:06,
-   and ⇧→ showed the last frame at 0:53 with the cursor on its row; an AVI remuxed from the 3GP's Xvid
-   and AAC read "1280×720 · MPEG-4 · AAC", played, and a click halfway along the timeline carried on
-   from 0:27 with a clean picture; a 2560×1440 Motion JPEG without its tables, beside PCM, played
-   clean; and a `DIV3` file got the card "AVI · 640×480 · MPEG-4 v3". Found:
+   `build/live-copy`, the pane preview, with no permission request in the log: the sample read "⏸ 0:00 /
+   0:53" and "1920×1080 · H.264 · AAC" on its first frame, Play/Pause ran the clock to 0:06, and ⇧→
+   showed the last frame at 0:53 with the cursor on its row; an AVI remuxed from the 3GP's Xvid and AAC
+   read "1280×720 · MPEG-4 · AAC", played, and a click halfway along the timeline carried on from 0:27
+   with a clean picture; a 2560×1440 Motion JPEG without its tables, beside PCM, played clean; and a
+   `DIV3` file got the card "AVI · 640×480 · MPEG-4 v3". Found:
    - **A raw AAC frame holds a pattern that reads as an ADTS header often enough**, so the first such
      pattern made the Xvid remux's AAC 169 three-block "frames" for 1 345 chunks, with a configuration
      made from noise. A header now counts only when the next one follows where it says it ends
@@ -424,8 +423,6 @@ a movie's controls cannot be clicked, and no key reaches it.
    DivX's packed B-frames in a real file (none on this Mac), MP3 or AC-3 in a real AVI, the light
    appearance, a translation, a file on a server, and Matroska after the player's rename (its nine
    app tests pass).
-6. **MXF that holds a codec macOS decodes.** Next: KLV, partitions, index tables with their temporal
-   offsets, and the essence containers for H.264, MPEG-2 and PCM, tested against the one sample.
 
 **Left undone so far:** VP8, Theora, VC-1 and WMV, RealVideo, MS-MPEG-4 v3 and DTS, which macOS cannot
 decode. Any codec library (ffmpeg, libVLC, libvpx), for the licence, the size, and §2's rule that bytes
