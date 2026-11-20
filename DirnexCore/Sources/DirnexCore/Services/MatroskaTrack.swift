@@ -43,6 +43,20 @@ public struct MatroskaTrack: Equatable, Sendable {
         public var displayHeight: UInt64?
         /// 0 for pixels, 1 centimetres, 2 inches, 3 an aspect ratio, 4 unknown.
         public var displayUnit: UInt64 = 0
+
+        public init(
+            pixelWidth: UInt64 = 0,
+            pixelHeight: UInt64 = 0,
+            displayWidth: UInt64? = nil,
+            displayHeight: UInt64? = nil,
+            displayUnit: UInt64 = 0
+        ) {
+            self.pixelWidth = pixelWidth
+            self.pixelHeight = pixelHeight
+            self.displayWidth = displayWidth
+            self.displayHeight = displayHeight
+            self.displayUnit = displayUnit
+        }
     }
 
     /// The sound's shape.
@@ -52,6 +66,18 @@ public struct MatroskaTrack: Equatable, Sendable {
         public var outputSamplingFrequency: Double?
         public var channels: UInt64 = 1
         public var bitDepth: UInt64?
+
+        public init(
+            samplingFrequency: Double = 8000,
+            outputSamplingFrequency: Double? = nil,
+            channels: UInt64 = 1,
+            bitDepth: UInt64? = nil
+        ) {
+            self.samplingFrequency = samplingFrequency
+            self.outputSamplingFrequency = outputSamplingFrequency
+            self.channels = channels
+            self.bitDepth = bitDepth
+        }
     }
 
     /// The track's number, which its blocks name it by.

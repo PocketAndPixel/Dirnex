@@ -15,13 +15,17 @@ import DirnexCore
 /// never goes on after the cursor or the mode has left it.
 ///
 /// A file AVFoundation will not play gets `card` in the player's place, naming what it is kept in
-/// (PLAN.md §M42 ▸ Slice 2).
+/// (PLAN.md §M42 ▸ Slice 2), unless it is a Matroska or WebM file the core can read and this Mac can
+/// decode, which plays in `matroskaView` instead (Slice 4, `QuickViewMediaView+Matroska`).
 @MainActor
 final class QuickViewMediaView: NSView {
     let playerView = AVPlayerView()
     let player = AVPlayer()
     /// What a file nothing here can play shows instead of the player. Internal, for the tests.
     let card = QuickViewMediaCard()
+    /// Where a Matroska or WebM file plays, and the player playing it. Internal, for the tests.
+    let matroskaView = QuickViewMatroskaView()
+    var matroska: MatroskaPlayer?
 
     /// What the file on screen holds, for the header, or `nil` before it has been read.
     private(set) var summary: MediaSummary?
@@ -59,15 +63,18 @@ final class QuickViewMediaView: NSView {
             playerView.topAnchor.constraint(equalTo: topAnchor),
             playerView.bottomAnchor.constraint(equalTo: bottomAnchor)
         ])
-        card.isHidden = true
-        card.translatesAutoresizingMaskIntoConstraints = false
-        addSubview(card)
-        NSLayoutConstraint.activate([
-            card.leadingAnchor.constraint(equalTo: leadingAnchor),
-            card.trailingAnchor.constraint(equalTo: trailingAnchor),
-            card.topAnchor.constraint(equalTo: topAnchor),
-            card.bottomAnchor.constraint(equalTo: bottomAnchor)
-        ])
+        for view in [matroskaView, card] {
+            view.isHidden = true
+            view.translatesAutoresizingMaskIntoConstraints = false
+            addSubview(view)
+            NSLayoutConstraint.activate([
+                view.leadingAnchor.constraint(equalTo: leadingAnchor),
+                view.trailingAnchor.constraint(equalTo: trailingAnchor),
+                view.topAnchor.constraint(equalTo: topAnchor),
+                view.bottomAnchor.constraint(equalTo: bottomAnchor)
+            ])
+        }
+        matroskaView.onSeek = { [weak self] seconds in self?.matroska?.seek(to: seconds) }
     }
 
     @available(*, unavailable)
@@ -76,14 +83,15 @@ final class QuickViewMediaView: NSView {
     }
 
     /// Whether a file is loaded, which is what the keys and ⌘P need to have anything to act on.
-    var hasItem: Bool { player.currentItem != nil }
+    var hasItem: Bool { player.currentItem != nil || matroska != nil }
 
-    var isPlaying: Bool { player.rate != 0 }
+    var isPlaying: Bool { matroska?.isPlaying ?? (player.rate != 0) }
 
     /// Pause the file on screen and leave it there while the next one opens, as a picture stays until
     /// the next has decoded. Only the sound has to stop at once, and the header's readout goes blank.
     func prepareForNext() {
         player.pause()
+        if matroska?.isPlaying == true { matroska?.togglePlayback() }
         isAwaitingNext = true
         onReadoutChange?()
     }
@@ -93,6 +101,7 @@ final class QuickViewMediaView: NSView {
 
     /// Put `item` up, paused at its start, with what it holds for the header.
     func show(_ item: AVPlayerItem, summary: MediaSummary) {
+        stopMatroska()
         isAwaitingNext = false
         card.isHidden = true
         playerView.isHidden = false
@@ -100,6 +109,37 @@ final class QuickViewMediaView: NSView {
         player.replaceCurrentItem(with: item)
         observeTime()
         onReadoutChange?()
+    }
+
+    /// Put `playing` up for a Matroska or WebM file, paused at its start, with what it holds for the
+    /// header (PLAN.md §M42 ▸ Slice 4). `player`, AVPlayer, is let go of its item first.
+    func show(matroska playing: MatroskaPlayer, summary: MediaSummary, icon: NSImage?) {
+        stopMatroska()
+        player.pause()
+        player.replaceCurrentItem(with: nil)
+        if let timeObserver { player.removeTimeObserver(timeObserver) }
+        timeObserver = nil
+        isAwaitingNext = false
+        card.isHidden = true
+        playerView.isHidden = true
+        self.summary = summary
+        matroska = playing
+        playing.onChange = { [weak self, weak playing] in
+            guard let self, let playing else { return }
+            matroskaView.update(seconds: playing.currentSeconds, duration: playing.duration)
+            onReadoutChange?()
+        }
+        matroskaView.show(playing, icon: icon)
+        matroskaView.isHidden = false
+        onReadoutChange?()
+    }
+
+    /// Let the Matroska player go, if one is up.
+    private func stopMatroska() {
+        matroska?.stop()
+        matroska = nil
+        matroskaView.clear()
+        matroskaView.isHidden = true
     }
 
     /// Put the card up for a file nothing here plays, letting go of whatever the player held.
@@ -113,6 +153,7 @@ final class QuickViewMediaView: NSView {
     /// Pause and let the file go. Called when the cursor leaves it, when Quick View closes, and before
     /// the next file is opened, so no sound outlives the file it belongs to.
     func stop() {
+        stopMatroska()
         isAwaitingNext = false
         player.pause()
         player.replaceCurrentItem(with: nil)
@@ -128,6 +169,7 @@ final class QuickViewMediaView: NSView {
     /// for every other file.
     var readout: QuickViewMediaReadout? {
         guard hasItem, !isAwaitingNext else { return nil }
+        if let matroska { return matroskaReadout(matroska) }
         return QuickViewMediaReadout(
             isPlaying: isPlaying,
             time: MediaTimecode.readout(
@@ -157,6 +199,10 @@ final class QuickViewMediaView: NSView {
     /// The header is told at once as well as by the time observer, which hears of the start only once
     /// playback has begun, and under load that can be after the clip has ended.
     func togglePlayback() {
+        if let matroska {
+            matroska.togglePlayback()
+            return
+        }
         guard let item = player.currentItem else { return }
         defer { onReadoutChange?() }
         if isPlaying {
@@ -172,6 +218,10 @@ final class QuickViewMediaView: NSView {
     /// One of the ⇧-keys, as a move along the timeline. Exact, so ⇧← lands on the first frame and
     /// two presses of ⇧↓ are twenty seconds rather than two nearby keyframes.
     func seek(_ move: QuickViewScroll) {
+        if let matroska {
+            matroska.seek(move)
+            return
+        }
         guard let item = player.currentItem else { return }
         let duration = item.duration.isNumeric ? item.duration.seconds : nil
         let target = move.timelineTarget(from: player.currentTime().seconds, duration: duration)

@@ -1120,6 +1120,13 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
 
 ### Negative controls
 
+- **A control harness that restores from somewhere other than where it saved restores nothing, and
+  the controls pile up.** Met 2026-11-20 on M42 Slice 4: a shell function saved its backup with
+  `cp f /tmp/ctl.bak || cp f "$TMPDIR/ctl.bak"` and restored from `$TMPDIR`, the first `cp` had
+  succeeded, so every restore failed with a line nobody read, and seven mutations stacked. Each
+  control's own test still went red the moment its mutation went in, so the run was readable, but no
+  control ran alone. Save and restore through one variable, `cmp` the file against the backup after
+  restoring, and print the result.
 - **A bare `return` on its own line in a `Void` function returns the line below it.** Swift reads
   `return` followed by an expression on the next line as `return <that expression>`, and an
   assignment is a `Void` expression, so a control written as `return` above the line it meant to
@@ -4222,6 +4229,51 @@ Measured 2026-11-08 for M37's byte view, whose table has a row for every 16 byte
     film's DTS tracks no `DefaultDuration`**, so a laced DTS frame after the first has no time the
     container states. Lavf writes every VP9 frame that carries alpha as a `BlockGroup`, where a key frame
     is one naming no `ReferenceBlock`; the `SimpleBlock` key flag does not exist there.
+- **A Matroska file plays through Core Media's sample-buffer renderers once each codec gets what the
+  system's own files and encoders give it.** Measured 2026-11-20 (PLAN.md §M42 ▸ P1) over the film, three
+  TV seasons and the Steam and sample WebMs: H.264's `avcC` and HEVC's and AV1's records go in as sample
+  description atoms unchanged. VP9 has no record in a WebM, so its `vpcC` is made from the first key
+  frame's header (`VP9FrameHeader`), and its decoder answers only after
+  `VTRegisterSupplementalVideoDecoderIfAvailable`. Opus takes its `OpusHead` as the magic cookie, and
+  Vorbis takes Matroska's Xiph-laced `CodecPrivate` byte for byte: AudioFile's own cookie for an Ogg
+  wrapped round the same packets was those 3 291 bytes. The AAC and FLAC cookies are laid out as the
+  system encoders' own (`magicCookie`, read from `AudioConverter`), an `ES_Descriptor` and a whole
+  `dfLa` box. AudioToolbox decodes AAC from the bare `AudioSpecificConfig` too, so for AAC the layout is
+  pinned by a byte test, not by decoding.
+  - **An undecodable picture does not fail the renderer; an undecodable sound does.** VP8 frames
+    enqueued into `AVSampleBufferDisplayLayer` came back as `numberOfCorruptedFrames` with the status
+    still `.rendering` and no error, while DTS put `AVSampleBufferAudioRenderer` in `.failed` with
+    `'fmt?'`. So decodability is asked before anything is enqueued: a `VTDecompressionSessionCreate`
+    for the picture (`vp08` answers -12906) and `kAudioFormatProperty_DecodeFormatIDs` for the sound
+    (`dtsc` is not on it).
+  - **The synchronizer's clock runs with the sound renderer failed**, at the same pace as with it
+    working, so a clock that moved says nothing about sound. The renderer's `status` and `error` do.
+  - **Nothing stops a synchronizer at the end of the data**, as `actionAtItemEnd` stops an `AVPlayer`:
+    its clock runs on past the last frame. And a file's stated `Duration` and the end of its last
+    packet differ by a packet, either way: the Steam clip states 4.008 s and its last Opus packet ends at
+    4.021 s, and AAC's priming carries an encoder's output past the length it was given. Seen live
+    2026-11-20: the player waited for its clock, held at the stated length for the readout, to pass the
+    data's end, and the clip "played" forever. Stop at whichever comes first (`MatroskaPlayer.endSeconds`).
+  - **A six-channel audio format with no channel layout makes `AVAudioFormat(cmAudioFormatDescription:)`
+    raise.** The probe died with exit 139 and printed nothing, its output still buffered; `setlinebuf`
+    found the line. Give every format a layout tag (`MediaSampleBridge.layoutTag`).
+  - **The decoders need no per-packet frame count for Opus or Vorbis** (the same samples out with and
+    without), but a sample buffer's length comes from it, and libwebm's Opus packets are 10 ms where
+    the Steam clips' are 20, so a fixed 960 would mistime one of them. The count comes from Opus's
+    table of contents and from Vorbis's modes, read from the end of its setup header as FFmpeg reads
+    them (`MediaFrameCounter`).
+  - **`AVAudioConverter` fed one Vorbis packet per input buffer answered `.endOfStream` after two
+    packets with no samples out**, while the C `AudioConverterFillComplexBuffer` decoded the same
+    packets and cookie to the full 10.41 s, and `AVAudioConverter` did decode Opus fed the same way.
+    Not chased: the shipped path is the renderer, which takes Vorbis without an error. Reach for the
+    C API when checking a Vorbis decode.
+- **MediaExtension was the other way to play Matroska, and three things ruled it out before any code.**
+  Read 2026-11-20 in the SDK's `MEFormatReader.h` and Apple's guides: a format reader needs the
+  `com.apple.developer.mediaextension.formatreader` entitlement *with a provisioning profile*, which a
+  Developer ID build, CI's ad-hoc one and `build/live-copy` do not carry; each user has to switch it on
+  in System Settings ▸ General ▸ Login Items & Extensions; and once installed it serves every app that
+  calls `MTRegisterProfessionalVideoWorkflowFormatReaders`, which its header calls a professional video
+  workflow and not for network-facing apps. Revisit only if Apple drops the profile requirement.
 
 ### Previews: web views
 

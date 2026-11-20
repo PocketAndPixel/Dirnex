@@ -298,7 +298,53 @@ a movie's controls cannot be clicked, and no key reaches it.
    MediaExtension format reader (macOS 15 and later, out of process, `AVPlayerView` unchanged). The
    other is sample-buffer rendering, which works from macOS 14 (`AVSampleBufferDisplayLayer`,
    `AVSampleBufferAudioRenderer`, a render synchronizer). Either way it plays the codecs listed above,
-   picks the first audio track the system can decode, and names the rest.
+   picks the first audio track the system can decode, and names the rest. **Landed 2026-11-20.**
+   **P1 chose sample buffers** (Oleg, 2026-11-20). A format reader needs a restricted entitlement *with
+   a provisioning profile*, which the Developer ID, CI and ad-hoc builds lack, a switch each user turns
+   on in System Settings, and once installed it serves every app on the Mac. The other route already
+   played every codec in this Mac's corpus that the system decodes (H.264, VP9, AC-3, E-AC-3, Opus,
+   Vorbis), and **a slim timeline of our own** stands in for AVKit's control bar (Oleg's pick).
+   Core: `MediaSampleFormat` (a track's codec, sizes and configuration as the system takes them, with
+   AAC's and FLAC's cookies laid out as the system encoders' own and VP9's `vpcC` made from the first
+   key frame by `VP9FrameHeader`), `MediaFrameCounter` (Opus's table of contents, Vorbis's modes),
+   `MatroskaDemuxer` (each track's packets in its own order, a cluster at a time, with seeking by the
+   cues or, with none, by walking, pictures before the target as preroll and sound before it dropped)
+   and `MatroskaPlaybackPlan` (the first picture this Mac decodes, the default sound if it decodes or
+   else the first that does, and a file whose picture nothing decodes refused). App:
+   `MediaSampleBridge` (format descriptions, sample buffers, and whether a decoder answers),
+   `MatroskaPlayer` and its queue-confined `MatroskaFeed`, `QuickViewMatroskaView` (the picture's layer
+   and the timeline, which joins the hit-test exemptions), and `QuickViewMediaView+Matroska`, whose
+   header tooltip names every sound: "▶ Russian · AC-3 · 5.1", and "English · DTS · 5.1 — can’t play"
+   (14 languages, with "Timeline"). A file AVFoundation refuses goes to the Matroska player when the
+   core reads it and something in it decodes, and to Slice 2's card otherwise. 30 core tests, over the
+   film's, libwebm's and Prism's captures and generated files; 12 app tests, over Matroska files
+   remuxed from the system encoders' own H.264, AAC and Opus, with a 0.5 tone decoded back to 0.5.
+   Negative controls: without preroll, without waiting for a key frame after a seek, with Opus's two-
+   frame codes read as one, Vorbis's window bit one along, AAC's cookie given an `esds` header, VP9's
+   profile 1 read as 4:2:0, and no codec step for an unlaced frame, the core tests aimed at each went
+   red. Without the timeline's exemption, the route to the player, or the stop of it, so did the app
+   ones. AAC's cookie as the bare `AudioSpecificConfig` passed: AudioToolbox decodes both, so the
+   layout is held by the byte test. Live in `build/live-copy`, the pane preview, muted with the sound
+   renderer's status logged: the film opened on its first frame reading "0:00:00 / 1:35:23" and
+   "1816×1080 · H.264 · AC-3, DTS"; ⌘P played it past the Disney logo on its default AC-3 track
+   (`.rendering`, no error); a click on the header paused it at 0:00:24; ⇧→ showed its last frame at
+   1:35:23 with the knob at the end; and a click halfway along the timeline drew 0:47:44. The GOT
+   episode read "1:01:37 · 1920×1080 · H.264 · AC-3", the VP8 WebM got the card, and Steam's VP9 and
+   Opus clip played to its end and stopped there, then ⌘P played it from the start. Full window drew
+   the same header and timeline. Found:
+   - **A stated length and the end of the data differ by a packet**, and the player waited for its
+     clock, held at the stated 4.008 s, to pass the 4.021 s where the clip's last Opus packet ends: live,
+     the clip "played" forever. It stops at whichever comes first now, with a test that failed first.
+   - **An undecodable picture does not fail the renderer** (VP8's frames count as corrupted, and the
+     status stays `.rendering`), so decodability is asked before anything is enqueued (docs/NOTES.md ▸
+     AppKit ▸ Previews).
+   - **Oleg's Silo episodes are user-immutable**, so no hard link reaches them, and E-AC-3 was not run
+     live in the app; P1 rendered it through the same bridge, and decoded it to 6.04 s of sound.
+
+   **Not run live**: sound heard (the run was muted; the renderer's status stood in), full screen, a
+   real mouse drag on the timeline (a background click is an accessibility write), the sound tooltip
+   (pinned by a test), the light appearance, a translation, Vorbis or AAC with sound in a real file
+   (both samples are silent), a file on a server, and a VP9 or AV1 decoder on another Mac.
 5. **AVI and MXF that hold a codec macOS decodes.** A candidate, decided after Slice 4.
 
 **Left undone so far:** VP8, Theora, VC-1 and WMV, RealVideo and DTS, which macOS cannot decode. Any

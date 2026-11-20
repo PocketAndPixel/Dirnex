@@ -62,45 +62,76 @@ extension QuickViewPreviewView {
         let asset = AVURLAsset(url: url)
         Task { [weak self] in
             let opened = await MediaSummary.load(asset)
-            var refused: QuickViewMediaCard.Content?
+            var refused: Refusal?
             if opened?.isPlayable != true {
-                refused = await Self.cardContent(for: url, opened?.summary)
+                refused = await Self.refusal(for: url, opened?.summary)
             }
             guard let self, token == loadToken else { return }
-            if let refused {
-                view.showCard(refused, icon: NSWorkspace.shared.icon(forFile: url.path))
-            } else if let opened {
-                view.show(AVPlayerItem(asset: asset), summary: opened.summary)
+            let icon = NSWorkspace.shared.icon(forFile: url.path)
+            switch refused {
+            case let .card(content):
+                view.showCard(content, icon: icon)
+            case let .matroska(preparation):
+                view.show(
+                    matroska: MatroskaPlayer(preparation),
+                    summary: MediaSummary(matroska: preparation.file),
+                    icon: icon
+                )
+            case nil:
+                if let opened { view.show(AVPlayerItem(asset: asset), summary: opened.summary) }
             }
             contentDidLoad()
         }
     }
 
-    /// What the card says for `url`: its name, the container its first bytes name, and what it holds,
-    /// as AVFoundation read it or, for Matroska and WebM, which AVFoundation refuses without a word, as
-    /// the file's own tracks say (PLAN.md §M42 ▸ Slice 3). The bytes are read off the main actor; a
-    /// cloud placeholder never gets this far.
-    ///
-    /// Opening a Matroska file reads its head and nothing else: the film's tracks are in its first
-    /// 6 KiB, and its cues, 10 GB further on, are left where they are.
-    private static func cardContent(for url: URL, _ summary: MediaSummary?) async -> QuickViewMediaCard.Content {
-        let (sniffed, read) = await BlockingWork.run { () -> (MediaContainer?, MediaSummary?) in
+    /// What becomes of a file AVFoundation will not play: the core's own player for a Matroska or
+    /// WebM file this Mac can decode (PLAN.md §M42 ▸ Slice 4), and the card for everything else.
+    enum Refusal {
+        case matroska(MatroskaPreparation)
+        case card(QuickViewMediaCard.Content)
+    }
+
+    /// The refusal for `url`, read off the main actor: its first bytes, and for Matroska and WebM its
+    /// head, and the first cluster when its picture is VP9.
+    private static func refusal(for url: URL, _ summary: MediaSummary?) async -> Refusal {
+        let (sniffed, file) = await BlockingWork.run { () -> (MediaContainer?, MatroskaFile?) in
             guard let handle = try? FileHandle(forReadingFrom: url) else { return (nil, nil) }
             defer { try? handle.close() }
             let prefix = (try? handle.read(upToCount: MediaContainer.sniffLength)) ?? Data()
             let container = MediaContainer.sniff(prefix)
-            guard container == .matroska || container == .webM,
-                  let file = try? MatroskaFile(source: FileByteSource(url: url))
-            else { return (container, nil) }
-            return (container, MediaSummary(matroska: file))
+            guard container == .matroska || container == .webM else { return (container, nil) }
+            return (container, try? MatroskaFile(source: FileByteSource(url: url)))
         }
+        if let file, let preparation = await BlockingWork.run({ MatroskaPreparation.prepare(file) }) {
+            return .matroska(preparation)
+        }
+        return .card(
+            cardContent(
+                for: url,
+                sniffed: sniffed,
+                read: file.map(MediaSummary.init(matroska:)) ?? summary
+            )
+        )
+    }
+
+    /// What the card says for `url`: its name, the container its first bytes name, and what it holds,
+    /// as AVFoundation read it or, for Matroska and WebM, which AVFoundation refuses without a word, as
+    /// the file's own tracks say (PLAN.md §M42 ▸ Slice 3). A cloud placeholder never gets this far.
+    ///
+    /// Opening a Matroska file reads its head and nothing else: the film's tracks are in its first
+    /// 6 KiB, and its cues, 10 GB further on, are left where they are.
+    private static func cardContent(
+        for url: URL,
+        sniffed: MediaContainer?,
+        read summary: MediaSummary?
+    ) -> QuickViewMediaCard.Content {
         let container = sniffed ?? MediaContainer(fileExtension: url.pathExtension)
         let typeName = (try? url.resourceValues(forKeys: [.contentTypeKey]).contentType)
             .flatMap { $0.isDynamic ? nil : $0.localizedDescription }
         return QuickViewMediaCard.Content(
             name: url.lastPathComponent,
             container: container?.displayName ?? typeName,
-            summary: read ?? summary
+            summary: summary
         )
     }
 

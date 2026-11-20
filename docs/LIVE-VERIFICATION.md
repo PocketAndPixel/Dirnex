@@ -112,6 +112,11 @@ so a trap goes here only if it can bite any live run; one tied to an area goes u
       was not traced. Seed a folder outside `~/Movies` and `~/Music`, and grep the log for
       `AUTHREQ_PROMPTING` after a launch: this one was a plain `TCCAccessRequest`, so a count of
       `TCCAccessRequestIndirect` misses it.
+      - **A hard link brings a film out of `~/Movies` without a copy, unless the film is immutable.**
+        Done 2026-11-20 for M42 Slice 4: `ln` of the 10.5 GB film into a git-ignored `build/` folder
+        made a fixture the copy played across two launches with no request in the log. Removing the
+        folder put the original's link count back to 1. The Silo episodes refused it with "Operation
+        not permitted": `ls -lO` shows `uchg` on them. Leave the flag alone and pick another file.
     - **An AppleEvent sent to the copy logs one too, so read the target before counting.** Seen
       2026-11-18: after a launch with no request, each `osascript … run operation` logged a
       `TCCAccessRequestIndirect` in the copy, 15 lines across the two sends. Each named

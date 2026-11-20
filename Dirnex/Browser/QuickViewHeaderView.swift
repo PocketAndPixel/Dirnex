@@ -51,6 +51,9 @@ struct QuickViewMediaReadout: Equatable {
     let time: String
     /// "2560×1440 · H.264 · AAC" (`MediaSummary.facts`), empty while nothing is known.
     let facts: String
+    /// What the facts' tooltip says, when it says more than the facts: a Matroska file's sound tracks
+    /// (PLAN.md §M42 ▸ Slice 4).
+    var detail: String?
 }
 
 /// The name-and-position strip a Quick View draws across its top, with the × that closes the preview
@@ -465,7 +468,7 @@ extension QuickViewHeaderView {
         }
         let facts = media?.facts ?? ""
         factsLabel.stringValue = facts
-        factsLabel.toolTip = facts.isEmpty ? nil : facts
+        factsLabel.toolTip = facts.isEmpty ? nil : media?.detail ?? facts
         factsLabel.isHidden = facts.isEmpty
         let besideSlideshow = !facts.isEmpty && caption?.isSlideshowRunning == true
         mediaConstraints.factsBesideSlideshow?.isActive = besideSlideshow

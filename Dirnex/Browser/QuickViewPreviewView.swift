@@ -409,6 +409,7 @@ final class QuickViewPreviewView: NSView {
                 tableSurface,
                 treeSurface,
                 mediaView?.playerView,
+                mediaView?.matroskaView.timeline,
                 headerView,
                 placeholderCard?.downloadButton,
                 placeholderCard?.stopButton
