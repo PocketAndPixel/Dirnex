@@ -3672,16 +3672,34 @@ Measured 2026-11-08 for M37's byte view, whose table has a row for every 16 byte
   constraint it has. Quick View's surface stays in the pane, hidden, after the mode closes. So
   `AVPlayerView`'s control bar (750 pt at 499, ▸ Previews: Quick Look, PDF and images) held a pane at
   762 pt, and the movie card's preferred 280 pt at 750 held it at 312. Both held with the player off
-  screen and with Quick View closed, and neither `setPosition` nor Oleg's drag could narrow the pane. With `translatesAutoresizingMaskIntoConstraints` on, an empty
-  `autoresizingMask` and the frame set in the parent's `layout()`, the child's constraints are a fixed
-  width the engine is told, and a want of 499 inside it breaks quietly rather than moving anything
-  outside (`QuickViewMediaView.layout`, 2026-11-20). An autoresizing mask of `.width` would not do:
-  it ties the child's trailing edge to its parent's, and the push goes up that constraint.
-  - **To find what holds a pane, ask the pane, not the view you suspect.** A temporary timer logging the
-    split's subview widths, and `constraintsAffectingLayout(for: .horizontal)` above priority 250 on
-    each pane's view whenever they changed, named `AVMovableView.width == 750 priority:499` in the first
-    live run. Two in-process harness runs had found only the card's 312 pt, because AVKit had not built
-    its bar there.
+  screen and with Quick View closed, and neither `setPosition` nor Oleg's drag could narrow the pane.
+  With `translatesAutoresizingMaskIntoConstraints` on, an empty `autoresizingMask` and the frame set
+  in the parent's `layout()`, the child's constraints are a fixed width the engine is told, and a
+  want of 499 inside it breaks quietly rather than moving anything outside
+  (`QuickViewMediaView.layout`, 2026-11-20). An autoresizing mask of `.width` would not do: it ties
+  the child's trailing edge to its parent's, and the push goes up that constraint.
+  - **To find what holds a pane, ask the pane, not the view you suspect.** A temporary timer logging
+    the split's subview widths, and `constraintsAffectingLayout(for: .horizontal)` above priority 250
+    on each pane's view whenever they changed, named `AVMovableView.width == 750 priority:499` in the
+    first live run. Two in-process harness runs had found only the card's 312 pt, because AVKit had
+    not built its bar there.
+  - **A higher priority always wins, whatever the amounts.** The split holds each pane with four
+    constraints at 250 (`NSSplitView.PreferredSize` and `FallbackSize`, a pair a pane), and one
+    content-size constraint at 470 inside the pane still pushed it out rather than give up a point
+    (measured 2026-11-20). So neither a count of lower constraints nor a geometry that doubles a width
+    buys anything. In Quick View's header the centered name means the header needs twice its wider
+    side, and a first fix that set the strip at 470 and 490, reasoned as half that a point of header,
+    moved nothing. Anything in a pane that may give way sits below 250, and siblings below it give
+    way in priority order, the lowest wholly first (`QuickViewHeaderPriority`).
+  - **Press at 250.5 to test it.** A pane too wide to need squeezing passes whatever the priorities
+    are: the header's English styles fit even a 260 pt pane once "(no JavaScript)" has gone, so the
+    pane tests passed with the styles at 251. A width wanted at 250.5 is what every piece below the
+    panes must give way to, and it told 247 from 251: under 200 pt against 232
+    (`QuickViewHeaderWidthTests`).
+- **A `didSet` guarded by `!= oldValue` never runs for the first value.** Quick View's header derives
+  its strip from `caption` there, and a surface opened with the cursor on `..` is given `nil`, which
+  equals the initial `nil`, so the strip kept the state it was built in: every style button visible
+  with AppKit's own title, "Button". Put a view into its empty state in `init` (2026-11-20).
 
 ### Mouse, trackpad and animation
 

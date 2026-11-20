@@ -139,6 +139,8 @@ final class QuickViewHeaderView: NSVisualEffectView {
         buildCloseButton()
         buildSlideshowButton()
         buildMediaReadout()
+        // A surface opened on `..` gets no caption, and its strip drew AppKit's "Button" title.
+        showStyles(of: nil)
     }
 
     @available(*, unavailable)
@@ -158,9 +160,10 @@ final class QuickViewHeaderView: NSVisualEffectView {
             label.translatesAutoresizingMaskIntoConstraints = false
             addSubview(label)
         }
-        // The name yields first: it is the one label that can be arbitrarily long, and the
-        // position readout is short, fixed-width and useless when clipped.
-        nameLabel.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+        // The name yields before the position and the styles: it is the one label that can be
+        // arbitrarily long, and the position readout is short and useless when clipped.
+        let namePriority = QuickViewHeaderPriority.name
+        nameLabel.setContentCompressionResistancePriority(namePriority, for: .horizontal)
         NSLayoutConstraint.activate([
             heightAnchor.constraint(equalToConstant: Self.height),
             nameLabel.centerXAnchor.constraint(equalTo: centerXAnchor),
@@ -309,6 +312,19 @@ extension QuickViewHeaderView {
         noJavaScriptLabel.font = Self.styleFont
         noJavaScriptLabel.textColor = .tertiaryLabelColor
         styleStrip.addArrangedSubview(noJavaScriptLabel)
+        // Short of room the strip gives way rather than widening the pane (`QuickViewHeaderPriority`).
+        styleStrip.setClippingResistancePriority(QuickViewHeaderPriority.strip, for: .horizontal)
+        for view in styleStrip.arrangedSubviews {
+            view.setContentCompressionResistancePriority(
+                QuickViewHeaderPriority.styles,
+                for: .horizontal
+            )
+        }
+        noJavaScriptLabel.setContentCompressionResistancePriority(
+            QuickViewHeaderPriority.noJavaScriptMark,
+            for: .horizontal
+        )
+        noJavaScriptLabel.lineBreakMode = .byTruncatingTail
         styleStrip.translatesAutoresizingMaskIntoConstraints = false
         addSubview(styleStrip)
     }
@@ -318,6 +334,7 @@ extension QuickViewHeaderView {
         let button = QuickViewStyleButton()
         button.identifier = NSUserInterfaceItemIdentifier(style.rawValue)
         button.isBordered = false
+        button.lineBreakMode = .byTruncatingTail
         // A click must not take focus: the arrow keys keep driving the file list under the preview.
         button.refusesFirstResponder = true
         return button
@@ -412,7 +429,7 @@ extension QuickViewHeaderView {
         factsLabel.lineBreakMode = .byTruncatingTail
         factsLabel.isHidden = true
         factsLabel.setContentCompressionResistancePriority(
-            NSLayoutConstraint.Priority(NSLayoutConstraint.Priority.defaultLow.rawValue - 1),
+            QuickViewHeaderPriority.facts,
             for: .horizontal
         )
         for view in [playbackButton, factsLabel] {

@@ -359,6 +359,21 @@ a movie's controls cannot be clicked, and no key reaches it.
    left it there with the player up, with the card up and with Quick View closed. After it, the split
    held at 608.5 / 608.5 with AVKit's real bar built, and moved to 900 and back in all three states. At
    317 pt the bar fitted itself and clipped nothing.
+
+   **Fixed the same day: the header held a narrow pane at 405 pt.** A rendered page's "1 Source · 2
+   Page (no JavaScript)" resisted at 750 beside a centered name, and the header kept its last caption
+   after Quick View closed, so a pane under 405 pt was pushed out to it and stayed there. Every piece
+   of the header that can give way is now below the panes' 250 (`QuickViewHeaderPriority`), in this
+   order: the mark or a movie's facts, then the name, then the styles. The readout and the position
+   stay above 250. A header first opened with the cursor on `..` drew its style buttons with AppKit's
+   title "Button" and now starts empty. Six app tests in `QuickViewHeaderWidthTests`, over the two-pane
+   split now shared with the movie's (`QuickViewPaneSplit`). Before the fix the four that pin it failed
+   (405, the mark whole and the name at 0, the placeholder strip), and the squeeze at 250.5, added
+   after, fails with the styles at 251 (232 pt). Found on the way: a higher priority always wins
+   whatever the amounts, so a first try at 470 and 490 moved nothing (docs/NOTES.md ▸ Views, layout and
+   hit testing). Live in `build/live-copy` with the split probe: a rendered page left a 317 pt pane at
+   317, reading "1 Source · 2 Page index.html ⊗ 1 of 1" with the mark gone; at 267 pt the name gave way
+   to "…" and the styles stayed whole; with Quick View closed the pane went to 608.5, 267 and 517 pt.
 5. **AVI and MXF that hold a codec macOS decodes.** A candidate, decided after Slice 4.
 
 **Left undone so far:** VP8, Theora, VC-1 and WMV, RealVideo and DTS, which macOS cannot decode. Any

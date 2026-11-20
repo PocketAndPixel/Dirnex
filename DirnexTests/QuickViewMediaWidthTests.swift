@@ -17,16 +17,13 @@ import Testing
 @Suite("Quick View ▸ a movie leaves the panes their widths")
 @MainActor
 struct QuickViewMediaWidthTests {
-    /// 1001 pt of panes and a 1 pt divider, so the even split is at 500.
-    private static let width: CGFloat = 1001
-
     @Test("a movie neither widens its pane nor holds the divider")
     func movieLeavesDividerFree() async throws {
         let tree = try TempDirectory()
         defer { tree.cleanup() }
         let url = tree.root.appendingPathComponent("clip.mp4")
         try await QuickViewMediaFixtures.writeMovie(to: url)
-        let panes = try Panes()
+        let panes = try QuickViewPaneSplit()
 
         let media = try await panes.preview(url)
         #expect(media.hasItem)
@@ -45,7 +42,7 @@ struct QuickViewMediaWidthTests {
         defer { tree.cleanup() }
         let url = tree.root.appendingPathComponent("film.mkv")
         try QuickViewMediaFixtures.matroskaHeader.write(to: url)
-        let panes = try Panes()
+        let panes = try QuickViewPaneSplit()
 
         let media = try await panes.preview(url)
         #expect(media.showsCard)
@@ -62,7 +59,7 @@ struct QuickViewMediaWidthTests {
         defer { tree.cleanup() }
         let url = tree.root.appendingPathComponent("clip.mp4")
         try await QuickViewMediaFixtures.writeMovie(to: url)
-        let panes = try Panes()
+        let panes = try QuickViewPaneSplit()
         let media = try await panes.preview(url)
         Self.addControlBarStandIn(to: media.playerView)
         // The card too, hidden behind the player, as it is once any refused file has been shown.
@@ -89,69 +86,19 @@ struct QuickViewMediaWidthTests {
             bar.bottomAnchor.constraint(equalTo: playerView.bottomAnchor, constant: -6)
         ])
     }
+}
 
-    /// Two real panes in the app's own split, holding their widths at 250, in a window of their own,
-    /// with the divider at the even split.
-    @MainActor
-    private struct Panes {
-        let split: NSSplitView
-        let right: PanelViewController
-        /// The panes' hosts and the controller, kept alive: a pane's `host` is weak.
-        private let kept: [AnyObject]
-
-        init() throws {
-            let controller = PanesSplitViewController()
-            controller.splitView = HairlineSplitView()
-            controller.splitView.isVertical = true
-            controller.splitView.dividerStyle = .thin
-            let (left, leftHost) = hostedPane()
-            let (right, rightHost) = hostedPane()
-            for pane in [left, right] {
-                let item = NSSplitViewItem(viewController: pane)
-                item.holdingPriority = NSLayoutConstraint.Priority(250)
-                item.canCollapse = false
-                controller.addSplitViewItem(item)
-            }
-            let window = NSWindow(
-                contentRect: NSRect(x: 0, y: 0, width: QuickViewMediaWidthTests.width, height: 600),
-                styleMask: [.titled, .resizable],
-                backing: .buffered,
-                defer: false
-            )
-            window.animationBehavior = .none
-            window.contentViewController = controller
-            window.setContentSize(NSSize(width: QuickViewMediaWidthTests.width, height: 600))
-            RetainedWindows.all.append(window)
-            split = controller.splitView
-            self.right = right
-            kept = [controller, leftHost, rightHost]
-            moveDivider(to: 500)
-            try #require(rightWidth == 500)
-        }
-
-        var rightWidth: CGFloat { split.subviews[1].frame.width }
-
-        func layOut() {
-            split.layoutSubtreeIfNeeded()
-        }
-
-        func moveDivider(to position: CGFloat) {
-            split.setPosition(position, ofDividerAt: 0)
-            layOut()
-        }
-
-        /// Show `url` in the right pane's Quick View and wait until the player or the card is up.
-        ///
-        /// With the caption the window gives a movie: no styles to pick, so the header's style buttons
-        /// are away. They hold a pane at about 405 pt, which is the header's own floor and no part of
-        /// what is tested here.
-        func preview(_ url: URL) async throws -> QuickViewMediaView {
-            let caption = QuickViewCaption(name: url.lastPathComponent, position: 1, count: 1)
-            right.showQuickViewPreview(of: url, style: .default, caption: caption)
-            let surface = try #require(right.quickViewPreview)
-            try await settleUntil(within: .seconds(60)) { !surface.flipGate.isLoading }
-            layOut()
-            return try #require(surface.mediaView)
-        }
+extension QuickViewPaneSplit {
+    /// Show `url` in the right pane's Quick View and wait until the player or the card is up.
+    ///
+    /// With the caption the window gives a movie: no styles to pick, so the header's style buttons
+    /// are away, as they are in the app.
+    fileprivate func preview(_ url: URL) async throws -> QuickViewMediaView {
+        let caption = QuickViewCaption(name: url.lastPathComponent, position: 1, count: 1)
+        right.showQuickViewPreview(of: url, style: .default, caption: caption)
+        let surface = try #require(right.quickViewPreview)
+        try await settleUntil(within: .seconds(60)) { !surface.flipGate.isLoading }
+        layOut()
+        return try #require(surface.mediaView)
     }
 }
