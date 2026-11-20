@@ -345,6 +345,20 @@ a movie's controls cannot be clicked, and no key reaches it.
    real mouse drag on the timeline (a background click is an accessibility write), the sound tooltip
    (pinned by a test), the light appearance, a translation, Vorbis or AAC with sound in a real file
    (both samples are silent), a file on a server, and a VP9 or AV1 decoder on another Mac.
+
+   **Fixed 2026-11-20 (Oleg): a movie widened its pane, and the pane stayed wide.** AVKit's inline
+   control bar asks for 750 pt at priority 499, above the panes' 250, so the pinned player pushed the
+   pane out to 762 pt, which was 455 / 762 where the split had been 608.5 / 608.5. Hidden views keep
+   their constraints, so the player held the pane under the card and after Quick View closed, and the
+   card's own preferred 280 pt held it at 312. No divider move could narrow it. `QuickViewMediaView`
+   now lays its player, Matroska view and card out by frame, so nothing inside them reaches the pane
+   (docs/NOTES.md ▸ Views, layout and hit testing). Three app tests in `QuickViewMediaWidthTests`, over
+   two real panes in the app's split, with a stand-in for the bar since the test host never builds it.
+   Negative control: without the fix all three fail (740 and 312). Live in `build/live-copy`, with a
+   temporary probe logging the split: before the fix, opening the MP4 gave 455 / 762, and a move to 608
+   left it there with the player up, with the card up and with Quick View closed. After it, the split
+   held at 608.5 / 608.5 with AVKit's real bar built, and moved to 900 and back in all three states. At
+   317 pt the bar fitted itself and clipped nothing.
 5. **AVI and MXF that hold a codec macOS decodes.** A candidate, decided after Slice 4.
 
 **Left undone so far:** VP8, Theora, VC-1 and WMV, RealVideo and DTS, which macOS cannot decode. Any

@@ -55,26 +55,26 @@ final class QuickViewMediaView: NSView {
         playerView.allowsPictureInPicturePlayback = false
         playerView.showsSharingServiceButton = false
         player.actionAtItemEnd = .pause
-        playerView.translatesAutoresizingMaskIntoConstraints = false
-        addSubview(playerView)
-        NSLayoutConstraint.activate([
-            playerView.leadingAnchor.constraint(equalTo: leadingAnchor),
-            playerView.trailingAnchor.constraint(equalTo: trailingAnchor),
-            playerView.topAnchor.constraint(equalTo: topAnchor),
-            playerView.bottomAnchor.constraint(equalTo: bottomAnchor)
-        ])
-        for view in [matroskaView, card] {
-            view.isHidden = true
-            view.translatesAutoresizingMaskIntoConstraints = false
+        // Laid out by frame in `layout()`, not pinned, so nothing inside them reaches the pane. AVKit's
+        // inline control bar asks for 750 pt at priority 499, above the panes' 250, and a pinned player
+        // pushed its pane out to 762 pt. Hidden, it went on holding the pane after Quick View closed,
+        // and no divider move could narrow it (2026-11-20, docs/NOTES.md ▸ Views, layout and hit
+        // testing). A frame-sized child is a fixed width to the engine, which the 499 cannot move.
+        for view in [playerView, matroskaView, card] {
+            view.translatesAutoresizingMaskIntoConstraints = true
+            view.autoresizingMask = []
             addSubview(view)
-            NSLayoutConstraint.activate([
-                view.leadingAnchor.constraint(equalTo: leadingAnchor),
-                view.trailingAnchor.constraint(equalTo: trailingAnchor),
-                view.topAnchor.constraint(equalTo: topAnchor),
-                view.bottomAnchor.constraint(equalTo: bottomAnchor)
-            ])
         }
+        matroskaView.isHidden = true
+        card.isHidden = true
         matroskaView.onSeek = { [weak self] seconds in self?.matroska?.seek(to: seconds) }
+    }
+
+    override func layout() {
+        super.layout()
+        for view in [playerView, matroskaView, card] where view.frame != bounds {
+            view.frame = bounds
+        }
     }
 
     @available(*, unavailable)

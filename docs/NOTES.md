@@ -3667,6 +3667,21 @@ Measured 2026-11-08 for M37's byte view, whose table has a row for every 16 byte
   because the first solve after `setTabs` runs with every chip arranged, before `layout()` has
   hidden any. Keep the labels' compression resistance below the clipping resistance, so labels
   shorten before anything clips.
+- **A view whose constraints you do not own goes into a pane by frame, not by constraints.** Anything
+  pinned into a pane that wants a size above 250 moves the divider, and a hidden view keeps every
+  constraint it has. Quick View's surface stays in the pane, hidden, after the mode closes. So
+  `AVPlayerView`'s control bar (750 pt at 499, ▸ Previews: Quick Look, PDF and images) held a pane at
+  762 pt, and the movie card's preferred 280 pt at 750 held it at 312. Both held with the player off
+  screen and with Quick View closed, and neither `setPosition` nor Oleg's drag could narrow the pane. With `translatesAutoresizingMaskIntoConstraints` on, an empty
+  `autoresizingMask` and the frame set in the parent's `layout()`, the child's constraints are a fixed
+  width the engine is told, and a want of 499 inside it breaks quietly rather than moving anything
+  outside (`QuickViewMediaView.layout`, 2026-11-20). An autoresizing mask of `.width` would not do:
+  it ties the child's trailing edge to its parent's, and the push goes up that constraint.
+  - **To find what holds a pane, ask the pane, not the view you suspect.** A temporary timer logging the
+    split's subview widths, and `constraintsAffectingLayout(for: .horizontal)` above priority 250 on
+    each pane's view whenever they changed, named `AVMovableView.width == 750 priority:499` in the first
+    live run. Two in-process harness runs had found only the card's 312 pt, because AVKit had not built
+    its bar there.
 
 ### Mouse, trackpad and animation
 
@@ -4213,6 +4228,19 @@ Measured 2026-11-08 for M37's byte view, whose table has a row for every 16 byte
     from two zoomed captures a few seconds apart; the shell's `screencapture -l` needs Screen
     Recording, which it does not have here. Use a clip with no audio track (`sample-1080p.mts` in
     `~/swtest/video`) when a live run has to play something.
+  - **AVKit's inline control bar asks to be 750 pt wide at priority 499**, centered and at least 6 pt
+    in from each edge (`AVMovableView` inside `AVEventPassthroughView`, read live 2026-11-20). That
+    outranks a split item's holding priority, so an `AVPlayerView` pinned into a pane pushed the pane
+    out to 762 pt the moment a movie opened. It kept pushing while hidden, and no divider drag could
+    narrow the pane (▸ Views, layout and hit testing). `QuickViewMediaView` lays the player out by
+    frame. Given less room, the bar fits itself: at 302 pt it kept play, both times, the scrubber and
+    an overflow button, and moved the volume to a capsule at the top.
+  - **The bar is built only once the pointer has been over the player**, and the test host never builds
+    it. A live run with the pointer elsewhere never meets the 750 pt, so a check of the player's layout
+    passes whatever the code does. The first run of the fix "passed" exactly that way, with no
+    `AVMovableView` in the tree. A temporary probe that sent `mouseEntered(with:)` to the owner of every
+    tracking area under the player built it with no pointer at all. The regression test puts a
+    stand-in with the bar's constraints into the player (`QuickViewMediaWidthTests`).
 - **Matroska muxers leave out every element whose value is the default, so an absent element means its
   default, not "unknown".** Read 2026-11-20 across mkvmerge 3.4, 6.8, 57 and 88, libwebm, Lavf and NCH
   Prism (PLAN.md §M42 ▸ Slice 3). mkvmerge omits `Language` for an English track (default `eng`) and
