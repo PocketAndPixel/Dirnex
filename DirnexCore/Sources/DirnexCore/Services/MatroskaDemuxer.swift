@@ -49,6 +49,9 @@ public struct MatroskaDemuxer: Sendable {
     /// Where the last seek wants playback to start, in nanoseconds. Packets before it are preroll or
     /// passed over; the ones after it never meet it again.
     private var target: Int64?
+    /// The cues, read on the first seek: the film's lie 10 GB along and cost a millisecond, which a
+    /// cursor passing over the file should not pay.
+    private var cues: [MatroskaCuePoint]?
 
     /// How each track is timed and counted.
     private struct TrackState: Sendable {
@@ -104,6 +107,13 @@ public struct MatroskaDemuxer: Sendable {
             states[track]!.head = 0
         }
         return packet
+    }
+
+    /// Start again at `nanoseconds`, reading the file's cues the first time (`seek(to:cues:keyTrack:)`).
+    /// A file whose cues cannot be read is sought by walking its clusters.
+    public mutating func seek(to nanoseconds: Int64, keyTrack: UInt64?) throws {
+        if cues == nil { cues = (try? file.cues()) ?? [] }
+        try seek(to: nanoseconds, cues: cues ?? [], keyTrack: keyTrack)
     }
 
     /// Start again at the cluster to read for `nanoseconds`: the one the last cue at or before it names

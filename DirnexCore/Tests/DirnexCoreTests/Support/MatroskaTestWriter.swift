@@ -335,11 +335,11 @@ struct SparseCaptureSource: RandomAccessByteSource {
     let length: UInt64
     private let pieces: [(offset: UInt64, bytes: Data)]
 
-    init(fixture name: String) throws {
+    init(fixture name: String, folder: String = "Matroska") throws {
         guard let url = Bundle.module.url(
             forResource: name,
             withExtension: "sparse",
-            subdirectory: "Fixtures/Matroska"
+            subdirectory: "Fixtures/\(folder)"
         )
         else { throw CocoaError(.fileNoSuchFile) }
         let data = try Data(contentsOf: url)

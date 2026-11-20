@@ -1273,6 +1273,14 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
   because the reflex is `git checkout -- <dir>`, which in this repo throws the whole slice away
   rather than the control. And a run killed by a timeout never reaches its own cleanup, so check the
   file's state afterwards rather than assuming the script finished.
+- **A control that passes can mean the fixture cannot show the fault, not that the code has none.**
+  Met 2026-11-20 on M42 Slice 5: with the Motion JPEG table insertion switched off, the app test that
+  decodes frames stripped of their Huffman tables still passed. Its frames were a flat grey with one
+  square, and the test compared one corner pixel, which VideoToolbox decodes the same with the wrong
+  tables. A probe over busy pictures at five sizes, 64×64 to 1920×1080, found every one decoding
+  differently without its tables. The fixture became blocks of colour and the test a fingerprint of
+  every pixel, and the control then failed it. When a control passes, ask what the fixture would look
+  like if the code were broken before blaming the control.
 
 ### Runs and assertions that prove nothing
 
@@ -4299,7 +4307,7 @@ Measured 2026-11-08 for M37's byte view, whose table has a row for every 16 byte
     packet differ by a packet, either way: the Steam clip states 4.008 s and its last Opus packet ends at
     4.021 s, and AAC's priming carries an encoder's output past the length it was given. Seen live
     2026-11-20: the player waited for its clock, held at the stated length for the readout, to pass the
-    data's end, and the clip "played" forever. Stop at whichever comes first (`MatroskaPlayer.endSeconds`).
+    data's end, and the clip "played" forever. Stop at whichever comes first (`SampleBufferPlayer.endSeconds`).
   - **A six-channel audio format with no channel layout makes `AVAudioFormat(cmAudioFormatDescription:)`
     raise.** The probe died with exit 139 and printed nothing, its output still buffered; `setlinebuf`
     found the line. Give every format a layout tag (`MediaSampleBridge.layoutTag`).
@@ -4320,6 +4328,36 @@ Measured 2026-11-08 for M37's byte view, whose table has a row for every 16 byte
   in System Settings ▸ General ▸ Login Items & Extensions; and once installed it serves every app that
   calls `MTRegisterProfessionalVideoWorkflowFormatReaders`, which its header calls a professional video
   workflow and not for network-facing apps. Revisit only if Apple drops the profile requirement.
+- **An AVI keeps no presentation times: each chunk is the next tick in the order it is stored, which
+  is decoding order, so B-frames have to be put back in showing order from the codec.** Measured
+  2026-11-20 (PLAN.md §M42 ▸ Slice 5) on the AVI sample, x264 with three B-frames and a B-pyramid:
+  H.264's picture order count, read from each slice header (§8.2.1), gives the order, and a window of
+  the encoder's reorder depth (`max_num_reorder_frames`, 2 here) hands each picture the lowest decoding
+  tick held (`PresentationReorder`). Over all 1 344 frames that agreed with sorting each closed group of
+  pictures whole, and with depth 16. VideoToolbox's own encoder, writing B-frames, was the witness
+  neither implementation controls: every picture came out at the time the encoder gave it. MPEG-4
+  Part 2 needs no count: a B-plane shows before the anchor decoded ahead of it.
+  - **The pictures still go to the decoder in decoding order**, each with its showing time. The first
+    try handed them out in showing order, and a run of the sample with the times all in order was the
+    tell. `AVSampleBufferDisplayLayer` takes a presentation time alone, as Matroska's B-frames showed.
+  - **VideoToolbox's JPEG decoder does not supply Annex K's tables to a frame that leaves them out**,
+    as a camera's `AVI1` Motion JPEG does. It answers status 0 and draws a different picture, for a busy
+    picture at every size tried; a flat one decodes alike either way, which can hide the fault from a
+    test (▸ Testing ▸ Negative controls). `MotionJPEG.withStandardTables` puts the segment Lavc writes
+    back before the scan.
+  - **A raw AAC frame holds byte patterns that parse as ADTS headers.** In an AVI remuxed from the 3GP
+    sample, the first such pattern in the first chunk made the stream read as ADTS: 169 three-block
+    "frames" for 1 345 chunks, and an `AudioSpecificConfig` made from noise. A header found by
+    scanning counts only when the next header follows where it says it ends
+    (`AudioFrameHeader.confirmed`), and the splitter applies the same rule.
+  - **FFmpeg's AVI muxer writes empty chunks into a sound stream stored a frame to a chunk, and each
+    is a tick.** The sample's AAC has two after its first frame, so its fourth frame plays at 64 ms, as
+    FFmpeg times it, not 43. A stream stored at a constant rate (`dwSampleSize` above 0) is timed by its
+    bytes instead, and a frame starts at the time of its first byte however the chunks cut it.
+  - **`AVAssetReader` hands AAC out two packets to a sample buffer at times.** A fixture remuxing the
+    3GP's AAC into AVI wrote one chunk per buffer, and the stream came out 31 s long beside a 54 s
+    picture. Split each buffer by its packet descriptions
+    (`CMSampleBufferGetAudioStreamPacketDescriptionsPtr`).
 
 ### Previews: web views
 

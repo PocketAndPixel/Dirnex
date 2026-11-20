@@ -8,25 +8,7 @@ enum AACConfiguration {
     /// `SLConfigDescriptor`, each size in four bytes. An `esds` box's version and flags are not part
     /// of it. The buffer size and bit rates the encoder fills in are left zero, which no decoder reads.
     static func magicCookie(audioSpecificConfig config: Data) -> Data {
-        var decoderConfig = Data([0x40, 0x15, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
-        decoderConfig.append(descriptor(0x05, config))
-        var elementary = Data([0, 0, 0])
-        elementary.append(descriptor(0x04, decoderConfig))
-        elementary.append(descriptor(0x06, Data([0x02])))
-        return descriptor(0x03, elementary)
-    }
-
-    private static func descriptor(_ tag: UInt8, _ body: Data) -> Data {
-        let size = body.count
-        var data = Data([
-            tag,
-            0x80 | UInt8(truncatingIfNeeded: size >> 21),
-            0x80 | UInt8(truncatingIfNeeded: size >> 14),
-            0x80 | UInt8(truncatingIfNeeded: size >> 7),
-            UInt8(truncatingIfNeeded: size) & 0x7F
-        ])
-        data.append(body)
-        return data
+        ElementaryStreamDescriptor.make(objectType: 0x40, streamType: 0x15, specificInfo: config)
     }
 
     /// An `AudioSpecificConfig` for the codec IDs that name AAC's profile rather than carrying one

@@ -51,12 +51,18 @@ extension MediaCodecName {
         return String(bytes: bytes, encoding: .ascii)
     }
 
-    private static let windowsVideoNames: [String: String] = [
+    /// Video for Windows compression codes, upper-cased, as Matroska's VfW tracks and AVI's streams
+    /// name their codecs (PLAN.md §M42 ▸ Slices 3 and 5).
+    static let windowsVideoNames: [String: String] = [
         "XVID": "MPEG-4", "DIVX": "MPEG-4", "DX50": "MPEG-4", "FMP4": "MPEG-4", "MP4V": "MPEG-4",
-        "DIV3": "MPEG-4 v3", "MP43": "MPEG-4 v3",
-        "H264": "H.264", "X264": "H.264", "AVC1": "H.264",
+        "MP4S": "MPEG-4", "M4S2": "MPEG-4", "3IV2": "MPEG-4",
+        "DIV3": "MPEG-4 v3", "DIV4": "MPEG-4 v3", "MP43": "MPEG-4 v3", "MP42": "MPEG-4 v2",
+        "H264": "H.264", "X264": "H.264", "AVC1": "H.264", "DAVC": "H.264",
+        "HEVC": "HEVC", "H265": "HEVC", "HVC1": "HEVC",
         "WVC1": "VC-1", "WMV1": "Windows Media Video", "WMV2": "Windows Media Video",
-        "WMV3": "Windows Media Video", "MJPG": "Motion JPEG", "MPG2": "MPEG-2", "HFYU": "HuffYUV"
+        "WMV3": "Windows Media Video", "MJPG": "Motion JPEG", "MPG2": "MPEG-2", "HFYU": "HuffYUV",
+        "CVID": "Cinepak", "DVSD": "DV", "IV50": "Indeo", "IV41": "Indeo", "IV32": "Indeo",
+        "MSVC": "Microsoft Video 1", "VP80": "VP8", "VP90": "VP9", "FFV1": "FFV1"
     ]
 
     /// The format tag of a `WAVEFORMATEX`, little-endian at its start.
@@ -65,10 +71,14 @@ extension MediaCodecName {
         return UInt16(header[header.startIndex]) | UInt16(header[header.startIndex + 1]) << 8
     }
 
-    private static let windowsAudioNames: [UInt16: String] = [
+    /// `WAVEFORMATEX` format tags.
+    static let windowsAudioNames: [UInt16: String] = [
         0x0001: "PCM", 0x0003: "PCM", 0x0050: "MP2", 0x0055: "MP3",
+        0x0002: "MS ADPCM", 0x0011: "IMA ADPCM", 0x0006: "A-law", 0x0007: "µ-law",
+        0x0031: "GSM 6.10",
         0x0160: "WMA", 0x0161: "WMA", 0x0162: "WMA Pro", 0x0163: "WMA Lossless",
-        0x00FF: "AAC", 0x1610: "AAC", 0x2000: "AC-3", 0x2001: "DTS", 0xF1AC: "FLAC"
+        0x00FF: "AAC", 0x1600: "AAC", 0x1610: "AAC", 0x706D: "AAC", 0x4143: "AAC",
+        0x2000: "AC-3", 0x2001: "DTS", 0xF1AC: "FLAC"
     ]
 }
 

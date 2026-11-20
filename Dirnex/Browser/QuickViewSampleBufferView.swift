@@ -1,14 +1,14 @@
 import AppKit
 import AVFoundation
 
-/// What a Matroska or WebM file plays in (PLAN.md §M42 ▸ Slice 4): its picture, or its icon for a
-/// sound alone, over a slim timeline the mouse can click and drag.
+/// What a file the core reads plays in, Matroska, WebM or AVI (PLAN.md §M42 ▸ Slices 4 and 5): its
+/// picture, or its icon for a sound alone, over a slim timeline the mouse can click and drag.
 ///
 /// AVKit's controls belong to `AVPlayer`, which cannot open these files, so the timeline is the one
 /// control drawn here. Play and pause are the header's button and ⌘P, as for every other movie, and
 /// the ⇧-keys move along the timeline from the file table.
 @MainActor
-final class QuickViewMatroskaView: NSView {
+final class QuickViewSampleBufferView: NSView {
     /// Hosts the player's display layer. Internal, for the tests.
     let pictureView = NSView()
     private let iconView = NSImageView()
@@ -34,7 +34,7 @@ final class QuickViewMatroskaView: NSView {
         timeline.action = #selector(timelineMoved(_:))
         timeline.setAccessibilityLabel(String(
             localized: "Timeline",
-            comment: "Accessibility label of the slider under a playing Matroska or WebM movie in Quick View."
+            comment: "Accessibility label of the slider under a playing Matroska, WebM or AVI movie in Quick View."
         ))
         timelineStrip.wantsLayer = true
         timelineStrip.layer?.backgroundColor = NSColor.black.withAlphaComponent(0.6).cgColor
@@ -70,7 +70,7 @@ final class QuickViewMatroskaView: NSView {
     }
 
     /// Put `player`'s picture up, or `icon` when it has none.
-    func show(_ player: MatroskaPlayer, icon: NSImage?) {
+    func show(_ player: SampleBufferPlayer, icon: NSImage?) {
         displayLayer?.removeFromSuperlayer()
         displayLayer = player.displayLayer
         if let layer = player.displayLayer {

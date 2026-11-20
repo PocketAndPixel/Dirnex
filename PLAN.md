@@ -374,12 +374,63 @@ a movie's controls cannot be clicked, and no key reaches it.
    hit testing). Live in `build/live-copy` with the split probe: a rendered page left a 317 pt pane at
    317, reading "1 Source · 2 Page index.html ⊗ 1 of 1" with the mark gone; at 267 pt the name gave way
    to "…" and the styles stayed whole; with Quick View closed the pane went to 608.5, 267 and 517 pt.
-5. **AVI and MXF that hold a codec macOS decodes.** A candidate, decided after Slice 4.
+5. **AVI.** Slice 5 was "AVI and MXF that hold a codec macOS decodes", left to decide after Slice 4;
+   **decided 2026-11-20 (Oleg): AVI, then MXF as Slice 6.** **Landed 2026-11-20.** Probed first over the
+   AVI sample (Lavf, x264 core 164 with three B-frames and a B-pyramid, AAC behind ADTS headers):
+   every frame decodes through VideoToolbox once its start codes are lengths and an `avcC` is made from
+   its parameter sets, and **an AVI keeps no presentation times**, so the order frames are shown in has
+   to come from the codec. A Python walk of the slice headers gave it, and in that order the decoded
+   frames change half as much from one to the next (a mean step of 1 376 against 2 538). Core:
+   `AVIFile` (the RIFF walk to the headers, `avih`, each `strl`, OpenDML's `dmlh` and `AVIX` RIFFs);
+   `AVIIndex` (OpenDML's standard indexes, else `idx1` with its base found by the chunk its first entry
+   names, else a walk of the `movi` lists that tells key frames by their first bytes); `AVIStreamFormat`
+   (H.264, MPEG-4 Part 2 under DivX's and Xvid's dozen codes, Motion JPEG; PCM, MP1 to MP3, AC-3, and
+   AAC raw or behind ADTS); `H264PictureOrder` (all three picture order types); `MPEG4Visual` (the
+   layer's time increment width, plane headers, DivX's packed B-frames, the `esds`); `MotionJPEG`
+   (Annex K's tables put back into a frame without them); `AudioFrameHeader` and its splitter (whole
+   frames however the chunks cut them); `PresentationReorder` (decoding order in and out, each picture
+   given the tick it is shown at); and `AVIDemuxer` (pictures timed by ticks, sound by chunks or by
+   bytes as `dwSampleSize` says, each stream seeking in its own index). Slice 4's plan became
+   `MediaPlaybackPlan`, and `MediaDemuxing` lets one player take either demuxer. App: `MatroskaPlayer`
+   became `SampleBufferPlayer` (with `SampleBufferFeed`, `SampleBufferPreparation` and
+   `QuickViewSampleBufferView`); a refused file whose first bytes say AVI plays there when something in
+   it decodes, and gets the card otherwise, which now names its codecs from its own headers. 60 core
+   tests, over a 117 KB sparse capture of the sample, whose 1 344 display ticks match the Python walk,
+   and generated files for OpenDML, offsets from the file's start, no index, `rec ` lists and packed
+   bitstreams; 6 app tests, over AVIs made of VideoToolbox's own H.264 with B-frames (each comes out at
+   the time the encoder gave it), AudioToolbox's AAC and ImageIO's JPEG. Negative controls, each failing
+   its tests: a reorder depth of 0, sound not timed again at a chunk boundary, constant-rate sound timed
+   by chunks, a packed B-frame not held for the next tick, `idx1` counted from the `movi` list alone,
+   the AVI route taken out, the table insertion off, and the ADTS check of before the fix below. Live in
+   `build/live-copy`, the pane preview, with no permission request in the log: the sample read
+   "⏸ 0:00 / 0:53" and "1920×1080 · H.264 · AAC" on its first frame, Play/Pause ran the clock to 0:06,
+   and ⇧→ showed the last frame at 0:53 with the cursor on its row; an AVI remuxed from the 3GP's Xvid
+   and AAC read "1280×720 · MPEG-4 · AAC", played, and a click halfway along the timeline carried on
+   from 0:27 with a clean picture; a 2560×1440 Motion JPEG without its tables, beside PCM, played
+   clean; and a `DIV3` file got the card "AVI · 640×480 · MPEG-4 v3". Found:
+   - **A raw AAC frame holds a pattern that reads as an ADTS header often enough**, so the first such
+     pattern made the Xvid remux's AAC 169 three-block "frames" for 1 345 chunks, with a configuration
+     made from noise. A header now counts only when the next one follows where it says it ends
+     (`AudioFrameHeader.confirmed`), with a test that failed first.
+   - **A flat JPEG decodes alike with the wrong Huffman tables**, so the table test passed with the
+     insertion off until its frames were made busy (docs/NOTES.md ▸ Testing ▸ Negative controls).
+   - **FFmpeg's AVI muxer leaves empty chunks in a sound stream**, and they are ticks: the sample's
+     fourth AAC frame plays at 64 ms, not 43.
 
-**Left undone so far:** VP8, Theora, VC-1 and WMV, RealVideo and DTS, which macOS cannot decode. Any
-codec library (ffmpeg, libVLC, libvpx), for the licence, the size, and §2's rule that bytes go through
-the core. Subtitles. Streaming a server's file without fetching it, since the remote preview's size
-allowance still applies. Video in the slideshow.
+   **Not handled**: `memory_management_control_operation` 5, which x264 never writes; E-AC-3 behind
+   the AC-3 tag; HEVC, DV and uncompressed pictures; ADPCM, A-law and µ-law, which AudioToolbox
+   decodes but which come in blocks the bridge does not build; a Motion JPEG chunk holding two fields.
+   **Not run live**: sound heard, full screen, OpenDML or a file with no index (generated files only),
+   DivX's packed B-frames in a real file (none on this Mac), MP3 or AC-3 in a real AVI, the light
+   appearance, a translation, a file on a server, and Matroska after the player's rename (its nine
+   app tests pass).
+6. **MXF that holds a codec macOS decodes.** Next: KLV, partitions, index tables with their temporal
+   offsets, and the essence containers for H.264, MPEG-2 and PCM, tested against the one sample.
+
+**Left undone so far:** VP8, Theora, VC-1 and WMV, RealVideo, MS-MPEG-4 v3 and DTS, which macOS cannot
+decode. Any codec library (ffmpeg, libVLC, libvpx), for the licence, the size, and §2's rule that bytes
+go through the core. Subtitles. Streaming a server's file without fetching it, since the remote
+preview's size allowance still applies. Video in the slideshow.
 
 The app's share of selling Dirnex (the private companion repo `dirnex-home`, milestones C1–C15) was
 two milestones, **M29** (a license, and the reminder it removes) and **M30** (Report a Bug), both

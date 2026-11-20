@@ -38155,7 +38155,7 @@
       }
     },
     "Timeline": {
-      "comment": "Accessibility label of the slider under a playing Matroska or WebM movie in Quick View.",
+      "comment": "Accessibility label of the slider under a playing Matroska, WebM or AVI movie in Quick View.",
       "localizations": {
         "de": {
           "stringUnit": {

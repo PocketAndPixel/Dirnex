@@ -51,9 +51,9 @@ struct QuickViewMatroskaTests {
         let view = surface()
         try await show(try film(in: tree), on: view)
         let media = try #require(view.mediaView)
-        let player = try #require(media.matroska, "the core's player, not the card")
+        let player = try #require(media.sampleBufferPlayer, "the core's player, not the card")
         #expect(!media.showsCard)
-        #expect(!media.matroskaView.isHidden && media.playerView.isHidden)
+        #expect(!media.sampleBufferView.isHidden && media.playerView.isHidden)
         #expect(media.hasItem && !media.isPlaying, "nothing plays until it is asked to")
         #expect(player.displayLayer != nil)
         #expect(view.previewView?.isHidden != false, "Quick Look is put away")
@@ -73,7 +73,7 @@ struct QuickViewMatroskaTests {
         let view = surface()
         try await show(try film(in: tree, seconds: 60), on: view)
         let media = try #require(view.mediaView)
-        let player = try #require(media.matroska)
+        let player = try #require(media.sampleBufferPlayer)
         media.togglePlayback()
         #expect(media.isPlaying)
         try await settleUntil(within: Self.budget) { player.currentSeconds > 0.3 }
@@ -103,7 +103,7 @@ struct QuickViewMatroskaTests {
         let view = surface()
         try await show(try film(in: tree), on: view)
         let media = try #require(view.mediaView)
-        let player = try #require(media.matroska)
+        let player = try #require(media.sampleBufferPlayer)
         media.togglePlayback()
         #expect(media.isPlaying)
         try await settleUntil(within: Self.budget) { !media.isPlaying }
@@ -121,13 +121,13 @@ struct QuickViewMatroskaTests {
         let view = surface()
         try await show(try film(in: tree, seconds: 10), on: view)
         let media = try #require(view.mediaView)
-        let player = try #require(media.matroska)
+        let player = try #require(media.sampleBufferPlayer)
         view.scrollContent(.end)
         try await settleUntil(within: Self.budget) { player.currentSeconds > 9.9 }
-        #expect(media.matroskaView.timeline.doubleValue > 9.9)
+        #expect(media.sampleBufferView.timeline.doubleValue > 9.9)
         view.scrollContent(.top)
         try await settleUntil(within: Self.budget) { player.currentSeconds < 0.05 }
-        #expect(media.matroskaView.timeline.doubleValue < 0.05)
+        #expect(media.sampleBufferView.timeline.doubleValue < 0.05)
         view.scrollContent(.lineDown)
         try await settleUntil(within: Self.budget) { abs(player.currentSeconds - 10) < 0.05 }
     }
@@ -139,8 +139,8 @@ struct QuickViewMatroskaTests {
         let view = surface()
         try await show(try film(in: tree, seconds: 10), on: view)
         let media = try #require(view.mediaView)
-        let player = try #require(media.matroska)
-        let timeline = media.matroskaView.timeline
+        let player = try #require(media.sampleBufferPlayer)
+        let timeline = media.sampleBufferView.timeline
         #expect(timeline.maxValue == 10 && timeline.isEnabled)
         timeline.doubleValue = 4
         timeline.sendAction(timeline.action, to: timeline.target)
@@ -162,7 +162,7 @@ struct QuickViewMatroskaTests {
         window.contentView = view
         try await show(try film(in: tree), on: view)
         let media = try #require(view.mediaView)
-        let timeline = media.matroskaView.timeline
+        let timeline = media.sampleBufferView.timeline
         let center = timeline.convert(
             NSPoint(x: timeline.bounds.midX, y: timeline.bounds.midY),
             to: view.superview
@@ -187,11 +187,11 @@ struct QuickViewMatroskaTests {
         let media = try #require(view.mediaView)
         media.togglePlayback()
         try await show(try tree.write("notes.txt", contents: "hello\n"), on: view)
-        #expect(media.matroska == nil)
+        #expect(media.sampleBufferPlayer == nil)
         #expect(!media.isPlaying && !media.hasItem)
-        #expect(media.isHidden && media.matroskaView.isHidden)
+        #expect(media.isHidden && media.sampleBufferView.isHidden)
         #expect(
-            media.matroskaView.pictureView.layer?.sublayers?.isEmpty ?? true,
+            media.sampleBufferView.pictureView.layer?.sublayers?.isEmpty ?? true,
             "the picture is let go"
         )
     }
@@ -222,7 +222,7 @@ struct QuickViewMatroskaTests {
         let view = surface()
         try await show(url, on: view)
         let media = try #require(view.mediaView)
-        #expect(media.matroska == nil && media.showsCard)
+        #expect(media.sampleBufferPlayer == nil && media.showsCard)
         #expect(media.card.detailLabel.stringValue == "WebM · 64×64 · VP8")
     }
 
@@ -249,7 +249,10 @@ struct QuickViewMatroskaTests {
         )
         let russian = Locale.current.localizedString(forLanguageCode: "rus") ?? "rus"
         let english = Locale.current.localizedString(forLanguageCode: "eng") ?? "eng"
-        let lines = QuickViewMediaView.soundLines(plan)
+        let lines = QuickViewMediaView.soundLines(
+            SampleBufferPreparation.sounds(plan),
+            playing: plan.audio?.number
+        )
         #expect(lines.first == "▶ \(russian) · AC-3 · 5.1")
         #expect(lines.last?.hasPrefix("\(english) · DTS · 5.1") == true)
         #expect(lines.last != "\(english) · DTS · 5.1", "an undecodable track says so")
@@ -257,6 +260,9 @@ struct QuickViewMatroskaTests {
             tracks: [track(2, "A_AC3", "und", isDefault: true)],
             canDecode: { _ in true }
         )
-        #expect(QuickViewMediaView.soundLines(single).isEmpty, "one sound that plays needs no list")
+        #expect(
+            QuickViewMediaView.soundLines(SampleBufferPreparation.sounds(single), playing: 2).isEmpty,
+            "one sound that plays needs no list"
+        )
     }
 }

@@ -71,10 +71,10 @@ extension QuickViewPreviewView {
             switch refused {
             case let .card(content):
                 view.showCard(content, icon: icon)
-            case let .matroska(preparation):
+            case let .sampleBuffer(preparation, summary):
                 view.show(
-                    matroska: MatroskaPlayer(preparation),
-                    summary: MediaSummary(matroska: preparation.file),
+                    sampleBuffer: SampleBufferPlayer(preparation),
+                    summary: summary,
                     icon: icon
                 )
             case nil:
@@ -84,39 +84,65 @@ extension QuickViewPreviewView {
         }
     }
 
-    /// What becomes of a file AVFoundation will not play: the core's own player for a Matroska or
-    /// WebM file this Mac can decode (PLAN.md §M42 ▸ Slice 4), and the card for everything else.
+    /// What becomes of a file AVFoundation will not play: the core's own player for a Matroska, WebM
+    /// or AVI file this Mac can decode (PLAN.md §M42 ▸ Slices 4 and 5), with what the file's own
+    /// headers say it holds, and the card for everything else.
     enum Refusal {
-        case matroska(MatroskaPreparation)
+        case sampleBuffer(SampleBufferPreparation, MediaSummary)
         case card(QuickViewMediaCard.Content)
     }
 
-    /// The refusal for `url`, read off the main actor: its first bytes, and for Matroska and WebM its
-    /// head, and the first cluster when its picture is VP9.
+    /// What the core read of a refused file: the file itself for the containers it plays, and else the
+    /// container its first bytes name.
+    private enum CoreRead: Sendable {
+        case matroska(MatroskaFile)
+        case avi(AVIFile)
+        case other(MediaContainer?)
+    }
+
+    /// The refusal for `url`, read off the main actor: its first bytes; for Matroska and WebM its head,
+    /// and the first cluster when its picture is VP9; for an AVI its headers, its index and each
+    /// stream's first chunk.
     private static func refusal(for url: URL, _ summary: MediaSummary?) async -> Refusal {
-        let (sniffed, file) = await BlockingWork.run { () -> (MediaContainer?, MatroskaFile?) in
-            guard let handle = try? FileHandle(forReadingFrom: url) else { return (nil, nil) }
+        let core = await BlockingWork.run { () -> CoreRead in
+            guard let handle = try? FileHandle(forReadingFrom: url) else { return .other(nil) }
             defer { try? handle.close() }
             let prefix = (try? handle.read(upToCount: MediaContainer.sniffLength)) ?? Data()
             let container = MediaContainer.sniff(prefix)
-            guard container == .matroska || container == .webM else { return (container, nil) }
-            return (container, try? MatroskaFile(source: FileByteSource(url: url)))
+            switch container {
+            case .matroska, .webM:
+                return (try? MatroskaFile(source: FileByteSource(url: url))).map(CoreRead.matroska)
+                    ?? .other(container)
+            case .avi:
+                return (try? AVIFile(source: FileByteSource(url: url))).map(CoreRead.avi) ?? .other(
+                    container
+                )
+            default:
+                return .other(container)
+            }
         }
-        if let file, let preparation = await BlockingWork.run({ MatroskaPreparation.prepare(file) }) {
-            return .matroska(preparation)
+        switch core {
+        case let .matroska(file):
+            let described = MediaSummary(matroska: file)
+            if let preparation = await BlockingWork.run({ SampleBufferPreparation.prepare(file) }) {
+                return .sampleBuffer(preparation, described)
+            }
+            return .card(cardContent(for: url, sniffed: file.container, read: described))
+        case let .avi(file):
+            let described = MediaSummary(avi: file)
+            if let preparation = await BlockingWork.run({ SampleBufferPreparation.prepare(file) }) {
+                return .sampleBuffer(preparation, described)
+            }
+            return .card(cardContent(for: url, sniffed: .avi, read: described))
+        case let .other(container):
+            return .card(cardContent(for: url, sniffed: container, read: summary))
         }
-        return .card(
-            cardContent(
-                for: url,
-                sniffed: sniffed,
-                read: file.map(MediaSummary.init(matroska:)) ?? summary
-            )
-        )
     }
 
     /// What the card says for `url`: its name, the container its first bytes name, and what it holds,
-    /// as AVFoundation read it or, for Matroska and WebM, which AVFoundation refuses without a word, as
-    /// the file's own tracks say (PLAN.md §M42 ▸ Slice 3). A cloud placeholder never gets this far.
+    /// as AVFoundation read it or, for Matroska, WebM and AVI, which AVFoundation refuses without a
+    /// word, as the file's own headers say (PLAN.md §M42 ▸ Slices 3 and 5). A cloud placeholder never
+    /// gets this far.
     ///
     /// Opening a Matroska file reads its head and nothing else: the film's tracks are in its first
     /// 6 KiB, and its cues, 10 GB further on, are left where they are.
