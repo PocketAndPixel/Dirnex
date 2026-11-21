@@ -88,6 +88,13 @@ so a trap goes here only if it can bite any live run; one tied to an area goes u
     was already empty (its folder unchanged since the day before), so nothing was lost. Before
     launching a copy, list the store, and copy its files aside if there are any. A copy stopped with
     `kill` also leaves its `gm-<id>.sock` there; `lsof` says which socket nobody holds.
+    - **Nor the remote preview cache.** Found 2026-11-21: every launch removes
+      `$TMPDIR/DirnexRemote` (`RemoteFileCache.purgeTemporaries`), and a copy launched by Oleg's
+      user shares that `TMPDIR` with the release build he has open. So the copy's launch takes
+      whatever his app had downloaded there, a server file open in F4 for write-back included. That
+      day his app had nothing open in it (`lsof`), and what the folder held before is unknown.
+      Before launching a copy, list `/var/folders/…/T/DirnexRemote` (the app's `TMPDIR`, from
+      `ps eww`, not the shell's) and check `lsof -p <his pid>` for it.
   - **Its first launch asks macOS about every cloud provider, on Oleg's screen.** Seen 2026-11-10: the
     copy showed no window, its main thread sat in `open` under `CloudStorageMounts.entryDirectory`, and
     he got "“Dirnex.app” wants to access files managed by “Box”", one per provider, which screenshots
@@ -117,6 +124,13 @@ so a trap goes here only if it can bite any live run; one tied to an area goes u
         made a fixture the copy played across two launches with no request in the log. Removing the
         folder put the original's link count back to 1. The Silo episodes refused it with "Operation
         not permitted": `ls -lO` shows `uchg` on them. Leave the flag alone and pick another file.
+    - **A tab seeded inside iCloud Drive asks too, and the log words it differently.** Seen
+      2026-11-21 for the M42 cloud-placeholder check: listing a folder under
+      `~/Library/Mobile Documents` at launch logged
+      `Prompting for access to indirect object iCloud Drive by Dirnex.app`, with
+      `UserNotificationCenter` in front, and Oleg answered it 4 s later. A count of
+      `AUTHREQ_PROMPTING` gave 0. iCloud Drive is a File Provider domain like the others, so tell him
+      before such a run, and grep for `Prompting for access` as well.
     - **An AppleEvent sent to the copy logs one too, so read the target before counting.** Seen
       2026-11-18: after a launch with no request, each `osascript … run operation` logged a
       `TCCAccessRequestIndirect` in the copy, 15 lines across the two sends. Each named
@@ -142,6 +156,8 @@ so a trap goes here only if it can bite any live run; one tied to an area goes u
       copy dialog: after the function bar's F5 and the sheet's OK, Pause or Stop, `lsappinfo front`
       named the copy more often than not, though not every time. Batch a sheet's presses into one
       `app_batch` and put Oleg's app back after each batch rather than after each press.
+    - **So did a background click on the Matroska timeline**, which the tool sends as an `AXValue`
+      write on the slider (2026-11-21).
 - **A check that needs another language or a fresh account runs in a clone of the CI VM, driven from
   inside it.** Done 2026-11-19 for M40 Slice 6: `tart clone dirnex-ci-base <name>`, `tart set` to 4
   CPUs and 8 GB, `tart run --no-graphics --no-audio`. The base never loads the runner, so the clone
@@ -589,6 +605,21 @@ so a trap goes here only if it can bite any live run; one tied to an area goes u
     with `open -b` to make its cursor row emphasized had a rename field open, and "old" appeared in
     it. Keep a copy in front only for the screenshot that needs it, put his app back at once, and
     tell him first when the check will hold the front for longer.
+- **Full-screen control hides every app outside the grant, and they stay hidden after the release.**
+  Seen 2026-11-21: the first full-screen screenshot hid Oleg's `/Applications` Dirnex, Notes and VS
+  Code, and after `release_full_control` `lsappinfo list` still marked the first two `(hidden)`.
+  `open -b` brought VS Code back by making it the front app, while `open -g -b` left Dirnex hidden.
+  Tell him which apps to click back in the Dock, rather than flipping the front while he may be
+  typing.
+- **During full-screen control, part of the screen shows no tooltip from any view, and it reads as a
+  broken view.** Seen 2026-11-21, and it cost five takeovers. With the copy's window at x 214 pt,
+  nothing showed a tooltip beyond about x 1160 pt on screen at the height of the window's top (y 185
+  to 220). That covered the Quick View header's ⊗ and facts, probe buttons added to the header late,
+  and the title bar's update badge. The sidebar, the left pane and the tab strip's + showed theirs.
+  With the window moved to x 0, the same ⊗ and facts did too. `CGWindowListCopyWindowInfo` found no
+  window over the spot, and the app's own frame-view hit test reached the views, so the cause was not
+  found. Before calling a tooltip broken, hover a control known to work at the same place on screen,
+  or move the window first (`NSWindow Frame MainWindow`, written with the copy quit).
 - **Find Files on this Mac runs off the Spotlight index, so a fixture in a temp folder finds nothing.**
   Seen 2026-11-05: a saved search scoped to the session scratchpad under `/private/tmp` opened an
   empty results tab, because `SpotlightSearchRunner` asks `mdfind` and `/private/tmp` is not

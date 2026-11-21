@@ -4239,11 +4239,17 @@ Measured 2026-11-08 for M37's byte view, whose table has a row for every 16 byte
     holding H.264, which is not damaged). So a card naming what such a file holds reads its bytes
     itself (`MediaContainer.sniff`), and its error code cannot tell an unsupported file from a broken one.
   - **A periodic time observer also fires when playback starts or stops and when the time jumps**, as
-    its documentation says, so one observer keeps a readout of the place current through a seek and
-    the stop at the end with no KVO on `rate` (`QuickViewMediaView.observeTime`, Slice 2). It hears of
-    a start only once playback has begun, though: in a full app run a test toggled play on a one-second
-    clip, and the clip had played out before the poll saw "playing". ⌘P now tells the readout itself,
-    and the test plays a minute-long clip.
+    its documentation says, so one observer keeps a readout of the place current through a seek
+    (`QuickViewMediaView.observeTime`, Slice 2). It hears of a start only once playback has begun,
+    though: in a full app run a test toggled play on a one-second clip, and the clip had played out
+    before the poll saw "playing". ⌘P now tells the readout itself, and the test plays a minute-long
+    clip.
+    - **Its call for the stop at the end comes before the stop.** Probed 2026-11-21 with a scratch
+      `AVPlayer` over a 3.99 s clip: the last periodic call came at 3.991 s with `rate` still 1.0,
+      then `rate` went to 0 32 ms later, with `didPlayToEndTime` and `timeControlStatus` beside it,
+      and no periodic call after. A readout fed by the observer alone kept "playing" under a stopped
+      clip, seen live the same day. A KVO on `rate` now tells it (`rateObservation`). This bullet's
+      first version said one observer was enough for the end too, which nothing had checked.
   - **An `AVPlayerItem` reports no duration until its status is `.readyToPlay`**, even when the asset
     it was made from has loaded its own. A seek that needs the length (Quick View's ⇧→ to the end) has
     nothing to go to before then. A test that seeks right after putting the item up passes alone and
@@ -4254,6 +4260,11 @@ Measured 2026-11-08 for M37's byte view, whose table has a row for every 16 byte
     from two zoomed captures a few seconds apart; the shell's `screencapture -l` needs Screen
     Recording, which it does not have here. Use a clip with no audio track (`sample-1080p.mts` in
     `~/swtest/video`) when a live run has to play something.
+  - **A control on a strip that is dark in both appearances still draws for the window's.** The
+    Matroska timeline is an `NSSlider` on black under the picture, and in the light appearance its
+    track and its played part were dark on black, so only the knob showed (seen live 2026-11-21,
+    M42). Give the strip `NSAppearance(named: .darkAqua)`, and a test can pin it through the slider's
+    `effectiveAppearance` in a window set to `.aqua`.
   - **AVKit's inline control bar asks to be 750 pt wide at priority 499**, centered and at least 6 pt
     in from each edge (`AVMovableView` inside `AVEventPassthroughView`, read live 2026-11-20). That
     outranks a split item's holding priority, so an `AVPlayerView` pinned into a pane pushed the pane

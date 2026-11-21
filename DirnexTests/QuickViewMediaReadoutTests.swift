@@ -101,6 +101,27 @@ struct QuickViewMediaReadoutTests {
         #expect(readout(of: view)?.time == "1:00 / 1:00")
     }
 
+    /// The stop at the end reaches the header too. Probed 2026-11-21: the periodic observer's last
+    /// report at the end comes while the rate is still 1, and the rate drops to 0 about 30 ms later
+    /// with no report after it. Seen live the same day as a header left on ▶ under a clip that had
+    /// stopped.
+    @Test("the end of the file reaches the header")
+    func endReachesTheHeader() async throws {
+        let tree = try TempDirectory()
+        defer { tree.cleanup() }
+        let view = surface()
+        try await show(try movie(in: tree), on: view)
+        let media = try #require(view.mediaView)
+        try await settleUntil(within: Self.budget) {
+            media.player.currentItem?.status == .readyToPlay
+        }
+        view.toggleMediaPlayback()
+        #expect(readout(of: view)?.isPlaying == true)
+        try await settleUntil(within: Self.budget) { media.player.rate == 0 }
+        #expect(media.player.currentTime().seconds > 0.9, "stopped by the end, not by a pause")
+        try await settleUntil(within: .seconds(5)) { readout(of: view)?.isPlaying == false }
+    }
+
     @Test("a click on the header's readout plays and pauses, without taking focus")
     func readoutClick() async throws {
         let tree = try TempDirectory()

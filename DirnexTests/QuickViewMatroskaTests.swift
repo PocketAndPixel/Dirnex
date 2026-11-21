@@ -148,6 +148,26 @@ struct QuickViewMatroskaTests {
         #expect(view.headerView?.caption?.media?.time == "0:04 / 0:10")
     }
 
+    /// The strip under the picture is black in both appearances, and a slider follows the window's.
+    /// Seen live 2026-11-21: in the light appearance its track and its played part were dark on black,
+    /// so only the knob could be seen. The window's own appearance is read back too, so the test is
+    /// known to have run in the light one.
+    @Test("the timeline is drawn for a dark strip in the light appearance too")
+    func timelineIsDarkInLight() throws {
+        let view = QuickViewSampleBufferView()
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 400, height: 300),
+            styleMask: [.titled],
+            backing: .buffered,
+            defer: true
+        )
+        window.appearance = NSAppearance(named: .aqua)
+        window.contentView = view
+        let names: [NSAppearance.Name] = [.aqua, .darkAqua]
+        #expect(view.effectiveAppearance.bestMatch(from: names) == .aqua, "the window is light")
+        #expect(view.timeline.effectiveAppearance.bestMatch(from: names) == .darkAqua)
+    }
+
     @Test("the timeline takes the mouse, while the picture keeps swallowing it")
     func timelineTakesTheMouse() async throws {
         let tree = try TempDirectory()

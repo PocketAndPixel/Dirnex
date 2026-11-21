@@ -424,6 +424,56 @@ a movie's controls cannot be clicked, and no key reaches it.
    appearance, a translation, a file on a server, and Matroska after the player's rename (its nine
    app tests pass).
 
+**Live checks before the archive, 2026-11-21**, in `build/live-copy`, with a temporary env-gated
+mute everywhere sound was not the subject. They clear most of the slices' *Not run live* lists:
+
+- **Matroska after the player's rename**: the film played on its AC-3 track with the renderer
+  `.rendering`, paused from the header, went to 1:35:23 on ⇧→ and to 0:47:44 on a timeline click.
+  Steam's VP9 and Opus clip stopped at its end.
+- **An AVI at full window**: the header and the timeline across the whole width, and it played.
+- **The light appearance and German**: the header, and the card ("Dirnex kann diese Datei nicht
+  abspielen."). View ▸ Play/Pause reads "Wiedergabe/Pause".
+- **A 300 pt pane with a long name**: the split came back 849 / 300 after the AVKit player, the card
+  and the Matroska player had been up, and with Quick View closed.
+- **A movie over SFTP**, against a throwaway `sshd`. A 7 MB clip arrived on its own and played. The
+  48 MB MP4 drew the Download card without spending a session, and played after ⌘D. Then a 499 KB
+  WebM and the 35 MB AVI arrived on their own, the AVI inside twice the size agreed to.
+- **A cloud placeholder**: an evicted iCloud Drive clip drew Quick Look's thumbnail and was still
+  `dataless`, with 0 blocks, afterwards.
+- **With full-screen control**: sound heard (Oleg), from the film's AC-3 track and from an AAC voice
+  clip. A real drag on the timeline: the clock and the picture follow the knob mid-drag. ⌘P brought a
+  faded full-screen header back, on play and on pause.
+
+The film plays Russian because its track 2, a Russian AC-3 dub, carries `FlagDefault`. It is also the
+first sound, so both halves of the rule pick it. The English original is DTS (track 9), and the only
+English AC-3 is the commentary. Found:
+
+- **The timeline could not be seen in the light appearance. Fixed the same day.** It sits on black
+  in both appearances, and `NSSlider` followed the window's, so its track and its played part were
+  dark on black and only the knob showed. The strip is now `.darkAqua` (`QuickViewSampleBufferView`).
+  One app test, `timelineIsDarkInLight`, which failed before the fix. Live, light: the track and the
+  played part both show.
+- **At the end of a file the AVKit player left the header on ▶**, the playing glyph, though it had
+  stopped; the core's player showed ⏸ there. **Fixed the same day.** A scratch `AVPlayer` showed
+  why: the periodic observer's last call at the end comes while `rate` is still 1, and `rate` drops
+  32 ms later with no call after it (docs/NOTES.md ▸ AppKit ▸ Previews, which had said otherwise). A
+  KVO on `rate` now tells the header (`QuickViewMediaView.rateObservation`). One app test,
+  `endReachesTheHeader`, which timed out before the fix. Live: a 3 s clip played out to "⏸ 0:03 /
+  0:03". The header still floors a 3.99 s clip to 0:03, where AVKit shows 00:04.
+- **Not a bug: the header's tooltips.** In the takeover run none showed on the ⊗ or the facts, while
+  the tab strip's + did. Probes found the tooltips registered and the hit test right, and buttons
+  added to the header late showed theirs on the left and not on the right. The window moved left,
+  the ⊗ said "Close Quick View" and the facts their line. During full-screen control, a stretch of
+  screen from about x 1160 pt, at the height of the window's top, shows no tooltip from any view,
+  the title bar's own update badge included (docs/LIVE-VERIFICATION.md).
+- **In a 300 pt pane, a clock with hours leaves the centered name at "T…" while the facts keep
+  "1816×…".** The priorities hold. What costs the name is its required centering, beside a readout
+  that is wider by the hour, so whether the name may leave the center is a design question, left
+  open.
+
+**Not run live**: a translation other than German, a VP9 or AV1 decoder on another Mac, and Vorbis or
+AAC with sound in a real Matroska or AVI file.
+
 **Left undone so far:** VP8, Theora, VC-1 and WMV, RealVideo, MS-MPEG-4 v3 and DTS, which macOS cannot
 decode. Any codec library (ffmpeg, libVLC, libvpx), for the licence, the size, and §2's rule that bytes
 go through the core. Subtitles. Streaming a server's file without fetching it, since the remote

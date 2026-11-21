@@ -37,6 +37,11 @@ final class QuickViewMediaView: NSView {
     /// The player's periodic report, attached while a file is up and taken off by `stop()`, so a player
     /// with nothing in it reports nothing.
     private var timeObserver: Any?
+    /// Tells the header of every change of rate, the stop at the end of the file among them, which the
+    /// periodic report misses: its last call at the end comes while the rate is still 1, and the rate
+    /// drops to 0 about 30 ms later with no call after it (probed 2026-11-21). AVKit's own play
+    /// button changes the rate too.
+    private var rateObservation: NSKeyValueObservation?
     /// Set between `prepareForNext()` and the next file going up: the previous file stays on screen,
     /// paused, while the next one opens, but the header already names the next one and must not
     /// carry the previous one's place beside it.
@@ -72,6 +77,13 @@ final class QuickViewMediaView: NSView {
         sampleBufferView.onSeek = { [weak self] seconds in self?.sampleBufferPlayer?.seek(
             to: seconds
         ) }
+        // On the main queue rather than in the handler: KVO calls it inside the change, and the
+        // readout is read on the main actor.
+        rateObservation = player.observe(\.rate) { [weak self] _, _ in
+            DispatchQueue.main.async {
+                MainActor.assumeIsolated { self?.onReadoutChange?() }
+            }
+        }
     }
 
     override func layout() {
@@ -185,8 +197,9 @@ final class QuickViewMediaView: NSView {
     }
 
     /// Ask for the readout again every `readoutInterval` of playback. AVFoundation also calls the block
-    /// when the time jumps and when playback starts or stops, so ⌘P, a seek and the end of the file
-    /// reach the header at once rather than at the next tick.
+    /// when the time jumps and when playback starts, so ⌘P and a seek reach the header at once rather
+    /// than at the next tick. The stop at the end of the file is `rateObservation`'s: this block's
+    /// last call there comes before the rate drops.
     private func observeTime() {
         if let timeObserver { player.removeTimeObserver(timeObserver) }
         timeObserver = player.addPeriodicTimeObserver(

@@ -38,6 +38,10 @@ final class QuickViewSampleBufferView: NSView {
         ))
         timelineStrip.wantsLayer = true
         timelineStrip.layer?.backgroundColor = NSColor.black.withAlphaComponent(0.6).cgColor
+        // The strip is dark in both appearances, so the slider is drawn as for a dark window. Seen
+        // live 2026-11-21: following a light window's, its track and its played part were dark on
+        // black, and only the knob could be seen.
+        timelineStrip.appearance = NSAppearance(named: .darkAqua)
         for view in [pictureView, iconView, timelineStrip, timeline] {
             view.translatesAutoresizingMaskIntoConstraints = false
         }
