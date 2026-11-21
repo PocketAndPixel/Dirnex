@@ -41,6 +41,9 @@ extension QuickViewPreviewView {
     /// it. It plays from its start once it is up when `autoplaysMedia` says so, and waits paused for
     /// ⌘P otherwise.
     ///
+    /// A file the player has up already is left where it is, playing or paused, which is how a movie
+    /// handed over from another Quick View size goes on (`handOffMedia`).
+    ///
     /// A cloud placeholder goes to Quick Look unopened: opening it reads it, and reading it downloads
     /// it because the cursor passed over the row (`isGoProRAW` keeps the same rule).
     func showMedia(_ url: URL) {
@@ -50,7 +53,8 @@ extension QuickViewPreviewView {
             return
         }
         let view = ensureMediaView()
-        view.prepareForNext()
+        let isUp = view.settledURL == url
+        if !isUp { view.prepareForNext(url) }
         standDownPDF()
         standDownQuickLook()
         standDownImage()
@@ -58,6 +62,10 @@ extension QuickViewPreviewView {
         standDownWeb()
         view.isHidden = false
         loadToken += 1
+        guard !isUp else {
+            contentDidLoad()
+            return
+        }
         let token = loadToken
         flipGate.isLoading = true
         let asset = AVURLAsset(url: url)
@@ -203,9 +211,10 @@ extension QuickViewPreviewView {
     /// never goes on under the next file whatever draws it.
     ///
     /// A movie or a sound that the TypeScript sniff takes first stands it down too. That file reaches
-    /// the player again only if its bytes are not text, through `showBinary`.
+    /// the player again only if its bytes are not text, through `showBinary`. The exception is a file
+    /// the player already has up, handed over from another size, which `show` passes on past the sniff.
     func standDownMedia(unlessShowing url: URL?) {
-        if let url, Self.isMedia(url), !Self.isMistypedSource(url) { return }
+        if let url, isPlayerShowing(url) || Self.isMedia(url) && !Self.isMistypedSource(url) { return }
         standDownMedia()
     }
 
@@ -214,17 +223,55 @@ extension QuickViewPreviewView {
         mediaView?.stop()
     }
 
+    /// Whether `url` is up in the player and done opening, which keeps a `.ts` or `.mts` movie handed
+    /// over from another size away from the TypeScript sniff in `show`: it would go to the text backend
+    /// first and open again from its start.
+    func isPlayerShowing(_ url: URL) -> Bool {
+        mediaView?.settledURL == url
+    }
+
     /// The player, made the first time a movie or a sound goes up. Internal, so a test can set its
     /// `soundLanguage` before the first file.
     func ensureMediaView() -> QuickViewMediaView {
         if let mediaView { return mediaView }
         let view = QuickViewMediaView()
+        attachMediaView(view)
+        return view
+    }
+
+    /// Make `view` this surface's player: pinned over the content, and telling this surface's header
+    /// what it plays.
+    private func attachMediaView(_ view: QuickViewMediaView) {
         pin(view, inside: content)
         view.onReadoutChange = { [weak self] in self?.refreshCaption() }
         headerView?.onTogglePlayback = { [weak self] in self?.mediaView?.togglePlayback() }
         headerView?.onPickSound = { [weak self] id in self?.mediaView?.selectSound(id) }
         mediaView = view
-        return view
+    }
+
+    // MARK: - Moving to another size
+
+    /// Whether a movie or a sound is up here and done opening, which another size can take over.
+    var hasMediaToHandOff: Bool { mediaView?.settledURL != nil }
+
+    /// Give `other` this surface's player, with its file still up and playing or paused where it is,
+    /// so a change of Quick View size does not start the movie again (Oleg, 2026-11-22). The window
+    /// calls it before it puts this surface away, and `other` keeps the player when it is asked to show
+    /// the same file (`showMedia`); asked for any other, it stops it as it would its own.
+    ///
+    /// The view itself moves, not the place in the file: AVPlayer and the core's player both go on
+    /// unbroken, with the picture and the sound they have, and nothing is opened or read again. A file
+    /// still opening stays, since the read opening it would land here. `other`'s own idle player is let
+    /// go, and this surface makes a new one when it next needs one.
+    func handOffMedia(to other: QuickViewPreviewView) {
+        guard other !== self, let view = mediaView, view.settledURL != nil else { return }
+        mediaView = nil
+        view.removeFromSuperview()
+        if let idle = other.mediaView {
+            idle.stop()
+            idle.removeFromSuperview()
+        }
+        other.attachMediaView(view)
     }
 }
 

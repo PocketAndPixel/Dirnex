@@ -539,6 +539,33 @@ menu up on Oleg's screen; the menu's items, checks and pick are pinned by a test
 full screen, a sound heard, an AVI with two sounds (none on this Mac), and a translation other than
 Russian.
 
+**Changing size. Asked and landed 2026-11-22 (Oleg):** "when i change views of quick view, it resets
+the position and stops the video. can we make it seamless?" Each size has its own surface and its own
+player, and a change of size put the old surface away, which stopped its player, and opened the file
+again at 0:00 on the new one. Now the window hands the player itself across
+(`BrowserWindowController.handOffQuickViewMedia`, called in `setQuickViewMode` before the surfaces are
+reconciled): `QuickViewPreviewView.handOffMedia(to:)` moves the `QuickViewMediaView` into the new
+surface's content and rebinds its header, and `showMedia` leaves a file the player already has up as
+it is. Nothing is opened or read again, so AVPlayer and the core's player go on with the picture and
+the sound they have, playing or paused, and autoplay does not apply. Only a file done opening moves
+(`QuickViewMediaView.settledURL`); one still opening stays behind. Two things it turned up: a `.ts` or
+`.mts` movie would have taken the TypeScript sniff's way again and started over, so a file the player
+has up skips it (in `show`'s branch condition, since a branch of its own put `show` over cyclomatic
+complexity 15); and `clear()` never invalidated a read in flight, so a size change while a movie was
+still opening, with autoplay on, played it in the hidden surface. `clear()` now bumps `loadToken`.
+Six app tests in `QuickViewMediaHandOffTests.swift`: AVPlayer playing, AVPlayer paused under the other
+autoplay answer, the core's player with its display layer, a `.ts`, another file stopping the player
+handed over, and a movie still opening. Negative controls, each failing what it should: no hand-off
+(five), no keeping a file already up (four), no `loadToken` bump in `clear()` (the opening one), and
+either `.ts` change alone (the `.ts` one). Probed: AVFoundation would not open the MP4 fixture renamed
+`.ts` (docs/NOTES.md ▸ Testing ▸ Fixtures). Live in `build/live-copy` with autoplay off, over hard links
+to the silent `sample-1080p.mts` and `x264-adts.avi` in `build/`, with no permission request in the
+log: the `.mts` played at pane size from "▶ 0:01", read "▶ 0:12" either side of the switch to full
+window, ran on to 0:25 there and read "▶ 0:28" back at pane size; the AVI, paused and moved to 0:21 on
+its timeline, read "⏸ 0:21" on the same frame at full window and back at pane size. **Not run live**:
+full screen, which takes the front and a Space of its own on Oleg's screen; the film itself, with its
+sound; and the core's player playing across a switch (pinned by its test).
+
 **Left undone so far:** VP8, Theora, VC-1 and WMV, RealVideo, MS-MPEG-4 v3 and DTS, which macOS cannot
 decode. Any codec library (ffmpeg, libVLC, libvpx), for the licence, the size, and §2's rule that bytes
 go through the core. Subtitles. Streaming a server's file without fetching it, since the remote

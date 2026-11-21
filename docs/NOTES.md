@@ -1699,6 +1699,14 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
     AC-3 frame must begin with `0B77` and each DTS frame with `7FFE8001`, which only the right lace
     boundaries land on, and the walk's cluster count matched the 6 902 the film's own second
     `SeekHead` lists.
+- **A movie fixture named `.ts` opens in AVFoundation or not by a rule nobody can see.** Probed
+  2026-11-22 for Quick View's hand-off between sizes, which needed a movie that takes the TypeScript
+  sniff's route: AVFoundation writes no transport stream, and the 60 s MP4 `QuickViewMediaFixtures`
+  writes, renamed `.ts` or `.mts`, failed to load with `-11800` (`'optm'`), with fast start on and with
+  its brand patched to `isom` alike. A 53 s camera MP4 renamed `.ts` loaded, and so did the Matroska
+  fixture, which the core would have played had AVFoundation refused it. So a `.ts` test holds on to
+  whichever player has the file (`QuickViewMediaHandOffTests`), and a test that needs AVFoundation's
+  own player keeps the honest extension.
 
 ### Live suites
 

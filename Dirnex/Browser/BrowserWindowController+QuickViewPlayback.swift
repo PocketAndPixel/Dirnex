@@ -1,7 +1,8 @@
 import AppKit
 
-/// View ▸ Play/Pause (⌘P) on a movie or a sound in Quick View (PLAN.md §M42 ▸ Slice 1), and View ▸
-/// Next Audio Track (⌥⌘P) for a movie with several sounds (▸ Sound tracks).
+/// View ▸ Play/Pause (⌘P) on a movie or a sound in Quick View (PLAN.md §M42 ▸ Slice 1), View ▸
+/// Next Audio Track (⌥⌘P) for a movie with several sounds (▸ Sound tracks), and the movie carried
+/// over when Quick View changes size (▸ Changing size).
 ///
 /// The window's rather than a pane's, for the reason every Quick View command is: at full size the
 /// preview is a sibling of the panes, so a pane-hosted selector finds no target once somebody clicks
@@ -32,5 +33,20 @@ extension BrowserWindowController {
     var playableQuickViewMedia: QuickViewMediaView? {
         guard case let .media(view) = visibleQuickViewSurface?.contentTarget else { return nil }
         return view
+    }
+
+    /// Move a movie or a sound from `leaving`, the surface the size before showed, to the one the size
+    /// now set shows, so it goes on from where it is, playing or paused, rather than opening again at
+    /// its start (Oleg, 2026-11-22). Called before the surfaces are reconciled, which puts `leaving`
+    /// away and would stop it. Nothing when Quick View is closing.
+    func handOffQuickViewMedia(from leaving: QuickViewPreviewView?) {
+        guard let leaving, leaving.hasMediaToHandOff else { return }
+        let arriving: QuickViewPreviewView? = switch quickViewMode {
+        case .off: nil
+        case .pane: counterpart(of: focusedPanel).ensureQuickViewPreview()
+        case .fullWindow: ensureFullWindowPreview()
+        case .fullScreen: ensureFullScreenPreview()
+        }
+        if let arriving { leaving.handOffMedia(to: arriving) }
     }
 }

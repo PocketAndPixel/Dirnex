@@ -34,6 +34,9 @@ final class QuickViewMediaView: NSView {
 
     /// What the file on screen holds, for the header, or `nil` before it has been read.
     private(set) var summary: MediaSummary?
+    /// The file the player has up, or is opening after `prepareForNext(_:)`; `nil` once it is stopped,
+    /// and with the card up.
+    private(set) var url: URL?
     /// The alternative sounds of the file `player` has up, or `nil` for one with fewer than two.
     /// Internal, for `QuickViewMediaView+Sound`.
     var audibleOptions: QuickViewAudibleOptions?
@@ -50,7 +53,7 @@ final class QuickViewMediaView: NSView {
     /// drops to 0 about 30 ms later with no call after it (probed 2026-11-21). AVKit's own play
     /// button changes the rate too.
     private var rateObservation: NSKeyValueObservation?
-    /// Set between `prepareForNext()` and the next file going up: the previous file stays on screen,
+    /// Set between `prepareForNext(_:)` and the next file going up: the previous file stays on screen,
     /// paused, while the next one opens, but the header already names the next one and must not
     /// carry the previous one's place beside it.
     private var isAwaitingNext = false
@@ -111,14 +114,20 @@ final class QuickViewMediaView: NSView {
 
     var isPlaying: Bool { sampleBufferPlayer?.isPlaying ?? (player.rate != 0) }
 
-    /// Pause the file on screen and leave it there while the next one opens, as a picture stays until
-    /// the next has decoded. Only the sound has to stop at once, and the header's readout goes blank.
-    func prepareForNext() {
+    /// Pause the file on screen and leave it there while `next` opens, as a picture stays until the
+    /// next has decoded. Only the sound has to stop at once, and the header's readout goes blank.
+    func prepareForNext(_ next: URL) {
         player.pause()
         if sampleBufferPlayer?.isPlaying == true { sampleBufferPlayer?.togglePlayback() }
+        url = next
         isAwaitingNext = true
         onReadoutChange?()
     }
+
+    /// The file up in the player and done opening, or `nil`: what another Quick View size can take
+    /// over as it is (`QuickViewPreviewView.handOffMedia`). A file still opening is not, since the read
+    /// opening it would land on the surface it left.
+    var settledURL: URL? { hasItem && !isAwaitingNext ? url : nil }
 
     /// Whether the card is up in the player's place.
     var showsCard: Bool { !card.isHidden }
@@ -190,6 +199,7 @@ final class QuickViewMediaView: NSView {
         if let timeObserver { player.removeTimeObserver(timeObserver) }
         timeObserver = nil
         summary = nil
+        url = nil
         audibleOptions = nil
         observeSoundChanges(of: nil)
         card.isHidden = true

@@ -108,7 +108,10 @@ extension PanelViewController {
     ///
     /// The header is the full-window one, pinned: the same name, position and `1` / `2` styles, at
     /// the size where the keys work too.
-    private func ensureQuickViewPreview() -> QuickViewPreviewView {
+    ///
+    /// Internal so the window can hand a playing movie to it on the way down from a full size
+    /// (`handOffQuickViewMedia`).
+    func ensureQuickViewPreview() -> QuickViewPreviewView {
         if let preview = quickViewPreview { return preview }
         let preview = QuickViewPreviewView(
             backingColor: .textBackgroundColor,
