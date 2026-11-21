@@ -4404,6 +4404,17 @@ Measured 2026-11-08 for M37's byte view, whose table has a row for every 16 byte
   from AAC to Opus, or among the film's AC-3 tracks, kept the renderer `.rendering` with no error
   (PLAN.md §M42 ▸ Sound tracks): the feed flushes both renderers and seeks a new demuxer to where the
   clock is, as any seek does, and the same renderer stays in the synchronizer.
+- **A renderer's request for data outlives its owner unless it is stopped, and then spins a core.**
+  The header says releasing a renderer without `stopRequestingMediaData` "will result in undefined
+  behavior". What it did (CI, 2026-11-22, then here with a probe counting calls whose `[weak self]` was
+  gone): the request kept the sound renderer alive and called its block millions of times a second,
+  for the rest of the process. Paused from the start, `AVSampleBufferAudioRenderer` took a minute of
+  AAC, 2 815 packets, in one call, so the feed reached the end and stopped asking by itself. Played and
+  then paused, a 20 s AVI's request stayed open. With seven such loops on the eight-core CI VM, an
+  `AVAssetReader` blocked in `copyNextSampleBuffer` on a cooperative thread never got its sample, and
+  a test waited 22 minutes; most likely GCD's rule that `ProcessWaiting.pipeQueue` records, a global
+  queue's block starting only while fewer threads are busy than there are CPUs. `SampleBufferFeed`'s
+  `deinit` now stops both requests; `SampleBufferFeedTests` holds it, and failed without it.
 
 ### Previews: web views
 
@@ -10740,6 +10751,15 @@ probed live (2026-08-01/02) before any Swift; several results decided the shape.
   file the tester owns and let `ls -le@` / `stat -f` judge — the locked-file unlock/relock, the setuid
   digit through `chmod 4755`, the ACL order, all provable with no password. Only the final `sudo` /
   auth-dialog step needs privilege, and that is the one part left to the user.
+- **A test host's `OS_ACTIVITY_DT_MODE` reaches osascript, and on some Macs puts osascript's log on
+  stderr ahead of the message.** Xcode launches the test host with `OS_ACTIVITY_DT_MODE=YES` (read back
+  with `ps eww` on 2026-11-22), and `Process` hands it to every child. In the CI VM (macOS 26.6.2) an
+  osascript run with it set wrote `[foldermgr] FSFindFolder failed with error=-43` twice and
+  `self-sent 'ascr'/'gdut' event accepted in process that isn't scriptable` before the failing body's
+  `ls:` line, and without it wrote the `ls:` line alone. This Mac's osascript logs the same
+  `FSFindFolder` errors (`log show`) and wrote none of them to stderr with the variable set, so
+  `AttributeBatchEscalationTests` passed here and failed in CI. `AdministratorShell` drops the variable
+  from the child's environment, since its stderr is the message the user reads.
 
 ### xattr and sips (the stock tools a user script reaches for)
 

@@ -94,6 +94,13 @@ enum AdministratorShell {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/osascript")
         process.arguments = ["-l", "JavaScript", "-e", script, privileged ? "privileged" : "plain"]
+        // stderr is the failure's message, so the child must not copy its system log there. Xcode
+        // launches a run or a test host with `OS_ACTIVITY_DT_MODE`, which `Process` hands on, and in
+        // the CI VM that put osascript's `FSFindFolder failed with error=-43` lines ahead of the
+        // body's message (measured 2026-11-22; this Mac's osascript wrote none with it set).
+        var environment = ProcessInfo.processInfo.environment
+        environment.removeValue(forKey: "OS_ACTIVITY_DT_MODE")
+        process.environment = environment
         let input = Pipe()
         let errorPipe = Pipe()
         process.standardInput = input

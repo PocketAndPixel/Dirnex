@@ -566,6 +566,19 @@ its timeline, read "⏸ 0:21" on the same frame at full window and back at pane 
 full screen, which takes the front and a Space of its own on Oleg's screen; the film itself, with its
 sound; and the core's player playing across a switch (pinned by its test).
 
+**Fixed 2026-11-22: CI on the 1.2.0 pull request.** The app job hung for 22 minutes in
+`QuickViewSoundTrackTests.headerHidden`, inside an `AVAssetReader`, while seven sample-buffer queues
+spun at full speed. They were sound renderers still asking for data from feeds already gone: a test
+that played a file, paused it and dropped its surface left the request open, and nothing stopped it.
+`SampleBufferFeed`'s `deinit` now stops both renderers' requests (docs/NOTES.md ▸ Previews: Quick
+Look, PDF and images). `SampleBufferPreparation` moved to a file of its own for the line ceiling. One
+app test, `SampleBufferFeedTests`, which failed without the `deinit`; a probe counting calls whose feed
+was gone found the first open request in `QuickViewAVITests.playAndPause`. Two other failures in the
+same run: `AttributeBatchEscalationTests` read osascript's log lines ahead of the body's message,
+because the test host's `OS_ACTIVITY_DT_MODE` reached the child (docs/NOTES.md ▸ Attribute
+escalation), and `AdministratorShell` now drops it; and `QuickViewScrollPageTests` read the PDF's
+pages from before a scroll, so its wait is now for the page it expects.
+
 **Left undone so far:** VP8, Theora, VC-1 and WMV, RealVideo, MS-MPEG-4 v3 and DTS, which macOS cannot
 decode. Any codec library (ffmpeg, libVLC, libvpx), for the licence, the size, and §2's rule that bytes
 go through the core. Subtitles. Streaming a server's file without fetching it, since the remote

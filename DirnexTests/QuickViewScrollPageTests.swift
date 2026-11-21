@@ -19,16 +19,19 @@ struct QuickViewScrollPageTests {
         try await QuickViewPDFFindFixtures.pdf(words: (1...pages).map { "page \($0) beta" })
     }
 
-    /// The pages `PDFView` itself says are in view, once it has caught up with the scroll: it refreshes
-    /// them lazily, and in the test host's window they read empty straight after a move.
-    private func visiblePageIndices(_ surface: QuickViewPDFSurface) async throws -> [Int] {
+    /// Whether `PDFView` itself says page `index` is in view, once it has caught up with the scroll. It
+    /// refreshes its pages lazily: in the test host's window they read empty straight after a move, and
+    /// under a loaded run they can still read the pages from before it, so the wait is for the page
+    /// rather than for any. Seen in CI on 2026-11-22: at the top, with the view's own rect there, the
+    /// pages read did not include the first.
+    private func showsPage(_ index: Int, in surface: QuickViewPDFSurface) async throws -> Bool {
         let document = try #require(surface.pdfView.document)
         let deadline = Date().addingTimeInterval(10)
-        while surface.pdfView.visiblePages.isEmpty {
-            try #require(Date() < deadline, "PDFView never reported the pages in view")
+        while !surface.pdfView.visiblePages.contains(where: { document.index(for: $0) == index }) {
+            guard Date() < deadline else { return false }
             try await Task.sleep(for: .milliseconds(10))
         }
-        return surface.pdfView.visiblePages.map { document.index(for: $0) }
+        return true
     }
 
     /// A PDF's document view is not flipped (measured), so this is the walk above with the axis
@@ -45,13 +48,13 @@ struct QuickViewScrollPageTests {
 
         fixture.preview.scrollContent(.end)
         #expect(scrollView.documentVisibleRect.minY <= document.frame.minY + 1)
-        #expect(try await visiblePageIndices(surface).contains(7))
+        #expect(try await showsPage(7, in: surface))
 
         // At the top the view rests a title bar's height above the document (the fixture's window has
         // a full-size content view), so the document's top is in view rather than at the clip's edge.
         fixture.preview.scrollContent(.top)
         let top = scrollView.documentVisibleRect.maxY
-        #expect(try await visiblePageIndices(surface).contains(0))
+        #expect(try await showsPage(0, in: surface))
         #expect(top >= document.frame.maxY - 1)
         fixture.preview.scrollContent(.lineDown)
         #expect(
