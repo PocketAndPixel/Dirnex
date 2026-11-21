@@ -46,14 +46,17 @@ enum QuickViewMediaFixtures {
         }
     }
 
-    /// A one-second mono WAV of silence.
-    nonisolated static func writeSound(to url: URL) throws {
+    /// A mono WAV of silence, `seconds` long. One second unless a test needs playback to outlast a
+    /// slow poll, as `writeMovie`'s length does.
+    nonisolated static func writeSound(to url: URL, seconds: Int = 1) throws {
         let format = try AVAudioFormat(standardFormatWithSampleRate: 44100, channels: 1)
             .orThrow()
         let file = try AVAudioFile(forWriting: url, settings: format.settings)
         let buffer = try AVAudioPCMBuffer(pcmFormat: format, frameCapacity: 44100).orThrow()
         buffer.frameLength = 44100
-        try file.write(from: buffer)
+        for _ in 0..<seconds {
+            try file.write(from: buffer)
+        }
     }
 
     /// The first bytes of a Matroska file: an EBML header naming the `matroska` doc type and the start

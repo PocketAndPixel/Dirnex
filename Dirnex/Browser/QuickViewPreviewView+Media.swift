@@ -38,7 +38,8 @@ extension QuickViewPreviewView {
     }
 
     /// Show `url` in the player, standing the others down, or the card when AVFoundation will not play
-    /// it.
+    /// it. It plays from its start once it is up when `autoplaysMedia` says so, and waits paused for
+    /// ⌘P otherwise.
     ///
     /// A cloud placeholder goes to Quick Look unopened: opening it reads it, and reading it downloads
     /// it because the cursor passed over the row (`isGoProRAW` keeps the same rule).
@@ -80,6 +81,8 @@ extension QuickViewPreviewView {
             case nil:
                 if let opened { view.show(AVPlayerItem(asset: asset), summary: opened.summary) }
             }
+            // Asked here, once the file is up, so a change in Settings applies from the next file.
+            if autoplaysMedia() { view.play() }
             contentDidLoad()
         }
     }

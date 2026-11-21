@@ -117,6 +117,7 @@ extension PanelViewController {
         )
         preview.onClose = { [weak self] in self?.host?.closeQuickView() }
         preview.onPickStyle = { [weak self] in self?.host?.setQuickViewRenderStyle($0) }
+        preview.autoplaysMedia = { AppPreferences.shared.quickViewAutoplayMedia }
         preview.links.follow = { [weak self] link, location, surface in
             self?.host?.followQuickViewLink(link, from: location, on: surface)
         }

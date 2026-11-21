@@ -183,6 +183,8 @@ a movie's controls cannot be clicked, and no key reaches it.
 **Proposed with them, held when Slice 1 landed:**
 
 - **Nothing plays on its own.** Stepping to another file, or closing Quick View, stops the player.
+  *Reversed 2026-11-21 (Oleg):* a movie or a sound now plays once it is up, behind a setting that is
+  on by default (▸ Autoplay, below). The stop on the way off a file stands.
 - **The ⇧-keys move along the timeline the way they move down a document**: ⇧↑ / ⇧↓ 10 s, ⇧Page Up /
   ⇧Page Down a minute, ⇧← / ⇧→ the start and the end. They stay in the file table, so the cursor can
   walk on (`QuickViewScroll`).
@@ -473,6 +475,28 @@ English AC-3 is the commentary. Found:
 
 **Not run live**: a translation other than German, a VP9 or AV1 decoder on another Mac, and Vorbis or
 AAC with sound in a real Matroska or AVI file.
+
+**Autoplay. Asked and landed 2026-11-21 (Oleg):** "play video and audio files automatically in the
+quick view", with a setting, on by default. Settings ▸ Panels ▸ *Play video and audio automatically in
+Quick View* (`AppPreferences.quickViewAutoplayMedia`, `Dirnex.pref.quickViewAutoplayMedia`, absent
+means on, computed over `defaults` as `confirmTransfers` is, since the class file is at the lint
+ceiling), with a footer, in 14 languages. The surface asks `autoplaysMedia` each time a file goes up,
+so a change applies from the next file, and calls `QuickViewMediaView.play()`, which starts either
+player and does nothing over the card. The surface's own answer is no. The window hands its three
+surfaces Settings' answer (the pane's, full window and full screen), so a test that builds a surface
+alone still opens paused and asserts about nobody's settings, as `findOptions` is an init argument
+for. The core's player is told to play before its feed has handed the renderers a packet, as a seek
+while playing already was, and its clock, pictures and AAC all start from there. Seven app tests in
+`QuickViewMediaAutoplayTests.swift`: a movie, a sound, a Matroska file, the answer asked per file, the
+default, the round trip and the pane's wiring. Negative controls: without the call to
+`play()` the four playback tests failed, without the pane's wiring its test did, and with the
+default off the fresh-install test did. The wiring test tells the two apart only while Settings holds
+the default, which an untouched test host does. Live in `build/live-copy`, over two hard links to the
+silent `sample-1080p.mts` in `build/`, with no permission request in the log: the pane's Quick View
+opened the first reading "▶ 0:09 / 0:53" and then 0:14, with no key pressed; the switch in Settings ▸
+Panels, with its footer, wrote `false`; the second file then opened at "⏸ 0:00 / 0:53" and held there;
+with the switch back on, full window (⌃⇧Q) played it from "▶ 0:05". **Not run live**: full screen,
+which takes the front, a sound heard, and a translation of the two strings.
 
 **Left undone so far:** VP8, Theora, VC-1 and WMV, RealVideo, MS-MPEG-4 v3 and DTS, which macOS cannot
 decode. Any codec library (ffmpeg, libVLC, libvpx), for the licence, the size, and §2's rule that bytes

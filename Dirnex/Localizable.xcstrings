@@ -13803,6 +13803,95 @@
         }
       }
     },
+    "A movie or a sound starts playing as soon as Quick View shows it, and stops when the cursor moves to another file or Quick View closes. When this is off, it waits at its start until you press ⌘P.": {
+      "comment": "Footer under the Quick View autoplay toggle in Settings ▸ Panels. ⌘P is the Play/Pause shortcut.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ein Film oder ein Ton beginnt, sobald die Übersicht ihn zeigt, und stoppt, wenn der Cursor zu einer anderen Datei wechselt oder die Übersicht geschlossen wird. Ist dies aus, wartet er am Anfang, bis Sie ⌘P drücken."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A movie or a sound starts playing as soon as Quick View shows it, and stops when the cursor moves to another file or Quick View closes. When this is off, it waits at its start until you press ⌘P."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Una película o un sonido empieza a reproducirse en cuanto la vista rápida lo muestra, y se detiene cuando el cursor pasa a otro archivo o se cierra la vista rápida. Si esta opción está desactivada, espera al principio hasta que pulses ⌘P."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Une vidéo ou un son démarre dès que Coup d’œil l’affiche, et s’arrête quand le curseur passe à un autre fichier ou que Coup d’œil se ferme. Quand cette option est désactivée, il attend au début jusqu’à ce que vous appuyiez sur ⌘P."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Un filmato o un suono parte non appena l’anteprima rapida lo mostra, e si ferma quando il cursore passa a un altro file o l’anteprima rapida si chiude. Se questa opzione è disattivata, resta fermo all’inizio finché non premi ⌘P."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "クイックビューに表示されるとすぐにムービーやサウンドの再生が始まり、カーソルが別のファイルに移るかクイックビューを閉じると停止します。オフにすると、⌘P を押すまで先頭で待機します。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "빠른 보기에 표시되는 즉시 동영상이나 사운드가 재생되고, 커서가 다른 파일로 이동하거나 빠른 보기를 닫으면 멈춥니다. 이 설정을 끄면 ⌘P를 누를 때까지 처음 위치에서 기다립니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Een film of geluid begint te spelen zodra snelle weergave het toont, en stopt wanneer de cursor naar een ander bestand gaat of snelle weergave sluit. Staat dit uit, dan wacht het aan het begin tot je op ⌘P drukt."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Film lub dźwięk zaczyna się odtwarzać, gdy tylko szybki przegląd go pokaże, i zatrzymuje się, gdy kursor przejdzie do innego pliku lub szybki przegląd zostanie zamknięty. Gdy ta opcja jest wyłączona, czeka na początku do naciśnięcia ⌘P."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Um filme ou som começa a tocar assim que a Visualização Rápida o mostra, e para quando o cursor vai para outro arquivo ou a Visualização Rápida é fechada. Quando isto está desativado, ele espera no início até você pressionar ⌘P."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Видео или звук начинает воспроизводиться, как только быстрый просмотр его покажет, и останавливается, когда курсор переходит к другому файлу или быстрый просмотр закрывается. Если выключено, файл ждёт в начале, пока вы не нажмёте ⌘P."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Відео або звук починає відтворюватися, щойно швидкий перегляд його покаже, і зупиняється, коли курсор переходить до іншого файлу або швидкий перегляд закривається. Якщо вимкнено, файл чекає на початку, доки ви не натиснете ⌘P."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "快速查看一显示影片或声音就开始播放，光标移到其他文件或关闭快速查看时停止。关闭此项后，它会停在开头，直到你按下 ⌘P。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "快速查看一顯示影片或聲音就開始播放，游標移到其他檔案或關閉快速查看時停止。關閉此項後，它會停在開頭，直到你按下 ⌘P。"
+          }
+        }
+      }
+    },
     "A name can’t start with “/”. To make folders on the way, type a path from here, such as “Folder/Subfolder”.": {
       "comment": "Failure detail of New Folder or Edit File: the typed name starts with a slash. “Folder/Subfolder” is an example path: translate both folder names, keep the “/”.",
       "localizations": {
@@ -88846,6 +88935,95 @@
           "stringUnit": {
             "state": "translated",
             "value": "一般 HTTP 會以未加密方式傳送你的檔案，在大多數伺服器上密碼也是如此。"
+          }
+        }
+      }
+    },
+    "Play video and audio automatically in Quick View": {
+      "comment": "Settings ▸ Panels toggle: a movie or a sound starts playing as soon as Quick View shows it.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Video und Audio in der Übersicht automatisch abspielen"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Play video and audio automatically in Quick View"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reproducir vídeo y audio automáticamente en la vista rápida"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lire automatiquement la vidéo et l’audio dans Coup d’œil"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Riproduci automaticamente video e audio nell’anteprima rapida"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "クイックビューでビデオとオーディオを自動再生"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "빠른 보기에서 비디오 및 오디오 자동 재생"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Video en audio automatisch afspelen in snelle weergave"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Automatycznie odtwarzaj wideo i dźwięk w szybkim przeglądzie"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reproduzir vídeo e áudio automaticamente na Visualização Rápida"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Автоматически воспроизводить видео и аудио в быстром просмотре"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Автоматично відтворювати відео й аудіо у швидкому перегляді"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在快速查看中自动播放视频和音频"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在快速查看中自動播放影片和音訊"
           }
         }
       }

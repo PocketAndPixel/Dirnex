@@ -11,8 +11,9 @@ import DirnexCore
 /// player from the file table: ⌘P plays and pauses, and the ⇧-keys move along the timeline
 /// (`QuickViewScroll.timelineTarget`).
 ///
-/// Nothing plays until it is asked to, and `stop()` is what every way off the file calls, so a sound
-/// never goes on after the cursor or the mode has left it.
+/// Nothing plays until it is asked to: by ⌘P, or by the surface once a file is up when Settings says
+/// movies and sounds play on their own (`play()`). `stop()` is what every way off the file calls, so
+/// a sound never goes on after the cursor or the mode has left it.
 ///
 /// A file AVFoundation will not play gets `card` in the player's place, naming what it is kept in
 /// (PLAN.md §M42 ▸ Slice 2), unless it is a Matroska, WebM or AVI file the core can read and this Mac
@@ -208,6 +209,16 @@ final class QuickViewMediaView: NSView {
         ) { [weak self] _ in
             MainActor.assumeIsolated { self?.onReadoutChange?() }
         }
+    }
+
+    /// Play the file on screen unless it plays already, which is what the surface asks once a file is
+    /// up when Settings ▸ Panels says movies and sounds play on their own. Nothing, with the card up.
+    ///
+    /// Asked before AVFoundation has the item ready, which `AVPlayer` waits out by itself, and before
+    /// the core's feed has handed its renderers a packet, as a seek while playing already is.
+    func play() {
+        guard hasItem, !isPlaying else { return }
+        togglePlayback()
     }
 
     /// ⌘P. At the end it plays again from the start, as QuickTime Player does, rather than doing

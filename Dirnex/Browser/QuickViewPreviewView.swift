@@ -113,6 +113,9 @@ final class QuickViewPreviewView: NSView {
     var placeholderCard: QuickViewPlaceholderCard?
     /// Internal for the same reason, from `QuickViewPreviewView+Media`.
     var mediaView: QuickViewMediaView?
+    /// Whether a movie or a sound plays once it is up, asked each time one is. Off unless the window
+    /// hands over Settings' answer, so a test that leaves it alone asserts about no one's settings.
+    var autoplaysMedia: () -> Bool = { false }
     /// The office-document conversion in flight, so the next one — or putting the surface away —
     /// stops the `qlmanage` it spawned rather than letting it finish for nobody. Internal, from
     /// `QuickViewPreviewView+Document`.
