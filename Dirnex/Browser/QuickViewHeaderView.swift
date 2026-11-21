@@ -54,6 +54,10 @@ struct QuickViewMediaReadout: Equatable {
     /// What the facts' tooltip says, when it says more than the facts: a Matroska file's sound tracks
     /// (PLAN.md §M42 ▸ Slice 4).
     var detail: String?
+    /// The file's sounds, for the header's menu, when more than one of them plays (▸ Sound tracks), and
+    /// the one playing.
+    var sounds: [QuickViewSoundTrack] = []
+    var playingSound: UInt64?
 }
 
 /// The name-and-position strip a Quick View draws across its top, with the × that closes the preview
@@ -64,8 +68,10 @@ struct QuickViewMediaReadout: Equatable {
 final class QuickViewHeaderView: NSVisualEffectView {
     static let height: CGFloat = 30
 
-    private let nameLabel = NSTextField(labelWithString: "")
-    private let positionLabel = NSTextField(labelWithString: "")
+    /// Internal, as is the position, for the media readout's constraints in
+    /// `QuickViewHeaderView+Media`.
+    let nameLabel = NSTextField(labelWithString: "")
+    let positionLabel = NSTextField(labelWithString: "")
     /// "▶ Slideshow" just before the position while a show runs, nothing otherwise; a click stops the
     /// show, as ⇧⌘S does (PLAN.md §M39 ▸ Slice 16). Internal, for the tests.
     let slideshowButton = NSButton()
@@ -81,6 +87,15 @@ final class QuickViewHeaderView: NSVisualEffectView {
     let factsLabel = NSTextField(labelWithString: "")
     /// What a click on `playbackButton` does. Set by the surface, which owns the player.
     var onTogglePlayback: (() -> Void)?
+    /// "🔈 English ⌄" after the readout when a movie has more than one sound to play; a click lists
+    /// them (PLAN.md §M42 ▸ Sound tracks). Internal, for the tests, as is the menu it opens.
+    let soundButton = NSButton()
+    let soundMenu = NSMenu()
+    /// What a pick in `soundMenu` does, with the sound's `id`. Set by the surface, which owns the player.
+    var onPickSound: ((UInt64) -> Void)?
+    /// The sounds the menu was last built from, so the readout's tick, four a second, rebuilds it only
+    /// when they change.
+    var shownSounds: (sounds: [QuickViewSoundTrack], playing: UInt64?) = ([], nil)
     /// The constraints that keep the name and the close button clear of the two, active only while
     /// each is shown, for the reason `closeClearsSlideshow` is.
     var mediaConstraints = QuickViewHeaderMediaConstraints()
@@ -393,107 +408,5 @@ extension QuickViewHeaderView {
 private final class QuickViewStyleButton: NSButton {
     override var alignmentRectInsets: NSEdgeInsets {
         NSEdgeInsets(top: 0, left: 2, bottom: 0, right: 2)
-    }
-}
-
-// MARK: - A movie or a sound
-
-/// The header constraints that come and go with the media readout.
-struct QuickViewHeaderMediaConstraints {
-    var nameClearsPlayback: NSLayoutConstraint?
-    var factsBesidePosition: NSLayoutConstraint?
-    var factsBesideSlideshow: NSLayoutConstraint?
-    var closeClearsFacts: NSLayoutConstraint?
-}
-
-extension QuickViewHeaderView {
-    /// The play state and place at the leading edge, and the facts before the position.
-    ///
-    /// **The facts give way first** when the strip is short of room, then the name: the name is what
-    /// the header is for (it stands in for the row a full-size preview covers), and the facts stay
-    /// whole in the tooltip. The readout does not give way, since a clipped clock says nothing.
-    private func buildMediaReadout() {
-        let title = LocalizedCatalog.command(for: "view.quickViewPlayPause")?.title
-        playbackButton.isBordered = false
-        playbackButton.imagePosition = .imageLeading
-        playbackButton.imageHugsTitle = true
-        playbackButton.contentTintColor = .secondaryLabelColor
-        playbackButton.toolTip = title
-        // A click must not take focus: the arrow keys keep driving the file list under the preview.
-        playbackButton.refusesFirstResponder = true
-        playbackButton.target = self
-        playbackButton.action = #selector(playbackClicked(_:))
-        playbackButton.isHidden = true
-        factsLabel.font = .systemFont(ofSize: NSFont.smallSystemFontSize)
-        factsLabel.textColor = .secondaryLabelColor
-        factsLabel.lineBreakMode = .byTruncatingTail
-        factsLabel.isHidden = true
-        factsLabel.setContentCompressionResistancePriority(
-            QuickViewHeaderPriority.facts,
-            for: .horizontal
-        )
-        for view in [playbackButton, factsLabel] {
-            view.translatesAutoresizingMaskIntoConstraints = false
-            addSubview(view)
-        }
-        NSLayoutConstraint.activate([
-            playbackButton.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 12),
-            playbackButton.centerYAnchor.constraint(equalTo: centerYAnchor),
-            factsLabel.centerYAnchor.constraint(equalTo: centerYAnchor)
-        ])
-        mediaConstraints = QuickViewHeaderMediaConstraints(
-            nameClearsPlayback: nameLabel.leadingAnchor.constraint(
-                greaterThanOrEqualTo: playbackButton.trailingAnchor,
-                constant: 12
-            ),
-            factsBesidePosition: factsLabel.trailingAnchor.constraint(
-                equalTo: positionLabel.leadingAnchor,
-                constant: -10
-            ),
-            factsBesideSlideshow: factsLabel.trailingAnchor.constraint(
-                equalTo: slideshowButton.leadingAnchor,
-                constant: -10
-            ),
-            closeClearsFacts: closeButton.trailingAnchor.constraint(
-                lessThanOrEqualTo: factsLabel.leadingAnchor,
-                constant: -12
-            )
-        )
-    }
-
-    /// Draw the readout for `caption`, or put it away when the caption is not a movie's or a sound's.
-    private func showMedia(of caption: QuickViewCaption?) {
-        let media = caption?.media
-        playbackButton.isHidden = media == nil
-        mediaConstraints.nameClearsPlayback?.isActive = media != nil
-        if let media {
-            playbackButton.image = NSImage(
-                systemSymbolName: media.isPlaying ? "play.fill" : "pause.fill",
-                accessibilityDescription: nil
-            )?.withSymbolConfiguration(.init(pointSize: 8, weight: .regular))
-            playbackButton.attributedTitle = NSAttributedString(
-                string: media.time,
-                attributes: [
-                    // Tabular digits, so the readout keeps its width as the seconds tick over.
-                    .font: NSFont.monospacedDigitSystemFont(
-                        ofSize: NSFont.smallSystemFontSize,
-                        weight: .regular
-                    ),
-                    .foregroundColor: NSColor.secondaryLabelColor
-                ]
-            )
-        }
-        let facts = media?.facts ?? ""
-        factsLabel.stringValue = facts
-        factsLabel.toolTip = facts.isEmpty ? nil : media?.detail ?? facts
-        factsLabel.isHidden = facts.isEmpty
-        let besideSlideshow = !facts.isEmpty && caption?.isSlideshowRunning == true
-        mediaConstraints.factsBesideSlideshow?.isActive = besideSlideshow
-        mediaConstraints.factsBesidePosition?.isActive = !facts.isEmpty && !besideSlideshow
-        mediaConstraints.closeClearsFacts?.isActive = !facts.isEmpty
-    }
-
-    @objc private func playbackClicked(_ sender: NSButton) {
-        onTogglePlayback?()
     }
 }

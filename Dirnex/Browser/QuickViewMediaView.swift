@@ -17,8 +17,10 @@ import DirnexCore
 ///
 /// A file AVFoundation will not play gets `card` in the player's place, naming what it is kept in
 /// (PLAN.md §M42 ▸ Slice 2), unless it is a Matroska, WebM or AVI file the core can read and this Mac
-/// can decode, which plays in `sampleBufferView` instead (Slices 4 and 5,
-/// `QuickViewMediaView+SampleBuffer`).
+/// can decode, which plays in `sampleBufferView` instead (Slices 4 and 5).
+///
+/// A file with several sounds opens on the first in the app's language, and the header's menu or ⌥⌘P
+/// plays another (▸ Sound tracks, `QuickViewMediaView+Sound`).
 @MainActor
 final class QuickViewMediaView: NSView {
     let playerView = AVPlayerView()
@@ -32,6 +34,11 @@ final class QuickViewMediaView: NSView {
 
     /// What the file on screen holds, for the header, or `nil` before it has been read.
     private(set) var summary: MediaSummary?
+    /// The alternative sounds of the file `player` has up, or `nil` for one with fewer than two.
+    /// Internal, for `QuickViewMediaView+Sound`.
+    var audibleOptions: QuickViewAudibleOptions?
+    /// The language a file's sound is picked in: the app's, which a test may set to another.
+    var soundLanguage = Bundle.main.preferredLocalizations.first
     /// Told whenever what the header says about the player may have moved: a second of playback, a
     /// start or a stop, a seek, a new file. Set by the surface, which redraws its caption.
     var onReadoutChange: (() -> Void)?
@@ -116,13 +123,17 @@ final class QuickViewMediaView: NSView {
     /// Whether the card is up in the player's place.
     var showsCard: Bool { !card.isHidden }
 
-    /// Put `item` up, paused at its start, with what it holds for the header.
-    func show(_ item: AVPlayerItem, summary: MediaSummary) {
+    /// Put `item` up, paused at its start, with what it holds for the header, on the sound `sounds`
+    /// prefers when it offers a choice.
+    func show(_ item: AVPlayerItem, summary: MediaSummary, sounds: QuickViewAudibleOptions? = nil) {
         stopSampleBufferPlayer()
         isAwaitingNext = false
         card.isHidden = true
         playerView.isHidden = false
         self.summary = summary
+        audibleOptions = sounds
+        applyPreferredSound(to: item)
+        observeSoundChanges(of: sounds == nil ? nil : item)
         player.replaceCurrentItem(with: item)
         observeTime()
         onReadoutChange?()
@@ -136,6 +147,8 @@ final class QuickViewMediaView: NSView {
         player.replaceCurrentItem(with: nil)
         if let timeObserver { player.removeTimeObserver(timeObserver) }
         timeObserver = nil
+        audibleOptions = nil
+        observeSoundChanges(of: nil)
         isAwaitingNext = false
         card.isHidden = true
         playerView.isHidden = true
@@ -177,6 +190,8 @@ final class QuickViewMediaView: NSView {
         if let timeObserver { player.removeTimeObserver(timeObserver) }
         timeObserver = nil
         summary = nil
+        audibleOptions = nil
+        observeSoundChanges(of: nil)
         card.isHidden = true
         onReadoutChange?()
     }
@@ -186,15 +201,14 @@ final class QuickViewMediaView: NSView {
     /// for every other file.
     var readout: QuickViewMediaReadout? {
         guard hasItem, !isAwaitingNext else { return nil }
-        if let sampleBufferPlayer { return sampleBufferReadout(sampleBufferPlayer) }
-        return QuickViewMediaReadout(
+        let time = sampleBufferPlayer.map {
+            MediaTimecode.readout(at: $0.currentSeconds, of: $0.duration)
+        } ?? MediaTimecode.readout(at: player.currentTime().seconds, of: summary?.duration)
+        return withSounds(QuickViewMediaReadout(
             isPlaying: isPlaying,
-            time: MediaTimecode.readout(
-                at: player.currentTime().seconds,
-                of: summary?.duration
-            ),
+            time: time,
             facts: summary?.facts ?? ""
-        )
+        ))
     }
 
     /// Ask for the readout again every `readoutInterval` of playback. AVFoundation also calls the block

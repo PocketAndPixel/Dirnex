@@ -283,6 +283,11 @@ so a trap goes here only if it can bite any live run; one tied to an area goes u
   `Dirnex.debug.dylib`, not the thin executable — grep the dylib to confirm new code actually
   compiled in. `xcodebuild` writes to `~/Library/Developer/Xcode/DerivedData/`, not the repo's
   `build/`.
+  - **An `open` sent the moment the old process is gone can answer -600 and launch nothing.** Seen
+    2026-11-21 relaunching `build/live-copy` in Russian: the quit's `kill -0` loop ended, `open`
+    printed `_LSOpenURLsWithCompletionHandler() failed with error -600`, and a wait for the new
+    process spun until the shell's timeout. The same `open` a few seconds later worked. Read `open`'s
+    exit status, and give a wait for the new process a bound.
   - **A grep for a Swift name can miss code that is there.** The mangler replaces a word the
     symbol has already spelled with a back-reference, so `CloudPlaceTitle.iCloudContainer` has no
     `Cloud` after the type's own and `strings`/`nm` counted **0** for `iCloudContainer` in a build

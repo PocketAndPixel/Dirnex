@@ -380,8 +380,8 @@ extension BrowserWindowController: NSMenuItemValidation {
             return canPerformQuickViewZoom(menuItem.action)
         case #selector(filterQuickViewTable(_:)):
             return validateQuickViewFilterItem(menuItem)
-        case #selector(toggleQuickViewPlayback(_:)):
-            return playableQuickViewMedia != nil
+        case #selector(toggleQuickViewPlayback(_:)), #selector(nextQuickViewAudioTrack(_:)):
+            return validateQuickViewMediaItem(menuItem)
         default:
             break
         }

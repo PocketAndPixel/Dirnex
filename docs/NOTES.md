@@ -4369,6 +4369,33 @@ Measured 2026-11-08 for M37's byte view, whose table has a row for every 16 byte
     3GP's AAC into AVI wrote one chunk per buffer, and the stream came out 31 s long beside a 54 s
     picture. Split each buffer by its packet descriptions
     (`CMSampleBufferGetAudioStreamPacketDescriptionsPtr`).
+- **AVFoundation offers a choice of sound only for tracks in one alternate group; tracks in none all
+  play at once.** Probed 2026-11-21 (PLAN.md §M42 ▸ Sound tracks) over two MP4s written by
+  `AVAssetWriter`, two AAC tracks each. With an `AVAssetWriterInputGroup` the asset has an audible
+  `AVMediaSelectionGroup`, one track enabled, and AVPlayer plays the option selected. Without one both
+  tracks are enabled, there is no group, and AVPlayer mixes them, as QuickTime Player does. So only a
+  group is a menu of languages. FFmpeg's MP4 muxer puts every sound in one group (the codec type is
+  the group number), so most files with several languages have one.
+  - **Left alone, AVPlayer selects by the system's languages, not the app's, and over the file's
+    default.** The grouped file's default was Russian, and it played English, the first of the Mac's
+    languages. An `AVPlayerItem.select(_:in:)` made before the item goes up holds over that pick, with
+    `appliesMediaSelectionCriteriaAutomatically` on (a test passed for Russian on that Mac either way).
+  - **An option names its track only in its property list**: `MediaSelectionOptionsPersistentID` is
+    the track ID, beside the group ID and both language spellings. Nothing public maps an option to a
+    track, so channels and a track's name are read through that key and left out without it.
+  - **`AVPlayerItem.mediaSelectionDidChangeNotification` is how a pick in AVKit's own menu is heard.**
+    AVPlayerView's inline controls draw an audio menu of their own for a file with a group, and while
+    paused nothing else changes to say the sound did.
+- **Foundation knows ISO 639-2's terminology codes and not its bibliographic ones**, which mkvmerge
+  writes. Probed 2026-11-21: `Locale.LanguageCode("deu").identifier(.alpha2)` is `de` and
+  `Locale.LanguageCode("ger")`'s is `nil`, and the same for all twenty codes that differ (`fre`,
+  `chi`, `dut`, `cze`…). `MediaLanguage.bibliographic` maps them first. Foundation also writes a
+  language's name as it goes mid-sentence, lower-case in Russian and French ("русский",
+  "norvégien bokmål"), so a name that heads a label needs its first letter raised, and only that one.
+- **`AVSampleBufferAudioRenderer` takes a new format after a flush.** Switching a Matroska film's sound
+  from AAC to Opus, or among the film's AC-3 tracks, kept the renderer `.rendering` with no error
+  (PLAN.md §M42 ▸ Sound tracks): the feed flushes both renderers and seeks a new demuxer to where the
+  clock is, as any seek does, and the same renderer stays in the synchronizer.
 
 ### Previews: web views
 

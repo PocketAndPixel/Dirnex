@@ -17,6 +17,8 @@ enum QuickViewHeaderPriority {
     static let facts = NSLayoutConstraint.Priority(245)
     /// "(no JavaScript)" goes first beside a page: a note about it, and nothing a key selects.
     static let noJavaScriptMark = NSLayoutConstraint.Priority(245)
+    /// Then a movie's sound (PLAN.md §M42 ▸ Sound tracks): its menu names it whole.
+    static let sound = NSLayoutConstraint.Priority(245.5)
     /// Then the name.
     static let name = NSLayoutConstraint.Priority(246)
     /// The two styles last: the only place the `1` and `2` keys say what they do.

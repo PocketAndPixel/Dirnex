@@ -59,6 +59,83 @@ enum QuickViewMediaFixtures {
         }
     }
 
+    /// An MP4 of sound alone, one AAC track of silence per language in `languages`, `seconds` long
+    /// (PLAN.md §M42 ▸ Sound tracks). With `grouped` the tracks are alternatives, one alternate group
+    /// with the first the default, as FFmpeg writes every file; without, they are all enabled and play
+    /// together, as `AVAssetWriter` writes them unless told.
+    nonisolated static func writeSounds(
+        to url: URL,
+        languages: [String],
+        grouped: Bool,
+        seconds: Int = 2
+    ) async throws {
+        let writer = try AVAssetWriter(outputURL: url, fileType: .mp4)
+        var sources: [(input: AVAssetWriterInput, output: AVAssetReaderTrackOutput)] = []
+        // Kept for as long as their outputs are read.
+        var readers: [AVAssetReader] = []
+        for (offset, language) in languages.enumerated() {
+            let m4a = url.deletingPathExtension().appendingPathExtension("\(offset).m4a")
+            defer { try? FileManager.default.removeItem(at: m4a) }
+            try writeAAC(to: m4a, seconds: seconds)
+            let asset = AVURLAsset(url: m4a)
+            let track = try await asset.loadTracks(withMediaType: .audio).first.orThrow()
+            let description = try await track.load(.formatDescriptions).first.orThrow()
+            let reader = try AVAssetReader(asset: asset)
+            let output = AVAssetReaderTrackOutput(track: track, outputSettings: nil)
+            reader.add(output)
+            guard reader.startReading() else { throw reader.error ?? CocoaError(.fileReadUnknown) }
+            let input = AVAssetWriterInput(
+                mediaType: .audio,
+                outputSettings: nil,
+                sourceFormatHint: description
+            )
+            input.languageCode = language
+            input.expectsMediaDataInRealTime = false
+            writer.add(input)
+            sources.append((input, output))
+            readers.append(reader)
+        }
+        if grouped, let first = sources.first?.input {
+            writer.add(AVAssetWriterInputGroup(inputs: sources.map(\.input), defaultInput: first))
+        }
+        guard writer.startWriting() else { throw writer.error ?? CocoaError(.fileWriteUnknown) }
+        writer.startSession(atSourceTime: .zero)
+        for (input, output) in sources {
+            while let sample = output.copyNextSampleBuffer() {
+                while !input.isReadyForMoreMediaData {
+                    try await Task.sleep(for: .milliseconds(2))
+                }
+                guard input.append(sample) else { throw writer.error ?? CocoaError(.fileWriteUnknown) }
+            }
+            input.markAsFinished()
+        }
+        await writer.finishWriting()
+        readers.removeAll()
+        guard writer.status == .completed else {
+            throw writer.error ?? CocoaError(.fileWriteUnknown)
+        }
+    }
+
+    /// A mono AAC file of silence, which `writeSounds` copies a track from without decoding it.
+    private nonisolated static func writeAAC(to url: URL, seconds: Int) throws {
+        let format = try AVAudioFormat(standardFormatWithSampleRate: 44100, channels: 1).orThrow()
+        let file = try AVAudioFile(
+            forWriting: url,
+            settings: [
+                AVFormatIDKey: kAudioFormatMPEG4AAC,
+                AVSampleRateKey: 44100,
+                AVNumberOfChannelsKey: 1
+            ],
+            commonFormat: .pcmFormatFloat32,
+            interleaved: false
+        )
+        let buffer = try AVAudioPCMBuffer(pcmFormat: format, frameCapacity: 44100).orThrow()
+        buffer.frameLength = 44100
+        for _ in 0..<seconds {
+            try file.write(from: buffer)
+        }
+    }
+
     /// The first bytes of a Matroska file: an EBML header naming the `matroska` doc type and the start
     /// of a segment, which is a file AVFoundation refuses (PLAN.md §M42 ▸ P0).
     static let matroskaHeader = Data([

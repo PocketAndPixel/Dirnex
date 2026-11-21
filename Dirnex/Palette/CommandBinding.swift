@@ -95,6 +95,9 @@ enum CommandBinding {
         "view.quickViewSlideshow": #selector(BrowserWindowController.toggleQuickViewSlideshow(_:)),
         // The window controller again: a click on the player's controls leaves no pane in the chain.
         "view.quickViewPlayPause": #selector(BrowserWindowController.toggleQuickViewPlayback(_:)),
+        "view.quickViewNextAudioTrack": #selector(
+            BrowserWindowController.nextQuickViewAudioTrack(_:)
+        ),
         // The window controller for the same reason as the sizes above: at full size the preview
         // is a sibling of the panes, so a pane-hosted selector would find no target the moment the
         // user clicked into the document.

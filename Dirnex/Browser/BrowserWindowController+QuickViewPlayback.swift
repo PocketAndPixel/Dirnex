@@ -1,6 +1,7 @@
 import AppKit
 
-/// View ▸ Play/Pause (⌘P) on a movie or a sound in Quick View (PLAN.md §M42 ▸ Slice 1).
+/// View ▸ Play/Pause (⌘P) on a movie or a sound in Quick View (PLAN.md §M42 ▸ Slice 1), and View ▸
+/// Next Audio Track (⌥⌘P) for a movie with several sounds (▸ Sound tracks).
 ///
 /// The window's rather than a pane's, for the reason every Quick View command is: at full size the
 /// preview is a sibling of the panes, so a pane-hosted selector finds no target once somebody clicks
@@ -10,6 +11,20 @@ extension BrowserWindowController {
     @objc func toggleQuickViewPlayback(_ sender: Any?) {
         guard playableQuickViewMedia != nil else { return }
         visibleQuickViewSurface?.toggleMediaPlayback()
+    }
+
+    /// View ▸ Next Audio Track (⌥⌘P): the next sound of a movie that has more than one to play
+    /// (PLAN.md §M42 ▸ Sound tracks).
+    @objc func nextQuickViewAudioTrack(_ sender: Any?) {
+        guard playableQuickViewMedia?.canSwitchSound == true else { return }
+        visibleQuickViewSurface?.selectNextMediaSound()
+    }
+
+    /// Play/Pause is enabled with a file up, and Next Audio Track with more than one sound in it to
+    /// play. One case in `validateMenuItem` for both, for its cyclomatic complexity (docs/NOTES.md).
+    func validateQuickViewMediaItem(_ menuItem: NSMenuItem) -> Bool {
+        guard let media = playableQuickViewMedia else { return false }
+        return menuItem.action != #selector(nextQuickViewAudioTrack(_:)) || media.canSwitchSound
     }
 
     /// The player on the surface the user is looking at, when it holds a file. The one question the

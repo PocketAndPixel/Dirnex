@@ -124,6 +124,7 @@ enum MainMenuBuilder {
             .command("view.quickLook"), .command("view.quickView"),
             .subcommand("view.quickViewFullWindow"), .subcommand("view.quickViewFullScreen"),
             .subcommand("view.quickViewSlideshow"), .subcommand("view.quickViewPlayPause"),
+            .subcommand("view.quickViewNextAudioTrack"),
             .subcommand("view.quickViewSource"), .subcommand("view.quickViewRenderedPage"),
             .subcommand("view.downloadPreview"),
             .subcommand("view.quickViewZoomIn"), .keyAlias("view.quickViewZoomIn"),

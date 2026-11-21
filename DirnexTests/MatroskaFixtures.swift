@@ -23,6 +23,10 @@ enum MatroskaFixtures {
         var height = 64
         var sampleRate = 48000.0
         var channels = 2
+        /// Written only when set; Matroska reads a track with none as English.
+        var language: String?
+        /// Written only when off, as mkvmerge leaves it out when on.
+        var isDefault = true
     }
 
     /// An H.264 Matroska file `seconds` long with ten frames, and, when `sound` is set, a sound of
@@ -212,6 +216,8 @@ enum MatroskaFixtures {
                 track.isVideo ? 1 : 2
             )
             body += element(0x86, Array(track.codecID.utf8))
+            if let language = track.language { body += element(0x22B59C, Array(language.utf8)) }
+            if !track.isDefault { body += uint(0x88, 0) }
             if let codecPrivate = track.codecPrivate { body += element(0x63A2, [UInt8](codecPrivate)) }
             if track.isVideo {
                 body += element(

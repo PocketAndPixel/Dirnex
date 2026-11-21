@@ -247,7 +247,7 @@ struct QuickViewMatroskaTests {
     }
 
     @Test("the tooltip names each sound, the one playing and the ones that cannot play")
-    func soundLines() {
+    func soundLines() throws {
         func track(_ number: UInt64, _ codec: String, _ language: String, isDefault: Bool) -> MatroskaTrack {
             var track = MatroskaTrack()
             track.number = number
@@ -267,9 +267,9 @@ struct QuickViewMatroskaTests {
             ],
             canDecode: { $0.codecID != "A_DTS" }
         )
-        let russian = Locale.current.localizedString(forLanguageCode: "rus") ?? "rus"
-        let english = Locale.current.localizedString(forLanguageCode: "eng") ?? "eng"
-        let lines = QuickViewMediaView.soundLines(
+        let russian = try #require(QuickViewSoundTrack.languageName("rus"))
+        let english = try #require(QuickViewSoundTrack.languageName("eng"))
+        let lines = QuickViewSoundTrack.tooltipLines(
             SampleBufferPreparation.sounds(plan),
             playing: plan.audio?.number
         )
@@ -281,7 +281,7 @@ struct QuickViewMatroskaTests {
             canDecode: { _ in true }
         )
         #expect(
-            QuickViewMediaView.soundLines(SampleBufferPreparation.sounds(single), playing: 2).isEmpty,
+            QuickViewSoundTrack.tooltipLines(SampleBufferPreparation.sounds(single), playing: 2).isEmpty,
             "one sound that plays needs no list"
         )
     }

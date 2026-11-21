@@ -61,11 +61,15 @@ extension QuickViewPreviewView {
         let token = loadToken
         flipGate.isLoading = true
         let asset = AVURLAsset(url: url)
+        let language = view.soundLanguage
         Task { [weak self] in
             let opened = await MediaSummary.load(asset)
             var refused: Refusal?
-            if opened?.isPlayable != true {
-                refused = await Self.refusal(for: url, opened?.summary)
+            var sounds: QuickViewAudibleOptions?
+            if opened?.isPlayable == true {
+                sounds = await QuickViewAudibleOptions.load(asset)
+            } else {
+                refused = await Self.refusal(for: url, opened?.summary, language: language)
             }
             guard let self, token == loadToken else { return }
             let icon = NSWorkspace.shared.icon(forFile: url.path)
@@ -79,7 +83,9 @@ extension QuickViewPreviewView {
                     icon: icon
                 )
             case nil:
-                if let opened { view.show(AVPlayerItem(asset: asset), summary: opened.summary) }
+                if let opened {
+                    view.show(AVPlayerItem(asset: asset), summary: opened.summary, sounds: sounds)
+                }
             }
             // Asked here, once the file is up, so a change in Settings applies from the next file.
             if autoplaysMedia() { view.play() }
@@ -105,8 +111,12 @@ extension QuickViewPreviewView {
 
     /// The refusal for `url`, read off the main actor: its first bytes; for Matroska and WebM its head,
     /// and the first cluster when its picture is VP9; for an AVI its headers, its index and each
-    /// stream's first chunk.
-    private static func refusal(for url: URL, _ summary: MediaSummary?) async -> Refusal {
+    /// stream's first chunk. A file the core plays opens on its sound in `language`, the app's.
+    private static func refusal(
+        for url: URL,
+        _ summary: MediaSummary?,
+        language: String?
+    ) async -> Refusal {
         let core = await BlockingWork.run { () -> CoreRead in
             guard let handle = try? FileHandle(forReadingFrom: url) else { return .other(nil) }
             defer { try? handle.close() }
@@ -127,13 +137,17 @@ extension QuickViewPreviewView {
         switch core {
         case let .matroska(file):
             let described = MediaSummary(matroska: file)
-            if let preparation = await BlockingWork.run({ SampleBufferPreparation.prepare(file) }) {
+            if let preparation = await BlockingWork.run({
+                SampleBufferPreparation.prepare(file, language: language)
+            }) {
                 return .sampleBuffer(preparation, described)
             }
             return .card(cardContent(for: url, sniffed: file.container, read: described))
         case let .avi(file):
             let described = MediaSummary(avi: file)
-            if let preparation = await BlockingWork.run({ SampleBufferPreparation.prepare(file) }) {
+            if let preparation = await BlockingWork.run({
+                SampleBufferPreparation.prepare(file, language: language)
+            }) {
                 return .sampleBuffer(preparation, described)
             }
             return .card(cardContent(for: url, sniffed: .avi, read: described))
@@ -178,6 +192,12 @@ extension QuickViewPreviewView {
         revealFloatingHeader()
     }
 
+    /// ⌥⌘P: the next sound, with a faded full-screen header brought back to name it.
+    func selectNextMediaSound() {
+        mediaView?.selectNextSound()
+        revealFloatingHeader()
+    }
+
     /// Stand the player down unless `url` is a file it will be asked to show, which is called from
     /// `show` for every file: the one funnel, so no backend has to remember the player, and a sound
     /// never goes on under the next file whatever draws it.
@@ -194,12 +214,15 @@ extension QuickViewPreviewView {
         mediaView?.stop()
     }
 
-    private func ensureMediaView() -> QuickViewMediaView {
+    /// The player, made the first time a movie or a sound goes up. Internal, so a test can set its
+    /// `soundLanguage` before the first file.
+    func ensureMediaView() -> QuickViewMediaView {
         if let mediaView { return mediaView }
         let view = QuickViewMediaView()
         pin(view, inside: content)
         view.onReadoutChange = { [weak self] in self?.refreshCaption() }
         headerView?.onTogglePlayback = { [weak self] in self?.mediaView?.togglePlayback() }
+        headerView?.onPickSound = { [weak self] id in self?.mediaView?.selectSound(id) }
         mediaView = view
         return view
     }

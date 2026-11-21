@@ -19410,6 +19410,95 @@
         }
       }
     },
+    "Audio Track": {
+      "comment": "Accessibility label of the Quick View header button that lists a movie's sound tracks.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tonspur"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Audio Track"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pista de audio"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Piste audio"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Traccia audio"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "オーディオトラック"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "오디오 트랙"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Audiotrack"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ścieżka dźwiękowa"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Faixa de áudio"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Звуковая дорожка"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Звукова доріжка"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "音轨"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "音軌"
+          }
+        }
+      }
+    },
     "Auth:": {
       "comment": "Connect field label: SFTP authentication method.",
       "localizations": {
@@ -38328,6 +38417,186 @@
           "stringUnit": {
             "state": "translated",
             "value": "時間軸"
+          }
+        }
+      }
+    },
+    "command.view.quickViewNextAudioTrack.keywords": {
+      "comment": "Extra command-palette search terms, comma-separated. Added to the English terms, not replacing them, so the English words keep working. Synonyms a user might type — not a translation of the title.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "video, film, audio, ton, tonspur, sprache, synchronisation, wechseln, umschalten, schnellansicht, option cmd p"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "quick view, video, movie, audio, sound, track, language, dub, switch, cycle, option cmd p"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "vídeo, película, audio, sonido, pista, idioma, doblaje, cambiar, vista rápida, option cmd p"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "vidéo, film, audio, son, piste, langue, doublage, changer, basculer, coup d’œil, option cmd p"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "video, filmato, audio, suono, traccia, lingua, doppiaggio, cambia, anteprima rapida, option cmd p"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ビデオ, 動画, ムービー, オーディオ, 音声, トラック, 言語, 吹き替え, 切り替え, クイックビュー, option cmd p"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "비디오, 동영상, 영화, 오디오, 음성, 트랙, 언어, 더빙, 전환, 빠른 보기, option cmd p"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "video, film, audio, geluid, track, taal, nasynchronisatie, wisselen, snelle weergave, option cmd p"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "wideo, film, audio, dźwięk, ścieżka, język, dubbing, lektor, przełącz, szybki przegląd, option cmd p"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "vídeo, filme, áudio, som, faixa, idioma, dublagem, trocar, alternar, visualização rápida, option cmd p"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "видео, фильм, кино, аудио, звук, дорожка, язык, озвучка, перевод, дубляж, переключить, быстрый просмотр, option cmd p"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "відео, фільм, аудіо, звук, доріжка, мова, озвучення, переклад, дубляж, перемкнути, швидкий перегляд, option cmd p"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "视频, 影片, 电影, 音频, 声音, 音轨, 语言, 配音, 切换, 快速查看, option cmd p"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "影片, 視訊, 電影, 音訊, 聲音, 音軌, 語言, 配音, 切換, 快速查看, option cmd p"
+          }
+        }
+      }
+    },
+    "command.view.quickViewNextAudioTrack.title": {
+      "comment": "Menu and command-palette title for the “view.quickViewNextAudioTrack” command.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nächste Tonspur"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Next Audio Track"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Siguiente pista de audio"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Piste audio suivante"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Traccia audio successiva"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "次のオーディオトラック"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "다음 오디오 트랙"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Volgende audiotrack"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Następna ścieżka dźwiękowa"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Próxima faixa de áudio"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Следующая звуковая дорожка"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Наступна звукова доріжка"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "下一个音轨"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "下一個音軌"
           }
         }
       }

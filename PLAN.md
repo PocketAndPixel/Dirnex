@@ -498,6 +498,47 @@ Panels, with its footer, wrote `false`; the second file then opened at "⏸ 0:00
 with the switch back on, full window (⌃⇧Q) played it from "▶ 0:05". **Not run live**: full screen,
 which takes the front, a sound heard, and a translation of the two strings.
 
+**Sound tracks. Asked and landed 2026-11-21 (Oleg):** "an audio track picker for the quick view, and
+play it in the language of app by default". **Decided with him:** the picker is a menu in the header
+plus View ▸ Next Audio Track on ⌥⌘P, and a pick holds for the file on screen only; the next file opens
+in the app's language again. Probed first: the film's nine sounds (Russian ×6, Ukrainian, the English
+DTS original, an English AC-3 commentary) and the first episode of each series (GOT, Silo, The Boys:
+Russian default, English last, spelled `rus`/`eng` in two and `ru`/`en` in Silo), Foundation's language
+codes, and AVFoundation's handling of an MP4 with two sounds (docs/NOTES.md ▸ Previews: Quick Look,
+PDF and images). **The rule** (`MediaSoundChoice`): the first decodable sound in the app's language
+(`Bundle.main.preferredLocalizations`), the file's default within it, a commentary or audio
+description passed over (Matroska's `FlagCommentary` and `FlagVisualImpaired`, AVFoundation's
+auxiliary-content and video-description characteristics, or "commentary" in the name); with none, the
+default if it decodes, else the first that does, which is Slice 4's rule. So an English Dirnex plays
+each series in English and the film still in Russian, since its English tracks are DTS and a
+commentary. Core: `MediaLanguage` (ISO 639-1, both ISO 639-2 spellings and BCP 47 folded to one code,
+with the twenty bibliographic codes Foundation does not know mapped first), `MediaSoundChoice`, the two
+Matroska flags, `MediaPlaybackPlan(tracks:language:canDecode:)`, and the command. Workspace and Window
+moved to `CommandCatalogWindow.swift` for the catalog's `file_length`. App: `QuickViewSoundTrack` (one
+description for both players: "Russian · AC-3 · 5.1 · LostFilm", with "— can't play" for DTS),
+`QuickViewAudibleOptions` (AVFoundation's alternatives; tracks in no group play together as the file
+says and offer nothing), `QuickViewMediaView+Sound`, and "🔈 English ⌄" after the readout
+(`QuickViewHeaderView+Media`, split out of the header at 499 lines), shown when more than one sound
+plays, giving way after the facts and before the name. The core's player switches by flushing and
+seeking a demuxer made for the picture and the new sound to where the clock is; AVFoundation's by
+`select(_:in:)`, and a pick in AVKit's own menu reaches the header through
+`mediaSelectionDidChangeNotification`. Language names start with a capital ("Русский"). "Audio Track"
+and the command in 14 languages. 12 core tests and 11 app tests. Negative controls, each failing its
+tests: the commentary not passed over, the bibliographic map off, `FlagCommentary` not read, no pick
+made for AVFoundation, no language handed to the core's player, and no selection observer (timed out).
+`appliesMediaSelectionCriteriaAutomatically = false` was tried and taken out: the pick holds without
+it. Live in `build/live-copy`, muted, with a probe logging the track the feed reads and the sound
+renderer's status: in English, GOT opened on "English" (track 5); Next Audio Track while playing
+went to "Russian", the feed read track 2 `.rendering` with no error, and the clock ran on to 0:00:10;
+the film opened on its Russian default and stepped 2 → 6 → 7 → 8 → 10, past the four DTS tracks; the
+grouped MP4 opened on English, its second option, and stepped to Russian; View ▸ Next Audio Track sat
+under Play/Pause. In Russian (`-AppleLanguages (ru)`), GOT opened on track 2 and the film's header read
+"Русский ⌄" after the capital fix, with View ▸ «Следующая звуковая дорожка». No permission request in
+the log. **Not run live**: the header's menu opened by a click (a background click would have left a
+menu up on Oleg's screen; the menu's items, checks and pick are pinned by a test), AVKit's own menu,
+full screen, a sound heard, an AVI with two sounds (none on this Mac), and a translation other than
+Russian.
+
 **Left undone so far:** VP8, Theora, VC-1 and WMV, RealVideo, MS-MPEG-4 v3 and DTS, which macOS cannot
 decode. Any codec library (ffmpeg, libVLC, libvpx), for the licence, the size, and §2's rule that bytes
 go through the core. Subtitles. Streaming a server's file without fetching it, since the remote

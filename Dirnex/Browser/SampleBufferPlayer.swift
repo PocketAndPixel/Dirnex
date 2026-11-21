@@ -3,8 +3,10 @@ import DirnexCore
 
 /// What a file the core reads needs before it plays (PLAN.md §M42 ▸ Slices 4 and 5): the picture and
 /// the sound to play, their Core Media formats, a demuxer at the file's start, and every sound track
-/// for the header's tooltip. Made off the main actor, since it reads the file: a Matroska file's head
-/// and, for VP9, its first cluster; an AVI's headers, its index and each stream's first chunk.
+/// for the header's menu and tooltip, with the formats of those that decode and a way to read the
+/// picture with another of them (▸ Sound tracks). Made off the main actor, since it reads the file: a
+/// Matroska file's head and, for VP9, its first cluster; an AVI's headers, its index and each stream's
+/// first chunk.
 ///
 /// `@unchecked Sendable` for its format descriptions, which Core Media never changes once made.
 struct SampleBufferPreparation: @unchecked Sendable {
@@ -15,27 +17,23 @@ struct SampleBufferPreparation: @unchecked Sendable {
         let audio: MediaSampleFormat.Audio?
     }
 
-    /// One sound track, as the header's tooltip names it.
-    struct Sound: Equatable {
-        let number: UInt64
-        /// An ISO 639-2 code or a BCP 47 tag, or `nil` where the file names none, as an AVI never does.
-        let language: String?
-        let codec: String
-        let channels: Int?
-        let name: String?
-        let isDecodable: Bool
-    }
-
     let video: Track?
+    /// The sound the file opens on, the first in the app's language (`MediaSoundChoice`).
     let audio: Track?
-    let sounds: [Sound]
+    /// Every sound this Mac decodes, by number, for a switch to another.
+    let audioTracks: [UInt64: Track]
+    let sounds: [QuickViewSoundTrack]
     /// The length the file states, or `nil`.
     let statedDuration: Double?
     /// A demuxer at the file's start, which the feed takes over.
     let demuxer: any MediaDemuxing
+    /// A demuxer at the file's start reading the picture and the sound numbered as given, for a switch
+    /// of sound; `nil` when it cannot be made.
+    let makeDemuxer: @Sendable (UInt64) -> (any MediaDemuxing)?
 
-    /// `file` ready to play, or `nil` when it holds nothing this Mac decodes, which the card then says.
-    static func prepare(_ file: MatroskaFile) -> SampleBufferPreparation? {
+    /// `file` ready to play, with the sound in `language` where it has one that decodes, or `nil` when
+    /// it holds nothing this Mac decodes, which the card then says.
+    static func prepare(_ file: MatroskaFile, language: String?) -> SampleBufferPreparation? {
         var formats: [UInt64: MediaSampleFormat] = [:]
         for track in file.tracks where track.isEnabled && (
             track.kind == .video || track.kind == .audio
@@ -43,17 +41,28 @@ struct SampleBufferPreparation: @unchecked Sendable {
             let key = track.codecID == "V_VP9" ? try? file.firstKeyframe(track: track.number) : nil
             formats[track.number] = track.sampleFormat(firstFrame: key)
         }
-        let plan = MatroskaPlaybackPlan(tracks: file.tracks) { track in
+        let plan = MatroskaPlaybackPlan(tracks: file.tracks, language: language) { track in
             track.frameEncoding.isReadable
                 && formats[track.number].map(MediaSampleBridge.canDecode) == true
         }
         guard plan.isPlayable else { return nil }
+        let audioTracks = decodableSounds(plan.audioTracks.map { ($0.track.number, $0.isDecodable) }) {
+            formats[$0]
+        }
+        let picture = plan.video
         return SampleBufferPreparation(
-            video: plan.video.flatMap { track($0.number, formats[$0.number]) },
-            audio: plan.audio.flatMap { track($0.number, formats[$0.number]) },
+            video: picture.flatMap { track($0.number, formats[$0.number]) },
+            audio: plan.audio.flatMap { audioTracks[$0.number] },
+            audioTracks: audioTracks,
             sounds: sounds(plan),
             statedDuration: file.info.durationSeconds,
-            demuxer: MatroskaDemuxer(file: file, tracks: [plan.video, plan.audio].compactMap(\.self))
+            demuxer: MatroskaDemuxer(file: file, tracks: [picture, plan.audio].compactMap(\.self)),
+            makeDemuxer: { number in
+                MatroskaDemuxer(
+                    file: file,
+                    tracks: [picture, file.track(number: number)].compactMap(\.self)
+                )
+            }
         )
     }
 
@@ -61,7 +70,7 @@ struct SampleBufferPreparation: @unchecked Sendable {
     /// read (PLAN.md §M42 ▸ Slice 5). Reads the index, which for a file with none means walking every
     /// chunk, and each picture and sound stream's first chunk, which carries an H.264 or MPEG-4
     /// stream's configuration and says how a sound's frames are packed.
-    static func prepare(_ file: AVIFile) -> SampleBufferPreparation? {
+    static func prepare(_ file: AVIFile, language: String?) -> SampleBufferPreparation? {
         guard let index = try? file.index() else { return nil }
         var formats: [Int: MediaSampleFormat] = [:]
         for stream in file.streams where stream.isEnabled && (
@@ -70,27 +79,57 @@ struct SampleBufferPreparation: @unchecked Sendable {
             let first = try? index.entries(stream.number).first { $0.size > 0 }.map(file.read)
             formats[stream.number] = stream.sampleFormat(firstFrame: first)
         }
-        let plan = AVIPlaybackPlan(tracks: file.streams) { stream in
+        let plan = AVIPlaybackPlan(tracks: file.streams, language: language) { stream in
             formats[stream.number].map(MediaSampleBridge.canDecode) == true
         }
-        let chosen = [plan.video, plan.audio].compactMap(\.self)
+        let picture = plan.video
         guard plan.isPlayable,
-              let demuxer = try? AVIDemuxer(file: file, index: index, streams: chosen)
+              let demuxer = try? AVIDemuxer(
+                  file: file,
+                  index: index,
+                  streams: [picture, plan.audio].compactMap(\.self)
+              )
         else { return nil }
+        let audioTracks = decodableSounds(
+            plan.audioTracks.map { (UInt64($0.track.number), $0.isDecodable) }
+        ) { formats[Int($0)] }
         return SampleBufferPreparation(
-            video: plan.video.flatMap { track(UInt64($0.number), formats[$0.number]) },
-            audio: plan.audio.flatMap { track(UInt64($0.number), formats[$0.number]) },
+            video: picture.flatMap { track(UInt64($0.number), formats[$0.number]) },
+            audio: plan.audio.flatMap { audioTracks[UInt64($0.number)] },
+            audioTracks: audioTracks,
             sounds: sounds(plan),
             statedDuration: file.durationSeconds,
-            demuxer: demuxer
+            demuxer: demuxer,
+            makeDemuxer: { number in
+                let sound = file.streams.first { UInt64($0.number) == number }
+                return try? AVIDemuxer(
+                    file: file,
+                    index: index,
+                    streams: [picture, sound].compactMap(\.self)
+                )
+            }
         )
     }
 
-    /// The plan's sound tracks as the tooltip names them, by language, codec, channels and name.
-    static func sounds(_ plan: MatroskaPlaybackPlan) -> [Sound] {
+    /// The tracks among `sounds` that decode, by number, each with its format, which a switch hands the
+    /// sound renderer.
+    private static func decodableSounds(
+        _ sounds: [(number: UInt64, isDecodable: Bool)],
+        format: (UInt64) -> MediaSampleFormat?
+    ) -> [UInt64: Track] {
+        var tracks: [UInt64: Track] = [:]
+        for sound in sounds where sound.isDecodable && tracks[sound.number] == nil {
+            tracks[sound.number] = track(sound.number, format(sound.number))
+        }
+        return tracks
+    }
+
+    /// The plan's sound tracks as the menu and the tooltip name them, by language, codec, channels and
+    /// name.
+    static func sounds(_ plan: MatroskaPlaybackPlan) -> [QuickViewSoundTrack] {
         plan.audioTracks.map { entry in
-            Sound(
-                number: entry.track.number,
+            QuickViewSoundTrack(
+                id: entry.track.number,
                 language: entry.track.language,
                 codec: MediaCodecName.name(
                     matroskaCodecID: entry.track.codecID,
@@ -98,22 +137,25 @@ struct SampleBufferPreparation: @unchecked Sendable {
                 ),
                 channels: entry.track.audio.map { Int(clamping: $0.channels) },
                 name: entry.track.name,
-                isDecodable: entry.isDecodable
+                isDecodable: entry.isDecodable,
+                isDefault: entry.track.isDefault,
+                isSecondarySound: entry.track.isSecondarySound
             )
         }
     }
 
     /// An AVI's sound streams as the tooltip names them: no language, which AVI does not record, and
     /// the name from `strn` when the writer gave one.
-    static func sounds(_ plan: AVIPlaybackPlan) -> [Sound] {
+    static func sounds(_ plan: AVIPlaybackPlan) -> [QuickViewSoundTrack] {
         plan.audioTracks.map { entry in
-            Sound(
-                number: UInt64(entry.track.number),
+            QuickViewSoundTrack(
+                id: UInt64(entry.track.number),
                 language: nil,
                 codec: MediaCodecName.name(windowsAudioTag: entry.track.audio?.formatTag ?? 0),
                 channels: entry.track.audio?.channels,
                 name: entry.track.name,
-                isDecodable: entry.isDecodable
+                isDecodable: entry.isDecodable,
+                isSecondarySound: entry.track.isSecondarySound
             )
         }
     }
@@ -150,6 +192,8 @@ final class SampleBufferFeed: @unchecked Sendable {
     /// seconds; behind `progress`, since the player reads them from the main actor.
     private var finishedTracks: Set<UInt64> = []
     private var lastEnd: Double = 0
+    /// The sound being played, which a switch changes; behind `progress` with the two above.
+    private var audioTrack: SampleBufferPreparation.Track?
 
     /// How far before a seek's target pictures start to be shown. A seek to a file's very end would
     /// otherwise make every picture preroll and show none; with this the last frame before the target
@@ -160,6 +204,7 @@ final class SampleBufferFeed: @unchecked Sendable {
         self.preparation = preparation
         self.videoRenderer = preparation.video == nil ? nil : videoRenderer
         audioRenderer = preparation.audio == nil ? nil : AVSampleBufferAudioRenderer()
+        audioTrack = preparation.audio
         demuxer = preparation.demuxer
         if let renderer = self.videoRenderer { synchronizer.addRenderer(renderer) }
         if let audioRenderer { synchronizer.addRenderer(audioRenderer) }
@@ -184,21 +229,32 @@ final class SampleBufferFeed: @unchecked Sendable {
     func seek(to seconds: Double, rate: Float, done: @escaping @Sendable () -> Void) {
         queue.async { [self] in
             guard !isStopped else { return }
-            videoRenderer?.stopRequestingMediaData()
-            audioRenderer?.stopRequestingMediaData()
-            let target = Int64((seconds * 1_000_000_000).rounded())
-            try? demuxer.seek(
-                to: max(0, target - Self.displayLead),
-                keyTrack: preparation.video?.number
-            )
-            progress.withLock {
-                finishedTracks = []
-                lastEnd = seconds
-            }
-            videoRenderer?.flush()
-            audioRenderer?.flush()
-            synchronizer.setRate(rate, time: CMTime(value: target, timescale: 1_000_000_000))
-            requestData()
+            reposition(to: seconds, rate: rate)
+            DispatchQueue.main.async(execute: done)
+        }
+    }
+
+    /// Play the sound numbered `number` in place of the one playing, from `seconds` on at `rate`; `done`
+    /// runs on the main queue once it is there (PLAN.md §M42 ▸ Sound tracks).
+    ///
+    /// A seek to where the player already is, with a demuxer made again for the picture and the new
+    /// sound: the one reading the old sound is at its own place in the file, and the renderers hold
+    /// what it handed them. The picture starts again from the key frame before, as after any seek, and
+    /// the sound renderer takes the new format after its flush.
+    func switchSound(
+        to number: UInt64,
+        at seconds: Double,
+        rate: Float,
+        done: @escaping @Sendable () -> Void
+    ) {
+        queue.async { [self] in
+            guard !isStopped, audioRenderer != nil,
+                  let track = preparation.audioTracks[number],
+                  let fresh = preparation.makeDemuxer(number)
+            else { return }
+            demuxer = fresh
+            progress.withLock { audioTrack = track }
+            reposition(to: seconds, rate: rate)
             DispatchQueue.main.async(execute: done)
         }
     }
@@ -218,9 +274,7 @@ final class SampleBufferFeed: @unchecked Sendable {
     /// Where the file's last packet ends, in seconds, once every track being played has run out.
     var endOfData: Double? {
         progress.withLock {
-            let tracks = Set(
-                [preparation.video?.number, preparation.audio?.number].compactMap(\.self)
-            )
+            let tracks = Set([preparation.video?.number, audioTrack?.number].compactMap(\.self))
             return finishedTracks.isSuperset(of: tracks) ? lastEnd : nil
         }
     }
@@ -230,6 +284,25 @@ final class SampleBufferFeed: @unchecked Sendable {
     var audioError: Error? { audioRenderer?.error }
 
     // MARK: - On the queue
+
+    /// Start the demuxer and both renderers again at `seconds`, and the clock there at `rate`.
+    private func reposition(to seconds: Double, rate: Float) {
+        videoRenderer?.stopRequestingMediaData()
+        audioRenderer?.stopRequestingMediaData()
+        let target = Int64((seconds * 1_000_000_000).rounded())
+        try? demuxer.seek(
+            to: max(0, target - Self.displayLead),
+            keyTrack: preparation.video?.number
+        )
+        progress.withLock {
+            finishedTracks = []
+            lastEnd = seconds
+        }
+        videoRenderer?.flush()
+        audioRenderer?.flush()
+        synchronizer.setRate(rate, time: CMTime(value: target, timescale: 1_000_000_000))
+        requestData()
+    }
 
     private func requestData() {
         if let videoRenderer {
@@ -246,7 +319,7 @@ final class SampleBufferFeed: @unchecked Sendable {
     }
 
     private func feedAudio() {
-        guard let renderer = audioRenderer, let track = preparation.audio else { return }
+        guard let renderer = audioRenderer, let track = progress.withLock({ audioTrack }) else { return }
         feed(renderer, track: track)
     }
 
@@ -293,9 +366,12 @@ final class SampleBufferPlayer {
     private var timeObserver: Any?
     /// Told whenever the readout may have moved: a quarter-second of playback, a start or a stop, a seek.
     var onChange: (() -> Void)?
+    /// The number of the sound playing, which `selectSound` changes, or `nil` with none.
+    private(set) var playingSound: UInt64?
 
     init(_ preparation: SampleBufferPreparation) {
         self.preparation = preparation
+        playingSound = preparation.audio?.number
         let layer = preparation.video == nil ? nil : AVSampleBufferDisplayLayer()
         layer?.videoGravity = .resizeAspect
         displayLayer = layer
@@ -361,6 +437,30 @@ final class SampleBufferPlayer {
         let target = max(0, duration.map { min(seconds, $0) } ?? seconds)
         pendingTarget = target
         feed.seek(to: target, rate: isPlaying ? 1 : 0) { [weak self] in
+            MainActor.assumeIsolated {
+                guard let self, self.pendingTarget == target else { return }
+                self.pendingTarget = nil
+                self.onChange?()
+            }
+        }
+        onChange?()
+    }
+
+    /// The file's sounds, for the header's menu and tooltip.
+    var sounds: [QuickViewSoundTrack] { preparation.sounds }
+
+    /// Whether another sound can be played in place of this one: there is a sound renderer, and more
+    /// than one sound decodes.
+    var canSwitchSound: Bool { preparation.audio != nil && preparation.audioTracks.count > 1 }
+
+    /// Play the sound numbered `number` from where the player is, playing on or paused as before
+    /// (PLAN.md §M42 ▸ Sound tracks). Nothing for the one playing or one that does not decode.
+    func selectSound(_ number: UInt64) {
+        guard canSwitchSound, number != playingSound, preparation.audioTracks[number] != nil else { return }
+        playingSound = number
+        let target = currentSeconds
+        pendingTarget = target
+        feed.switchSound(to: number, at: target, rate: isPlaying ? 1 : 0) { [weak self] in
             MainActor.assumeIsolated {
                 guard let self, self.pendingTarget == target else { return }
                 self.pendingTarget = nil

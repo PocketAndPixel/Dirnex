@@ -97,6 +97,10 @@ public struct MatroskaTrack: Equatable, Sendable {
     public var isEnabled = true
     public var isDefault = true
     public var isForced = false
+    /// `FlagCommentary`: a commentary, which a language never picks on its own (`MediaSoundChoice`).
+    public var isCommentary = false
+    /// `FlagVisualImpaired`: a sound describing the picture for the blind, passed over the same way.
+    public var isVisualImpaired = false
     /// How long each frame lasts, in nanoseconds, when every frame lasts the same.
     public var defaultDuration: UInt64?
     /// Nanoseconds of decoded sound to drop from the start (Opus's pre-skip).
@@ -169,6 +173,8 @@ extension MatroskaTrack {
         case 0xB9: isEnabled = try (reader.unsigned(child) ?? 1) != 0
         case 0x88: isDefault = try (reader.unsigned(child) ?? 1) != 0
         case 0x55AA: isForced = try (reader.unsigned(child) ?? 0) != 0
+        case 0x55AC: isVisualImpaired = try (reader.unsigned(child) ?? 0) != 0
+        case 0x55AF: isCommentary = try (reader.unsigned(child) ?? 0) != 0
         default: return false
         }
         return true
