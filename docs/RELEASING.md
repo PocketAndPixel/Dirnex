@@ -153,6 +153,9 @@ same name.
   package alike), while about 50 made from outside a job never did, so the cause is still unknown.
   Every job that started from a filled cache went through. A job then fetches only what changed;
   if the cache can't be filled, the log says so and jobs download the packages as before.
+  The same error stopped CI's SwiftLint download in two Lint jobs in a row (2026-11-21 and 11-22),
+  while that download made through `tart exec` went through five times out of five, so the Lint
+  job's downloads retry, with the digest check judging what arrives.
 - **A change to the script reaches the loop only through `uninstall` and `install`.** The running
   loop keeps the functions it read at login, and its nightly restart boots the clone with them.
 - **Between nightly restarts the clone keeps its state from job to job.** The release puts the

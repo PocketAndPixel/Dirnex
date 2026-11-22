@@ -190,9 +190,14 @@ jobs:
       - name: Install tools
         run: |
           # Name, address, digest. Each lands in this job's own folder, ahead of anything on PATH.
+          # Retried on any error, since the digest judges what arrives: on the Mac runner, SwiftLint's
+          # 12 MB zip stopped partway with `curl: (56) LibreSSL SSL_read: … bad decrypt` in two jobs in
+          # a row (2026-11-21 and 11-22), each straight after SwiftFormat's had arrived, while the same
+          # download made in the VM outside a job went through five times out of five. It is the
+          # failure docs/RELEASING.md records for Sparkle, whose cause is still unknown.
           install_tool() {
             archive="$RUNNER_TEMP/$1.zip"
-            curl -fsSL -o "$archive" "$2"
+            curl -fsSL --retry 5 --retry-delay 5 --retry-all-errors -o "$archive" "$2"
             echo "$3  $archive" | shasum -a 256 -c -
             unzip -q "$archive" -d "$RUNNER_TEMP/$1"
             echo "$RUNNER_TEMP/$1" >> "$GITHUB_PATH"
