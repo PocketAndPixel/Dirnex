@@ -47,9 +47,7 @@ final class AttributesController: NSViewController {
     /// A file owned by **someone else is still editable** now (Slice 5): its Save routes through the
     /// administrator escalation instead of being refused. So `ownsItem` no longer gates *whether* the
     /// controls are live — ``canEdit`` does that, and is always true for the real local item Get Info
-    /// handles. It gates the two things escalation does not yet cover: the "Apply to enclosed items"
-    /// footer (a recursive apply over a tree the user does not own is a follow-on) and the
-    /// Permissions-tab note that says a Save here will ask for a password.
+    /// handles. It gates the Permissions-tab note that says a Save here will ask for a password.
     let ownsItem: Bool
 
     /// Whether the sheet offers editing at all. Always true now: an owner edits unprivileged, and a
@@ -58,11 +56,6 @@ final class AttributesController: NSViewController {
     /// surfaces its error at Save rather than being predicted here; the field stays so every
     /// control-liveness site reads as "is editing offered" rather than hard-coding `true`.
     let canEdit: Bool
-
-    /// The copyable "run it yourself" field in the escalation dialog — retained so its Copy button can
-    /// read it back (``AttributesController+Escalation``). `NSButton.target` is weak, and the field
-    /// outlives the transient alert only through this reference.
-    weak var escalationCommandField: NSTextField?
 
     /// Journal a committed change so ⌘Z reverses it — set by the pane to its window's undo surface.
     var recordUndo: ((UndoRecord) -> Void)?
@@ -168,10 +161,9 @@ final class AttributesController: NSViewController {
     /// The "Apply to enclosed items" row, for a directory the user may edit. A file has nothing
     /// enclosed, and a read-only sheet has no Save for it to qualify.
     private func makeRecursiveOptions() -> NSView? {
-        // Only for a directory the caller owns: a recursive apply over a tree they do not own would
-        // need to escalate every item, which Slice 5 leaves as a follow-on — the flat escalation
-        // covers the single item on screen, not a walk.
-        guard ownsItem, snapshot.entry.kind == .directory else { return nil }
+        // Someone else's folder too: the run changes what it can and its report offers the rest to
+        // an administrator (PLAN.md §M40 Slice 4).
+        guard snapshot.entry.kind == .directory else { return nil }
         let options = RecursiveApplyOptions()
         options.onChange = { [weak self] in self?.refreshSaveEnabled() }
         recursiveOptions = options

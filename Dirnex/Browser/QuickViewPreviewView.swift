@@ -111,6 +111,11 @@ final class QuickViewPreviewView: NSView {
     private var shownCaption: QuickViewCaption?
     /// Internal for the same reason, from `QuickViewPreviewView+Placeholder`.
     var placeholderCard: QuickViewPlaceholderCard?
+    /// Internal for the same reason, from `QuickViewPreviewView+Media`.
+    var mediaView: QuickViewMediaView?
+    /// Whether a movie or a sound plays once it is up, asked each time one is. Off unless the window
+    /// hands over Settings' answer, so a test that leaves it alone asserts about no one's settings.
+    var autoplaysMedia: () -> Bool = { false }
     /// The office-document conversion in flight, so the next one — or putting the surface away —
     /// stops the `qlmanage` it spawned rather than letting it finish for nobody. Internal, from
     /// `QuickViewPreviewView+Document`.
@@ -242,6 +247,7 @@ final class QuickViewPreviewView: NSView {
             standDownTable()
             standDownTree()
         }
+        standDownMedia(unlessShowing: url)
         // The one funnel every render goes through, which is why the card is raised and lowered here
         // rather than at each backend: a fifth stand-down in four hand-written lists is four chances
         // to forget one, and the one forgotten leaves the card drawn over a real preview.
@@ -279,14 +285,17 @@ final class QuickViewPreviewView: NSView {
             showConvertedDocument(url)
         } else if let url, Self.isRichTextDocument(url) {
             showRichText(url)
-        } else if let url, Self.isUnclaimed(url) || Self.isMistypedSource(url) {
+        } else if let url, Self.isUnclaimed(url) && !Self.isMedia(url)
+            || Self.isMistypedSource(url) && !isPlayerShowing(url) {
             // `VERSION`, `.gitignore`, `nginx.conf`: no type says what they are, so their bytes do,
             // and a binary goes on to Quick Look as it did before. A `.ts` reaches the same test from
             // the other side — macOS types it as an MPEG-2 transport stream, and its bytes are what
-            // separate the TypeScript file from the video (`isMistypedSource`).
+            // separate the TypeScript file from the video (`isMistypedSource`), unless the player has
+            // it up already, handed over from another size (`handOffMedia`). A container macOS leaves
+            // untyped (a `.mkv` without VLC) goes straight on to the player (PLAN.md §M42).
             showText(url, refusingPlaceholders: true)
         } else {
-            showQuickLook(url)
+            showBinary(url)
         }
     }
 
@@ -297,10 +306,12 @@ final class QuickViewPreviewView: NSView {
         loadedStyle = .default
         loadedPlaceholder = nil
         hasLoaded = false
+        loadToken += 1 // a read still under way lands nowhere: a movie it opened would play unseen
         links.pendingFragment = nil
         standDownPlaceholder()
         cancelDocumentConversion()
         previewView?.previewItem = nil
+        mediaView?.stop()
         pdfSurface?.documentDidChange()
         pdfView?.document = nil
         // Retire any pending fade-out: the surface is going away, and a stray one landing on the
@@ -326,9 +337,10 @@ final class QuickViewPreviewView: NSView {
         refreshCaption()
     }
 
-    /// Draw the caption again, as `captionForHeader` adjusts it for what is on screen now.
+    /// Draw the caption again, as `captionForHeader` and `withMediaReadout` adjust it for what is on
+    /// screen now.
     func refreshCaption() {
-        headerView?.caption = captionForHeader(shownCaption)
+        headerView?.caption = withMediaReadout(captionForHeader(shownCaption))
     }
 
     // MARK: - Appearance
@@ -402,6 +414,8 @@ final class QuickViewPreviewView: NSView {
                 webSurface?.interactiveSubtree,
                 tableSurface,
                 treeSurface,
+                mediaView?.playerView,
+                mediaView?.sampleBufferView.timeline,
                 headerView,
                 placeholderCard?.downloadButton,
                 placeholderCard?.stopButton

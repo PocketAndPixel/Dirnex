@@ -7,8 +7,12 @@ struct TransferSummary {
     let kind: FileOperation.Kind
     /// The marked items as they will land, before any are queued.
     let sources: [FileEntry]
-    /// The folder they go into: the other pane's.
+    /// The folder they go into: the other pane's, which the dialog's field opens with.
     let destination: VFSPath
+    /// Why the items cannot go into a folder typed in place of ``destination``, as a sentence for
+    /// under the field, or `nil` when they can (2026-11-19). Asked with the dialog still up, so a
+    /// refusal leaves the field to fix rather than ending the dialog.
+    var refusal: @MainActor (VFSPath) -> String? = { _ in nil }
 }
 
 /// How the jobs of one copy or move reach the dialog that follows them: by id, **before** each is

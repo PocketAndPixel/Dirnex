@@ -222,6 +222,14 @@ extension PathBarView {
                 String(localized: "Recents", comment: "Path-bar label for the Recents listing."),
                 symbolNamed: "clock"
             )
+        } else if path.backend == .search, path.lastComponent == LocalizedCatalog.unnamedSearchTitle {
+            // A search no term names is already called "Search Results", and the prefix would make
+            // it "Results for Search Results". It is still a search, so it keeps the edit button.
+            installVirtualLabel(
+                path.lastComponent,
+                symbolNamed: "magnifyingglass",
+                editsSearch: true
+            )
         } else {
             installVirtualLabel(
                 String(

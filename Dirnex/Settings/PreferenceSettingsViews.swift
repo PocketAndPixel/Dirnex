@@ -98,6 +98,23 @@ struct PanelsSettingsView: View {
 
             SlideshowIntervalSection(preferences: preferences)
 
+            Section {
+                Toggle(
+                    "Play video and audio automatically in Quick View",
+                    isOn: $preferences.quickViewAutoplayMedia
+                )
+            } footer: {
+                Text(
+                    """
+                    A movie or a sound starts playing as soon as Quick View shows it, and stops when \
+                    the cursor moves to another file or Quick View closes. When this is off, it waits \
+                    at its start until you press ⌘P.
+                    """
+                )
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            }
+
             RemoteRefreshSection(preferences: preferences)
 
             Section {

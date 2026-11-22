@@ -7,8 +7,13 @@ import SwiftUI
 ///
 /// The field takes whatever the user copied: the key alone, the key wrapped across lines by a mail
 /// client, or either activation link (`LicenseLinks.keyText(fromPasted:)`). A refusal is shown
-/// under the field in the words `LicenseKeyError.message` gives, and disappears as soon as the text
+/// under the field in the words `LicenseRefusal.message` gives, and disappears as soon as the text
 /// changes.
+///
+/// A key whose license this build's list revoked (PLAN.md §M40) is held but counts for nothing, and
+/// the tab says so in place of "Licensed to …": that it's no longer valid, its license ID for
+/// support, Remove, and Buy. It doesn't say why, since a refund, a chargeback and a revocation by hand
+/// all end there.
 ///
 /// Remove asks first, and says how to get the key back. The key carries no email address and doesn't
 /// say whether it was bought, so the message covers both ways back: "Your licenses" on dirnex.app
@@ -18,7 +23,7 @@ import SwiftUI
 struct LicenseSettingsView: View {
     @ObservedObject var store: LicenseStore
     @State private var entry = ""
-    @State private var refusal: LicenseKeyError?
+    @State private var refusal: LicenseRefusal?
     @State private var confirmingRemoval = false
 
     var body: some View {
@@ -63,6 +68,38 @@ struct LicenseSettingsView: View {
             keySection(key, covered: true)
         case let .lapsed(key):
             keySection(key, covered: false)
+        case let .revoked(key):
+            revokedSection(key)
+        }
+    }
+
+    private func revokedSection(_ key: LicenseKey) -> some View {
+        Section {
+            VStack(alignment: .leading, spacing: 6) {
+                Text(
+                    "This license is no longer valid",
+                    comment: "Settings ▸ License: heading when the license held was revoked (refunded or taken back)."
+                )
+                .font(.headline)
+                Text(
+                    """
+                    Dirnex counts this Mac as unlicensed. If you think that’s a mistake, write to \
+                    support@dirnex.app and include the license ID below.
+                    """,
+                    comment: "Settings ▸ License, under the heading for a revoked license."
+                )
+                .foregroundStyle(.secondary)
+            }
+            LabeledContent("License ID") {
+                Text(key.id)
+                    .font(.system(.body, design: .monospaced))
+                    .textSelection(.enabled)
+            }
+            HStack {
+                SettingsButton("Remove License", role: .destructive) { confirmingRemoval = true }
+                Spacer()
+                SettingsButton("Buy a License…") { NSWorkspace.shared.open(LicenseLinks.buy) }
+            }
         }
     }
 

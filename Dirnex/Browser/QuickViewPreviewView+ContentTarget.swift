@@ -14,12 +14,15 @@ extension QuickViewPreviewView {
         case image(QuickViewImageScrollView)
         case table(QuickViewTableView)
         case tree(QuickViewTreeView)
+        /// A movie or a sound. The ⇧-keys move along its timeline, and it does not zoom (PLAN.md §M42).
+        case media(QuickViewMediaView)
     }
 
     /// The backend on screen, if it is one of those. Moved out of the zoom code when scrolling joined
     /// it (2026-10-18), unchanged.
     var contentTarget: ContentTarget? {
         if placeholderCard?.isHidden == false { return nil }
+        if let mediaView, !mediaView.isHidden, mediaView.hasItem { return .media(mediaView) }
         if let tableSurface, !tableSurface.isHidden, tableSurface.table != nil {
             return .table(tableSurface)
         }

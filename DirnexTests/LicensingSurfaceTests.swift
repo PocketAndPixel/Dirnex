@@ -117,7 +117,7 @@ struct LicensingSurfaceTests {
 
     @Test("a refused link says why, in the License tab's words, with one button")
     func refusal() {
-        for error in LicenseKeyError.allCases {
+        for error in LicenseRefusal.allCases {
             let alert = LicenseLinkActivation.refusalAlert(for: error)
             #expect(alert.informativeText == error.message)
             #expect(alert.buttons.count == 1)
@@ -126,7 +126,7 @@ struct LicensingSurfaceTests {
 
     @Test("every refusal has its own message")
     func distinctMessages() {
-        let messages = LicenseKeyError.allCases.map(\.message)
+        let messages = LicenseRefusal.allCases.map(\.message)
         #expect(Set(messages).count == messages.count)
         #expect(messages.allSatisfy { !$0.isEmpty })
     }

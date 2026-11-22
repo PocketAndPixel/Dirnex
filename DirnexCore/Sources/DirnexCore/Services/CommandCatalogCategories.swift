@@ -1,8 +1,9 @@
-// The View, Navigation, Workspace and Window categories live in this companion file so
+// The View and Navigation categories live in this companion file so
 // `CommandCatalog.swift` stays under SwiftLint's `type_body_length` *and* `file_length` limits — the
 // M8 Focus Sidebar command was the entry that pushed the single file over 500 lines. `all`, in the
 // main file, still composes these in with `file`/`edit`/`selection`; the arrays widen from `private`
-// to `internal` only because Swift's `private` does not cross files.
+// to `internal` only because Swift's `private` does not cross files. Workspace and Window moved on to
+// `CommandCatalogWindow.swift` when Next Audio Track brought this file to its own 500.
 extension CommandCatalog {
     // MARK: - View
 
@@ -158,6 +159,28 @@ extension CommandCatalog {
             // ⇧⌘S, Oleg's choice beside ⌘S, ⌃⌘S and ⌥⌘S. A ⌘ chord, since bare letters type into the
             // pane's filter and Space marks (PLAN.md §M39 ▸ Slice 16).
             shortcut: CommandShortcut(key: "s", modifiers: [.command, .shift])
+        ),
+        Command(
+            id: "view.quickViewPlayPause",
+            title: "Play/Pause",
+            category: .view,
+            keywords: [
+                "quick view", "video", "movie", "audio", "music", "sound", "play", "pause", "cmd p"
+            ],
+            // ⌘P, Oleg's choice (PLAN.md §M42). Free, since Dirnex prints nothing.
+            shortcut: CommandShortcut(key: "p", modifiers: .command)
+        ),
+        Command(
+            id: "view.quickViewNextAudioTrack",
+            title: "Next Audio Track",
+            category: .view,
+            keywords: [
+                "quick view", "video", "movie", "audio", "sound", "track", "language", "dub",
+                "switch", "cycle", "option cmd p"
+            ],
+            // ⌥⌘P beside Play/Pause, Oleg's pick (PLAN.md §M42 ▸ Sound tracks). It steps through the
+            // tracks this Mac decodes; the header's menu lists every one.
+            shortcut: CommandShortcut(key: "p", modifiers: [.command, .option])
         ),
         Command(
             id: "view.quickViewSource",
@@ -410,79 +433,6 @@ extension CommandCatalog {
             title: "Add to Favorites",
             category: .navigation,
             keywords: ["pin", "bookmark", "favorite"]
-        )
-    ]
-
-    // MARK: - Workspace
-
-    static let workspace: [Command] = [
-        Command(
-            id: "workspace.list",
-            title: "Workspaces…",
-            category: .workspace,
-            keywords: ["session", "switch", "restore", "open", "layout", "panes"]
-        ),
-        Command(
-            id: "workspace.save",
-            title: "Save Workspace…",
-            category: .workspace,
-            keywords: ["session", "snapshot", "store", "layout", "panes"]
-        )
-    ]
-
-    // MARK: - Window
-
-    static let window: [Command] = [
-        Command(
-            id: "window.minimize",
-            title: "Minimize",
-            category: .window,
-            shortcut: CommandShortcut(key: "m", modifiers: .command)
-        ),
-        Command(
-            id: "window.close",
-            title: "Close Window",
-            category: .window,
-            shortcut: CommandShortcut(key: "w", modifiers: [.command, .shift])
-        ),
-        Command(
-            id: "window.previousTab",
-            title: "Show Previous Tab",
-            category: .window,
-            keywords: ["tab"],
-            shortcut: CommandShortcut(key: "[", modifiers: [.command, .shift])
-        ),
-        Command(
-            id: "window.nextTab",
-            title: "Show Next Tab",
-            category: .window,
-            keywords: ["tab"],
-            shortcut: CommandShortcut(key: "]", modifiers: [.command, .shift])
-        ),
-        // The move pair takes ⌥ over the brackets that already mean history (⌘[ ⌘]) and switching
-        // tabs (⇧⌘[ ⇧⌘]), which is also Xcode's chord for moving a line. ⌥ is told apart from the
-        // bare chord whichever item the menu holds first (measured with `performKeyEquivalent`).
-        Command(
-            id: "window.moveTabLeft",
-            title: "Move Tab Left",
-            category: .window,
-            keywords: ["tab", "reorder", "order", "rearrange"],
-            shortcut: CommandShortcut(key: "[", modifiers: [.command, .option])
-        ),
-        Command(
-            id: "window.moveTabRight",
-            title: "Move Tab Right",
-            category: .window,
-            keywords: ["tab", "reorder", "order", "rearrange"],
-            shortcut: CommandShortcut(key: "]", modifiers: [.command, .option])
-        ),
-        Command(
-            id: "window.moveTabToOtherPanel",
-            title: "Move Tab to Other Panel",
-            category: .window,
-            keywords: ["tab", "pane", "side", "opposite", "send", "transfer"],
-            // ⇧⌘M, for Move. Nothing else here claims it, and the text system binds no ⌘ chord.
-            shortcut: CommandShortcut(key: "m", modifiers: [.command, .shift])
         )
     ]
 }

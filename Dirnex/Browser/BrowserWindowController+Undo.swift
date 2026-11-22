@@ -72,46 +72,61 @@ extension BrowserWindowController {
         undoController.nextRedoLabel
     }
 
+    /// ⌘Z, after every earlier ⌘Z and ⇧⌘Z has finished (`UndoController.enqueue`).
     func undoLastOperation() {
-        Task {
-            switch await undoController.undo() {
-            case .none:
-                return
-            case let .fileOperation(record, report):
-                // Re-list both panes so the reversal (a restored source, a removed copy) shows at
-                // once; the FSEvents watchers would catch up anyway, but this is immediate.
-                leftPanel.refreshCurrentDirectory()
-                rightPanel.refreshCurrentDirectory()
-                refreshPanesShowingRewrittenArchives(in: record)
-                followSearchHitRenames(in: record, report: report)
-                // A reverted move puts a vault's image back where it was, so the saved list has to
-                // come back with it. The record names both ends and the disk decides which one is
-                // real, so undo needs no inverse of its own — and a partial revert still lands
-                // each vault on wherever its own image actually ended up.
-                followVaultImageMoves(in: record)
-                presentUndoOutcome(record: record, report: report)
-            case let .selection(change):
-                applySelectionChange(change)
+        undoController.enqueue { [weak self] in await self?.reverse(.undo) }
+    }
+
+    /// ⇧⌘Z, the same way.
+    func redoLastOperation() {
+        undoController.enqueue { [weak self] in await self?.reverse(.redo) }
+    }
+
+    private func reverse(_ direction: UndoDirection) async {
+        let consent: UndoController.AdministratorConsent = { [weak self] batch, direction in
+            await self?.askAdministrator(batch, direction) ?? false
+        }
+        let outcome = switch direction {
+        case .undo: await undoController.undo(consent: consent)
+        case .redo: await undoController.redo(consent: consent)
+        }
+        switch outcome {
+        case .none:
+            return
+        case let .fileOperation(record, report, administrator):
+            // Re-list both panes so the reversal (a restored source, a removed copy) shows at
+            // once; the FSEvents watchers would catch up anyway, but this is immediate.
+            leftPanel.refreshCurrentDirectory()
+            rightPanel.refreshCurrentDirectory()
+            refreshPanesShowingRewrittenArchives(in: record)
+            followSearchHitRenames(in: record, report: report)
+            // A reverted move puts a vault's image back where it was, so the saved list has to
+            // come back with it. The record names both ends and the disk decides which one is
+            // real, so undo needs no inverse of its own — and a partial revert still lands
+            // each vault on wherever its own image actually ended up.
+            followVaultImageMoves(in: record)
+            switch direction {
+            case .undo:
+                presentUndoOutcome(record: record, report: report, administrator: administrator)
+            case .redo:
+                presentRedoOutcome(record: record, report: report, administrator: administrator)
             }
+        case let .selection(change):
+            applySelectionChange(change)
         }
     }
 
-    func redoLastOperation() {
-        Task {
-            switch await undoController.redo() {
-            case .none:
-                return
-            case let .fileOperation(record, report):
-                leftPanel.refreshCurrentDirectory()
-                rightPanel.refreshCurrentDirectory()
-                refreshPanesShowingRewrittenArchives(in: record)
-                followSearchHitRenames(in: record, report: report)
-                followVaultImageMoves(in: record)
-                presentRedoOutcome(record: record, report: report)
-            case let .selection(change):
-                applySelectionChange(change)
-            }
-        }
+    /// The administrator dialog for an undo or a redo that needs root (PLAN.md §M40 Slice 5): Slice
+    /// 4's, with the command to copy, under a title saying which. The user pressed the key and is
+    /// waiting, so with no window it runs modal (`runSheet`).
+    private func askAdministrator(
+        _ batch: EscalatedAttributeBatch,
+        _ direction: UndoDirection
+    ) async -> Bool {
+        let alert = AttributeBatchEscalation.alert(
+            for: batch, title: AdministratorEscalationAlert.title(for: direction)
+        )
+        return await alert.runSheet(over: window) == .alertFirstButtonReturn
     }
 
     /// Put every search hit an undone or redone rename reached where it now is, in both panes.
@@ -157,8 +172,17 @@ extension BrowserWindowController {
     /// Tell the user only when the undo was less than complete: a clean reversal is silent
     /// (the panes already reflect it). Non-reversible parts of the original operation and
     /// steps that couldn't be applied are both surfaced, never dropped silently.
-    private func presentUndoOutcome(record: UndoRecord, report: UndoReport) {
-        guard record.nonReversibleCount > 0 || !report.succeeded else { return }
+    ///
+    /// The items an administrator run left as they were get a line of their own, with the tools'
+    /// own words, since the journal's sentence for a failed step cannot carry them.
+    private func presentUndoOutcome(
+        record: UndoRecord,
+        report: UndoReport,
+        administrator: AttributeBatchEscalation.Result?
+    ) {
+        let leftByAdministrator = administrator?.outcome.unchanged.count ?? 0
+        guard record.nonReversibleCount > 0 || !report.succeeded || leftByAdministrator > 0
+        else { return }
 
         var lines: [String] = []
         if record.nonReversibleCount > 0 {
@@ -167,6 +191,12 @@ extension BrowserWindowController {
                 String(
                     localized: "\(overwrote) items overwrote existing files and can’t be restored."
                 )
+            )
+        }
+        if let administrator, leftByAdministrator > 0 {
+            let reason = administrator.reason
+            lines.append(
+                String(localized: "\(leftByAdministrator) items couldn’t be put back: \(reason)")
             )
         }
         if !report.succeeded {
@@ -187,18 +217,30 @@ extension BrowserWindowController {
     /// Redo's outcome. Unlike undo, `nonReversibleCount` is irrelevant here — redo re-applies
     /// the operation, it doesn't try to restore anything — so only the steps that couldn't be
     /// re-applied are surfaced. A clean redo is silent.
-    private func presentRedoOutcome(record: UndoRecord, report: UndoReport) {
-        guard !report.succeeded else { return }
-        let count = report.failures.count
-        let reason = leftPanel.describe(report.failures[0].error)
-        let line = String(localized: "\(count) items couldn’t be re-applied: \(reason)")
+    private func presentRedoOutcome(
+        record: UndoRecord,
+        report: UndoReport,
+        administrator: AttributeBatchEscalation.Result?
+    ) {
+        var lines: [String] = []
+        if let administrator, !administrator.outcome.unchanged.isEmpty {
+            let count = administrator.outcome.unchanged.count
+            let reason = administrator.reason
+            lines.append(String(localized: "\(count) items couldn’t be re-applied: \(reason)"))
+        }
+        if !report.succeeded {
+            let count = report.failures.count
+            let reason = leftPanel.describe(report.failures[0].error)
+            lines.append(String(localized: "\(count) items couldn’t be re-applied: \(reason)"))
+        }
+        guard !lines.isEmpty else { return }
         let action = LocalizedCatalog.title(for: record.label)
         presentIssues(
             title: String(
                 localized: "Redo \(action) finished with issues",
                 comment: "Alert title after a partial redo. %@ is the translated action name."
             ),
-            lines: [line]
+            lines: lines
         )
     }
 

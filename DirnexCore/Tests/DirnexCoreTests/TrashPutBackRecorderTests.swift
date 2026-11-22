@@ -44,6 +44,7 @@ struct TrashPutBackRecorderTests {
     @Test("a trash with no database gets one")
     func createsAStore() throws {
         let trash = try Self.temporaryTrash()
+        defer { try? FileManager.default.removeItem(at: trash.deletingLastPathComponent()) }
         let origin = TrashOrigin(directory: .local("/Users/oleg/Documents"), name: "report.pdf")
 
         #expect(
@@ -64,6 +65,7 @@ struct TrashPutBackRecorderTests {
     @Test("a stamped landing name still records the name to restore under")
     func recordsTheOriginalName() throws {
         let trash = try Self.temporaryTrash()
+        defer { try? FileManager.default.removeItem(at: trash.deletingLastPathComponent()) }
         let origin = TrashOrigin(directory: .local("/Users/oleg/Documents"), name: "report.pdf")
 
         TrashPutBackRecorder.record(
@@ -79,6 +81,7 @@ struct TrashPutBackRecorderTests {
     @Test("a second item is added beside the first, not instead of it")
     func keepsEarlierRecords() throws {
         let trash = try Self.temporaryTrash()
+        defer { try? FileManager.default.removeItem(at: trash.deletingLastPathComponent()) }
         let documents = VFSPath.local("/Users/oleg/Documents")
 
         TrashPutBackRecorder.record(
@@ -101,6 +104,7 @@ struct TrashPutBackRecorderTests {
     @Test("records the trash already held are all still there afterwards")
     func preservesFindersOwnRecords() throws {
         let trash = try Self.temporaryTrash()
+        defer { try? FileManager.default.removeItem(at: trash.deletingLastPathComponent()) }
         let store = trash.appendingPathComponent(TrashPutBack.storeName)
         try fixture().write(to: store)
         let before = try DSStoreReader.entries(in: Data(contentsOf: store))
@@ -120,6 +124,7 @@ struct TrashPutBackRecorderTests {
     @Test("re-using a name replaces its record rather than doubling it")
     func replacesAStaleRecord() throws {
         let trash = try Self.temporaryTrash()
+        defer { try? FileManager.default.removeItem(at: trash.deletingLastPathComponent()) }
         let landed = trash.appendingPathComponent("notes.txt")
 
         TrashPutBackRecorder.record(
@@ -145,6 +150,7 @@ struct TrashPutBackRecorderTests {
     @Test("a database that cannot be read is left exactly as it was")
     func refusesToOverwriteAnUnreadableStore() throws {
         let trash = try Self.temporaryTrash()
+        defer { try? FileManager.default.removeItem(at: trash.deletingLastPathComponent()) }
         let store = trash.appendingPathComponent(TrashPutBack.storeName)
         let garbage = Data("Bud1 but not really, and certainly not a B-tree".utf8)
         try garbage.write(to: store)
@@ -161,6 +167,7 @@ struct TrashPutBackRecorderTests {
     @Test("an origin that cannot be expressed for this trash writes nothing")
     func refusesAnUnrecordableOrigin() throws {
         let trash = try Self.temporaryTrash()
+        defer { try? FileManager.default.removeItem(at: trash.deletingLastPathComponent()) }
 
         let wrote = TrashPutBackRecorder.record(
             TrashOrigin(
@@ -188,6 +195,7 @@ struct TrashPutBackRecorderTests {
     @Test("a database that cannot be read at all is not mistaken for one that is not there")
     func refusesWhenTheStoreCannotBeRead() throws {
         let trash = try Self.temporaryTrash()
+        defer { try? FileManager.default.removeItem(at: trash.deletingLastPathComponent()) }
         let store = trash.appendingPathComponent(TrashPutBack.storeName)
         try fixture().write(to: store)
         try FileManager.default.setAttributes([.posixPermissions: 0], ofItemAtPath: store.path)

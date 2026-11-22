@@ -23,10 +23,12 @@ final class ConnectServerForm: NSObject {
     // Protocol picker — a dropdown listing SMB, SFTP, FTP in that order.
     private let protocolControl = NSPopUpButton(frame: .zero, pullsDown: false)
 
-    // SFTP fields.
+    // SFTP fields. The host and key placeholders are example values, so not text to translate.
+    // swiftlint:disable:next bare_ui_literal
     private let sftpHost = ConnectFormFactory.textField(placeholder: "example.com")
     private let sftpPort = ConnectFormFactory.textField(placeholder: "22")
     private let sftpUser = ConnectFormFactory.textField(placeholder: ConnectText.userHint)
+    // swiftlint:disable:next bare_ui_literal
     private let keyFile = ConnectFormFactory.textField(placeholder: "~/.ssh/id_ed25519")
     private let sftpSecret = ConnectFormFactory.secureField(placeholder: ConnectText.passwordHint)
 

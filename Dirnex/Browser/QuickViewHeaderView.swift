@@ -29,6 +29,9 @@ struct QuickViewCaption: Equatable {
     /// says beside the position so a picture that changes on its own does not look like a fault. Set
     /// by the window, which runs the show.
     var isSlideshowRunning = false
+    /// Where the player is in a movie or a sound, and what the file holds (PLAN.md §M42 ▸ Slice 2), or
+    /// `nil` for every other file. Set by the surface, which owns the player.
+    var media: QuickViewMediaReadout?
 
     /// "3 of 42" — the position half of the header, rendered beside the name.
     var positionText: String {
@@ -39,6 +42,24 @@ struct QuickViewCaption: Equatable {
     }
 }
 
+/// What the header says about a movie or a sound (PLAN.md §M42 ▸ Slice 2). AVKit's own controls fade
+/// while the pointer is away from the player, so in a session at the keyboard this is the only thing on
+/// screen that says whether the file is playing and where it has got to.
+struct QuickViewMediaReadout: Equatable {
+    let isPlaying: Bool
+    /// "0:42 / 1:35:20" (`MediaTimecode.readout`).
+    let time: String
+    /// "2560×1440 · H.264 · AAC" (`MediaSummary.facts`), empty while nothing is known.
+    let facts: String
+    /// What the facts' tooltip says, when it says more than the facts: a Matroska file's sound tracks
+    /// (PLAN.md §M42 ▸ Slice 4).
+    var detail: String?
+    /// The file's sounds, for the header's menu, when more than one of them plays (▸ Sound tracks), and
+    /// the one playing.
+    var sounds: [QuickViewSoundTrack] = []
+    var playingSound: UInt64?
+}
+
 /// The name-and-position strip a Quick View draws across its top, with the × that closes the preview
 /// after the name. A vibrant bar rather than a flat one because it sits over arbitrary content — a
 /// white page in full window, a photo bled to the edges in full screen — where any fixed color is
@@ -47,8 +68,10 @@ struct QuickViewCaption: Equatable {
 final class QuickViewHeaderView: NSVisualEffectView {
     static let height: CGFloat = 30
 
-    private let nameLabel = NSTextField(labelWithString: "")
-    private let positionLabel = NSTextField(labelWithString: "")
+    /// Internal, as is the position, for the media readout's constraints in
+    /// `QuickViewHeaderView+Media`.
+    let nameLabel = NSTextField(labelWithString: "")
+    let positionLabel = NSTextField(labelWithString: "")
     /// "▶ Slideshow" just before the position while a show runs, nothing otherwise; a click stops the
     /// show, as ⇧⌘S does (PLAN.md §M39 ▸ Slice 16). Internal, for the tests.
     let slideshowButton = NSButton()
@@ -57,6 +80,25 @@ final class QuickViewHeaderView: NSVisualEffectView {
     /// Keeps the close button clear of `slideshowButton`, and is active only while the mark is shown:
     /// a hidden view still takes part in layout, and would cut a long name short for nothing.
     private var closeClearsSlideshow: NSLayoutConstraint?
+    /// "▶ 0:42 / 1:35:20" at the leading edge, where a page's styles go, over a movie or a sound; a
+    /// click plays or pauses as ⌘P does. Internal, for the tests.
+    let playbackButton = NSButton()
+    /// "2560×1440 · H.264 · AAC" before the position over a movie or a sound. Internal, for the tests.
+    let factsLabel = NSTextField(labelWithString: "")
+    /// What a click on `playbackButton` does. Set by the surface, which owns the player.
+    var onTogglePlayback: (() -> Void)?
+    /// "🔈 English ⌄" after the readout when a movie has more than one sound to play; a click lists
+    /// them (PLAN.md §M42 ▸ Sound tracks). Internal, for the tests, as is the menu it opens.
+    let soundButton = NSButton()
+    let soundMenu = NSMenu()
+    /// What a pick in `soundMenu` does, with the sound's `id`. Set by the surface, which owns the player.
+    var onPickSound: ((UInt64) -> Void)?
+    /// The sounds the menu was last built from, so the readout's tick, four a second, rebuilds it only
+    /// when they change.
+    var shownSounds: (sounds: [QuickViewSoundTrack], playing: UInt64?) = ([], nil)
+    /// The constraints that keep the name and the close button clear of the two, active only while
+    /// each is shown, for the reason `closeClearsSlideshow` is.
+    var mediaConstraints = QuickViewHeaderMediaConstraints()
     /// "1 Source · 2 Page" for a file that offers both, nothing for every other file. The only place
     /// the two keys announce themselves, so it names *both* and dims the one you are not in rather
     /// than naming only the alternative — which reads as a label for what you are looking at.
@@ -95,6 +137,7 @@ final class QuickViewHeaderView: NSVisualEffectView {
             slideshowButton.isHidden = !showsSlideshow
             closeClearsSlideshow?.isActive = showsSlideshow
             showStyles(of: caption)
+            showMedia(of: caption)
         }
     }
 
@@ -110,6 +153,9 @@ final class QuickViewHeaderView: NSVisualEffectView {
         buildLabels()
         buildCloseButton()
         buildSlideshowButton()
+        buildMediaReadout()
+        // A surface opened on `..` gets no caption, and its strip drew AppKit's "Button" title.
+        showStyles(of: nil)
     }
 
     @available(*, unavailable)
@@ -129,9 +175,10 @@ final class QuickViewHeaderView: NSVisualEffectView {
             label.translatesAutoresizingMaskIntoConstraints = false
             addSubview(label)
         }
-        // The name yields first: it is the one label that can be arbitrarily long, and the
-        // position readout is short, fixed-width and useless when clipped.
-        nameLabel.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+        // The name yields before the position and the styles: it is the one label that can be
+        // arbitrarily long, and the position readout is short and useless when clipped.
+        let namePriority = QuickViewHeaderPriority.name
+        nameLabel.setContentCompressionResistancePriority(namePriority, for: .horizontal)
         NSLayoutConstraint.activate([
             heightAnchor.constraint(equalToConstant: Self.height),
             nameLabel.centerXAnchor.constraint(equalTo: centerXAnchor),
@@ -280,6 +327,19 @@ extension QuickViewHeaderView {
         noJavaScriptLabel.font = Self.styleFont
         noJavaScriptLabel.textColor = .tertiaryLabelColor
         styleStrip.addArrangedSubview(noJavaScriptLabel)
+        // Short of room the strip gives way rather than widening the pane (`QuickViewHeaderPriority`).
+        styleStrip.setClippingResistancePriority(QuickViewHeaderPriority.strip, for: .horizontal)
+        for view in styleStrip.arrangedSubviews {
+            view.setContentCompressionResistancePriority(
+                QuickViewHeaderPriority.styles,
+                for: .horizontal
+            )
+        }
+        noJavaScriptLabel.setContentCompressionResistancePriority(
+            QuickViewHeaderPriority.noJavaScriptMark,
+            for: .horizontal
+        )
+        noJavaScriptLabel.lineBreakMode = .byTruncatingTail
         styleStrip.translatesAutoresizingMaskIntoConstraints = false
         addSubview(styleStrip)
     }
@@ -289,6 +349,7 @@ extension QuickViewHeaderView {
         let button = QuickViewStyleButton()
         button.identifier = NSUserInterfaceItemIdentifier(style.rawValue)
         button.isBordered = false
+        button.lineBreakMode = .byTruncatingTail
         // A click must not take focus: the arrow keys keep driving the file list under the preview.
         button.refusesFirstResponder = true
         return button

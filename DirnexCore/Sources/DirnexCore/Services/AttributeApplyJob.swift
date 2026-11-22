@@ -117,15 +117,34 @@ public struct AttributeApplyOutcome: Sendable, Equatable {
     /// Whether the run stayed inside ``AttributeApplyJob/journalLimit`` and can be reversed.
     public let isUndoable: Bool
 
+    /// The items the run left because their change needs root, in the order it would have applied
+    /// them (deepest first). Each is also among the report's failures, as
+    /// `attributeChangeNeedsAdministrator`; this is the list the report offers to change as an
+    /// administrator (PLAN.md §M40 Slice 4), so it keeps what that needs and no more.
+    public let rootOnly: [RootOnlyItem]
+
+    /// One item the run left for root: where it is, and its kind, which decides the ACL it gets.
+    public struct RootOnlyItem: Sendable, Equatable {
+        public let path: VFSPath
+        public let kind: FileEntry.Kind
+
+        public init(path: VFSPath, kind: FileEntry.Kind) {
+            self.path = path
+            self.kind = kind
+        }
+    }
+
     public init(
         changed: [UndoRecord.AttributeBatchEntry],
         changedCount: Int,
         visitedCount: Int,
-        isUndoable: Bool
+        isUndoable: Bool,
+        rootOnly: [RootOnlyItem] = []
     ) {
         self.changed = changed
         self.changedCount = changedCount
         self.visitedCount = visitedCount
         self.isUndoable = isUndoable
+        self.rootOnly = rootOnly
     }
 }

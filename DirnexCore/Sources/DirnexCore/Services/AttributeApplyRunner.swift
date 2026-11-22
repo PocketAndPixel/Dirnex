@@ -136,6 +136,7 @@ private final class Run {
     private var journaled: [UndoRecord.AttributeBatchEntry] = []
     private var overJournalLimit = false
     private var failures: [OperationItemFailure] = []
+    private var rootOnly: [AttributeApplyOutcome.RootOnlyItem] = []
     private var wasCancelled = false
     private var currentItem: VFSPath?
     private var lastEmit = Date.distantPast
@@ -193,44 +194,26 @@ private final class Run {
     /// An item that needs root is a **failure, not an abort**: a recursion crosses items the user
     /// may not own, and stopping the whole run at the first one would leave the tree half-changed
     /// with no way to say where it got to. Collect it, name it, carry on — the queue's own default
-    /// for a per-item error, and the report lists them at the end.
+    /// for a per-item error, and the report lists them at the end. It is also kept, in application
+    /// order, as ``AttributeApplyOutcome/rootOnly``, which is what the report offers to change as an
+    /// administrator (PLAN.md §M40 Slice 4).
     private func apply(to item: FileEntry) {
         do {
-            let reading = try FileAttributeIO.read(at: item.path)
-            let current = reading.attributes
-            let diff = job.patch.diff(against: current)
+            let change = try job.change(at: item.path, kind: item.kind)
+            guard !change.isEmpty else { return }
 
-            // The ACL is adjusted to this item's kind *before* anything is compared, so a file that
-            // would receive a directory's list unchanged counts as "already matching" whenever the
-            // adjusted list is what it already has — no write, no journal entry, no undo step.
-            let desiredACL = job.accessControlList?.adjusted(for: item.kind)
-            let existingACL = desiredACL == nil
-                ? nil
-                : try? AccessControlListIO.read(at: item.path, actsOnLink: reading.isSymlink)
-            let aclChanges = desiredACL != nil && desiredACL != existingACL
-
-            guard !diff.isEmpty || aclChanges else { return }
-
-            let reasons = AttributePrivilege.reasons(
-                for: diff, current: current, actor: actor, changesAccessControlList: aclChanges
-            )
-            if reasons.first != nil {
+            if !change.reasons(for: actor).isEmpty {
                 failures.append(.init(
                     path: item.path,
                     error: .unsupported(.attributeChangeNeedsAdministrator(name: item.name))
                 ))
+                rootOnly.append(.init(path: item.path, kind: item.kind))
                 return
             }
 
-            let plan = AttributeChangePlan(
-                diff: diff,
-                current: current,
-                actsOnLink: reading.isSymlink,
-                accessControlList: aclChanges ? desiredACL : nil
-            )
-            try FileAttributeIO.apply(plan, to: item.path)
+            try FileAttributeIO.apply(change.plan, to: item.path)
             changedCount += 1
-            record(item: item, reading: reading, diff: diff, oldACL: existingACL, newACL: desiredACL)
+            record(change)
         } catch let error as VFSError {
             failures.append(.init(path: item.path, error: error))
         } catch {
@@ -245,28 +228,14 @@ private final class Run {
     /// undoing an arbitrary slice of a tree leaves it in a state nobody can reason about, so over the
     /// limit there is no record at all. Releasing the array as soon as the limit is crossed also
     /// keeps a 200 000-item run from carrying 47 MB of undo material it will never use.
-    private func record(
-        item: FileEntry,
-        reading: FileAttributeIO.Reading,
-        diff: AttributeDiff,
-        oldACL: AccessControlList?,
-        newACL: AccessControlList?
-    ) {
+    private func record(_ change: AttributeItemChange) {
         guard !overJournalLimit else { return }
         guard journaled.count < job.journalLimit else {
             overJournalLimit = true
             journaled = []
             return
         }
-        let lists: (old: AccessControlList, new: AccessControlList)? =
-            if let newACL { (old: oldACL ?? AccessControlList(), new: newACL) } else { nil }
-        journaled.append(.init(
-            path: item.path,
-            actsOnLink: reading.isSymlink,
-            old: reading.attributes,
-            new: job.patch.apply(to: reading.attributes),
-            accessControlLists: lists
-        ))
+        journaled.append(change.batchEntry(new: job.patch.apply(to: change.reading.attributes)))
     }
 
     // MARK: - Progress and report
@@ -296,7 +265,8 @@ private final class Run {
                 changed: journaled,
                 changedCount: changedCount,
                 visitedCount: visitedItems,
-                isUndoable: !overJournalLimit
+                isUndoable: !overJournalLimit,
+                rootOnly: rootOnly
             )
         )
     }

@@ -36,6 +36,12 @@ struct QuickViewGoProRAWTests {
         return url
     }
 
+    /// Removes what `file(named:bytes:)` made, the folder with the file in it. The temp folder is the
+    /// user's own and nothing empties it between runs.
+    private static func remove(_ url: URL) {
+        try? FileManager.default.removeItem(at: url.deletingLastPathComponent())
+    }
+
     // MARK: - Routing
 
     @Test("a GoPro RAW reaches the image backend instead of Quick Look")
@@ -44,6 +50,7 @@ struct QuickViewGoProRAWTests {
         // which does not merely fail to preview it — measured, `qlmanage` sat on one for 45 s and
         // produced nothing, where an ARW and a DNG each produced a thumbnail in 0.5 s.
         let url = try Self.file(named: "GOPR4581.GPR", bytes: Self.tiffHeader)
+        defer { Self.remove(url) }
 
         #expect(QuickViewPreviewView.isGoProRAW(url))
         #expect(QuickViewPreviewView.isImage(url))
@@ -53,6 +60,7 @@ struct QuickViewGoProRAWTests {
     func routesEitherSpelling() throws {
         for name in ["GOPR4581.GPR", "gopr4581.gpr"] {
             let url = try Self.file(named: name, bytes: Self.tiffHeader)
+            defer { Self.remove(url) }
             #expect(QuickViewPreviewView.isGoProRAW(url), "\(name) should route")
         }
     }
@@ -68,6 +76,7 @@ struct QuickViewGoProRAWTests {
             ("an empty file", Data())
         ] {
             let url = try Self.file(named: "drawing.gpr", bytes: bytes)
+            defer { Self.remove(url) }
             #expect(
                 !QuickViewPreviewView.isGoProRAW(url),
                 "\(label) should not route as a GoPro RAW"
@@ -81,6 +90,7 @@ struct QuickViewGoProRAWTests {
     func headerAloneDoesNotClaimAFile() throws {
         for name in ["scan.tiff", "photo.jpg", "notes.txt"] {
             let url = try Self.file(named: name, bytes: Self.tiffHeader)
+            defer { Self.remove(url) }
             #expect(!QuickViewPreviewView.isGoProRAW(url), "\(name) must not take the helper route")
         }
     }
@@ -91,6 +101,7 @@ struct QuickViewGoProRAWTests {
     @Test("a GoPro RAW does not take the Core Image route")
     func doesNotTakeTheCoreImageRoute() throws {
         let url = try Self.file(named: "GOPR4581.GPR", bytes: Self.tiffHeader)
+        defer { Self.remove(url) }
 
         #expect(!QuickViewPreviewView.isRAW(url))
     }
@@ -100,6 +111,7 @@ struct QuickViewGoProRAWTests {
     func ordinaryImagesUnaffected() throws {
         for name in ["photo.jpg", "shot.png", "scan.tiff"] {
             let url = try Self.file(named: name, bytes: Self.tiffHeader)
+            defer { Self.remove(url) }
             #expect(QuickViewPreviewView.isImage(url), "\(name) should still be an image")
         }
     }
@@ -138,6 +150,9 @@ struct QuickViewGoProRAWTests {
     )
     func decodesRealGoProFiles() throws {
         let url = Self.liveGoProFile
+        // The app purges its conversions as it quits, and the test host never quits that way, so
+        // each run left a 23 MB DNG in a folder of its own under the temp folder.
+        defer { GPRConverter.shared.purge() }
 
         let converted = try #require(
             GPRConverter.shared.decodableCopy(of: url),

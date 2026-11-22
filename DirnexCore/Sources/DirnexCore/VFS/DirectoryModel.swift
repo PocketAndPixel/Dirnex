@@ -17,6 +17,9 @@ public struct FileSort: Sendable, Hashable, Codable {
     public enum Key: String, Sendable, Hashable, CaseIterable, Codable {
         case name
         case size
+        /// The Date column: when each item was modified, or in Recents when it was last opened, since
+        /// the listing decides which date that column holds (``ListingDate``). Named for the first,
+        /// and kept that way because the raw value is what a tab persists.
         case modified
         case fileExtension
     }
@@ -242,7 +245,11 @@ public struct DirectoryModel: Sendable {
         if !showHidden {
             items = items.filter { !$0.isHidden }
         }
-        items.sort(by: Self.comparator(for: sort, sizes: directorySizes))
+        items.sort(by: Self.comparator(
+            for: sort,
+            sizes: directorySizes,
+            date: ListingDate(listing: listing.path)
+        ))
         sortedEntries = items
         loweredNames = nil
         refilter()
@@ -338,17 +345,19 @@ public struct DirectoryModel: Sendable {
 
     /// Builds the row-ordering predicate for a sort. Directory grouping (when on)
     /// wins over the key; the key's direction never moves directories below files.
-    /// Name is the stable tiebreaker so equal keys yield a deterministic order.
+    /// Name is the stable tiebreaker so equal keys yield a deterministic order. `date` is the date the
+    /// Date column holds in this listing, which `.modified` orders on.
     static func comparator(
         for sort: FileSort,
-        sizes: [VFSPath: Int64] = [:]
+        sizes: [VFSPath: Int64] = [:],
+        date: ListingDate = .modified
     ) -> (FileEntry, FileEntry) -> Bool {
         { lhs, rhs in
             if sort.directoriesFirst, lhs.isDirectoryLike != rhs.isDirectoryLike {
                 return lhs.isDirectoryLike
             }
 
-            var result = compare(lhs, rhs, key: sort.key, sizes: sizes)
+            var result = compare(lhs, rhs, key: sort.key, sizes: sizes, date: date)
             if result == .orderedSame, sort.key != .name {
                 result = lhs.name.localizedStandardCompare(rhs.name)
             }
@@ -363,7 +372,8 @@ public struct DirectoryModel: Sendable {
         _ lhs: FileEntry,
         _ rhs: FileEntry,
         key: FileSort.Key,
-        sizes: [VFSPath: Int64]
+        sizes: [VFSPath: Int64],
+        date: ListingDate
     ) -> ComparisonResult {
         switch key {
         case .name:
@@ -374,7 +384,12 @@ public struct DirectoryModel: Sendable {
                 effectiveByteSize(of: rhs, sizes: sizes)
             )
         case .modified:
-            return compareValues(lhs.modificationDate, rhs.modificationDate)
+            // A row with no date to show sorts as the oldest, where `FileEntry.unknownDate` always
+            // put one.
+            return compareValues(
+                date.date(of: lhs) ?? FileEntry.unknownDate,
+                date.date(of: rhs) ?? FileEntry.unknownDate
+            )
         case .fileExtension:
             let byExt = lhs.fileExtension.localizedStandardCompare(rhs.fileExtension)
             return byExt == .orderedSame ? lhs.name.localizedStandardCompare(rhs.name) : byExt

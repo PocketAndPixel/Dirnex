@@ -11,11 +11,25 @@ public struct MountTableEntry: Sendable, Hashable {
     /// simulator runtime, and a vault attached hidden. The sidebar's Volumes section lists exactly
     /// these.
     public let isBrowsable: Bool
+    /// The file system's type, as `mount` prints it: `apfs`, `smbfs`, `nullfs`.
+    public let fileSystemType: String
+    /// What was mounted (`f_mntfromname`): a device such as `/dev/disk3s1` for a disk, and for a
+    /// share the URL it was mounted from without its scheme, `//olegasd@nas/media` (``SMBMountSource``).
+    /// Empty when the kernel's spelling is not UTF-8.
+    public let source: String
 
-    public init(mountPoint: String, isLocal: Bool, isBrowsable: Bool = true) {
+    public init(
+        mountPoint: String,
+        isLocal: Bool,
+        isBrowsable: Bool = true,
+        fileSystemType: String = "",
+        source: String = ""
+    ) {
         self.mountPoint = mountPoint
         self.isLocal = isLocal
         self.isBrowsable = isBrowsable
+        self.fileSystemType = fileSystemType
+        self.source = source
     }
 }
 
@@ -37,18 +51,24 @@ public enum MountTable {
         guard count > 0, let buffer else { return [] }
         defer { free(buffer) }
         return UnsafeBufferPointer(start: buffer, count: Int(count)).compactMap { entry in
-            var mountPoint = entry.f_mntonname
+            var entry = entry
             // A mount point the kernel spells in something other than UTF-8 is one no `VFSPath` can
             // name either, so it could never be the answer for one.
-            let path = withUnsafeBytes(of: &mountPoint) { bytes in
-                String(bytes: bytes.prefix { $0 != 0 }, encoding: .utf8)
-            }
-            guard let path else { return nil }
+            guard let path = utf8(&entry.f_mntonname) else { return nil }
             return MountTableEntry(
                 mountPoint: path,
                 isLocal: entry.f_flags & UInt32(MNT_LOCAL) != 0,
-                isBrowsable: entry.f_flags & UInt32(MNT_DONTBROWSE) == 0
+                isBrowsable: entry.f_flags & UInt32(MNT_DONTBROWSE) == 0,
+                fileSystemType: utf8(&entry.f_fstypename) ?? "",
+                source: utf8(&entry.f_mntfromname) ?? ""
             )
+        }
+    }
+
+    /// One of `statfs`'s fixed-size C strings, up to its NUL, or `nil` when it is not UTF-8.
+    private static func utf8<Field>(_ field: inout Field) -> String? {
+        withUnsafeBytes(of: &field) { bytes in
+            String(bytes: bytes.prefix { $0 != 0 }, encoding: .utf8)
         }
     }
 

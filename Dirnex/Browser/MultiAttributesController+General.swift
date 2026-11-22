@@ -55,7 +55,8 @@ extension MultiAttributesController {
                 """,
                 comment: "Info panel note explaining the multi-selection date checkboxes."
             )))
-        } else {
+        }
+        if !ownsEveryItem {
             rows.append(makeNotOwnerNote())
         }
 

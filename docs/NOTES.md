@@ -122,6 +122,12 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
 
 ## Swift 6 and concurrency
 
+- **A ternary choosing between two multi-statement `async throws` closures crashed the type
+  checker.** Seen 2026-11-19 building a probe: `let shell: Transport = flag ? { log(…); try await
+  A.run($0, privileged: false) } : { try await A.run($0) }`, with `Transport` a `@Sendable ([String])
+  async throws -> Void` typealias, failed with "failed to produce diagnostic for expression; please
+  submit a bug report" and nothing else. The same two closures assigned in an `if`/`else` compiled.
+  Reach for `if`/`else` before reading anything into that message.
 - **Block/token `NotificationCenter` observers can't be torn down from a `nonisolated deinit`**
   — the `[NSObjectProtocol]` token array is non-Sendable. Use selector-based observers plus
   `removeObserver(self)`.
@@ -396,6 +402,11 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
   the assertion its point: here it would have let a stroke drawn inside the field through. With the
   scale pinned at 2x, a stroke moved 1 pt inside still fails the test.
 
+- **A `#require` inside another `#require` does not compile.** Seen 2026-11-20:
+  `try #require(try file.cluster(from: #require(file.firstClusterOffset)))` failed with "recursive
+  expansion of macro 'require'", and the error came out among dozens of "SwiftCompile … failed" lines
+  for other files in the same batch, none of them at fault. Take the inner value into a `let` first.
+
 ### Windows, sheets and key events in a test
 
 - **Showing a preview window does not guarantee a text layout before the next test poll.** Measured
@@ -557,8 +568,23 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
   start it on a small folder of the fixture's own: a loaded view asks `RowIconLoader.shared` for every row it
   lists, which the temporary directory has hundreds of.
 
+- **A hosted SwiftUI view's text can't be read back in the test host.** Seen 2026-11-19 on
+  `LicenseSettingsView` in an `NSHostingView`: the hosting view answered `AXGroup` with **0**
+  accessibility children, so a walk of labels and values found nothing, before and after
+  `orderFront` and `displayIfNeeded()`. SwiftUI's `Text` is no `NSTextField` either. Its `Button`s
+  are, when built as `SettingsButton`, so a test tells a view's states apart by the button titles
+  it draws (`LicenseRevocationAppTests.buttons(over:)`) and leaves the words to a live run.
+
 ### Waits, run loops and timing
 
+- **A test's "passed after" includes its wait for the main actor, so a slow figure is not a slow
+  child.** Seen 2026-11-18 (M40 Slice 4): the `@MainActor` tests that run an `osascript` took 30–47 s
+  in full runs against well under a second alone, and each pair finished within 10 ms of each other.
+  Moving `AdministratorShell` from `DispatchQueue.global` to a serial queue of its own (the rule
+  `ProcessWaiting.pipeQueue` records) left them at 33–42 s, so the child was never the wait.
+  `PanelPassiveRefreshTests` failed 3 of 4 full runs while those tests ran from the global queue, 0 of
+  2 with them skipped and 0 of 2 after the move. That is too few runs to name a cause; the move stays
+  for the rule's sake.
 - **Await a gesture through the decision the test needs to see.** In a full run on 2026-11-17,
   the ⇧F4 create task waited 19.1 s for its first main-actor turn and 17.2 s for its next turn
   after the first `stat`. The backend answered each call in under 0.1 ms. A sample of the main
@@ -682,6 +708,12 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
     none of the main actor's work (the stack in the log showed it). And a wait that gives up keeps
     the pane, the host and the fixtures alive for the rest of the run, so the late work ends quietly
     instead of failing somewhere nobody is looking.
+  - **A walk search is the same kind of flow.** Met 2026-11-18 in `UnindexedSearchTests`, which passed
+    alone in 0.25 s. In a full run, its first walk landed after the test's 30 s wait, and its late
+    results tab satisfied the wait on the second walk. The test returned and its `defer` deleted the
+    folder while the second walk was still going. That walk failed to list the folder, and the window-less `runModal()` alert held the run until it was killed five minutes
+    later. The suite now waits 120 s and removes the folder only after a wait that succeeded; a wait
+    that gives up keeps the pane. With the budget set to zero, the run recorded the issue and ended.
 - **A wait on a value the code under test sets *before* doing the work is a wait on nothing, and it
   makes a control read as inert.** The Synchronize sheet assigns its comparison synchronously on the
   way in and only then derives the rows, so `settleUntil { sheet.comparison == .content }` is
@@ -1088,6 +1120,13 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
 
 ### Negative controls
 
+- **A control harness that restores from somewhere other than where it saved restores nothing, and
+  the controls pile up.** Met 2026-11-20 on M42 Slice 4: a shell function saved its backup with
+  `cp f /tmp/ctl.bak || cp f "$TMPDIR/ctl.bak"` and restored from `$TMPDIR`, the first `cp` had
+  succeeded, so every restore failed with a line nobody read, and seven mutations stacked. Each
+  control's own test still went red the moment its mutation went in, so the run was readable, but no
+  control ran alone. Save and restore through one variable, `cmp` the file against the backup after
+  restoring, and print the result.
 - **A bare `return` on its own line in a `Void` function returns the line below it.** Swift reads
   `return` followed by an expression on the next line as `return <that expression>`, and an
   assignment is a `Void` expression, so a control written as `return` above the line it meant to
@@ -1234,6 +1273,14 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
   because the reflex is `git checkout -- <dir>`, which in this repo throws the whole slice away
   rather than the control. And a run killed by a timeout never reaches its own cleanup, so check the
   file's state afterwards rather than assuming the script finished.
+- **A control that passes can mean the fixture cannot show the fault, not that the code has none.**
+  Met 2026-11-20 on M42 Slice 5: with the Motion JPEG table insertion switched off, the app test that
+  decodes frames stripped of their Huffman tables still passed. Its frames were a flat grey with one
+  square, and the test compared one corner pixel, which VideoToolbox decodes the same with the wrong
+  tables. A probe over busy pictures at five sizes, 64×64 to 1920×1080, found every one decoding
+  differently without its tables. The fixture became blocks of colour and the test a fingerprint of
+  every pixel, and the control then failed it. When a control passes, ask what the fixture would look
+  like if the code were broken before blaming the control.
 
 ### Runs and assertions that prove nothing
 
@@ -1427,6 +1474,42 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
     folder goes (`window.contentViewController = nil`): no listings of the temp folder, 1 min 8 s of
     CPU, a worst stall of 17 ms. A temporary probe in `DirectoryLoader.model` logging any listing
     over 5 000 entries named the path, and one in `leaveVanishedFolder` named the fixture.
+    - **Met again 2026-11-19, in `PathRenameTests`, a day after it landed.** Its three panes sat
+      over real folders in `RetainedWindows` windows, and each test's `defer` removed the folder
+      with the pane still in place. Two of them climbed into the temp folder at 40 s and 45 s, and
+      a full run then listed it (77 000 entries) 225 times. The host used 1 761 CPU s, about 90 % of
+      everything the Mac used during the run, and the tests took 158 s. With `Rig.cleanUp()` taking
+      the pane out first, two runs used 80 CPU s each and took 64 s, with no listing of the temp
+      folder and the same 2 723 tests passing. The same two probes named it again. `RetainedWindows`
+      now states the rule in its doc comment, which is where a new test goes for a window.
+    - **The tell is a host that idles near one core and then holds every core.** Sampled with `ps`
+      once a second, the host used 10–16 CPU s per 10 s for its first 40 s and 110–170 after. Under
+      Time Profiler, 81 % of its CPU sat in `DirectoryModel.compare` under `DirectoryLoader.model`,
+      mostly lock waits in the sort. The suspects the slow run suggested cost almost nothing: 43
+      `WebContent` processes used 2.7 CPU s together, and `qlmanage` and `osascript` less. Sample
+      `mds` too, but only for a run that does not follow a build: Spotlight indexing the fresh
+      products added about 12 CPU s to the first run after one.
+- **The temp folder is the developer's own, and nothing empties it between runs.** Measured
+  2026-11-19: `$TMPDIR` held 76 966 entries (5.1 GB), nearly all fixture folders from earlier runs.
+  A full app run added about 88: 19 `ArchiveCreate-`, 17 `dirnex-handoff-`, 13 `gpr-routing-`, 11
+  `ArchiveRename-`, 8 `ArchiveWriterEncrypted-`, 7 `ArchiveUndoReach-`, 6
+  `DirnexArchiveSessionTests-`, 5 `dirnex-merge-offer-`, and one each of `dirnex-not-staged-` and
+  `Dirnex-GPR-`, the last a 23 MB DNG. `swift test` added 20: 10 `dnx-m26-`, 8 `dnx-m26s5-` and 2
+  `dirnex-tests-`. Two fixtures' doc comments said "Removed with the test's temp directory", and
+  there is no such directory. Each fixture now removes what it made. Most do it in a `defer` after
+  construction. A class suite whose `init` makes a folder for every test removes it in `deinit`
+  (`RemoteWriteBackMergeOfferTests`). The GoPro test calls `GPRConverter.shared.purge()`, which the
+  app runs as it quits and the test host never does. Afterwards three app runs and one core run left
+  none. The pile is what made the climbing pane above cost 1 761 CPU s; in a small folder the same
+  bug costs seconds and goes unseen. So emptying `$TMPDIR` fixes neither.
+  - **`TempTree.cleanup()` could not remove what the ACL tests leave on purpose.** Two of them end
+    with a `deny delete` ACL on their file. `removeItem` refuses it, and the `try?` hid the refusal.
+    The cleanup now clears the flags and the extended ACL on every entry, then tries again.
+  - **Count by birth time.** Comparing a listing taken before with one taken after misses nothing,
+    but it does not say who. Instead, fold the UUID out of each name born inside the run's window
+    (`os.lstat(...).st_birthtime`); that names each leaker and its rate in one pass. The toolchain
+    leaves its own `TemporaryDirectory.XXXXXX` folders, holding only `.keep-directory`, 6–8 at the
+    start of each `xcodebuild` or `swift` command. Nothing in the repo makes them.
 - **Reading a system attribute does not mean a test may write it.** Measured 2026-10-18 in the
   cloud-folder fixtures: `setxattr` on `com.apple.file-provider-domain-id` returned `EPERM`, even
   on a new owned directory outside `CloudStorage`. The same bytes under
@@ -1602,6 +1685,28 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
   `0 0 0 0` everywhere, and Quick Look faithfully returned a transparent thumbnail, so the test failed on
   the loader. Fill a `CGContext` in sRGB instead, and check a drawn fixture's pixels before the code under
   test sees it, so a bad fixture fails as itself.
+
+- **A real file too large to check in can be captured as the bytes a reader needs, with the gaps read
+  as a byte the format cannot start an element with.** Done 2026-11-20 for M42 Slice 3: the 10.5 GB
+  film became 51 KB of `Fixtures/Matroska/film.mkv.sparse`, holding its head, its cues, every element
+  and block header of its first cluster and the first eight bytes of each frame, at their real offsets
+  (`SparseCaptureSource`). The gaps read as zeros, and a zero is never the first byte of an EBML
+  header, so a reader that strays into bytes nobody captured fails instead of reading something
+  plausible. That caught a negative control nobody aimed at: making the reader always follow the film's
+  second `SeekHead`, which the capture leaves out, failed every film test at the open.
+  - **Expect numbers from a second implementation, and find a witness neither controls.** The expected
+    counts came from a separate walk in Python. The frames' first bytes are the witness: each laced
+    AC-3 frame must begin with `0B77` and each DTS frame with `7FFE8001`, which only the right lace
+    boundaries land on, and the walk's cluster count matched the 6 902 the film's own second
+    `SeekHead` lists.
+- **A movie fixture named `.ts` opens in AVFoundation or not by a rule nobody can see.** Probed
+  2026-11-22 for Quick View's hand-off between sizes, which needed a movie that takes the TypeScript
+  sniff's route: AVFoundation writes no transport stream, and the 60 s MP4 `QuickViewMediaFixtures`
+  writes, renamed `.ts` or `.mts`, failed to load with `-11800` (`'optm'`), with fast start on and with
+  its brand patched to `isom` alike. A 53 s camera MP4 renamed `.ts` loaded, and so did the Matroska
+  fixture, which the core would have played had AVFoundation refused it. So a `.ts` test holds on to
+  whichever player has the file (`QuickViewMediaHandOffTests`), and a test that needs AVFoundation's
+  own player keeps the honest extension.
 
 ### Live suites
 
@@ -3015,6 +3120,17 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
   the folder where the truth is a claim about the question. Drop such rows from the projection
   entirely, including from any pending-work set, or a row with no total is pending forever and
   gets re-queued on every render.
+- **A tab switched to before its first listing leaves the table drawing the tab it replaced.** The
+  panes share one `NSTableView` across their tabs, and only a reload asks the data source again, so
+  until the new tab's listing landed and `reloadEverything` ran, the previous tab's rows and path stayed
+  on screen under the new tab's chip. Seen 2026-11-19 opening a server into a new tab, where the listing
+  takes a second or more. Anything changed at activation that follows the listing showed against the old
+  rows too: the share list's Comment column of the time appeared over a local folder's files. A tab with
+  no listing now draws itself, empty, unless the table already shows its folder (`renderedPath`, set by
+  both reloads), and the status line stays blank until it lists. Not at the pane's first activation,
+  though, when nothing stale is on screen: drawing there synced the cursor before any listing, and four
+  suites whose panes set their rows before the view loads failed (a `..` cursor, sheets that never
+  attached). Change what follows the listing in the same pass as the reload, not at activation.
 
 #### A table of billions of rows
 
@@ -3567,6 +3683,39 @@ Measured 2026-11-08 for M37's byte view, whose table has a row for every 16 byte
   because the first solve after `setTabs` runs with every chip arranged, before `layout()` has
   hidden any. Keep the labels' compression resistance below the clipping resistance, so labels
   shorten before anything clips.
+- **A view whose constraints you do not own goes into a pane by frame, not by constraints.** Anything
+  pinned into a pane that wants a size above 250 moves the divider, and a hidden view keeps every
+  constraint it has. Quick View's surface stays in the pane, hidden, after the mode closes. So
+  `AVPlayerView`'s control bar (750 pt at 499, ▸ Previews: Quick Look, PDF and images) held a pane at
+  762 pt, and the movie card's preferred 280 pt at 750 held it at 312. Both held with the player off
+  screen and with Quick View closed, and neither `setPosition` nor Oleg's drag could narrow the pane.
+  With `translatesAutoresizingMaskIntoConstraints` on, an empty `autoresizingMask` and the frame set
+  in the parent's `layout()`, the child's constraints are a fixed width the engine is told, and a
+  want of 499 inside it breaks quietly rather than moving anything outside
+  (`QuickViewMediaView.layout`, 2026-11-20). An autoresizing mask of `.width` would not do: it ties
+  the child's trailing edge to its parent's, and the push goes up that constraint.
+  - **To find what holds a pane, ask the pane, not the view you suspect.** A temporary timer logging
+    the split's subview widths, and `constraintsAffectingLayout(for: .horizontal)` above priority 250
+    on each pane's view whenever they changed, named `AVMovableView.width == 750 priority:499` in the
+    first live run. Two in-process harness runs had found only the card's 312 pt, because AVKit had
+    not built its bar there.
+  - **A higher priority always wins, whatever the amounts.** The split holds each pane with four
+    constraints at 250 (`NSSplitView.PreferredSize` and `FallbackSize`, a pair a pane), and one
+    content-size constraint at 470 inside the pane still pushed it out rather than give up a point
+    (measured 2026-11-20). So neither a count of lower constraints nor a geometry that doubles a width
+    buys anything. In Quick View's header the centered name means the header needs twice its wider
+    side, and a first fix that set the strip at 470 and 490, reasoned as half that a point of header,
+    moved nothing. Anything in a pane that may give way sits below 250, and siblings below it give
+    way in priority order, the lowest wholly first (`QuickViewHeaderPriority`).
+  - **Press at 250.5 to test it.** A pane too wide to need squeezing passes whatever the priorities
+    are: the header's English styles fit even a 260 pt pane once "(no JavaScript)" has gone, so the
+    pane tests passed with the styles at 251. A width wanted at 250.5 is what every piece below the
+    panes must give way to, and it told 247 from 251: under 200 pt against 232
+    (`QuickViewHeaderWidthTests`).
+- **A `didSet` guarded by `!= oldValue` never runs for the first value.** Quick View's header derives
+  its strip from `caption` there, and a surface opened with the cursor on `..` is given `nil`, which
+  equals the initial `nil`, so the strip kept the state it was built in: every style button visible
+  with AppKit's own title, "Button". Put a view into its empty state in `init` (2026-11-20).
 
 ### Mouse, trackpad and animation
 
@@ -4089,6 +4238,183 @@ Measured 2026-11-08 for M37's byte view, whose table has a row for every 16 byte
     downscale is a second operation and it is the one being measured. (Core Image's own default output
     is that untagged `DeviceRGB`, so tag it explicitly or the preview's colour is whatever the display
     assumes.)
+- **What AVFoundation plays is decided by opening the file, not by its type.** Measured 2026-11-19 over a
+  sample of each common container (PLAN.md §M42): `public.avi` is among `AVURLAsset.audiovisualTypes()`
+  and an AVI holding H.264 is refused all the same, while Matroska, WebM and WMV are not on the list.
+  `asset.load(.isPlayable)` is the test, and it answers in milliseconds for a local file.
+  - **It reports nothing at all about a file it refuses.** Every refused sample failed `load(.tracks)`
+    with the same "Cannot Open" as `load(.duration)` (`-11828`, or `-11829` "may be damaged" for an AVI
+    holding H.264, which is not damaged). So a card naming what such a file holds reads its bytes
+    itself (`MediaContainer.sniff`), and its error code cannot tell an unsupported file from a broken one.
+  - **A periodic time observer also fires when playback starts or stops and when the time jumps**, as
+    its documentation says, so one observer keeps a readout of the place current through a seek
+    (`QuickViewMediaView.observeTime`, Slice 2). It hears of a start only once playback has begun,
+    though: in a full app run a test toggled play on a one-second clip, and the clip had played out
+    before the poll saw "playing". ⌘P now tells the readout itself, and the test plays a minute-long
+    clip.
+    - **Its call for the stop at the end comes before the stop.** Probed 2026-11-21 with a scratch
+      `AVPlayer` over a 3.99 s clip: the last periodic call came at 3.991 s with `rate` still 1.0,
+      then `rate` went to 0 32 ms later, with `didPlayToEndTime` and `timeControlStatus` beside it,
+      and no periodic call after. A readout fed by the observer alone kept "playing" under a stopped
+      clip, seen live the same day. A KVO on `rate` now tells it (`rateObservation`). This bullet's
+      first version said one observer was enough for the end too, which nothing had checked.
+  - **An `AVPlayerItem` reports no duration until its status is `.readyToPlay`**, even when the asset
+    it was made from has loaded its own. A seek that needs the length (Quick View's ⇧→ to the end) has
+    nothing to go to before then. A test that seeks right after putting the item up passes alone and
+    fails in a full run; wait for the status first.
+  - **AVKit's `.inline` controls fade out while the pointer is away**, and the elements stay in the
+    accessibility tree (a play/pause toggle and an `AXSlider` titled "timeline"), so a background
+    screenshot shows a bare picture with the controls still findable. A video's position can be read
+    from two zoomed captures a few seconds apart; the shell's `screencapture -l` needs Screen
+    Recording, which it does not have here. Use a clip with no audio track (`sample-1080p.mts` in
+    `~/swtest/video`) when a live run has to play something.
+  - **A control on a strip that is dark in both appearances still draws for the window's.** The
+    Matroska timeline is an `NSSlider` on black under the picture, and in the light appearance its
+    track and its played part were dark on black, so only the knob showed (seen live 2026-11-21,
+    M42). Give the strip `NSAppearance(named: .darkAqua)`, and a test can pin it through the slider's
+    `effectiveAppearance` in a window set to `.aqua`.
+  - **AVKit's inline control bar asks to be 750 pt wide at priority 499**, centered and at least 6 pt
+    in from each edge (`AVMovableView` inside `AVEventPassthroughView`, read live 2026-11-20). That
+    outranks a split item's holding priority, so an `AVPlayerView` pinned into a pane pushed the pane
+    out to 762 pt the moment a movie opened. It kept pushing while hidden, and no divider drag could
+    narrow the pane (▸ Views, layout and hit testing). `QuickViewMediaView` lays the player out by
+    frame. Given less room, the bar fits itself: at 302 pt it kept play, both times, the scrubber and
+    an overflow button, and moved the volume to a capsule at the top.
+  - **The bar is built only once the pointer has been over the player**, and the test host never builds
+    it. A live run with the pointer elsewhere never meets the 750 pt, so a check of the player's layout
+    passes whatever the code does. The first run of the fix "passed" exactly that way, with no
+    `AVMovableView` in the tree. A temporary probe that sent `mouseEntered(with:)` to the owner of every
+    tracking area under the player built it with no pointer at all. The regression test puts a
+    stand-in with the bar's constraints into the player (`QuickViewMediaWidthTests`).
+- **Matroska muxers leave out every element whose value is the default, so an absent element means its
+  default, not "unknown".** Read 2026-11-20 across mkvmerge 3.4, 6.8, 57 and 88, libwebm, Lavf and NCH
+  Prism (PLAN.md §M42 ▸ Slice 3). mkvmerge omits `Language` for an English track (default `eng`) and
+  `FlagDefault` for a default one (default 1), and libwebm writes no `Language` at all. mkvmerge 6.8
+  wrote an *empty* `ContentCompression` for every PGS subtitle track, and `ContentCompAlgo`'s default
+  is 0, zlib, so those tracks are compressed although nothing in the file says the word. RFC 8794 reads
+  an empty integer element as its default too (`EBMLReader.unsigned` answers `nil` for it).
+  - **Every muxer seen put `Info` and `Tracks` before the first cluster and the cues after the last,
+    named by a `SeekHead` at the start.** Positions in a `SeekHead` and in the cues count from the
+    segment's data, not the file. mkvmerge 3.4 also wrote a second `SeekHead` at the end of the film
+    naming each of its 6 902 clusters (121 KiB); it is worth reading only when the first left something
+    out (`MatroskaHead.followSeekHead`).
+  - **mkvmerge laces every audio track, eight frames to a block with fixed-size lacing, and gave the
+    film's DTS tracks no `DefaultDuration`**, so a laced DTS frame after the first has no time the
+    container states. Lavf writes every VP9 frame that carries alpha as a `BlockGroup`, where a key frame
+    is one naming no `ReferenceBlock`; the `SimpleBlock` key flag does not exist there.
+- **A Matroska file plays through Core Media's sample-buffer renderers once each codec gets what the
+  system's own files and encoders give it.** Measured 2026-11-20 (PLAN.md §M42 ▸ P1) over the film, three
+  TV seasons and the Steam and sample WebMs: H.264's `avcC` and HEVC's and AV1's records go in as sample
+  description atoms unchanged. VP9 has no record in a WebM, so its `vpcC` is made from the first key
+  frame's header (`VP9FrameHeader`), and its decoder answers only after
+  `VTRegisterSupplementalVideoDecoderIfAvailable`. Opus takes its `OpusHead` as the magic cookie, and
+  Vorbis takes Matroska's Xiph-laced `CodecPrivate` byte for byte: AudioFile's own cookie for an Ogg
+  wrapped round the same packets was those 3 291 bytes. The AAC and FLAC cookies are laid out as the
+  system encoders' own (`magicCookie`, read from `AudioConverter`), an `ES_Descriptor` and a whole
+  `dfLa` box. AudioToolbox decodes AAC from the bare `AudioSpecificConfig` too, so for AAC the layout is
+  pinned by a byte test, not by decoding.
+  - **An undecodable picture does not fail the renderer; an undecodable sound does.** VP8 frames
+    enqueued into `AVSampleBufferDisplayLayer` came back as `numberOfCorruptedFrames` with the status
+    still `.rendering` and no error, while DTS put `AVSampleBufferAudioRenderer` in `.failed` with
+    `'fmt?'`. So decodability is asked before anything is enqueued: a `VTDecompressionSessionCreate`
+    for the picture (`vp08` answers -12906) and `kAudioFormatProperty_DecodeFormatIDs` for the sound
+    (`dtsc` is not on it).
+  - **The synchronizer's clock runs with the sound renderer failed**, at the same pace as with it
+    working, so a clock that moved says nothing about sound. The renderer's `status` and `error` do.
+  - **Nothing stops a synchronizer at the end of the data**, as `actionAtItemEnd` stops an `AVPlayer`:
+    its clock runs on past the last frame. And a file's stated `Duration` and the end of its last
+    packet differ by a packet, either way: the Steam clip states 4.008 s and its last Opus packet ends at
+    4.021 s, and AAC's priming carries an encoder's output past the length it was given. Seen live
+    2026-11-20: the player waited for its clock, held at the stated length for the readout, to pass the
+    data's end, and the clip "played" forever. Stop at whichever comes first (`SampleBufferPlayer.endSeconds`).
+  - **A six-channel audio format with no channel layout makes `AVAudioFormat(cmAudioFormatDescription:)`
+    raise.** The probe died with exit 139 and printed nothing, its output still buffered; `setlinebuf`
+    found the line. Give every format a layout tag (`MediaSampleBridge.layoutTag`).
+  - **The decoders need no per-packet frame count for Opus or Vorbis** (the same samples out with and
+    without), but a sample buffer's length comes from it, and libwebm's Opus packets are 10 ms where
+    the Steam clips' are 20, so a fixed 960 would mistime one of them. The count comes from Opus's
+    table of contents and from Vorbis's modes, read from the end of its setup header as FFmpeg reads
+    them (`MediaFrameCounter`).
+  - **`AVAudioConverter` fed one Vorbis packet per input buffer answered `.endOfStream` after two
+    packets with no samples out**, while the C `AudioConverterFillComplexBuffer` decoded the same
+    packets and cookie to the full 10.41 s, and `AVAudioConverter` did decode Opus fed the same way.
+    Not chased: the shipped path is the renderer, which takes Vorbis without an error. Reach for the
+    C API when checking a Vorbis decode.
+- **MediaExtension was the other way to play Matroska, and three things ruled it out before any code.**
+  Read 2026-11-20 in the SDK's `MEFormatReader.h` and Apple's guides: a format reader needs the
+  `com.apple.developer.mediaextension.formatreader` entitlement *with a provisioning profile*, which a
+  Developer ID build, CI's ad-hoc one and `build/live-copy` do not carry; each user has to switch it on
+  in System Settings ▸ General ▸ Login Items & Extensions; and once installed it serves every app that
+  calls `MTRegisterProfessionalVideoWorkflowFormatReaders`, which its header calls a professional video
+  workflow and not for network-facing apps. Revisit only if Apple drops the profile requirement.
+- **An AVI keeps no presentation times: each chunk is the next tick in the order it is stored, which
+  is decoding order, so B-frames have to be put back in showing order from the codec.** Measured
+  2026-11-20 (PLAN.md §M42 ▸ Slice 5) on the AVI sample, x264 with three B-frames and a B-pyramid:
+  H.264's picture order count, read from each slice header (§8.2.1), gives the order, and a window of
+  the encoder's reorder depth (`max_num_reorder_frames`, 2 here) hands each picture the lowest decoding
+  tick held (`PresentationReorder`). Over all 1 344 frames that agreed with sorting each closed group of
+  pictures whole, and with depth 16. VideoToolbox's own encoder, writing B-frames, was the witness
+  neither implementation controls: every picture came out at the time the encoder gave it. MPEG-4
+  Part 2 needs no count: a B-plane shows before the anchor decoded ahead of it.
+  - **The pictures still go to the decoder in decoding order**, each with its showing time. The first
+    try handed them out in showing order, and a run of the sample with the times all in order was the
+    tell. `AVSampleBufferDisplayLayer` takes a presentation time alone, as Matroska's B-frames showed.
+  - **VideoToolbox's JPEG decoder does not supply Annex K's tables to a frame that leaves them out**,
+    as a camera's `AVI1` Motion JPEG does. It answers status 0 and draws a different picture, for a busy
+    picture at every size tried; a flat one decodes alike either way, which can hide the fault from a
+    test (▸ Testing ▸ Negative controls). `MotionJPEG.withStandardTables` puts the segment Lavc writes
+    back before the scan.
+  - **A raw AAC frame holds byte patterns that parse as ADTS headers.** In an AVI remuxed from the 3GP
+    sample, the first such pattern in the first chunk made the stream read as ADTS: 169 three-block
+    "frames" for 1 345 chunks, and an `AudioSpecificConfig` made from noise. A header found by
+    scanning counts only when the next header follows where it says it ends
+    (`AudioFrameHeader.confirmed`), and the splitter applies the same rule.
+  - **FFmpeg's AVI muxer writes empty chunks into a sound stream stored a frame to a chunk, and each
+    is a tick.** The sample's AAC has two after its first frame, so its fourth frame plays at 64 ms, as
+    FFmpeg times it, not 43. A stream stored at a constant rate (`dwSampleSize` above 0) is timed by its
+    bytes instead, and a frame starts at the time of its first byte however the chunks cut it.
+  - **`AVAssetReader` hands AAC out two packets to a sample buffer at times.** A fixture remuxing the
+    3GP's AAC into AVI wrote one chunk per buffer, and the stream came out 31 s long beside a 54 s
+    picture. Split each buffer by its packet descriptions
+    (`CMSampleBufferGetAudioStreamPacketDescriptionsPtr`).
+- **AVFoundation offers a choice of sound only for tracks in one alternate group; tracks in none all
+  play at once.** Probed 2026-11-21 (PLAN.md §M42 ▸ Sound tracks) over two MP4s written by
+  `AVAssetWriter`, two AAC tracks each. With an `AVAssetWriterInputGroup` the asset has an audible
+  `AVMediaSelectionGroup`, one track enabled, and AVPlayer plays the option selected. Without one both
+  tracks are enabled, there is no group, and AVPlayer mixes them, as QuickTime Player does. So only a
+  group is a menu of languages. FFmpeg's MP4 muxer puts every sound in one group (the codec type is
+  the group number), so most files with several languages have one.
+  - **Left alone, AVPlayer selects by the system's languages, not the app's, and over the file's
+    default.** The grouped file's default was Russian, and it played English, the first of the Mac's
+    languages. An `AVPlayerItem.select(_:in:)` made before the item goes up holds over that pick, with
+    `appliesMediaSelectionCriteriaAutomatically` on (a test passed for Russian on that Mac either way).
+  - **An option names its track only in its property list**: `MediaSelectionOptionsPersistentID` is
+    the track ID, beside the group ID and both language spellings. Nothing public maps an option to a
+    track, so channels and a track's name are read through that key and left out without it.
+  - **`AVPlayerItem.mediaSelectionDidChangeNotification` is how a pick in AVKit's own menu is heard.**
+    AVPlayerView's inline controls draw an audio menu of their own for a file with a group, and while
+    paused nothing else changes to say the sound did.
+- **Foundation knows ISO 639-2's terminology codes and not its bibliographic ones**, which mkvmerge
+  writes. Probed 2026-11-21: `Locale.LanguageCode("deu").identifier(.alpha2)` is `de` and
+  `Locale.LanguageCode("ger")`'s is `nil`, and the same for all twenty codes that differ (`fre`,
+  `chi`, `dut`, `cze`…). `MediaLanguage.bibliographic` maps them first. Foundation also writes a
+  language's name as it goes mid-sentence, lower-case in Russian and French ("русский",
+  "norvégien bokmål"), so a name that heads a label needs its first letter raised, and only that one.
+- **`AVSampleBufferAudioRenderer` takes a new format after a flush.** Switching a Matroska film's sound
+  from AAC to Opus, or among the film's AC-3 tracks, kept the renderer `.rendering` with no error
+  (PLAN.md §M42 ▸ Sound tracks): the feed flushes both renderers and seeks a new demuxer to where the
+  clock is, as any seek does, and the same renderer stays in the synchronizer.
+- **A renderer's request for data outlives its owner unless it is stopped, and then spins a core.**
+  The header says releasing a renderer without `stopRequestingMediaData` "will result in undefined
+  behavior". What it did (CI, 2026-11-22, then here with a probe counting calls whose `[weak self]` was
+  gone): the request kept the sound renderer alive and called its block millions of times a second,
+  for the rest of the process. Paused from the start, `AVSampleBufferAudioRenderer` took a minute of
+  AAC, 2 815 packets, in one call, so the feed reached the end and stopped asking by itself. Played and
+  then paused, a 20 s AVI's request stayed open. With seven such loops on the eight-core CI VM, an
+  `AVAssetReader` blocked in `copyNextSampleBuffer` on a cooperative thread never got its sample, and
+  a test waited 22 minutes; most likely GCD's rule that `ProcessWaiting.pipeQueue` records, a global
+  queue's block starting only while fewer threads are busy than there are CPUs. `SampleBufferFeed`'s
+  `deinit` now stops both requests; `SampleBufferFeedTests` holds it, and failed without it.
 
 ### Previews: web views
 
@@ -4441,6 +4767,16 @@ Measured 2026-11-08 for M37's byte view, whose table has a row for every 16 byte
     `~/Dev`: 9 nginx, 23 fontconfig XML, and the rest Apache, `key value` and `key=value`. nginx's own
     files are as often `default.conf` or a bare `default` as `nginx.conf`, so the name cannot find
     them and the contents can (`SyntaxNginxScanner.looksLikeConfiguration`).
+- **A movie's type can belong to an app rather than to macOS, so a Mac without that app sees a
+  different file.** Read from `lsregister -dump` on 2026-11-20 (PLAN.md §M42 ▸ Slice 2):
+  `org.matroska.mkv`, `org.matroska.mka` and `org.xiph.ogg-video` were declared by VLC alone, while
+  CoreTypes itself declares WebM, ASF, WMV, WMA, RealMedia, MXF, Flash Video and Ogg audio. So on this Mac a `.mkv` conforms to
+  `public.audiovisual-content`, and on one without VLC it is a `dyn.…` type that conforms to nothing,
+  where a type gate sends it through the text sniff to Quick Look. `.mk3d` is dynamic here and stands in
+  for that Mac in a test. Quick View routes the containers AVFoundation refuses by name as well
+  (`MediaContainer(fileExtension:)`).
+  - **`.spx`, Speex in Ogg, is `com.apple.systemprofiler.document`.** A list of Ogg extensions has to
+    leave it out, or every System Profiler report opens as a movie that will not play.
 - **A text file with no extension is `public.data`, and one with an extension nothing declares is a
   dynamic type, so a type gate cannot tell either from a binary.** Probed 2026-09-15: `VERSION`,
   `NOTICE`, `Dockerfile`, `.gitignore` and `.zshrc` resolve to bare `public.data` whatever they hold;
@@ -5218,6 +5554,16 @@ and hands its English over as data. `LocalizedCatalog` is the join, `L10n` its o
   - The cost is a wider minimum: 949 pt in German. A test can pin it without a translation: set the
     window to its `minSize`, lay it out, and require the label's frame to be at least its intrinsic
     width (`CompareWindowTests`). With the old priority it fails in English too.
+- **A second title for a column must fit the width every user already stored for the first.** A
+  pane's tabs persist their column widths, so a new header over an old column is drawn at a width
+  sized for the old header and the dates. Measuring both titles for the *default* width fixes a
+  fresh install only. Seen 2026-11-18 (M40 Slice 2): Recents' "Last Opened" in Russian, "Последнее
+  открытие", drew as "Последнее открыт…" in a tab saved earlier, and Ukrainian's "Останнє
+  відкриття" was as wide. Both now fit under the old header ("Дата открытия"; and Finder's own
+  "Відкривався"). Measured before choosing: only those two of the 14 overflowed, since in Chinese,
+  Japanese and Korean the date is wider than either header. `DateColumnMetricsTests` reads each
+  compiled `.lproj` and requires the new title to fit the old one or the date, and the long Russian
+  title fails it.
 
 ### Finding untranslated strings
 
@@ -5293,6 +5639,21 @@ and hands its English over as data. `LocalizedCatalog` is the join, `L10n` its o
     a Russian build for its key hands back the Russian. A second test guards that table against
     drifting off the strings it names, and skips itself under a non-English pin — which means on this
     Mac it is CI that runs it, so prove it with a negative control rather than a green run.
+- **`bare_ui_literal` in `.swiftlint.yml` holds the line the sweeps drew** (M40 Slice 6). It
+  fails `swiftlint --strict` on a literal of two letters or more handed straight to an AppKit text
+  sink in the app: an assignment to `title`, `messageText`, `toolTip`, `stringValue` and the like;
+  the same words as an argument label, which covers the wrapped `NSMenuItem(\n title: "…")` that
+  fooled the first sweep; `withTitle:` and `labelWithString:`; and `setAccessibilityLabel(`.
+  Letters inside an interpolation don't count. On the day it went in it found 14, all deliberate
+  (example hosts in placeholders, `UTC`, `Dirnex`, a sizing sample, one line for git's terminal),
+  and each carries an inline disable with its reason.
+  - **It can't see the classes above**: a string that reaches a sink through a variable or a return
+    value, or a ternary. So `scripts/check_localization_keys.py` and the prose-literal sweep stay.
+  - Three choices that look arbitrary. `label:` is not a sink, because in the app it only ever names
+    a queue or a scratch folder. `@Parameter(title:)` is skipped by a lookbehind, because the
+    compiler extracts it. The core and the tests are left out with `excluded:
+    '/(DirnexTests|DirnexCore)/'` rather than an `included:` of `/Dirnex/`, since the checkout folder
+    is itself named `Dirnex` and that pattern matches every file.
 - **`plutil -extract` reads a dotted key as a keypath.** Checking `vfs.unsupported.trash` against a
   compiled `Localizable.strings` reported every one of 27 keys MISSING from a bundle that contained
   all of them — a wrong answer in the alarming direction, right after a passing coverage test, which
@@ -5394,6 +5755,37 @@ and hands its English over as data. `LocalizedCatalog` is the join, `L10n` its o
   without one. `scripts/check_alert_escape.py` doesn't see these alerts. `LicenseRemovalTests` pins
   the one measured.
 
+### Stock Finder tags
+
+- **The stock tags' names on disk belong to the account, are set once, and follow neither English
+  nor the UI language.** Measured 2026-11-19 (M40 Slice 6) by tagging through Finder's own context
+  menu in a clone of `dirnex-ci-base` (macOS 26.6.2) and reading `_kMDItemUserTags` back. The VM's
+  US-English account wrote `Red\n6` and `Gray\n1`, and this Mac's favorites read `Grey`. Switched
+  to German, with a German menu bar, Finder still wrote and showed Red and Gray. Only after its list
+  was made again under German did it write `Rot\n6` and `Grau\n1`.
+  - **The list is `~/Library/Application Support/com.apple.sharedfilelist/com.apple.LSSharedFileList.ProjectsItems.sfl4`**
+    (tags were once "projects"): an `NSKeyedArchiver` whose items each carry a `Name` and, for a
+    colored tag, `kLSSharedTagFileListItemLabel`. It is made when the account first runs Finder.
+    Moved aside, German Finder made it again as Rot, Orange, Gelb, Grün, Blau, Lila, Grau, Büro,
+    Benutzerordner, Wichtig, and rewrote `FavoriteTagNames` to match.
+  - **Don't read the `.sfl4` for the stock names.** On this Mac it opens with a custom purple
+    `Zebra`, so "the first tag of each color" picks the wrong one. It is a private archive whose
+    extension has moved with releases (sfl2, sfl3, sfl4), and Dirnex runs on 14.
+- **Finder's menu dots are `com.apple.finder` ▸ `FavoriteTagNames`.** That's an empty string and
+  then seven names in Finder's order, read with `CFPreferencesCopyAppValue`. Replacing one with a
+  new name turned its dot hollow, and that dot wrote the bare name. So the favorites are what
+  Finder writes, and `FinderStockTagLookup` reads them.
+- **`NSURLTagNamesKey` colors a name from the account's own list, which makes it the public
+  lookup.** On the German list `Rot` came back 6, and `Red`, `Gray` and `Grey` all 0. Call it
+  through `NSURL.setResourceValue(_:forKey:)`, which 14 has; `URLResourceValues.tagNames`' setter
+  is 26+ (`FinderTagStorage`). One scratch file holding every name answers them all: 4–7 ms in a
+  cold process, plus 2–4 ms for the preference.
+- **`NSWorkspace.fileLabels` follows the app bundle's localization, not the account's list** (M40's
+  opening probe), so it gives the names a fresh account in the app's language would have, not
+  the names this account has. It also says "Gray" where this Mac's list says "Grey".
+- Spotlight is off in the CI image, so a tag's view in Finder's sidebar finds nothing there. Read
+  the attribute instead.
+
 ## Lint ceilings and file splitting
 
 SwiftLint enforces `file_length` 500 and `type_body_length` 250, and the big AppKit controllers
@@ -5488,6 +5880,48 @@ against a fake.
     beat its own interval however fast the host, so there is nothing for CI to drift past
     (`ProcessWaitingReapTests`, whose negative control fails that one test at 63 ms and leaves its
     three narrowness controls green).
+
+### mdfind
+
+- **`-attr` prints an attribute after each path without escaping either, so a name can forge one: read
+  the last separator.** Probed 2026-11-18 for M40 Slice 2. `mdfind -0 -attr kMDItemLastUsedDate
+  <query>` prints each record as the path, `   kMDItemLastUsedDate = ` and the value, then a NUL. A
+  file named `fake   kMDItemLastUsedDate = 2001-01-01 00:00:00 +0000.txt` printed that text and then
+  its real date, so the attribute is after the **last** separator. Without `-0`, a name holding a
+  newline came out as two paths, neither of them a file (`RecentsQuery.hits(fromOutput:)`).
+- **The date is whole seconds in UTC, whatever the locale or the zone.** `2026-11-17 18:40:34 +0000`
+  came back unchanged under `TZ=America/Los_Angeles`, `LC_ALL=de_DE.UTF-8`, `LANG=ja_JP.UTF-8` and
+  `LC_ALL=C`, and a date stored with 987 654 321 ns printed its second. An item with no date prints
+  `(null)`.
+- **A last-opened date can be set by hand, which is how a fixture for it is made.** It lives in the
+  `com.apple.lastuseddate#PS` extended attribute, a `timespec` of 16 bytes (seconds, then nanoseconds,
+  each a little-endian `Int64`), and `mdimport <folder>` re-imports at once: `mdfind` and `mdls` read
+  the new date seconds later. No `stat` field carries it.
+- **`mdfind` prints a path decomposed (NFD), whatever form the name has on disk.** A file written as
+  `ünï cödé.txt`, stored composed (`ls | xxd` shows `c3 bc`), came back as `u` followed by `cc 88`,
+  with `-attr` and without. APFS finds the file under either form, so a `stat` of the hit works, but
+  the hit's path is not byte-equal to the same file's path in a folder listing. Nothing acts on this
+  yet; it matters wherever a hit is compared with a listed row by path.
+- **A folder Spotlight does not index answers every query with nothing, and says nothing about why.**
+  Probed 2026-11-18 for M40 Slice 3 on a folder under `/private/tmp` and one on the NAS's SMB share
+  that Finder mounted: name, text and tag queries with `-onlyin` each printed 0 paths and exit 0,
+  exactly what a search with no matches prints. The Finder tags were there all along, written over
+  SMB with `xattr` and read back, while `mdls` showed `kMDItemUserTags = (null)` for both files. So
+  whether Spotlight covers a folder has to be asked before trusting an empty answer
+  (`SpotlightCoverage`), and there are two ways to ask, because each misses what the other sees:
+  - **A volume's root goes to `mdutil -s`**, which prints `Indexing enabled.` (with a trailing space
+    for `/`) or `Indexing disabled.` (the NAS share) for a mount point and `Error: unknown indexing
+    state.` for any other folder. A root cannot be looked up by name: asking `/System/Volumes` for an
+    item named `Data` found three other folders of that name and not the volume.
+  - **Any other folder is looked up by name in its parent**: `mdfind -0 -onlyin <parent>
+    'kMDItemFSName == "<name>"'`. It finds an indexed folder in about 0.1 s and nothing for an
+    unindexed one. `-onlyin` covers the parent's whole subtree, so other folders of that name come back
+    too (six `oleg` folders for `/Users/oleg`), and only an exact path match counts. The comparison is
+    case-sensitive. A composed query and a decomposed one both find a folder whose name has an accent,
+    and an escaped `"` in the name works.
+  - **`mdfind` prints real paths, so resolve the folder with `realpath(3)` before comparing.** A folder
+    under `/tmp` comes back under `/private/tmp`. `URL.resolvingSymlinksInPath()` is the wrong tool
+    here: it turns `/private/tmp` back into `/tmp`.
 
 ### Owner, group and mode in a columnar listing
 
@@ -5783,6 +6217,28 @@ do not share a resolver, and neither half of that is obvious from either call si
     reads as the NAS being unreachable, on a host that pings and whose 445 is open. Percent-encode
     the password before believing any `smbutil` failure.
 
+- **The mount table names every share and its account, Finder's included, and the source is a
+  percent-escaped URL without its scheme.** Measured 2026-11-19 for M40 Slice 8 with the NAS's `media`
+  share Finder had mounted: `getmntinfo` gave `smbfs` and `//olegasd@nas/media` for `/Volumes/media`, and
+  `volumeURLForRemountingKey` gave `smb://olegasd@nas/media`. That is no coincidence: the SMB plugin builds
+  the remount URL as `smb://` plus the source with its leading slashes stripped (`netfs.c` in
+  apple-oss-distributions/SMBClient). How the source is written was read from `CreateSMBFromName` and
+  `smb_dictionary_to_urlstring` (`lib/smb/parse_url.c`), since no share on the NAS needs escaping:
+  - `//[domain;][user[:]@]host[:port]/share[/path]`, each part escaped on its own. The account escapes
+    `@ : ; / ?`, so the one literal `@` ends it, and a literal `:` before that is a password, written only
+    when it is empty. The share escapes every URL-reserved character, a space included (`My%20Share`); a
+    `/` inside a share name arrives as `%2F`.
+  - **A guest mount is the account `GUEST` with that empty password** (`GUEST:@nas/Public`), and the
+    client takes any account spelled `guest`, in any case, as guest access (`smb_ctx_setuser`).
+  - The account is dropped when the whole URL would pass `MAXPATHLEN`, so a source with no account need
+    not have been a guest.
+  - A path after the share is a mount of a folder inside it; macOS can mount one.
+  - `SMBMountSource` reads it. **`SMBMounter.existingMountPoint` had compared the raw source** with
+    `hasSuffix("/" + share)`, so a share called "My Share", written `My%20Share`, was never found, and a
+    second Return on it asked NetFS for a share already mounted, which answers `EEXIST` with no mount
+    point; and a mount of `media/Movies` matched a share called `Movies`. Found by reading the source, not
+    seen, since no share here has a space in its name.
+
 - **A share can grant the `opendir` and refuse the `readdir`, and a loop that stops on `NULL` shows
   that refusal as an empty folder.** Measured 2026-10-11 on the NAS's `media` share, whose
   `#recycle` the mounting account may not list: `opendir` succeeds, the first `readdir` returns
@@ -5838,6 +6294,34 @@ do not share a resolver, and neither half of that is obvious from either call si
     `FileIDTreeGetAndLockVolumeEntryFromIndex(1) returned -35` appeared only in the two slow quits.
     In diskarbitrationd's log, each unmount reads *queued solicitation … kind = disk unmount*, then a
     *not responding* line naming the approver that held it up.
+
+- **When an eject fails because the volume is in use, NSWorkspace says only `fBsyErr` (-47). The
+  kernel can name who holds the volume.** Measured 2026-11-19. `unmountAndEjectDevice` threw
+  `NSOSStatusErrorDomain` -47 with an empty `userInfo` in two cases: a disk image held open by a
+  `sleep`, and the NAS's `media` share while VLC played from it. So the sidebar's alert read
+  *"OSStatus error -47"*, where Finder's reads *"because “VLC” is using it"*. `VolumeUsers` and
+  `VolumeUserProbe` are the fix.
+  - **DiskArbitration has the pid, but the header doesn't declare the accessor for it.**
+    `DADiskUnmount`'s dissenter came back with status `0xc010` (`unix_err(EBUSY)`), and
+    `DADissenterGetProcessID` read through `dlsym` named the `sleep`. diskarbitrationd runs as root
+    and does the lookup itself. The symbol is in the framework's `.tbd` and missing from
+    `DADissenter.h`.
+  - **`proc_listpidspath` (`libproc.h`) is the public route, and it found both holders.** It takes
+    `PROC_ALL_PIDS`, any path on the volume and `PATH_IS_VOLUME | EXCLUDE_EVTONLY`. It counts open
+    files, working directories and mapped images. `EXCLUDE_EVTONLY` drops descriptors opened only
+    to watch a folder (`O_EVTONLY`), which never hold a volume. It reads every process: 283 ms over
+    793 in a release build. It sees only this account's processes, so a holder from another account
+    leaves the list empty. The scan runs only after an eject has failed, off the main thread.
+  - **`proc_pidinfo(PROC_PIDTBSDINFO)` is refused (`EPERM`) on the root-owned `login` between
+    Terminal and the shell it starts.** `sysctl(KERN_PROC_PID)` returns any process's parent. So the
+    walk from a shell sitting in the volume up to the app that owns it, Terminal, goes through
+    `sysctl`.
+  - **A vault's Lock meets the same refusal from `hdiutil detach`, and the holder is still there
+    after it.** On an image held open by a `sleep`, the detach exited **16** with *"hdiutil:
+    couldn't unmount "disk11" - Resource busy"* after 0.16 s, and the probe named the `sleep`
+    afterwards. That is not the exit 1 and *"detach failed - Resource busy"* the vault tests had
+    captured. `VaultError.fromDetachFailure` keys on "busy", so it read both as in use.
+    `VaultLockFailure` asks who holds the vault right after the detach.
 
 ### bsdtar
 
@@ -10222,11 +10706,60 @@ probed live (2026-08-01/02) before any Swift; several results decided the shape.
   (`touch -a` / `touch -m` separately, since `touch -t` writes one value) so an untouched neighbor
   keeps its sub-second value. `chmod`/`chflags`/`chown`/`chgrp`/`touch` all take `-h` to act on a
   symlink itself, matching the `l*` syscalls the read path uses.
+- **`do shell script` hands back stdout only on success and stderr only on failure, so it cannot say
+  which items of a batch landed.** Probed 2026-11-18 (M40 Slice 4): `echo out; echo err >&2` returned
+  `out` and dropped `err`, and the same body ending `exit 3` raised `execution error: err… (3)` and
+  dropped `out`, with every newline turned into `\r`. A batch therefore reads its items back to
+  journal what is on disk (`EscalatedAttributeBatch.outcome`), and ends each body `exit $s`, with
+  `s=1` set by any item that failed, so the tools' stderr comes back at all.
+- **A body is bounded by `ARG_MAX`, 1 MiB with the environment, on its way to `/bin/sh -c`.** Probed
+  the same day: a 1 040 000-byte body ran, and 1 048 000 failed with "Argument list too long" from
+  `osascript` itself, or `An error occurred. (100013)` from `doShellScript` when the body arrived some
+  other way. `EscalatedAttributeBatch.bodyLimit` keeps a body to half of that.
+- **Many bodies go to one `osascript` over stdin, through JXA.** `osascript -l JavaScript` reads
+  `$.NSFileHandle.fileHandleWithStandardInput.readDataToEndOfFile`, splits on NUL and calls
+  `app.doShellScript(body, {administratorPrivileges: true})` per body: three 600 000-byte bodies ran in
+  one process, a body after a failing one still ran, and a body holding `$(…)` reached the shell
+  inert. Plain AppleScript cannot do this: `read (POSIX file "/dev/stdin")` fails with `-1700`. In
+  JXA a failed call throws an error whose `message` is the tool's stderr and whose `errorNumber` is
+  the exit status; `ObjC.import('stdlib')` gives `$.exit(n)`. Set `F_SETNOSIGPIPE` on the pipe Dirnex
+  writes, as for any child that may exit before reading.
+- **In JXA a cancelled password dialog is `-60006`, not `-128`.** Measured live 2026-11-18 with a
+  probe writing `errorNumber`: a real Cancel arrived as `-60006 User canceled.`, the Authorization
+  Services code (`errAuthorizationCanceled`) that `authd` logs as `Evaluate cancelled or failed
+  -60006`, where AppleScript's `do shell script` reports `-128` with the same words. A check on `-128`
+  alone read the Cancel as a failure, and the multi-selection Save went on to change the user's own
+  items. `AdministratorShell` treats both as a cancel.
+- **One password covers every `doShellScript` call in one `osascript` process, and no other process.**
+  Measured the same day through `authd`'s log (`log show --predicate 'process == "authd"'`): a
+  6 000-item batch in two bodies logged one `authenticated as user` and then `Succeeded authorizing`
+  for both bodies, 15 s apart, from the same `osascript`. Three separate `osascript`s a minute apart
+  each asked again: `authd` found no shared credential younger than its 300 s. So a batch goes to one
+  process. Its log is also the witness for whether a dialog was authenticated or cancelled, which a
+  capture of the app's own window cannot show: three runs meant as cancels read in it as
+  `authenticated as user oleg`, because the password had been typed.
+- **A root-owned fixture for a live run costs one `sudo chown` and no cleanup password.** Done
+  2026-11-19 (M40 Slice 9): Oleg ran `sudo chown root:wheel` on one file in a git-ignored folder of his
+  own under `build/`, typed into a Terminal-panel tab so the password stayed with him, and a plain
+  `rm -rf` of the folder removed it afterwards, since unlinking asks the folder's permission and not the
+  file's. Not under `/private/tmp` itself, whose sticky bit lets only the owner remove a file.
+- **Each item's command is its own `fork`/`exec`, about 3 ms an item.** The 6 000 `chmod`s took
+  some 20 s as root. Joining items that take the same command into one call
+  (`/bin/chmod 775 a b c …`) would cut that, and is not done.
 - **Verify the translation on an *owned* file, unprivileged.** The whole point is that the *same*
   commands the root path runs are ordinary CLI, so a throwaway harness can run the generated body on a
   file the tester owns and let `ls -le@` / `stat -f` judge — the locked-file unlock/relock, the setuid
   digit through `chmod 4755`, the ACL order, all provable with no password. Only the final `sudo` /
   auth-dialog step needs privilege, and that is the one part left to the user.
+- **A test host's `OS_ACTIVITY_DT_MODE` reaches osascript, and on some Macs puts osascript's log on
+  stderr ahead of the message.** Xcode launches the test host with `OS_ACTIVITY_DT_MODE=YES` (read back
+  with `ps eww` on 2026-11-22), and `Process` hands it to every child. In the CI VM (macOS 26.6.2) an
+  osascript run with it set wrote `[foldermgr] FSFindFolder failed with error=-43` twice and
+  `self-sent 'ascr'/'gdut' event accepted in process that isn't scriptable` before the failing body's
+  `ls:` line, and without it wrote the `ls:` line alone. This Mac's osascript logs the same
+  `FSFindFolder` errors (`log show`) and wrote none of them to stderr with the variable set, so
+  `AttributeBatchEscalationTests` passed here and failed in CI. `AdministratorShell` drops the variable
+  from the child's environment, since its stderr is the message the user reads.
 
 ### xattr and sips (the stock tools a user script reaches for)
 
@@ -10941,6 +11474,23 @@ overturned the obvious implementation.
   not found in the Kelvin sign, which lowercases to `k`; and lowercasing can lengthen a text in UTF-16
   (`İ` becomes `i` and a combining dot) while it kept the character count on every sample tried, so a
   match in the lowercased text comes back by characters, never by offsets (`FilterQuery`).
+- **For a case- and diacritic-insensitive search through file bytes, `NSString.range(of:options:)` is
+  an order of magnitude faster than Swift's `String.range(of:options:)` with the same options.**
+  Measured 2026-11-18 in a Release build for M40 Slice 3's content search, over 8 MiB in 1 MiB
+  chunks: ASCII took 35 ms against 628 ms (about 237 against 13 MB/s), and Cyrillic took 76 ms against
+  998 ms. Folding both sides and calling `contains` took 142 and 271 ms. The `NSString` route matches
+  as Spotlight's `cd` does: `CAFE` finds `Café`, `STRASSE` finds `Straße`, `іжак` finds `Їжак`, `École`
+  finds a decomposed `école` and `file` finds `ﬁle`. Its decoder needs three guards for chunked input
+  (`TextChunkDecoder`):
+  - **`NSString(data:encoding: NSUTF8StringEncoding)` answers `nil` for the whole chunk** when the
+    chunk ends partway through a character, and for Latin-1 bytes. So the incomplete tail is carried
+    into the next chunk, and whatever is still invalid is decoded lossily, so an ASCII needle is
+    still found in a Windows-1252 file.
+  - **The UTF-16 decoder drops a trailing odd byte without a word** (`41 00 42` gives `A`), which
+    would misalign everything after a chunk boundary that cut a unit in two. The odd byte is carried.
+  - **It keeps a lone surrogate rather than failing**, and appending the other half makes the pair
+    findable again (`😀` found in the joined string). The decoder still holds a trailing high
+    surrogate back, so the search does not depend on that behaviour.
 - **APFS's file-name limit is 255 UTF-16 units, not bytes, while a volume name's and ext4's are 255
   bytes.** Probed 2026-11-14 with `open()` in the scratchpad: 255 `é` (510 bytes) and 255 `漢` (765
   bytes) were created, 127 `😀` (254 units) was and 128 (256 units) was refused with `ENAMETOOLONG`,
@@ -11149,6 +11699,25 @@ overturned the obvious implementation.
   inverse reverses and flips them, a failed swap reports none, and a journal from before it decodes
   with `nil`. The same holds for any operation that goes through a container swap: what the swap
   changed has to be journaled beside it, because it cannot be read off the swap afterwards.
+
+- **An undo that asks before it takes has to take by identity, and ⌘Z has to wait for it.** Built
+  2026-11-19 for M40 Slice 5, where ⌘Z on a change only root can put back asks for the password first
+  and Cancel must leave the step where it was. So the entry stays on the stack while the dialog is up,
+  and two things follow that popping at once never needed. A queued job can finish behind the dialog
+  and record something newer, so the step is taken by identity from beneath it
+  (`UndoJournal.takeForUndo(_:)`) rather than as the top. And a second ⌘Z pressed meanwhile would find
+  the same entry on top and ask about it again, so ⌘Z and ⇧⌘Z run one at a time
+  (`UndoController.enqueue`). That last one was a fault before any asking: two quick presses had
+  always reverted their records at the same time, on two threads.
+  - **`UndoRecord.inverted` mints a new id every time.** An entry on the redo stack equals only itself
+    as stored, so find it by the value peeked from the stack, never by inverting the original again.
+    Four of the slice's journal tests compared against a freshly inverted record and failed for that
+    alone.
+  - **Measure what is left before asking who may write it.** The executor asked `AttributePrivilege`
+    about a step's whole diff, so a value already on disk still "needed root" on someone else's file.
+    Once an escalation decides which steps the executor gets, the two have to measure the same way
+    (`LocalAttributeRestore`), or a step handed over as needing nobody is refused after a password
+    the user has just typed.
 
 ### Transfers and batches
 

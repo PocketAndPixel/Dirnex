@@ -25,6 +25,9 @@ extension AppPreferences {
         static let quickViewJavaScriptEnabled = "Dirnex.pref.quickViewJavaScriptEnabled"
         static let syntaxTheme = "Dirnex.pref.syntaxTheme"
         static let quickViewFetchLimit = "Dirnex.pref.quickViewFetchLimit"
+        /// A movie or a sound in Quick View starts playing once it is up (PLAN.md §M42). Absent
+        /// means on.
+        static let quickViewAutoplayMedia = "Dirnex.pref.quickViewAutoplayMedia"
         static let remoteRefreshFloor = "Dirnex.pref.remoteRefreshFloor"
         static let slideshowInterval = "Dirnex.pref.slideshowInterval"
         static let accentColorHex = "Dirnex.pref.accentColorHex"

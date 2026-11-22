@@ -192,17 +192,11 @@ extension PanelViewController {
         }
     }
 
-    /// The folder typed text names, on `base`'s backend: `base` itself when the field is empty, a
-    /// path taken from `base` when it does not start at a root, `~` expanded on this disk only.
+    /// The folder typed text names, on `base`'s backend (`TypedFolder`, which the copy dialog's
+    /// field shares): `base` itself when the field is empty, a path taken from `base` when it does
+    /// not start at a root, `~` expanded on this disk only.
     static func exportFolder(typed text: String, from base: VFSPath) -> VFSPath {
-        var path = text.trimmingCharacters(in: .whitespaces)
-        if base.backend == .local { path = (path as NSString).expandingTildeInPath }
-        if path.isEmpty { return base }
-        if !path.hasPrefix("/") { path = base.path + "/" + path }
-        while path.count > 1, path.hasSuffix("/") {
-            path.removeLast()
-        }
-        return VFSPath(backend: base.backend, path: path)
+        TypedFolder.resolve(text, from: base)
     }
 
     /// What the sheet does with `folder`: export into it, offer to make it, make it, or refuse.

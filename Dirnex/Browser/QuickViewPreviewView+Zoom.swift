@@ -5,14 +5,15 @@ import DirnexCore
 /// how a step reaches it. The keys themselves are the window's (`BrowserWindowController+QuickViewZoom`),
 /// since the surface refuses first responder so the arrows keep driving the file list.
 ///
-/// Seven backends zoom and two do not. A web page (HTML, Markdown, a converted office document), a PDF
+/// Seven backends zoom and three do not. A web page (HTML, Markdown, a converted office document), a PDF
 /// (including a converted iWork document) and text (source or rich) each already had a zoom a pinch
 /// could reach, and the keys drive that same zoom; an image gained one of its own
 /// (`QuickViewImageScrollView`), and so did the CSV table and the JSON tree, which scale what they are
-/// drawn with. Quick Look's out-of-process view and the remote placeholder card have nothing to zoom,
-/// so the commands are disabled there.
+/// drawn with. Quick Look's out-of-process view, the remote placeholder card and the player have nothing
+/// to zoom, so the commands are disabled there.
 extension QuickViewPreviewView {
-    /// The zooming backend on screen, if any — every backend on `ContentTarget`'s list zooms.
+    /// The zooming backend on screen, if any — every backend on `ContentTarget`'s list zooms but the
+    /// player, which each switch below answers as it answers `nil`.
     private var zoomTarget: ContentTarget? { contentTarget }
 
     /// The current level relative to how the file opened, or `nil` when nothing on screen zooms.
@@ -24,7 +25,7 @@ extension QuickViewPreviewView {
         case let .image(scrollView): scrollView.zoomLevel
         case let .table(surface): surface.zoomLevel
         case let .tree(surface): surface.zoomLevel
-        case nil: nil
+        case .media, nil: nil
         }
     }
 
@@ -43,7 +44,7 @@ extension QuickViewPreviewView {
         case let .image(scrollView): !scrollView.isAtStartingZoom
         case let .table(surface): !surface.isAtStartingZoom
         case let .tree(surface): !surface.isAtStartingZoom
-        case nil: false
+        case .media, nil: false
         }
     }
 
@@ -62,7 +63,7 @@ extension QuickViewPreviewView {
         case let .image(scrollView): scrollView.resetZoom()
         case let .table(surface): surface.setZoomLevel(1)
         case let .tree(surface): surface.setZoomLevel(1)
-        case nil: break
+        case .media, nil: break
         }
     }
 
@@ -74,7 +75,7 @@ extension QuickViewPreviewView {
         case let .image(scrollView): scrollView.setZoomLevel(level)
         case let .table(surface): surface.setZoomLevel(level)
         case let .tree(surface): surface.setZoomLevel(level)
-        case nil: break
+        case .media, nil: break
         }
     }
 
@@ -98,7 +99,7 @@ extension QuickViewPreviewView {
             } else {
                 false
             }
-        case .web, .text, .table, .tree, nil: false
+        case .web, .text, .table, .tree, .media, nil: false
         }
     }
 }

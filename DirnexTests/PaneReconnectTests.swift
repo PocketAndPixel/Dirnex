@@ -210,8 +210,11 @@ struct PaneReconnectTests {
         let stoodDown = vc.statusLabel.stringValue
         #expect(!stoodDown.isEmpty)
 
-        // The same pane, same rows, reason gone: the line has to go back to the item count.
+        // The same pane, same rows, reason gone: the line has to go back to the item count. The load
+        // that clears the reason is the one that lists, and a tab that has not listed yet counts
+        // nothing (`statusText`), so it is marked listed here as that load marks it.
         vc.tabs[0].offlineReason = nil
+        vc.tabs[0].hasLoaded = true
         vc.updateChrome()
         #expect(vc.statusLabel.stringValue != stoodDown)
         #expect(!vc.statusLabel.stringValue.isEmpty)

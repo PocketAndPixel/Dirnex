@@ -18,7 +18,8 @@ extension QuickViewPreviewView {
     ///
     /// A file that turns out not to be text after all — a binary someone named `.txt`, bytes in an
     /// encoding nothing claims — decodes to `nil` and falls back to Quick Look, which is exactly
-    /// what it got before this backend existed.
+    /// what it got before this backend existed. A movie or a sound falls back to the player instead
+    /// (`showBinary`): a `.ts` transport stream, which the TypeScript sniff sends here first.
     ///
     /// `refusingPlaceholders` is for a file routed here by its bytes alone (`isUnclaimed`): one whose
     /// bytes are in a cloud goes to Quick Look unread, since reading its first byte would download it
@@ -46,7 +47,7 @@ extension QuickViewPreviewView {
             guard let self, token == loadToken else { return }
             guard let scan else {
                 standDownText()
-                showQuickLook(url)
+                showBinary(url)
                 return
             }
             surface.show(scan.preview, tokens: scan.tokens, columns: scan.columns)

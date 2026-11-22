@@ -264,17 +264,20 @@ extension BrowserWindowController {
         let name = vault.volumeName
         Task { [weak self] in
             defer { SidebarRowActivity.shared.end(vault.resolvedImagePath) }
-            do {
-                try await BlockingWork.run {
-                    Result {
-                        try DiskImageRunner.detach(mountPoint: point, name: name)
-                    }
-                }.get()
+            let failure = await BlockingWork.run { () -> VaultLockFailure? in
+                do {
+                    try DiskImageRunner.detach(mountPoint: point, name: name)
+                    return nil
+                } catch {
+                    return VaultLockFailure(reading: error, mountPoint: point)
+                }
+            }
+            guard let failure else {
                 self?.forgetVaultContents(under: point)
                 self?.sidebar.rebuild()
-            } catch {
-                self?.presentVaultError((error as? VaultError) ?? .couldNotLock)
+                return
             }
+            self?.presentVaultError(failure.error, users: failure.users)
         }
     }
 

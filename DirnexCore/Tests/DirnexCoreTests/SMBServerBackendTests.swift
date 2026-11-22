@@ -112,6 +112,19 @@ struct SMBServerBackendTests {
         #expect(enumerator.calls == 1)
     }
 
+    @Test("each row carries its share's comment, and an empty comment is none")
+    func rowsCarryComments() throws {
+        let enumerator = FakeSMBShareEnumerator(
+            shares: SMBShare.shares(fromSharepoints: Self.realSharepoints)
+        )
+        let backend = SMBServerBackend(server: Self.server, enumerator: enumerator)
+        let entries = try backend.listDirectory(at: Self.root())
+
+        #expect(entries.map(\.comment) == ["Home directory of dirnex-test", nil, nil])
+        let home = VFSPath(backend: .smbServer(Self.server), path: "/home")
+        #expect(try backend.stat(at: home).comment == "Home directory of dirnex-test")
+    }
+
     @Test("a share's own path is not listed here, and asks the server nothing")
     func deeperPathIsNotFound() {
         let enumerator = FakeSMBShareEnumerator(shares: [SMBShare(name: "media")])

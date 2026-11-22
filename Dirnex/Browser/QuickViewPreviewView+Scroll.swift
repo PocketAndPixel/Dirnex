@@ -7,12 +7,17 @@ import DirnexCore
 ///
 /// Every backend but one scrolls the same way, through its own scroll view's clip view: text, a PDF, a
 /// CSV table, a JSON or XML tree and a zoomed image. A rendered page scrolls inside WebKit and is
-/// reached with a script (`QuickViewWebView+Scroll`). Quick Look's own view draws in another process
-/// and offers no way to scroll it, so the keys do nothing over a movie or a font, as they do over the
-/// remote placeholder card.
+/// reached with a script (`QuickViewWebView+Scroll`). A movie or a sound moves along its timeline
+/// instead, the same way round (PLAN.md §M42). Quick Look's own view draws in another process and
+/// offers no way to scroll it, so the keys do nothing over a font, as they do over the remote
+/// placeholder card.
 extension QuickViewPreviewView {
     func scrollContent(_ move: QuickViewScroll) {
         switch contentTarget {
+        case let .media(view):
+            view.seek(move)
+            // The header is where the new place is read, and in full screen it has faded.
+            revealFloatingHeader()
         case let .web(surface): surface.scrollPage(move)
         case let .pdf(surface): surface.scrollDocument(move)
         case let .text(surface): surface.scrollView.scrollDocument(move)

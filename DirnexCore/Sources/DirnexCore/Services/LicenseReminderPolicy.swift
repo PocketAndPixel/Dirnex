@@ -23,10 +23,10 @@ public enum LicenseReminderVariant: Sendable, Equatable {
 
 public extension LicenseStatus {
     /// The reminder this status calls for, or `nil` when a key covers this build: then there's no
-    /// reminder and no titlebar label at all.
+    /// reminder and no titlebar label at all. A revoked key reminds as no key does.
     var reminderVariant: LicenseReminderVariant? {
         switch self {
-        case .unlicensed: .buy
+        case .unlicensed, .revoked: .buy
         case .licensed: nil
         case let .lapsed(key): .renew(until: key.until)
         }

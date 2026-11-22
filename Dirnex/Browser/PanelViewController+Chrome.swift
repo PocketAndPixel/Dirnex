@@ -91,6 +91,9 @@ extension PanelViewController {
         // also the only thing on screen that says the empty pane is not an empty folder. Above the
         // counts and below a transient message, since a message is something that just happened.
         if let offline = tabs[activeTabIndex].offlineReason { return Self.sentence(for: offline) }
+        // A tab still waiting for its first listing has counted nothing, and "0 items" would say its
+        // folder is empty.
+        guard tabs[activeTabIndex].hasLoaded else { return "" }
         let total = panel.count
         let marked = panel.selectionCount
         let counts: String
@@ -159,16 +162,30 @@ extension PanelViewController {
     /// The longest type-to-filter string echoed verbatim in the status line before it's ellipsized.
     private static let maxFilterDisplayLength = 30
 
-    func updateSortIndicators() {
+    /// Make the header describe the listing on screen: each column's title, where Date's follows the
+    /// listing (Last Opened in Recents, `ListingDate`), and the sort indicator on the column the
+    /// listing is sorted by.
+    ///
+    /// Run on every reload (`reloadEverything`), not only after a header click as the indicator was
+    /// until 2026-11-18. A tab carries its own sort and a listing its own date, so switching tabs or
+    /// Recents landing over a folder changes both without a click, and the indicator used to stay on
+    /// whatever column was clicked last.
+    func updateColumnHeaders() {
         let sort = panel.model.sort
+        let listing = ListingDate(listing: panel.path)
         for tableColumn in tableView.tableColumns {
             guard let column = Column(rawValue: tableColumn.identifier.rawValue) else { continue }
+            let title = column.title(in: listing)
+            // Only when it differs, since this runs on every reload and a title change redraws.
+            if tableColumn.title != title { tableColumn.title = title }
             let image: NSImage? = column.sortKey == sort.key
                 ? NSImage(
                     named: sort.ascending ? "NSAscendingSortIndicator" : "NSDescendingSortIndicator"
                 )
                 : nil
-            tableView.setIndicatorImage(image, in: tableColumn)
+            if tableView.indicatorImage(in: tableColumn) != image {
+                tableView.setIndicatorImage(image, in: tableColumn)
+            }
         }
     }
 }

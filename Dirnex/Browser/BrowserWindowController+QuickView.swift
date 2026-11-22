@@ -58,11 +58,13 @@ extension BrowserWindowController {
         guard mode != quickViewMode else { return }
         // A slideshow runs at full size, so the pane size or none ends it (PLAN.md §M39 ▸ Slice 16).
         if !mode.isFullSize { stopQuickViewSlideshow() }
+        let leaving = visibleQuickViewSurface
         quickViewMode = mode
         // Before the surfaces are reconciled, so the window is already resizing into (or out of)
         // the full-screen space while the preview lays itself out at the size it will land at.
         syncFullScreenSpace(for: mode)
         lockCoveredDividers(for: mode)
+        handOffQuickViewMedia(from: leaving)
         // Turning the mode *on* is the user asking to see the file under the cursor, so an encrypted
         // archive may ask for its passphrase; turning it off has nothing to unlock.
         updateQuickView(unlocking: mode != .off)

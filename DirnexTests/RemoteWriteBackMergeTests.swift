@@ -161,13 +161,19 @@ struct RemoteWriteBackBaseTests {
 /// destabilizes its neighbours (docs/NOTES.md ▸ Testing).
 @MainActor
 @Suite("Write-back merge offer")
-struct RemoteWriteBackMergeOfferTests {
+final class RemoteWriteBackMergeOfferTests {
     private let directory: URL
 
     init() throws {
         directory = FileManager.default.temporaryDirectory
             .appendingPathComponent("dirnex-merge-offer-\(UUID().uuidString)", isDirectory: true)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+    }
+
+    /// Every test gets an instance of its own and a folder with it, used or not, so the folder goes
+    /// when the instance does rather than in each test's `defer`, which five tests did not have.
+    deinit {
+        try? FileManager.default.removeItem(at: directory)
     }
 
     private func file(_ name: String, _ data: Data) throws -> URL {
@@ -181,7 +187,6 @@ struct RemoteWriteBackMergeOfferTests {
 
     @Test("Merge… is offered when the server's copy changed and the base and the copy are text")
     func offeredWhenItCanWork() async throws {
-        defer { try? FileManager.default.removeItem(at: directory) }
         let base = try file("base.txt", Data("a\nb\n".utf8))
         let yours = try file("notes.txt", Data("a\nB\n".utf8))
         let offered = await BrowserWindowController.mergeBase(
@@ -192,7 +197,6 @@ struct RemoteWriteBackMergeOfferTests {
 
     @Test("Merge… is not offered without a change, a base, a size the window reads, or text")
     func notOfferedOtherwise() async throws {
-        defer { try? FileManager.default.removeItem(at: directory) }
         let base = try file("base.txt", Data("a\nb\n".utf8))
         let yours = try file("notes.txt", Data("a\nB\n".utf8))
         let binary = try file("binary.txt", Data([0x61, 0x00, 0x62]))
@@ -315,7 +319,6 @@ struct RemoteWriteBackMergeOfferTests {
 
     @Test("the three versions are read whole, yours' file taken as it was before it was read")
     func readsTheThree() throws {
-        defer { try? FileManager.default.removeItem(at: directory) }
         let base = try file("base.txt", Data("a\nb\n".utf8))
         let yours = try file("notes.txt", Data("a\nB\n".utf8))
         let theirs = try file("theirs.txt", Data("a\nb\nc\n".utf8))

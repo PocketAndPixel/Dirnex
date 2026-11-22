@@ -93,11 +93,12 @@ enum AboutPanel {
     private static let separator = Piece(text: " · ")
 
     /// Where this build stands with the license, without its name. A license that ended, whether
-    /// or not it still covers this version, gets a quiet **Renew** link; no license gets **Buy a
-    /// License**. Nothing more: the reminder is the place that asks.
+    /// or not it still covers this version, gets a quiet **Renew** link; no license, or a revoked
+    /// one, gets **Buy a License**. Nothing more: the reminder is the place that asks, and Settings ▸
+    /// License the place that says a license was revoked.
     private static func licenseLine(_ status: LicenseStatus, today: LicenseDay) -> Line {
         switch status {
-        case .unlicensed:
+        case .unlicensed, .revoked:
             [
                 Piece(text: String(localized: "Not licensed")),
                 separator,

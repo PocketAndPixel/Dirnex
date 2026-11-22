@@ -88,6 +88,13 @@ so a trap goes here only if it can bite any live run; one tied to an area goes u
     was already empty (its folder unchanged since the day before), so nothing was lost. Before
     launching a copy, list the store, and copy its files aside if there are any. A copy stopped with
     `kill` also leaves its `gm-<id>.sock` there; `lsof` says which socket nobody holds.
+    - **Nor the remote preview cache.** Found 2026-11-21: every launch removes
+      `$TMPDIR/DirnexRemote` (`RemoteFileCache.purgeTemporaries`), and a copy launched by Oleg's
+      user shares that `TMPDIR` with the release build he has open. So the copy's launch takes
+      whatever his app had downloaded there, a server file open in F4 for write-back included. That
+      day his app had nothing open in it (`lsof`), and what the folder held before is unknown.
+      Before launching a copy, list `/var/folders/…/T/DirnexRemote` (the app's `TMPDIR`, from
+      `ps eww`, not the shell's) and check `lsof -p <his pid>` for it.
   - **Its first launch asks macOS about every cloud provider, on Oleg's screen.** Seen 2026-11-10: the
     copy showed no window, its main thread sat in `open` under `CloudStorageMounts.entryDirectory`, and
     he got "“Dirnex.app” wants to access files managed by “Box”", one per provider, which screenshots
@@ -105,6 +112,31 @@ so a trap goes here only if it can bite any live run; one tied to an area goes u
     Documents favorites reach the providers. Seeding both tabs at the fixture and `Dirnex.favorites` to
     the fixture alone (`-data`, with the copy quit) made a launch with no request in the log
     (`function=TCCAccessRequestIndirect` counts them).
+    - **A copy whose pane opens on `~/Movies` asks for Media & Apple Music.** Seen 2026-11-20 for M42
+      Slice 3: with the left tab seeded at `~/Movies`, the copy logged `AUTHREQ_PROMPTING` for
+      `kTCCServiceMediaLibrary` seconds after launch, before Quick View opened or any input arrived,
+      and it was allowed 4.8 s later. `~/Movies` holds the TV app's `TV` folder; which read set it off
+      was not traced. Seed a folder outside `~/Movies` and `~/Music`, and grep the log for
+      `AUTHREQ_PROMPTING` after a launch: this one was a plain `TCCAccessRequest`, so a count of
+      `TCCAccessRequestIndirect` misses it.
+      - **A hard link brings a film out of `~/Movies` without a copy, unless the film is immutable.**
+        Done 2026-11-20 for M42 Slice 4: `ln` of the 10.5 GB film into a git-ignored `build/` folder
+        made a fixture the copy played across two launches with no request in the log. Removing the
+        folder put the original's link count back to 1. The Silo episodes refused it with "Operation
+        not permitted": `ls -lO` shows `uchg` on them. Leave the flag alone and pick another file.
+    - **A tab seeded inside iCloud Drive asks too, and the log words it differently.** Seen
+      2026-11-21 for the M42 cloud-placeholder check: listing a folder under
+      `~/Library/Mobile Documents` at launch logged
+      `Prompting for access to indirect object iCloud Drive by Dirnex.app`, with
+      `UserNotificationCenter` in front, and Oleg answered it 4 s later. A count of
+      `AUTHREQ_PROMPTING` gave 0. iCloud Drive is a File Provider domain like the others, so tell him
+      before such a run, and grep for `Prompting for access` as well.
+    - **An AppleEvent sent to the copy logs one too, so read the target before counting.** Seen
+      2026-11-18: after a launch with no request, each `osascript … run operation` logged a
+      `TCCAccessRequestIndirect` in the copy, 15 lines across the two sends. Each named
+      `com.anthropic.claude-code`, the sender, as `target_identity`, and was granted in 13 ms with
+      nothing on screen. So a nonzero count after a run driven by AppleEvents is not a provider prompt
+      until its `target_identity` says so.
   - **With Oleg in a full-screen Space, the copy's menu reads as disabled and its verbs take the
     front.** Seen 2026-11-15: the copy's window was off-Space and not main, so `app_menu` refused
     View ▸ Quick View Panel as disabled, and `app_bring_to_current_space` cannot move a window into a
@@ -124,6 +156,25 @@ so a trap goes here only if it can bite any live run; one tied to an area goes u
       copy dialog: after the function bar's F5 and the sheet's OK, Pause or Stop, `lsappinfo front`
       named the copy more often than not, though not every time. Batch a sheet's presses into one
       `app_batch` and put Oleg's app back after each batch rather than after each press.
+    - **So did a background click on the Matroska timeline**, which the tool sends as an `AXValue`
+      write on the slider (2026-11-21).
+- **A check that needs another language or a fresh account runs in a clone of the CI VM, driven from
+  inside it.** Done 2026-11-19 for M40 Slice 6: `tart clone dirnex-ci-base <name>`, `tart set` to 4
+  CPUs and 8 GB, `tart run --no-graphics --no-audio`. The base never loads the runner, so the clone
+  takes no jobs, and nothing reaches this Mac or Oleg's screen. The image has SIP off, and its
+  `tart-guest-agent` holds Accessibility, PostEvent and ScreenCapture, so a tool it runs through
+  `tart exec` can see and drive the VM's screen. `screencapture -x` shrunk to 1024×768 gives
+  screenshots in points. A CGEvent poster compiled there with `swiftc` clicks and presses keys,
+  which also answered macOS's own prompts. The first capture raises a "bypass the system private
+  window picker" prompt, and an AppleScript to Finder raises an Automation one (Finder's own menus
+  need neither). Spotlight is off in the image. `tart delete` the clone afterwards.
+  - **An app gets in by `tar` over `tart exec -i`, and `/tmp` does not survive the VM's restart.** The
+    image has assessment disabled, so `build/live-copy`'s ad-hoc build and the Developer ID release
+    both opened from `/tmp` with nothing to answer. A tool compiled there before a `tart stop` was
+    gone after the next boot, and `tart exec` answered 125.
+  - **A menu Dirnex opened from the keyboard ignored a posted click on its item.** ⌃T's menu stayed
+    up after the click; a posted Down and Return chose the item. Finder's context menu, opened by a
+    posted right-click, did take a posted click.
 - **A measurement at scale needs a Release build, and an ad-hoc signed one needs the hardened runtime
   off.** A Debug `DirnexCore` is `-Onone`, far too slow to say anything about a 256 MiB comparison.
   Seen 2026-11-08: `xcodebuild -configuration Release CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual
@@ -232,6 +283,11 @@ so a trap goes here only if it can bite any live run; one tied to an area goes u
   `Dirnex.debug.dylib`, not the thin executable — grep the dylib to confirm new code actually
   compiled in. `xcodebuild` writes to `~/Library/Developer/Xcode/DerivedData/`, not the repo's
   `build/`.
+  - **An `open` sent the moment the old process is gone can answer -600 and launch nothing.** Seen
+    2026-11-21 relaunching `build/live-copy` in Russian: the quit's `kill -0` loop ended, `open`
+    printed `_LSOpenURLsWithCompletionHandler() failed with error -600`, and a wait for the new
+    process spun until the shell's timeout. The same `open` a few seconds later worked. Read `open`'s
+    exit status, and give a wait for the new process a bound.
   - **A grep for a Swift name can miss code that is there.** The mangler replaces a word the
     symbol has already spelled with a back-reference, so `CloudPlaceTitle.iCloudContainer` has no
     `Cloud` after the type's own and `strings`/`nm` counted **0** for `iCloudContainer` in a build
@@ -408,6 +464,11 @@ so a trap goes here only if it can bite any live run; one tied to an area goes u
   before the responder chain *and* before a raw `NSEvent` local keyDown monitor. Any
   Escape-driven behavior needs a physical key press to verify. Letters arrive as `keyCode = 0`
   with the character set, so route typed input by character, not keyCode.
+  - **A background `app_key escape` did arrive.** Seen 2026-11-19 on ⌘K's palette in
+    `build/live-copy`, with the copy in front after a `run operation`: the tool reported it "delivered
+    via raw input" to the palette's field, and the palette closed. So the swallowing above belongs to
+    the full-screen takeover. Not tried with the copy behind another app, and the palette's close is
+    not a test of any other window's Escape.
   - **`NSApp.postEvent` is the documented way in for a *monitor*, and it does not reach
     key-equivalent dispatch at all** — so it cannot verify a button's Escape or ⌘-key binding, and
     it fails in the quiet direction: the sheet simply stays open, which reads as a broken binding.
@@ -549,6 +610,21 @@ so a trap goes here only if it can bite any live run; one tied to an area goes u
     with `open -b` to make its cursor row emphasized had a rename field open, and "old" appeared in
     it. Keep a copy in front only for the screenshot that needs it, put his app back at once, and
     tell him first when the check will hold the front for longer.
+- **Full-screen control hides every app outside the grant, and they stay hidden after the release.**
+  Seen 2026-11-21: the first full-screen screenshot hid Oleg's `/Applications` Dirnex, Notes and VS
+  Code, and after `release_full_control` `lsappinfo list` still marked the first two `(hidden)`.
+  `open -b` brought VS Code back by making it the front app, while `open -g -b` left Dirnex hidden.
+  Tell him which apps to click back in the Dock, rather than flipping the front while he may be
+  typing.
+- **During full-screen control, part of the screen shows no tooltip from any view, and it reads as a
+  broken view.** Seen 2026-11-21, and it cost five takeovers. With the copy's window at x 214 pt,
+  nothing showed a tooltip beyond about x 1160 pt on screen at the height of the window's top (y 185
+  to 220). That covered the Quick View header's ⊗ and facts, probe buttons added to the header late,
+  and the title bar's update badge. The sidebar, the left pane and the tab strip's + showed theirs.
+  With the window moved to x 0, the same ⊗ and facts did too. `CGWindowListCopyWindowInfo` found no
+  window over the spot, and the app's own frame-view hit test reached the views, so the cause was not
+  found. Before calling a tooltip broken, hover a control known to work at the same place on screen,
+  or move the window first (`NSWindow Frame MainWindow`, written with the copy quit).
 - **Find Files on this Mac runs off the Spotlight index, so a fixture in a temp folder finds nothing.**
   Seen 2026-11-05: a saved search scoped to the session scratchpad under `/private/tmp` opened an
   empty results tab, because `SpotlightSearchRunner` asks `mdfind` and `/private/tmp` is not
@@ -587,6 +663,11 @@ so a trap goes here only if it can bite any live run; one tied to an area goes u
     WezTerm is spawned with `Process` and inherits it whole, and a terminal `open` starts gets it too, so a
     secret in the variable would have sat in the very terminal whose "no secret in `argv` or on disk" was
     under test. The variable holds a path, and the file is gone after the first read.
+  - **A probe that logs a value's description logs every secret inside it.** Seen 2026-11-19 on M40
+    Slice 8: a probe wrote `exit=\(exit)` for `..`'s decision, whose `.connect(password:)` case carries
+    the password read from the Keychain, and Oleg's NAS password landed in a scratch log and in the
+    session's tool output. Log a case name you spell out (`exit=connect`), never `\(value)` of a type
+    that holds a secret, and read the probe's line over before the first run that reads the Keychain.
 - **computer-use refuses a key aimed at a point inside a text view, saying it "belongs to a different
   process".** Seen 2026-10-08 on both of Report a Bug…'s text boxes: `app_key tab` at the box's center
   was refused twice, before and after a fix to the boxes' accessibility tree, while the app's own
@@ -630,6 +711,12 @@ so a trap goes here only if it can bite any live run; one tied to an area goes u
     can be stale anyway. Reopen Closed Tab being *disabled* afterwards says the closed tab was used, and
     a ⌘T that landed instead would have left it enabled. Ask what state only the gesture under test
     could leave behind.
+  - **A list does not re-validate the menu of an app in the background.** Seen 2026-11-19 on Edit ▸
+    Undo in the copy, with Oleg's Chrome in front: after an undo that emptied the stack, `list` still
+    gave "Undo Change Attributes" and a plain Redo, while the saved journal (`Dirnex.undoJournal`) held
+    the step on the redo stack. With the copy in front the same list read right. An inactive app has no
+    key window to answer `undo:`, so read what the gesture leaves (the journal, the files) rather than
+    a menu title.
 - **computer-use reports `AXError: failure` for a button that opens a sheet, and the sheet is up.**
   Seen twice on 2026-10-01 pressing Report a Bug…'s *Show What Will Be Sent…*: the AXPress came back
   as a failure each time, and a screenshot showed the preview sheet open. The press waits for an
@@ -704,6 +791,20 @@ so a trap goes here only if it can bite any live run; one tied to an area goes u
     build, export the domain, rebuild `build/debug-dd` with any env-gated probe, use his saved rows
     (they hold the NAS accounts), then rebuild without the probe, `defaults import` the export and
     relaunch it. That run moved `Dirnex.frecency`, `Dirnex.tabs.left` and `SULastCheckTime`.
+  - **A share Finder already mounted is not the LAN to the app, and the copy reads it.** Seen
+    2026-11-18: `build/live-copy` listed `/Volumes/media` (`//olegasd@nas/media`, smbfs), walked a
+    folder on it and read its files' tags and bytes, with no TCC request in its log beyond the
+    AppleEvent checks (above) and no prompt. Presumably the kernel's SMB client, which holds the
+    connection, is why Local Network privacy never comes into it. A check that only reads a mounted share can use the copy, and
+    needs no NAS account; one where Dirnex itself connects (its own SMB, SFTP, FTP or WebDAV) still
+    runs in `build/debug-dd`.
+    - **`build/debug-dd` listing that share raised macOS's network-volume prompt.** Seen 2026-11-19 on
+      M40 Slice 8, with a tab seeded at `/Volumes/media`: tccd logged `AUTHREQ_PROMPTING` for
+      `kTCCServiceSystemPolicyNetworkVolumes` at launch, since the ad-hoc build "failed to match existing
+      code requirement" (the release's team-signed one), and Oleg allowed it 2 s later. The answer was
+      filed as a new grant for `app.dirnex.Dirnex`, so the release may ask once more the next time it
+      reads a network volume. Tell Oleg before a `build/debug-dd` run that opens on a share. The copy
+      above made no such request.
   - **Every copy that tries the LAN leaves a row in Local Network that macOS 26 cannot remove.** The
     pane has toggles and no remove button, and switching a row off keeps it. By 2026-11-11 the list
     held seven "Dirnex.app" rows from copies long deleted. Apple's forums put remove buttons in macOS

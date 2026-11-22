@@ -108,7 +108,10 @@ extension PanelViewController {
     ///
     /// The header is the full-window one, pinned: the same name, position and `1` / `2` styles, at
     /// the size where the keys work too.
-    private func ensureQuickViewPreview() -> QuickViewPreviewView {
+    ///
+    /// Internal so the window can hand a playing movie to it on the way down from a full size
+    /// (`handOffQuickViewMedia`).
+    func ensureQuickViewPreview() -> QuickViewPreviewView {
         if let preview = quickViewPreview { return preview }
         let preview = QuickViewPreviewView(
             backingColor: .textBackgroundColor,
@@ -117,6 +120,7 @@ extension PanelViewController {
         )
         preview.onClose = { [weak self] in self?.host?.closeQuickView() }
         preview.onPickStyle = { [weak self] in self?.host?.setQuickViewRenderStyle($0) }
+        preview.autoplaysMedia = { AppPreferences.shared.quickViewAutoplayMedia }
         preview.links.follow = { [weak self] link, location, surface in
             self?.host?.followQuickViewLink(link, from: location, on: surface)
         }

@@ -16,6 +16,8 @@ import DirnexCore
 /// on every later connect to a NAS they have used for years.
 @MainActor
 final class ConnectServerFTPFields {
+    // An example host, so not text to translate.
+    // swiftlint:disable:next bare_ui_literal
     let host = ConnectFormFactory.textField(placeholder: "nas.local")
     let port = ConnectFormFactory.textField(placeholder: "21")
     let user = ConnectFormFactory.textField(placeholder: ConnectText.userHint)
@@ -124,6 +126,8 @@ final class ConnectServerFTPFields {
         timeZoneControl.toolTip = ConnectText.timeZoneHelp
         let menu = timeZoneControl.menu ?? NSMenu()
         menu.addItem(Self.timeZoneItem(title: ConnectText.sameTimeZoneAsThisMac, identifier: nil))
+        // UTC is the zone's name in every language.
+        // swiftlint:disable:next bare_ui_literal
         menu.addItem(Self.timeZoneItem(title: "UTC", identifier: "UTC"))
         menu.addItem(.separator())
         for identifier in TimeZone.knownTimeZoneIdentifiers.sorted() {

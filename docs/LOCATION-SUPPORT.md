@@ -19,7 +19,7 @@ closed simply reads differently — it is not explained here.
 |---|---|
 | **yes** | Fully done. Behaves as it does on the local disk. |
 | **yes, limited** | Fully done for what the technology allows. The remaining difference **cannot** be closed from our side — the protocol, the service or macOS does not expose it. |
-| **yes, partially** | Done, and the gap **could** be narrowed to look more local. What is left of the parity backlog is planned as M40 at PLAN.md §4 ▸ *Next*, plus the short list at §4 ▸ *Still open*. |
+| **yes, partially** | Done, and the gap **could** be narrowed to look more local. What is left of the parity backlog has been unscheduled since M40 closed on 2026-11-19, apart from the short list at PLAN.md §4 ▸ *Still open*. |
 | **no** | Not implemented, and nothing structural prevents it — so it is backlog too, and its footnote names the milestone. A "no" with no route to a yes is written **n/a** instead. |
 | **n/a** | The concept does not exist there (a Trash inside the Trash, a checksum of a bucket list). |
 
@@ -27,7 +27,7 @@ closed simply reads differently — it is not explained here.
 
 | Column | What it covers |
 |---|---|
-| **Local** | Internal and external volumes, disk images, **mounted vaults**, and **SMB/NFS** shares — SMB rides the OS mounter, so a share is an ordinary `/Volumes/…` tree (PLAN.md §M5). A server connected with no share named is a list of its shares (`smb://user@host`), depth 0 like an **S3 acct** pane but read-only, so nothing is created, deleted or copied there and it is not searched or synchronized: Return mounts a share and lands here, and `..` at that share's root goes back to the list (PLAN.md §M35). |
+| **Local** | Internal and external volumes, disk images, **mounted vaults**, and **SMB/NFS** shares — SMB rides the OS mounter, so a share is an ordinary `/Volumes/…` tree (PLAN.md §M5). A server connected with no share named is a list of its shares (`smb://user@host`), depth 0 like an **S3 acct** pane but read-only, so nothing is created, deleted or copied there and it is not searched or synchronized: Return mounts a share and lands here, and `..` at that share's root goes back to the list (PLAN.md §M35). Since §M40 Slice 8 the list shows each share's comment after its name, and `..` at the root of a share Finder mounted goes up to its server's list too, as the account the mount names, with Dirnex's saved password for it or the Connect sheet filled in. A mount of a folder inside a share still goes up to its parent. |
 | **Cloud mount** | iCloud Drive, Google Drive, OneDrive, Dropbox and Box under `~/Library/CloudStorage` / `~/Library/Mobile Documents`. These are **real local paths**, so they inherit the Local column except where noted.<sup>1</sup> |
 | **Archive** | A zip/tar/7z/… browsed as a folder tree (`archive:`), including nested archives.<sup>2</sup> |
 | **SFTP** | A connected SSH account. |
@@ -446,7 +446,11 @@ leaves nothing behind. **F2 takes a path too**, since 2026-11-18: `Archive/2025/
 item below its own folder under the last name, making the folders on the way, and one ⌘Z puts it back
 and removes them. Occupied names are refused, as is a folder moved into itself; an S3 prefix goes to the
 queue as a rename job into the new folder, and inside an archive the folders and the move are one
-rewrite. ⇧F2 still refuses a `/`. Run live on this Mac's disk (F7, its undo and redo, ⇧F4, ⌥F5 into
+rewrite. ⇧F2 still refuses a `/`. **F5 and F6 take a folder** in their dialog's field, since
+2026-11-19: a path on the other pane's location, relative to its folder or from a root, which is made
+with the folders on its way on OK and journaled for ⌘Z; the marks' own folder and one inside a marked
+folder are refused under the field. Run live on this Mac's disk (F5, its undo, and the refusal); a
+server destination is pinned by `TransferDialogFieldTests` only. Run live on this Mac's disk (F7, its undo and redo, ⇧F4, ⌥F5 into
 `backups/2026` and against a file in the way, and F2 with its undo and redo). A server and an archive are pinned by tests
 (`NestedCreateRouteTests`, `PathRenameTests`, `ArchiveCreateTests`, and the core's
 `NestedCreationTests`, `NestedMoveTests` and `PackFoldersTests`); a cloud mount goes through the same local backend and was not run live.
@@ -1044,9 +1048,9 @@ the folders they came from.
 | Search at all | yes | yes | yes | yes | yes | yes | yes | yes, bounded<sup>z</sup> | yes | yes, limited<sup>aa</sup> | yes, limited<sup>aa</sup> |
 | by **name** | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes |
 | by **kind / size / modified** | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes |
-| by **file contents** | yes | yes | **n/a**<sup>bb</sup> | **n/a**<sup>bb</sup> | **n/a**<sup>bb</sup> | **n/a**<sup>bb</sup> | **n/a**<sup>bb</sup> | **n/a**<sup>bb</sup> | **n/a**<sup>bb</sup> | yes | yes |
-| by **Finder tag** | yes | yes | n/a | n/a | n/a | n/a | n/a | n/a | n/a | yes | yes |
-| Runs off an index (instant) | yes | yes | no<sup>cc</sup> | no<sup>cc</sup> | no<sup>cc</sup> | no<sup>cc</sup> | no<sup>cc</sup> | no<sup>z</sup> | no<sup>cc</sup> | yes | yes |
+| by **file contents** | yes<sup>aay</sup> | yes<sup>aay</sup> | **n/a**<sup>bb</sup> | **n/a**<sup>bb</sup> | **n/a**<sup>bb</sup> | **n/a**<sup>bb</sup> | **n/a**<sup>bb</sup> | **n/a**<sup>bb</sup> | **n/a**<sup>bb</sup> | yes | yes |
+| by **Finder tag** | yes<sup>aay</sup> | yes<sup>aay</sup> | n/a | n/a | n/a | n/a | n/a | n/a | n/a | yes | yes |
+| Runs off an index (instant) | yes, where Spotlight indexes<sup>aay</sup> | yes, where Spotlight indexes<sup>aay</sup> | no<sup>cc</sup> | no<sup>cc</sup> | no<sup>cc</sup> | no<sup>cc</sup> | no<sup>cc</sup> | no<sup>z</sup> | no<sup>cc</sup> | yes | yes |
 | Server-side walk (one request, not one per folder) | n/a | n/a | n/a | yes, limited<sup>dd</sup> | n/a<sup>ss</sup> | **no**<sup>aai</sup> | yes | yes, per bucket<sup>z</sup> | no<sup>nnn</sup> | — | — |
 | Live progress + Stop | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes |
 | Save the search to the sidebar, re-run later | yes | yes | yes | yes | yes | yes | yes | **no**<sup>z</sup> | yes | yes | yes |
@@ -1077,6 +1081,20 @@ Files filled in with that search and asking about the folder it ran in — never
 `search:` path, whose fields would hide Content and Tags and drop them from the edit
 (`SearchPlace`). Find replaces the hits in that tab. Verified live locally and inside a zip; on a
 server and in Photos, which take the same walk route as the zip, by tests only.
+
+<sup>aay</sup> **A folder Spotlight does not index is walked** (PLAN.md §M40 Slice 3): an SMB or NFS
+share whose volume has indexing off, `/private/tmp`, a hidden folder, one on Spotlight's Privacy list.
+`mdfind` answers nothing there and says nothing, so ⌥F7 asks first (`SpotlightCoverage`: `mdutil -s`
+for a volume's root, the folder looked up by name in its parent otherwise) and walks when the answer
+is no, reading each file's tags and bytes. Contents are then **plain text only**, UTF-8 or UTF-16, case-
+and diacritic-insensitive as Spotlight's are, and nothing inside a PDF or a Word file; Find Files says
+so under its fields. A file whose bytes are in the cloud (`isDataless`) is never read. "Everywhere"
+stays Spotlight's index. Only "This Folder" walks. Verified live 2026-11-18 under `/private/tmp`, by
+name, tag and text, from the dialog, a saved search and an edit, with the dialog's note shown there
+and not in an indexed folder, whose search still found a PDF's text through Spotlight. On the NAS's
+SMB share that Finder mounted, the same day, Spotlight answered 0 for each query and the app found the
+same hits, tags and text included, from the dialog and from saved searches. The share's root showed
+the note through `mdutil -s`.
 
 <sup>bb</sup> Impossible without downloading everything under the scope in order to grep it.
 `SearchFields` **hides** the field rather than accepting it and skipping the clause, which would
@@ -1440,9 +1458,10 @@ download ends within 1 ms of the cancel, without one it runs to the end (docs/NO
 
 The two milestones this list was written for have closed: **M24** (every local-only feature, on a
 file that is not local) on 2026-08-28 and **M25** (what a remote write carries, and what a remote
-delete costs) on 2026-08-29, both archived in [HISTORY.md](HISTORY.md). What is left of the **"no"**
-and **"yes, partially"** cells that are *ours* to close is planned as M40 at
-[PLAN.md](../PLAN.md) §4 ▸ *Next*, plus the short list at §4 ▸ *Still open* — the cells that were too small to be a slice of it. This file is the status;
+delete costs) on 2026-08-29, both archived in [HISTORY.md](HISTORY.md). M36–M40 then took up
+what was planned of the **"no"** and **"yes, partially"** cells that are *ours* to close, and the last of
+them closed on 2026-11-19. What is left of those cells is unscheduled, apart from the short list at
+[PLAN.md](../PLAN.md) §4 ▸ *Still open*. This file is the status;
 the plan is the work. Nothing that has already shipped is argued here — a closed gap is simply a
 changed cell, and why it changed is in [HISTORY.md](HISTORY.md).
 

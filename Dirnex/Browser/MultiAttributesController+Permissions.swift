@@ -17,7 +17,7 @@ extension MultiAttributesController {
     func makePermissionsTab() -> NSView {
         var rows: [NSView] = []
 
-        if !canEdit {
+        if !ownsEveryItem {
             rows.append(makeNotOwnerNote())
         }
 

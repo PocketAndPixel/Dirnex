@@ -32,16 +32,27 @@ enum SpotlightSearchRunner {
     /// Run Finder's **Recents** (PLAN.md §M8) — recently-used files everywhere — the same way a
     /// search runs, but from `RecentsQuery`'s own predicate rather than a user's `FileQuery`.
     /// The hits are all `.local`, so the caller's backend stats them exactly as it does search hits.
+    ///
+    /// Unlike a search, each hit comes back with the date it was last opened (PLAN.md §M40 Slice 2),
+    /// so the cap keeps the newest rather than whichever paths `mdfind` printed first, and every row
+    /// carries the date its Date column shows (`RecentsListing`).
     static func runRecents(
         _ query: RecentsQuery,
         backend: any VFSBackend
     ) async -> Results {
-        await results(forPaths: await paths(arguments: query.mdfindArguments()), backend: backend)
+        let arguments = query.mdfindArguments()
+        return await BlockingWork.run {
+            let hits = RecentsQuery.hits(fromOutput: mdfindOutput(arguments: arguments) ?? Data())
+            let listing = RecentsListing(hits: hits, limit: resultLimit) { path in
+                try? backend.stat(at: .local(path))
+            }
+            return Results(entries: listing.entries, truncated: listing.truncated)
+        }
     }
 
     /// Cap `paths` to the rendering budget and stat the survivors into entries, off the main thread —
-    /// the shared tail of every `mdfind`-backed listing (search and Recents alike). Anything that
-    /// vanished between the index and now is silently skipped.
+    /// a search's tail; Recents caps by date instead (`runRecents`). Anything that vanished between
+    /// the index and now is silently skipped.
     private static func results(
         forPaths paths: [String],
         backend: any VFSBackend
@@ -76,8 +87,8 @@ enum SpotlightSearchRunner {
         await paths(arguments: query.mdfindArguments(scopePath: scope?.path))
     }
 
-    /// The paths `mdfind` reports for a ready-made argument vector — the seam Recents runs through,
-    /// where a `FileQuery` isn't the source. Empty for an empty vector or any `mdfind` failure.
+    /// The paths `mdfind` reports for a ready-made argument vector. Empty for an empty vector or any
+    /// `mdfind` failure.
     private static func paths(arguments: [String]) async -> [String] {
         guard !arguments.isEmpty else { return [] }
         return await BlockingWork.run {
@@ -87,8 +98,16 @@ enum SpotlightSearchRunner {
 
     /// Spawn `mdfind` and collect its newline-delimited absolute paths. Returns an empty list on
     /// any failure (spawn error, non-UTF-8 output) — a failed search is an empty result, not a
-    /// crash. stderr is discarded so a Spotlight warning never pollutes the paths.
+    /// crash.
     private static func runMdfind(arguments: [String]) -> [String] {
+        guard let data = mdfindOutput(arguments: arguments),
+              let output = String(data: data, encoding: .utf8) else { return [] }
+        return output.split(separator: "\n", omittingEmptySubsequences: true).map(String.init)
+    }
+
+    /// Everything `mdfind` printed for `arguments`, or `nil` when it could not be started. stderr
+    /// is discarded so a Spotlight warning never pollutes the output.
+    private static func mdfindOutput(arguments: [String]) -> Data? {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/mdfind")
         process.arguments = arguments
@@ -100,13 +119,11 @@ enum SpotlightSearchRunner {
         do {
             try process.run()
         } catch {
-            return []
+            return nil
         }
         // Read to EOF before waiting so a large result set can't deadlock on a full pipe buffer.
         let data = pipe.fileHandleForReading.readDataToEndOfFile()
         awaitExit()
-
-        guard let output = String(data: data, encoding: .utf8) else { return [] }
-        return output.split(separator: "\n", omittingEmptySubsequences: true).map(String.init)
+        return data
     }
 }

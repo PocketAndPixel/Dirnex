@@ -23,6 +23,7 @@ extension BrowserWindowController {
         )
         preview.onClose = { [weak self] in self?.closeQuickView() }
         preview.onPickStyle = { [weak self] in self?.setQuickViewRenderStyle($0) }
+        preview.autoplaysMedia = { AppPreferences.shared.quickViewAutoplayMedia }
         preview.links.follow = { [weak self] in self?.followQuickViewLink($0, from: $1, on: $2) }
         preview.links.namesListed = { [weak self] in self?.quickViewNamesListed(beside: $0) ?? [] }
         followSlideshow(on: preview)
@@ -46,6 +47,7 @@ extension BrowserWindowController {
         )
         preview.onClose = { [weak self] in self?.closeQuickView() }
         preview.onPickStyle = { [weak self] in self?.setQuickViewRenderStyle($0) }
+        preview.autoplaysMedia = { AppPreferences.shared.quickViewAutoplayMedia }
         preview.links.follow = { [weak self] in self?.followQuickViewLink($0, from: $1, on: $2) }
         preview.links.namesListed = { [weak self] in self?.quickViewNamesListed(beside: $0) ?? [] }
         followSlideshow(on: preview)
@@ -378,6 +380,8 @@ extension BrowserWindowController: NSMenuItemValidation {
             return canPerformQuickViewZoom(menuItem.action)
         case #selector(filterQuickViewTable(_:)):
             return validateQuickViewFilterItem(menuItem)
+        case #selector(toggleQuickViewPlayback(_:)), #selector(nextQuickViewAudioTrack(_:)):
+            return validateQuickViewMediaItem(menuItem)
         default:
             break
         }

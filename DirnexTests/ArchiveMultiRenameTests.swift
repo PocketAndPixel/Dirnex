@@ -24,6 +24,7 @@ struct ArchiveMultiRenameTests {
     @Test("every member takes its new name in one rewrite, and keeps its bytes")
     func renamesABatchInOnePass() throws {
         let fixture = try Fixture()
+        defer { fixture.cleanUp() }
 
         try ArchiveWriter.rename(
             [
@@ -48,6 +49,7 @@ struct ArchiveMultiRenameTests {
     @Test("a folder and a file inside it are renamed together")
     func renamesAFolderAndItsChild() throws {
         let fixture = try Fixture()
+        defer { fixture.cleanUp() }
 
         try ArchiveWriter.rename(
             [
@@ -69,6 +71,7 @@ struct ArchiveMultiRenameTests {
     @Test("a name held outside the batch refuses all of it, byte-identical")
     func refusesTheWholeBatchOnACollision() throws {
         let fixture = try Fixture()
+        defer { fixture.cleanUp() }
         let before = try fixture.archiveBytes()
 
         #expect(throws: VFSError.alreadyExists(
@@ -90,6 +93,7 @@ struct ArchiveMultiRenameTests {
     @Test("a swap is refused before the archive is opened")
     func refusesASwap() throws {
         let fixture = try Fixture()
+        defer { fixture.cleanUp() }
         let before = try fixture.archiveBytes()
 
         #expect(throws: (any Error).self) {
@@ -109,6 +113,7 @@ struct ArchiveMultiRenameTests {
     @Test("an encrypted archive stays encrypted")
     func keepsEncryption() throws {
         let fixture = try Fixture(encryption: .aes256)
+        defer { fixture.cleanUp() }
 
         try ArchiveWriter.rename(
             [
@@ -277,6 +282,7 @@ struct ArchiveMultiRenameReachTests {
     @Test("the apply reaches the archive, and a refusal there renames nothing")
     func applyReachesTheArchive() async throws {
         let fixture = try ArchiveCreateTests.Fixture()
+        defer { fixture.cleanUp() }
         let root = VFSPath(backend: .archive(forArchiveAt: fixture.archive), path: "/")
         let before = try fixture.archiveBytes()
         let window = TrashlessProbe.window()

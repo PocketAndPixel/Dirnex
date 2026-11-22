@@ -51,3 +51,23 @@ extension LicenseKeyError {
         }
     }
 }
+
+extension LicenseRefusal {
+    /// What to tell someone whose key doesn't count: the verifier's reason, or that its license was
+    /// taken back. That one names no reason, since a refund, a chargeback and a revocation by hand
+    /// all end there, and someone who thinks it's wrong is told where to ask.
+    var message: String {
+        switch self {
+        case let .invalid(error):
+            error.message
+        case .revoked:
+            String(
+                localized: """
+                This license key is no longer valid. If you think that’s a mistake, reply to the \
+                email it came in.
+                """,
+                comment: "License key refused: it is genuine, but its license was revoked (refunded or taken back)."
+            )
+        }
+    }
+}

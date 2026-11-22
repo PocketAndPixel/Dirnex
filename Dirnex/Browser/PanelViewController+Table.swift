@@ -71,6 +71,9 @@ extension PanelViewController: NSTableViewDelegate {
             // instead. Inline rename reads this text back, and compares it in this form.
             cell.textField?.stringValue = FileNameDisplay.visible(entry.name)
             cell.textField?.alignment = .natural
+            // A share's comment rides after its name rather than in a column of its own: Size and
+            // Date stay where they are, and the tab's columns never change shape with the listing.
+            cell.comment = entry.comment
             // Finder tags, the cloud badge and Git's status letter all ride at the name's right
             // edge (PLAN.md §M6) — none of them a column of their own, in Finder's order for the
             // two it has: dots first, then the cloud, with Git outermost.
@@ -97,7 +100,10 @@ extension PanelViewController: NSTableViewDelegate {
             // ride a recycled cell onto an unrelated row (docs/NOTES.md ▸ AppKit).
             cell.toolTip = FileFormatting.sizeToolTip(for: entry, state: sizeState)
         case .date:
-            cell.textField?.stringValue = FileFormatting.dateString(for: entry)
+            cell.textField?.stringValue = FileFormatting.dateString(
+                for: entry,
+                in: ListingDate(listing: panel.path)
+            )
             cell.textField?.alignment = .natural
         case .sizeBar:
             // Handled above — it isn't a `FileCellView` at all.
@@ -178,8 +184,8 @@ extension PanelViewController: NSTableViewDelegate {
             if deferRefreshIfRenaming() { return }
             reconcileCursorFromTable()
             installSortedModel(model)
+            // Which moves the sort indicator too (`updateColumnHeaders`).
             reloadEverything()
-            updateSortIndicators()
             // Sort is per-tab and persisted (PLAN.md §M1).
             persistState()
         }

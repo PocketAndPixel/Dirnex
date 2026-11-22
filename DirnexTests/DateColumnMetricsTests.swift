@@ -68,19 +68,71 @@ struct DateColumnMetricsTests {
         }
     }
 
-    @Test("the localized header fits, with room for the sort indicator")
+    @Test("the localized header fits, with room for the sort indicator, under either title")
     func fitsTheHeader() {
         // Reserved whether or not the pane is sorted by date — otherwise the title reflows (and can
-        // start truncating) the first time someone clicks the header.
+        // start truncating) the first time someone clicks the header. Both titles, since Recents
+        // puts Last Opened over the same column.
+        for title in titles {
+            #expect(
+                headerWidth(title) <= PanelViewController.Column.date.defaultWidth,
+                "“\(title)” needs \(headerWidth(title)) pt"
+            )
+        }
+    }
+
+    @Test("in every shipped language, Last Opened fits wherever Date Modified sized the column")
+    func lastOpenedFitsAStoredWidth() throws {
+        // A tab stores its column widths, and every existing user's Date column was sized for Date
+        // Modified and this region's dates. Recents puts Last Opened over that same stored width, so
+        // a translation wider than both truncates for everyone who upgrades. Seen 2026-11-18 in
+        // Russian, where "Последнее открытие" drew as "Последнее открыт…".
+        let widestRow = FileFormatting.dateStringShapes
+            .map { markedDateCell(showing: $0).fittingSize.width }
+            .max() ?? 0
+        let app = Bundle(for: PanelViewController.self)
+        var checked = 0
+        for lproj in app.paths(forResourcesOfType: "lproj", inDirectory: nil) {
+            let language = (lproj as NSString).lastPathComponent
+                .replacingOccurrences(of: ".lproj", with: "")
+            guard language != "Base", let bundle = Bundle(path: lproj) else { continue }
+            let modified = bundle.localizedString(
+                forKey: "Date Modified",
+                value: nil,
+                table: "Localizable"
+            )
+            let opened = bundle.localizedString(
+                forKey: "Last Opened",
+                value: nil,
+                table: "Localizable"
+            )
+            let room = max(headerWidth(modified), widestRow)
+            #expect(
+                headerWidth(opened) <= room,
+                "\(language): “\(opened)” needs \(headerWidth(opened)) pt of \(room)"
+            )
+            checked += 1
+        }
+        #expect(checked == 14)
+    }
+
+    /// Both titles the Date column draws: Date Modified, and Last Opened in Recents.
+    private var titles: [String] {
+        [ListingDate.modified, .lastOpened].map { PanelViewController.Column.date.title(in: $0) }
+    }
+
+    /// What `title` needs as the Date column's header, sort indicator included, measured here rather
+    /// than through `DateColumnMetrics` so the test is not checking the code against itself.
+    private func headerWidth(_ title: String) -> CGFloat {
         let column = NSTableColumn(identifier: .init("test.date"))
-        column.title = PanelViewController.Column.date.title
+        column.title = title
         column.minWidth = 0
         column.maxWidth = .greatestFiniteMagnitude
         let table = NSTableView()
         table.addTableColumn(column)
         table.setIndicatorImage(NSImage(named: "NSAscendingSortIndicator"), in: column)
         column.sizeToFit()
-        #expect(column.width <= PanelViewController.Column.date.defaultWidth)
+        return column.width
     }
 
     @Test("and is no wider than what it has to hold")
@@ -91,15 +143,8 @@ struct DateColumnMetricsTests {
         let widestRow = FileFormatting.dateStringShapes
             .map { markedDateCell(showing: $0).fittingSize.width }
             .max() ?? 0
-        let column = NSTableColumn(identifier: .init("test.date"))
-        column.title = PanelViewController.Column.date.title
-        column.minWidth = 0
-        column.maxWidth = .greatestFiniteMagnitude
-        let table = NSTableView()
-        table.addTableColumn(column)
-        table.setIndicatorImage(NSImage(named: "NSAscendingSortIndicator"), in: column)
-        column.sizeToFit()
+        let widestHeader = titles.map(headerWidth).max() ?? 0
         // One point of headroom: the width is rounded up off a fractional measurement.
-        #expect(PanelViewController.Column.date.defaultWidth <= max(widestRow, column.width) + 1)
+        #expect(PanelViewController.Column.date.defaultWidth <= max(widestRow, widestHeader) + 1)
     }
 }

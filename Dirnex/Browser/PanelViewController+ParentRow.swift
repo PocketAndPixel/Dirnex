@@ -71,6 +71,8 @@ extension PanelViewController {
         cell.activeTreeGuideLevel = nil
         cell.onDisclosureToggle = nil
         cell.applyTreeLayout()
+        // Recycled from real rows, a share's among them, whose comment would follow the name.
+        cell.comment = nil
         switch column {
         case .name:
             cell.imageView?.image = FileIconProvider.parentIcon

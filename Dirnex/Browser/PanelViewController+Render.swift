@@ -16,6 +16,8 @@ extension PanelViewController {
         // the row set about to be drawn, not the one that was.
         rebuildSizeVisualization()
         tableView.reloadData()
+        renderedPath = panel.path
+        updateColumnHeaders()
         syncCursorToTable()
         updateChrome()
     }
@@ -57,6 +59,7 @@ extension PanelViewController {
     func renderRefresh() {
         rebuildSizeVisualization()
         tableView.reloadData()
+        renderedPath = panel.path
         syncCursorToTable(scroll: false)
         updateChrome()
         refreshQuickLookIfVisible()
