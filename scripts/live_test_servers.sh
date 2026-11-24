@@ -105,6 +105,15 @@ PubkeyAuthentication yes
 Subsystem sftp /usr/libexec/sftp-server
 MaxStartups 1000:30:2000
 EOF
+    # **Per-source penalties off, or back-to-back runs lock the suite out.** OpenSSH 9.8+ penalises
+    # an address for every connection that ends without signing in, and the suites fail sign-ins on
+    # purpose. Each full app run left one or two penalties on 127.0.0.1, and the sixth run against
+    # one server (2026-11-24, OpenSSH 10.5) crossed the 15 s threshold: `drop connection …
+    # penalty: failed authentication` for every login, 613 issues in fifteen suites over SFTP. Only
+    # where the server knows the keyword, since an older `sshd` refuses an unknown one.
+    if /usr/sbin/sshd -T -f "$STATE/sshd_config" 2>/dev/null | command grep -qi '^persourcepenalties '; then
+        echo "PerSourcePenalties no" >> "$STATE/sshd_config"
+    fi
 
     # A stale pin from a *previous* throwaway on this port fails preauth, and the app's own error
     # then reads as a broken feature rather than as a stale `known_hosts` line.

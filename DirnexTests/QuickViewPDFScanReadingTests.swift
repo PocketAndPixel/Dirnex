@@ -127,6 +127,8 @@ struct QuickViewPDFScanReadingTests {
     /// (docs/NOTES.md ▸ Vision). The first version of this test expected exactly two unread pages
     /// and failed one full run in five for that reason — a fact about the framework wearing a
     /// product defect's clothes. Five scanned pages, and every wait relative to what came before it.
+    /// The pages are pictures with no words in them now, which leaves Live Text nothing to fill, and
+    /// the relative waits stay as the second guard.
     @Test("a reading abandoned for another file does not leave the next one reading twice")
     func anAbandonedReadingDoesNotStartASecond() async throws {
         let fixture = try await Scans.scanned()
@@ -144,7 +146,7 @@ struct QuickViewPDFScanReadingTests {
             uniqueKeysWithValues: (0..<5).map { ($0, Scans.recognizedLine("beta \($0)")) }
         )
         fixture.preview.showPDFDocument(Scans.document(
-            pages: (0..<5).map { .scanned("beta \($0)") }
+            pages: Array(repeating: .picture, count: 5)
         ))
         try await Typing.type("beta", into: surface)
         try await settleUntil { fixture.recognizer.asked.count > ofTheOldDocument }

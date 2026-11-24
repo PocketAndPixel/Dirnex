@@ -13,6 +13,12 @@ import WebKit
 @Suite("Quick View scroll pages", .serialized)
 @MainActor
 struct QuickViewScrollPageTests {
+    /// How long each wait for a page, a layout or a scroll may take. Every one is a wait *for*
+    /// something and returns once it is there, so the length only sets how late the main actor may be.
+    /// It was 10 s, and in full runs on 2026-11-24 "a rendered page steps…" passed in 17–20 s across
+    /// five such waits after its first had once run out (PLAN.md ▸ macOS 27.2).
+    private static let budget: TimeInterval = 60
+
     // MARK: - PDF
 
     private func pdfFixture(pages: Int) async throws -> QuickViewPDFFindFixtures.Fixture {
@@ -26,7 +32,7 @@ struct QuickViewScrollPageTests {
     /// pages read did not include the first.
     private func showsPage(_ index: Int, in surface: QuickViewPDFSurface) async throws -> Bool {
         let document = try #require(surface.pdfView.document)
-        let deadline = Date().addingTimeInterval(10)
+        let deadline = Date().addingTimeInterval(Self.budget)
         while !surface.pdfView.visiblePages.contains(where: { document.index(for: $0) == index }) {
             guard Date() < deadline else { return false }
             try await Task.sleep(for: .milliseconds(10))
@@ -34,9 +40,10 @@ struct QuickViewScrollPageTests {
         return true
     }
 
-    /// A PDF's document view is not flipped (measured), so this is the walk above with the axis
-    /// reversed: toward the end is *down* the y axis.
-    @Test("a PDF scrolls toward its end down an unflipped axis, and reaches both ends")
+    /// A PDF's document view was not flipped up to macOS 26 and is from 27.2 (both measured), so this
+    /// is the walk above with the axis read off the view: toward the end is down the y axis in an
+    /// unflipped view and up it in a flipped one.
+    @Test("a PDF scrolls toward its end whichever way its axis runs, and reaches both ends")
     func pdfScrolls() async throws {
         let fixture = try await pdfFixture(pages: 8)
         let surface = fixture.surface
@@ -44,22 +51,28 @@ struct QuickViewScrollPageTests {
         defer { window.orderOut(nil) }
         let scrollView = try #require(surface.pdfView.documentView?.enclosingScrollView)
         let document = try #require(scrollView.documentView)
-        #expect(!document.isFlipped)
+        let flipped = document.isFlipped
+        // +1 when the end is up the y axis, −1 when it is down it.
+        let down: CGFloat = flipped ? 1 : -1
+        let frame = document.frame
+        // The edges of what is in view nearest the document's first and last pages.
+        let leading = { flipped ? scrollView.documentVisibleRect.minY : scrollView.documentVisibleRect.maxY }
+        let trailing = { flipped ? scrollView.documentVisibleRect.maxY : scrollView.documentVisibleRect.minY }
 
         fixture.preview.scrollContent(.end)
-        #expect(scrollView.documentVisibleRect.minY <= document.frame.minY + 1)
+        let end = flipped ? frame.maxY : frame.minY
+        #expect(down * (trailing() - end) >= -1)
         #expect(try await showsPage(7, in: surface))
 
-        // At the top the view rests a title bar's height above the document (the fixture's window has
+        // At the top the view rests a title bar's height before the document (the fixture's window has
         // a full-size content view), so the document's top is in view rather than at the clip's edge.
         fixture.preview.scrollContent(.top)
-        let top = scrollView.documentVisibleRect.maxY
+        let top = leading()
+        let start = flipped ? frame.minY : frame.maxY
         #expect(try await showsPage(0, in: surface))
-        #expect(top >= document.frame.maxY - 1)
+        #expect(down * (start - top) >= -1)
         fixture.preview.scrollContent(.lineDown)
-        #expect(
-            abs(scrollView.documentVisibleRect.maxY - (top - QuickViewScrollFixtures.lineStep)) < 0.5
-        )
+        #expect(abs(leading() - (top + down * QuickViewScrollFixtures.lineStep)) < 0.5)
     }
 
     /// `PDFView` posts no `PDFViewPageChanged` for a move of its clip view (measured), and the find
@@ -113,7 +126,7 @@ struct QuickViewScrollPageTests {
         at expected: Double,
         sourceLocation: SourceLocation = #_sourceLocation
     ) async throws {
-        let deadline = Date().addingTimeInterval(10)
+        let deadline = Date().addingTimeInterval(Self.budget)
         var last: Double?
         while Date() < deadline {
             last = await scrollY(webView, frame: frame)
@@ -139,7 +152,7 @@ struct QuickViewScrollPageTests {
             style: .rendered
         )
         let webView = try await QuickViewZoomFixtures.webView(in: preview)
-        let deadline = Date().addingTimeInterval(10)
+        let deadline = Date().addingTimeInterval(Self.budget)
         while (await javaScript("return document.scrollingElement.scrollHeight", in: webView) ?? 0)
             < 2000 {
             try #require(Date() < deadline, "the page never laid out")
@@ -189,7 +202,7 @@ struct QuickViewScrollPageTests {
         """.utf8).write(to: page)
         surface.showConverted(page: page, bundle: bundle, allowsJavaScript: false, fitWidth: nil)
 
-        let deadline = Date().addingTimeInterval(10)
+        let deadline = Date().addingTimeInterval(Self.budget)
         var sheet: WKFrameInfo?
         while sheet == nil {
             try #require(Date() < deadline, "the sheet's frame never loaded")

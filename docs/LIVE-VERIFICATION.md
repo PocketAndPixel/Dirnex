@@ -95,6 +95,10 @@ so a trap goes here only if it can bite any live run; one tied to an area goes u
       day his app had nothing open in it (`lsof`), and what the folder held before is unknown.
       Before launching a copy, list `/var/folders/…/T/DirnexRemote` (the app's `TMPDIR`, from
       `ps eww`, not the shell's) and check `lsof -p <his pid>` for it.
+      - **The app test suite leaves files there too, so a full folder is not his.** Seen 2026-11-24:
+        104 files, all `report.pdf` and `a.txt` in folders dated during that day's test runs, and
+        the copy's launch emptied it. `ditto` the folder aside before the launch and back after it
+        costs nothing whoever wrote them.
   - **Its first launch asks macOS about every cloud provider, on Oleg's screen.** Seen 2026-11-10: the
     copy showed no window, its main thread sat in `open` under `CloudStorageMounts.entryDirectory`, and
     he got "“Dirnex.app” wants to access files managed by “Box”", one per provider, which screenshots
@@ -740,6 +744,17 @@ so a trap goes here only if it can bite any live run; one tied to an area goes u
   control) the same key arrived at once. The compare window and `TabShortcuts` both work this way.
   The window's toolbar buttons still work from the background. Its Edit ▸ Undo does not: with the
   window not key, the probe read the item as plain "Undo", disabled.
+- **A Tab-order check runs under full-screen control, read back from a log of the first responder.**
+  Done 2026-11-24 for the macOS 27.2 keyboard checks in `build/live-copy`. A background `app_key
+  tab` on the license reminder's sheet was refused outright. Full-screen keys reached the key window as
+  pressed keys do, Space opened pop-ups and pressed buttons, and ⌘W, ⌘D and Return answered the
+  merge prompts. The witness was a temporary env-gated probe. It logged each `keyDown` from a local
+  monitor, and a 0.1 s `.common`-mode timer logged `NSApp.keyWindow?.firstResponder` whenever it
+  changed, with its class, title and accessibility label, to a file. Keys a menu's tracking takes,
+  Return in an open pop-up among them, never reach the monitor. Two stops with the same description,
+  such as Compare's two panes over files both named `notes.txt`, log as one, so tell them apart on
+  screen (the accent on the focused pane's name). Escape cannot be sent this way (below), so close a
+  pop-up with Return on its ticked item, which changes nothing.
 - **computer-use will not send ⌘Q without a separate grant, and Dirnex ▸ Quit Dirnex does the same
   thing.** Seen 2026-10-25 checking the compare window's quit prompt: ⌘Q came back "a system-level
   shortcut" needing the `systemKeyCombos` grant. The menu item runs the same `terminate:`, so

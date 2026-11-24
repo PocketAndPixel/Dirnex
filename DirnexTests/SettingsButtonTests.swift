@@ -144,6 +144,40 @@ struct SettingsButtonTests {
         #expect(count.value == 1)
     }
 
+    /// The color rules' add, remove and move buttons, which were SwiftUI `Button`s that Tab passed
+    /// (found with a real keyboard 2026-11-24). The section is the real one, read and never pressed,
+    /// so the shared rule store is not written. Nothing is selected, so remove and move are disabled
+    /// and stay off the loop, whatever rules the store holds.
+    @Test("Tab reaches the color rules' add button, and passes the ones that are disabled")
+    func colorRuleButtons() async throws {
+        let window = window(
+            showing: Form {
+                TextField("Field", text: .constant("text"))
+                FileColorRulesSection()
+            }
+            .formStyle(.grouped)
+        )
+        let field = try await keyField(in: window)
+        let add = String(
+            localized: "Add a color rule",
+            comment: "Tooltip on the add button of the file-type colors editor in Settings."
+        )
+        let buttons = try #require(await built(in: window) {
+            let found = views(NSButton.self, in: window).filter { $0.toolTip != nil }
+            return found.count == 4 ? found : nil
+        })
+        let addButton = try #require(buttons.first { $0.toolTip == add })
+        #expect(addButton.image?.accessibilityDescription == add, "VoiceOver reads the tooltip")
+        #expect(addButton.title.isEmpty)
+        #expect(Set(buttons.map(\.frame.width)).count == 1, "one width for the row")
+        let stops = tabStops(in: window, from: field)
+        #expect(stops.contains { $0 === addButton })
+        for button in buttons where button !== addButton {
+            #expect(!button.isEnabled)
+            #expect(!stops.contains { $0 === button })
+        }
+    }
+
     /// The reason `SettingsButton` exists, pinned: on macOS 26 a SwiftUI `Button` in a grouped `Form`
     /// is drawn by SwiftUI, with no `NSButton` for `KeyboardReachableControls` to put on the loop. If a
     /// later macOS backs it with one again, this fails, and `SettingsButton` may no longer be needed.

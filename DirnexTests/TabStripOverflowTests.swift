@@ -152,6 +152,10 @@ struct TabStripOverflowTests {
         let windowed = windowedPane(at: .local("/tmp"))
         let pane = windowed.pane
         try await settleUntil { pane.tabs[0].hasLoaded }
+        // Laid out before the width is taken: the window takes the pane's unlaid 0 pt as its width,
+        // and alone the first listing lands after a layout has made it 260, but in a full run it
+        // landed first and the test compared 260 against 0 (2026-11-24).
+        windowed.window.layoutIfNeeded()
         let width = windowed.window.frame.width
         for index in 1..<13 {
             pane.tabs.append(PanelTab(path: .local("/tmp/dirnex-tab-overflow-\(index)")))

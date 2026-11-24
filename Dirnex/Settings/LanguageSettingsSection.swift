@@ -12,15 +12,14 @@ struct LanguageSettingsSection: View {
 
     var body: some View {
         Section {
-            Picker("Language", selection: selection) {
-                Text("Same as System").tag(nil as String?)
-                Divider()
-                ForEach(AppLanguages.all) { language in
-                    // Each entry in its own language, the way macOS lists them: a user who has
-                    // landed in a UI they cannot read must still be able to find the way back.
-                    Text(language.endonym).tag(language.code as String?)
-                }
-            }
+            // Each language in its own language, the way macOS lists them: a user who has landed in
+            // a UI they cannot read must still be able to find the way back.
+            SettingsPopUp(
+                "Language",
+                selection: selection,
+                items: [.choice(String(localized: "Same as System"), nil), .separator]
+                    + AppLanguages.all.map { .choice($0.endonym, $0.code) }
+            )
 
             if settings.needsRelaunch {
                 HStack {

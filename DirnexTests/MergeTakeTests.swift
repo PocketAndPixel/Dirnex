@@ -336,9 +336,21 @@ struct MergeSaveTests {
             $0.hasPrefix("1 conflict is still open, so the result can’t be saved yet.")
         })
         let buttons = CompareSaveRig.buttons(in: sheet.contentView)
-        // Cancel in the default slot; `EscapeToDismissTests` pins what Return and ⎋ do there.
-        #expect(buttons.map(\.title) == ["Cancel", "Don’t Save"])
-        #expect(buttons.last?.keyEquivalent == "d")
+        // Each by its title: the order an alert's buttons sit in its view tree is NSAlert's own, and on
+        // macOS 27.2 it came out reversed in a full run while this suite alone read it in order.
+        // Cancel in the default slot; `EscapeToDismissTests` pins what Return and ⎋ do there. Read
+        // through the sheet's `defaultButtonCell`, as `RemoteFetchPromptTests` reads its own: putting
+        // the sheet up takes Return off the button's `keyEquivalent` and leaves it on the cell, and
+        // Return still presses Cancel (probed on 27.2). A read of `keyEquivalent` passed only when it
+        // came before that, and a full run read "" (2026-11-24).
+        #expect(buttons.map(\.title).sorted() == ["Cancel", "Don’t Save"])
+        let cancel = try #require(buttons.first { $0.title == "Cancel" })
+        #expect(sheet.defaultButtonCell?.controlView === cancel)
+        let discard = buttons.first { $0.title == "Don’t Save" }
+        #expect(discard?.keyEquivalent == "d" && discard?.keyEquivalentModifierMask == .command)
+        // And the keyboard focus, since Space presses the focused button and the alert would open on
+        // its last one, Don't Save (docs/NOTES.md ▸ The keyboard in a dialog). Read after presenting.
+        #expect(sheet.initialFirstResponder === cancel)
         try await rig.answer(.alertFirstButtonReturn)
         await cancelled.value
         #expect(closes.closed == 0, "Cancel kept the window")
@@ -362,6 +374,11 @@ struct MergeSaveTests {
         #expect(CompareSaveRig.texts(in: sheet.contentView).contains(
             "Do you want to save the merge of “notes.txt”?"
         ))
+        let cancel = CompareSaveRig.buttons(in: sheet.contentView).first { $0.title == "Cancel" }
+        #expect(
+            cancel != nil && sheet.initialFirstResponder === cancel,
+            "the focus starts on Cancel"
+        )
         try await rig.answer(.alertFirstButtonReturn)
         await closing.value
         #expect(rig.contents == "a\nY\nc\nd\nE\nf\nG\nh\nI\nK\nj\n")

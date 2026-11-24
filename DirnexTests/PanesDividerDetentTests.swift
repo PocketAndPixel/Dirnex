@@ -5,9 +5,9 @@ import Testing
 
 /// The panes divider holds at the even split while dragged near it (`PanesSplitViewController`).
 /// The drags here are real ones: `NSSplitView` tracks a drag in its own loop, pulling the drags and
-/// the release off the event queue, so queuing those and then sending the press runs AppKit's whole
-/// path, delegate call included. That is what pins the part a pure test cannot, that AppKit asks
-/// the controller at all.
+/// the release off the event queue, so queuing those and then pressing the view under the divider
+/// runs AppKit's whole tracking path, delegate call included. That is what pins the part a pure test
+/// cannot, that AppKit asks the controller at all.
 @Suite("Panes divider detent")
 @MainActor
 struct PanesDividerDetentTests {
@@ -238,12 +238,18 @@ struct PanesDividerDetentTests {
         let release = try event(.leftMouseUp, at: last)
         let releaseLocation = release.locationInWindow
         let queued = drags + [release]
+        // The press goes to the view the window's hit test names. `window.sendEvent` would hand it to
+        // the frame view's gesture recognizers first, which from macOS 27.2 hold it back and deliver it
+        // on some later run-loop turn (docs/NOTES.md ▸ Testing).
+        let content = try #require(window.contentView)
+        let hit = content.hitTest(content.convert(press.locationInWindow, from: nil))
+        try #require(hit === splitView, "the press would land on \(String(describing: hit))")
         // Tracking reads NSApp's queue, including releases from other windows. Prepend the whole
         // gesture in order, with no suspension before the press, so an old release cannot end it.
         for queuedEvent in queued.reversed() {
             NSApp.postEvent(queuedEvent, atStart: true)
         }
-        window.sendEvent(press)
+        splitView.mouseDown(with: press)
         #expect(NSApp.currentEvent?.type == .leftMouseUp)
         #expect(NSApp.currentEvent?.windowNumber == window.windowNumber)
         #expect(NSApp.currentEvent?.locationInWindow == releaseLocation)

@@ -196,10 +196,11 @@ struct KeyboardReachableControlsTests {
         #expect(!form.segments.canBecomeKeyView)
     }
 
-    /// The Settings window's shapes: a `Toggle` in a grouped `Form` draws as a switch, each picker
-    /// style is its own AppKit class, and `ColorPicker` and `Stepper` are a color well and a stepper.
+    /// The Settings window's shapes: a `Toggle` in a grouped `Form` draws as a switch, a segmented
+    /// `Picker` is a segmented control, and `ColorPicker` and `Stepper` are a color well and a stepper.
     /// All of them are private SwiftUI subclasses, so this is the check that the patch still reaches
-    /// what SwiftUI builds.
+    /// what SwiftUI builds. A menu picker is `SettingsPopUp`, as in Settings: from macOS 27.2 SwiftUI
+    /// draws a menu `Picker` itself, with no `NSPopUpButton` behind it (`SettingsPopUpTests`).
     private struct SettingsShapes: View {
         @State private var isOn = true
         @State private var choice = 0
@@ -208,10 +209,11 @@ struct KeyboardReachableControlsTests {
         var body: some View {
             Form {
                 Toggle("Switch", isOn: $isOn)
-                Picker("Menu", selection: $choice) {
-                    Text("One").tag(0)
-                    Text("Two").tag(1)
-                }
+                SettingsPopUp(
+                    "Menu",
+                    selection: $choice,
+                    items: [.choice("One", 0), .choice("Two", 1)]
+                )
                 Picker("Segments", selection: $choice) {
                     Text("One").tag(0)
                     Text("Two").tag(1)
@@ -224,7 +226,7 @@ struct KeyboardReachableControlsTests {
         }
     }
 
-    @Test("SwiftUI's switch, pickers, color picker and stepper join the Tab loop in Settings")
+    @Test("Settings' switch, pop-up, segmented picker, color picker and stepper join the Tab loop")
     func swiftUIControlsAreReachable() async throws {
         KeyboardReachableControls.install()
         let window = NSWindow(

@@ -23,12 +23,16 @@ struct QuickViewHeaderStyleTests {
     /// `performClick` goes straight to the action, as computer use's press did in the live run, so
     /// neither says a pointer gets there. This one asks the window what is under the pointer — which
     /// runs the surface's own hit test, the one that swallows clicks meant for the panes underneath —
-    /// and gives the press to that, with the release queued for the button's tracking loop.
-    /// `NSWindow.sendEvent` is not used because in the test host it spends a press on activating the
-    /// window (docs/NOTES.md ▸ Testing). The window has to be on screen: off screen the button's loop
-    /// took the queued release and sent no action (measured 2026-10-20), a test that fails for the
-    /// harness rather than the code. Negative control: with the header off the surface's list of
-    /// views that keep the mouse, the press lands on the surface and this fails.
+    /// and gives the press to that. The window has to be on screen: off screen the button's loop took
+    /// the queued release and sent no action (measured 2026-10-20), a test that fails for the harness
+    /// rather than the code. Negative control: with the header off the surface's list of views that
+    /// keep the mouse, the press lands on the surface and this fails.
+    ///
+    /// How the press gets there depends on the macOS. Up to 26 it goes to the view under it, with the
+    /// release queued for the button's tracking loop: `NSWindow.sendEvent` spent a press on activating
+    /// a window that is not key (docs/NOTES.md ▸ Testing). From 27.2 a button tracks a click through
+    /// its gesture recognizer, and a `mouseDown` sent straight to it is ignored once it has drawn, so
+    /// the pair goes through `NSWindow.sendEvent`, which hands it to the recognizer as a real click.
     @Test("a pointer click on a style reaches its button through the surface")
     func pointerClickPicksTheStyle() throws {
         let hosted = try QuickViewCloseButtonTests.hosted(header: .pinned)
@@ -45,11 +49,15 @@ struct QuickViewHeaderStyleTests {
         defer { hosted.window.orderOut(nil) }
         let hit = try #require(content.hitTest(content.convert(point, from: nil)))
         #expect(hit === button, "the press would land on \(hit)")
-        NSApp.postEvent(
-            try Self.mouseEvent(.leftMouseUp, at: point, in: hosted.window),
-            atStart: true
-        )
-        hit.mouseDown(with: try Self.mouseEvent(.leftMouseDown, at: point, in: hosted.window))
+        let press = try Self.mouseEvent(.leftMouseDown, at: point, in: hosted.window)
+        let release = try Self.mouseEvent(.leftMouseUp, at: point, in: hosted.window)
+        if #available(macOS 27, *) {
+            hosted.window.sendEvent(press)
+            hosted.window.sendEvent(release)
+        } else {
+            NSApp.postEvent(release, atStart: true)
+            hit.mouseDown(with: press)
+        }
         #expect(picks == [.source])
     }
 

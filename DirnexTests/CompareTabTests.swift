@@ -6,7 +6,8 @@ import Testing
 
 /// Press Tab, or ⇧Tab, in `window`: a real key-down sent through it, so it takes the path a pressed
 /// key does, the text view's `insertTab:` or a control's own key handling, each ending in the key
-/// view loop. Shared with `MergeTabTests`.
+/// view loop. Shared with `MergeTabTests`. The window stands in as the key window for the press, as
+/// it would be for a real key, since AppKit sends the loop's action through it (``KeyWindowStandIn``).
 @MainActor
 func pressTab(in window: NSWindow, backwards: Bool = false) {
     let characters = backwards ? "\u{19}" : "\t"
@@ -22,7 +23,7 @@ func pressTab(in window: NSWindow, backwards: Bool = false) {
         isARepeat: false,
         keyCode: 48
     )
-    if let event { window.sendEvent(event) }
+    if let event { KeyWindowStandIn.during(window) { window.sendEvent(event) } }
 }
 
 /// Tab in the compare window: the left pane, the right pane, then the toolbar's controls and round

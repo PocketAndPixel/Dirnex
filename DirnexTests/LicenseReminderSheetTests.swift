@@ -58,9 +58,12 @@ struct LicenseReminderSheetTests {
         ))
         // The order `NSApplication.sendEvent` uses for a key window: key equivalents first, then the
         // window. `NSWindow.sendEvent` alone skips the first step, and the negative control below
-        // failed until this matched it.
-        if !window.performKeyEquivalent(with: event) {
-            window.sendEvent(event)
+        // failed until this matched it. A real key arrives with its window key, and AppKit sends a
+        // focused button's Space through it (``KeyWindowStandIn``).
+        KeyWindowStandIn.during(window) {
+            if !window.performKeyEquivalent(with: event) {
+                window.sendEvent(event)
+            }
         }
     }
 

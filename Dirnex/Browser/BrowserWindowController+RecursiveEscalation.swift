@@ -17,6 +17,21 @@ extension BrowserWindowController {
         rootOnly: [AttributeApplyOutcome.RootOnlyItem],
         job: AttributeApplyJob
     ) {
+        Self.administratorOffer(title: title, lines: lines).beginSheetIfVisible(
+            over: window
+        ) { [weak self] response in
+            guard response == .alertSecondButtonReturn else { return }
+            self?.escalate(rootOnly, of: job)
+        }
+    }
+
+    /// The report's alert, built apart from the window that shows it so a test can read it.
+    ///
+    /// OK holds the keyboard focus as well as Return and Escape. An alert opens focused on its last
+    /// button and Space presses the focused one, so without that line one Space asked for the
+    /// administrator password (docs/NOTES.md ▸ The keyboard in a dialog). A warning keeps the focus
+    /// it is built with, however long the report.
+    static func administratorOffer(title: String, lines: [String]) -> NSAlert {
         let alert = NSAlert()
         alert.alertStyle = .warning
         alert.messageText = title
@@ -30,10 +45,8 @@ extension BrowserWindowController {
             """
         ))
         alert.enableEscapeToCancel(safe: .alertFirstButtonReturn)
-        alert.beginSheetIfVisible(over: window) { [weak self] response in
-            guard response == .alertSecondButtonReturn else { return }
-            self?.escalate(rootOnly, of: job)
-        }
+        alert.window.initialFirstResponder = alert.buttons.first
+        return alert
     }
 
     private func escalate(

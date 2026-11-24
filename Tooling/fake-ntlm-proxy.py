@@ -337,9 +337,17 @@ class Handler(BaseHTTPRequestHandler):
     do_PROPFIND = do_PROPPATCH = do_MKCOL = do_MOVE = do_COPY = do_LOCK = do_UNLOCK = dispatch
 
 
+class Server(ThreadingHTTPServer):
+    # `socketserver`'s default listen backlog is 5, and macOS resets the connections a burst sends
+    # past it rather than queueing them (measured 2026-11-24: 35 of 60 parallel `curl` sign-ins reset
+    # at 5, none at 128). A full app run opens that many at once, and the suite's NTLM tests then
+    # failed with curl's exit 7 or 56 though the proxy was up. 128 is `kern.ipc.somaxconn`, the cap.
+    request_queue_size = 128
+
+
 if __name__ == "__main__":
     self_check()
-    server = ThreadingHTTPServer(("127.0.0.1", PORT), Handler)
+    server = Server(("127.0.0.1", PORT), Handler)
     server.daemon_threads = True
     print(f"ntlm stand-in on 127.0.0.1:{PORT} -> {UPSTREAM.geturl()} (domain {DOMAIN})", flush=True)
     server.serve_forever()

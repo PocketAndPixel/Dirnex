@@ -116,8 +116,22 @@ struct MultiLineFieldTests {
             otherWindow.close()
         }
         #expect(try differingPixels(box, from: field) == 0)
-        // Otherwise the box would pass in this state whatever setting it did.
-        #expect(try differingPixels(other, from: field) > 0)
+        // The bezel is set as the field is, which the pixels cannot show on every macOS (below).
+        let bezel = try bezel(of: box)
+        #expect(bezel.isEditable == field.isEditable)
+        #expect(bezel.isEnabled == field.isEnabled)
+        // Otherwise the box would pass in this state whatever setting it did. From macOS 27 an empty
+        // field draws the same bezel editable, read-only or disabled (measured 2026-11-24 on 27.2.1, in
+        // both appearances), so there only the two checks above tell the states apart, and this pins
+        // the platform fact: a macOS that draws them differently again says so.
+        if #available(macOS 27, *) {
+            #expect(
+                try differingPixels(other, from: field) == 0,
+                "a field draws its states apart again"
+            )
+        } else {
+            #expect(try differingPixels(other, from: field) > 0)
+        }
     }
 
     @Test("a read-only box can be selected in but not typed in, and draws no focus ring")

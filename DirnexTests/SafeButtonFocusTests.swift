@@ -134,4 +134,19 @@ struct SafeButtonFocusTests {
         let catcher = alert.window.contentView?.subviews.compactMap { $0 as? AlertKeyCatcher }.first
         #expect(catcher?.button(for: try #require(Self.escape)) === alert.buttons.first)
     }
+
+    /// Read as built, like the alert above: it is a warning, and probed 2026-11-24 on macOS 27.2 a
+    /// warning presented with this line opened on OK and without it on Apply as Administrator….
+    @Test("a recursive attributes report: OK, not Apply as Administrator…")
+    func administratorOffer() throws {
+        let alert = BrowserWindowController.administratorOffer(
+            title: "Some items were not changed",
+            lines: (1...40).map { "item \($0) needs an administrator" }
+        )
+        #expect(alert.alertStyle == .warning)
+        #expect(alert.buttons.count == 2)
+        #expect(alert.window.initialFirstResponder === alert.buttons.first)
+        let catcher = alert.window.contentView?.subviews.compactMap { $0 as? AlertKeyCatcher }.first
+        #expect(catcher?.button(for: try #require(Self.escape)) === alert.buttons.first)
+    }
 }

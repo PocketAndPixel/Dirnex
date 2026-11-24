@@ -215,7 +215,9 @@ extension MergeWindowController {
                 comment: "Merge window close prompt body; %lld is how many conflicts have no choice yet."
             )
         }
-        alert.addButton(withTitle: String(localized: "Cancel", comment: "Cancel button."))
+        let cancelButton = alert.addButton(
+            withTitle: String(localized: "Cancel", comment: "Cancel button.")
+        )
         let discard = alert.addButton(withTitle: String(
             localized: "Don’t Save",
             comment: "Button that closes the compare window and drops the copies made in it."
@@ -226,6 +228,10 @@ extension MergeWindowController {
             ? .alertSecondButtonReturn
             : .alertFirstButtonReturn
         alert.enableEscapeToCancel(safe: cancel)
+        // Space presses the focused button, and an alert opens focused on its last one, which with a
+        // conflict open is Don't Save: one Space dropped every choice (docs/NOTES.md ▸ The keyboard in
+        // a dialog). With every conflict chosen AppKit already starts on Cancel, the second of three.
+        alert.window.initialFirstResponder = cancelButton
         switch (open == 0, await alert.sheetAnswer(over: window, whenUnasked: cancel)) {
         case (true, .alertFirstButtonReturn): return .save
         case (true, .alertThirdButtonReturn), (false, .alertSecondButtonReturn): return .discard

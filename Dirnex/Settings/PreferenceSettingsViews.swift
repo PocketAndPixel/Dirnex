@@ -202,11 +202,13 @@ struct OperationsSettingsView: View {
             }
 
             Section {
-                Picker("Compare files with", selection: diffToolSelection) {
-                    ForEach(CompareTool.choices(installed: installedDiffTools)) { tool in
-                        Text(tool.settingsTitle).tag(tool.identifier)
+                SettingsPopUp(
+                    "Compare files with",
+                    selection: diffToolSelection,
+                    items: CompareTool.choices(installed: installedDiffTools).map {
+                        .choice($0.settingsTitle, $0.identifier)
                     }
-                }
+                )
             } footer: {
                 Text(diffToolFooter)
                     .font(.caption)
@@ -214,15 +216,13 @@ struct OperationsSettingsView: View {
             }
 
             Section {
-                Picker("Edit files with", selection: $preferences.textEditorIdentifier) {
-                    Text(automaticEditorLabel).tag("")
-                    if !installedEditors.isEmpty {
-                        Divider()
-                        ForEach(installedEditors) { editor in
-                            Text(editor.displayName).tag(editor.identifier)
-                        }
-                    }
-                }
+                SettingsPopUp(
+                    "Edit files with",
+                    selection: $preferences.textEditorIdentifier,
+                    items: [.choice(automaticEditorLabel, "")]
+                        + (installedEditors.isEmpty ? [] : [.separator])
+                        + installedEditors.map { .choice($0.displayName, $0.identifier) }
+                )
             } footer: {
                 Text(
                     """

@@ -108,7 +108,10 @@ struct ShortcutRecorderFocusTests {
             isARepeat: false,
             keyCode: keyCode
         ))
-        if !window.performKeyEquivalent(with: event) { window.sendEvent(event) }
+        // A real key arrives with its window key, and AppKit sends a Tab's action through it.
+        KeyWindowStandIn.during(window) {
+            if !window.performKeyEquivalent(with: event) { window.sendEvent(event) }
+        }
     }
 
     private func space(in window: NSWindow) throws { try key(49, " ", in: window) }
