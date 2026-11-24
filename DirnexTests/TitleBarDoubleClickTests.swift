@@ -3,14 +3,16 @@ import Testing
 
 @testable import Dirnex
 
-/// What the system does on a double-click is its own setting, and these watch for the zoom.
+/// What the system does on a double-click is its own setting, and these watch for the zoom. On macOS
+/// 27.2 AppKit registers `Maximize` for the key in the registration domain, so it reads so on a Mac
+/// whose setting was never changed, where `defaults read -g` finds nothing.
 private let systemZoomsOnDoubleClick =
     UserDefaults.standard.string(forKey: "AppleActionOnDoubleClick") == "Maximize"
 
 /// A double-click on the free space in the title bar's row acts on the window, as it does in any title
-/// bar. What decides that is AppKit's, in the window's frame view, and these drive the real responder
-/// chain up to it and watch what it asks the window to do. A real double-click, which the window server
-/// delivers, is for a person with a mouse.
+/// bar. Up to macOS 26 what decides that is AppKit's, in the window's frame view, and from 27 it is
+/// `BrowserContentView`'s; these drive the real responder chain up to it and watch what it asks the
+/// window to do. A real double-click, which the window server delivers, is for a person with a mouse.
 @MainActor
 @Suite("A double-click on the title bar's free space", .serialized)
 struct TitleBarDoubleClickTests {
@@ -27,6 +29,12 @@ struct TitleBarDoubleClickTests {
 
         override func performZoom(_ sender: Any?) {
             zooms += 1
+        }
+
+        var miniaturizes = 0
+
+        override func performMiniaturize(_ sender: Any?) {
+            miniaturizes += 1
         }
     }
 
@@ -173,5 +181,34 @@ struct TitleBarDoubleClickTests {
         fixture.window.inFullScreen = true
         fixture.bar.mouseUp(with: fixture.up(clicks: 2))
         #expect(fixture.window.zooms == 0)
+    }
+
+    /// From macOS 27 the window does what the setting asks itself (`BrowserContentView`). Fill lands
+    /// where zoom does for this window, and AppKit's own call for it is private.
+    @Test("reads each of System Settings' choices, and the older setting when the key holds none")
+    func settings() {
+        func action(_ setting: String?, legacy: Bool = false) -> TitleBarDoubleClickAction {
+            TitleBarDoubleClickAction(setting: setting, legacyMinimizes: legacy)
+        }
+        #expect(action("Maximize") == .zoom)
+        #expect(action("Fill") == .zoom)
+        #expect(action("Minimize") == .minimize)
+        #expect(action("None") == .nothing)
+        #expect(action("None", legacy: true) == .nothing)
+        #expect(action(nil) == .zoom)
+        #expect(action(nil, legacy: true) == .minimize)
+        #expect(action("Something new", legacy: true) == .minimize)
+    }
+
+    @Test("each choice makes the call its title-bar button makes, and None makes none")
+    func choicesAct() {
+        let fixture = Fixture()
+        TitleBarDoubleClickAction.minimize.perform(on: fixture.window)
+        #expect(fixture.window.miniaturizes == 1)
+        TitleBarDoubleClickAction.nothing.perform(on: fixture.window)
+        #expect(fixture.window.miniaturizes == 1)
+        #expect(fixture.window.zooms == 0)
+        TitleBarDoubleClickAction.zoom.perform(on: fixture.window)
+        #expect(fixture.window.zooms == 1)
     }
 }

@@ -216,12 +216,10 @@ private struct FileColorRuleRow: View {
                 .font(.system(.body, design: .monospaced))
                 .frame(minWidth: 110)
 
-            Picker("", selection: targetBinding) {
-                ForEach(FileColorTarget.allCases, id: \.self) { target in
-                    Text(target.title).tag(target)
-                }
-            }
-            .labelsHidden()
+            SettingsPopUp(
+                selection: targetBinding,
+                items: FileColorTarget.allCases.map { .choice($0.title, $0) }
+            )
             .fixedSize()
         }
     }

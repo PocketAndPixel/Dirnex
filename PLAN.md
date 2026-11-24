@@ -579,6 +579,14 @@ because the test host's `OS_ACTIVITY_DT_MODE` reached the child (docs/NOTES.md �
 escalation), and `AdministratorShell` now drops it; and `QuickViewScrollPageTests` read the PDF's
 pages from before a scroll, so its wait is now for the page it expects.
 
+**macOS 27.2.1, 2026-11-24: the update broke ten app suites that had passed CI on 26.6.2 two days
+earlier.** All ten pass again, listed under *macOS 27.2* below. Two were the app's own: Settings'
+menu pickers fell off the Tab loop (`SettingsPopUp`), and a double-click on the title bar's free
+space stopped zooming (`TitleBarDoubleClickAction`, checked live). The rest were test instruments
+that 27.2's gesture recognizers, a flipped PDF view and a field bezel that draws its states alike
+took away. The full app run took about two minutes with no hang, and only two waits ran out, both
+passing alone. Left: the keyboard checks a person has to make.
+
 **Left undone so far:** VP8, Theora, VC-1 and WMV, RealVideo, MS-MPEG-4 v3 and DTS, which macOS cannot
 decode. Any codec library (ffmpeg, libVLC, libvpx), for the licence, the size, and §2's rule that bytes
 go through the core. Subtitles. Streaming a server's file without fetching it, since the remote
@@ -591,6 +599,52 @@ stays open source, fully usable without paying, and it never asks a server wheth
 real. Before the store opens (the private repo's C12), the licensing switch goes on for stable, and
 two small changes are proposed: Help ▸ Release Notes opening the website's changelog, and a "Lost
 your key?" link in Settings ▸ License.
+
+#### macOS 27.2 — what the update broke
+
+Found 2026-11-24 running every suite after the update to macOS 27.2.1 (Xcode 27.2, Swift 6.4.2). The
+same commit passed CI on macOS 26.6.2 two days earlier, so each item is a change in macOS until shown
+otherwise. CI still runs 26.6.2 and sees none of them. The core suite (6177 tests) and both linters
+are clean. In the order to take them:
+
+- [x] **The divider tests' press is delayed, and it can hang the whole app suite.** The frame view's
+  new gesture recognizers hold a press sent through `window.sendEvent`, and one held that way hung a
+  full run for ten minutes. The press now goes straight to the split view the hit test names, and all
+  six drags pass. The real divider, dragged in `build/live-copy`, followed the pointer outside the
+  detent and snapped to the even split inside it (docs/NOTES.md ▸ Testing).
+- [x] **A double-click on the title bar's free space doesn't zoom.** A real regression in the app,
+  not the tests: on 27.2 the frame view's `mouseUp` does nothing, and AppKit's recognizers act on no
+  double-click under a transparent title bar. The release build did not zoom under a live
+  double-click. `BrowserContentView` now does what `AppleActionOnDoubleClick` asks
+  (`TitleBarDoubleClickAction`), from 27 only, and the copy zoomed to the visible frame, came back
+  exactly, and left the window alone for a chip. Fill zooms, since AppKit's own call for it is
+  private. The tests ran because AppKit registers `Maximize` for the key (docs/NOTES.md ▸ Windows).
+- [x] **A pointer click on a Quick View header style picks nothing.** A different cause: a button
+  tracks through an `NSControlGestureRecognizer` on 27.2 and ignores a `mouseDown` sent straight to
+  it once drawn. From 27 the test sends the click through the window (docs/NOTES.md ▸ Testing).
+- [x] **PDFKit's document view is now flipped.** The app was right: the scroll reads `isFlipped`, and
+  ⇧→, ⇧← and ⇧↓ on an eight-page PDF in `build/live-copy` went to the end, the top and on. The test
+  reads the axis off the view now (docs/NOTES.md ▸ Previews).
+- [x] **`MultiLineFieldTests.looksLikeAField` can no longer tell a field's states apart.** On 27.2 an
+  empty field draws the same bezel in all three states, and the box still matches a field in all six
+  cases, so `MultiLineField` needed nothing. The test checks the inert field's state directly and
+  pins the platform fact (docs/NOTES.md ▸ Text fields).
+- [x] **The merge window's close prompt, in a full run only.** Nothing was left behind: the test read
+  the alert's buttons in view-tree order, which NSAlert does not keep. It names each by title now and
+  checks Cancel takes Return and Don't Save ⌘D, and passed in the full run (docs/NOTES.md ▸ Testing).
+- [ ] **Flaky under load, once each.** `QuickViewPDFScanFindTests` ("Reading 0 of 1 scanned page"
+  where 2 was expected), and `WebDAVLiveIntegrationTests.aStaleTagRefusesEveryRange` over the NTLM
+  stand-in (`.unreadableSegment(number: 3)`). In the full run after the fixes, two more, each a wait
+  running out and each passing alone twice: `RowIconArrivalTests.arrivalFillsRows` (`settleUntil`,
+  78 s) and `QuickViewScrollPageTests.renderedPageScrolls` (its 10 s wall-clock wait for the page to
+  lay out). Watch them, and act if any comes back.
+- [ ] **With a real keyboard, since nothing above was checked this way:** Tab round the Compare and
+  Merge windows' toolbars; Tab and Space on Settings' Language, Compare files with and Edit files
+  with pop-ups and a color rule's; Space on the license reminder's buttons.
+- [x] **Tab and Space in a test window that is not key** (`KeyWindowStandIn`, docs/NOTES.md ▸
+  Testing): Compare and Merge Tab, the shortcut recorder and the license reminder pass again.
+- [x] **Settings' menu pickers on the Tab loop** (`SettingsPopUp`, docs/NOTES.md ▸ AppKit ▸ Keyboard
+  focus): a menu `Picker` has no `NSPopUpButton` behind it on 27.2.
 
 ### Still open
 

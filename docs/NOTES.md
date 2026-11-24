@@ -443,6 +443,27 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
   synchronously on the main actor. Do not drain the process queue or add an `await` between those
   steps. The regression test keeps a foreign release queued and checks that it survives the drag;
   restoring tail insertion fails it.
+  - **On macOS 27.2 the press is held back, and a held press can hang the whole suite.** Seen
+    2026-11-24 on 27.2.1: all six drags failed with the queued release never becoming
+    `NSApp.currentEvent`. In one full run the host then went silent. Its `sample` showed
+    `ArchiveClipboardReachTests` in `Process.waitUntilExit()`, whose run-loop turn let the gesture
+    environment deliver a delayed left-mouse-down
+    (`_NSGestureRecognizerSortAndSendDelayedEvents` → `_handleLeftMouseDownEvent:isDelayedEvent:`)
+    to `-[NSSplitView mouseDown:]`. Its tracking loop then waited for a release nobody would send,
+    with no output for ten minutes until the run was stopped. A suite that stops printing on 27.2 is
+    worth a `sample <host pid>` before a kill.
+    - **What holds it is the frame view's gesture recognizers.** On 27.2 `NSThemeFrame` carries
+      `NSTitledFrame.singleClick`, `NSThemeFrame.doubleClickMouseGestureRecognizer` and
+      `NSThemeFrame.panMouseGestureRecognizer`, each with `delaysPrimaryMouseButtonEvents`, and
+      `window.sendEvent` hands every press to them first. The press now goes to the view the content
+      view's hit test names (`try #require(hit === splitView)`), straight into its `mouseDown`, which
+      runs the same tracking loop and delegate calls without the window. All six drags passed, and the
+      no-detent control still stopped where the pointer did.
+    - **The real divider was checked too**, in `build/live-copy` with a background `app_drag`, which
+      `NSSplitView` tracks as it would a hand (it is not a drag session). The saved
+      `NSSplitView Subview Frames BrowserPanesV2` is where to read the result, and it moved at once:
+      a release at x 800 left 649.5, one 4.5 pt from the even split snapped to exactly 574.5, and one
+      15.5 pt away left 589.5.
   - **Turn off the fixture window's opening animation before showing it.** With the default
     animation, a posted x=380 arrived at x=379.582, and x=430 at x=430.601. With `.none`, the
     coordinates stayed exact. An `.alertPanel` animation amplified this into five failed drag tests
@@ -492,6 +513,19 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
   key and the sheet still didn't close. Dispatch the way the app does (`performKeyEquivalent`, then
   `sendEvent` if it declined), and keep the control: a key test with no case where the key *does*
   something can't tell a working key from one that never arrived.
+- **From macOS 27.2 a synthesized Tab or Space goes nowhere in a window that is not key.** A Tab that
+  a control or a plain view hands up the chain, and a Space on a focused button, end in
+  `NSWindow.keyDown`, whose `_NSPostProcessKeyboardUIKey` sends the action (`selectNextKeyView:` for
+  Tab) through `[NSApp sendAction:to:nil from:]`. A nil target resolves through `NSApp.keyWindow`,
+  and the test host's windows are never key (above). Traced 2026-11-24 in a standalone probe on 27.2.1
+  under lldb: `_firstResponderForEvent` found the focused view, `_keyboardUIActionForEvent` answered
+  `selectNextKeyView:`, `keyWindow` was nil, `sendAction` answered `NO`, and the focus stayed put. A
+  Tab inside a text view still moved, since `insertTab:` calls the window directly. The same commit
+  passed on CI's macOS 26.6.2 two days earlier, and here it failed four suites at once (Compare and
+  Merge Tab, the shortcut recorder, the license reminder's Space). `KeyWindowStandIn.during(window)`
+  makes `keyWindow` answer the window for the press alone, which is the state a real key arrives in.
+  In the probe, Tab then went all the way round, and the four suites passed. The app is unaffected:
+  it never sends a key event itself, and AppKit delivers a real key to the key window.
 - **A fixture that builds its window in a helper and returns only the view leaves every later step
   running in no window at all.** Measured 2026-09-15: `QuickViewTableFixtures.loaded` created an
   `NSWindow`, laid the preview out in it and returned the preview, so `surface.window` was `nil` by the
@@ -537,6 +571,14 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
     sent no action. After `orderFront` it sent the action, with the window still not key. So a pointer
     click on a button is testable end to end, hit test included, which `performClick` and computer
     use's AXPress both skip. Keep a control that removes the thing letting the hit through.
+    - **From macOS 27.2 a button tracks its click through an `NSControlGestureRecognizer`, and a
+      `mouseDown` sent to it straight is ignored once it has drawn.** Probed 2026-11-24 on 27.2.1:
+      with the release queued, a borderless button in a window just ordered front fired, and the same
+      button after a 0.3 s run-loop turn on screen did not, leaving the release queued. That is why
+      `QuickViewHeaderStyleTests.pointerClickPicksTheStyle` failed. `window.sendEvent` of the press
+      and then the release fired it synchronously, in a window that was not key and with no
+      `acceptsFirstMouse`. So the test sends the pair through the window from 27, and keeps the old
+      pattern before it, where `sendEvent` spent the press on activation.
   - **`window.sendEvent` is the right instrument when the click into a window that isn't key is
     itself the subject.** It hands the press on when the view under it accepts first mouse and keeps
     it otherwise, as a click from another app does (▸ Text fields and text views). Measured
@@ -574,6 +616,12 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
   `orderFront` and `displayIfNeeded()`. SwiftUI's `Text` is no `NSTextField` either. Its `Button`s
   are, when built as `SettingsButton`, so a test tells a view's states apart by the button titles
   it draws (`LicenseRevocationAppTests.buttons(over:)`) and leaves the words to a live run.
+- **An alert's buttons are not in its view tree in the order they were added, and the order moves.**
+  Seen 2026-11-24 on macOS 27.2.1: `MergeTakeTests.closeWhileOpen` walked the sheet's views and read
+  Cancel, Don't Save when run alone, and Don't Save, Cancel in both full runs that reached it. The
+  response codes follow `NSAlert.buttons`, which is the order of `addButton`, and so does
+  `enableEscapeToCancel`. Name a button by its title and check its key equivalent (`"\r"` for the
+  default), as the compare tests already did.
 
 ### Waits, run loops and timing
 
@@ -2104,6 +2152,28 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
       lands (`ignoresNextDoubleClick`).
     - **Inserting `.fullScreen` into a window's `styleMask` directly crashes** (`EXC_BAD_ACCESS`, seen
       in a test host), so a test overrides the getter instead.
+    - **From macOS 27.2 the frame view's mouse-up does nothing, and AppKit acts on no double-click
+      under a transparent title bar.** Read 2026-11-24 on 27.2.1. `-[NSTitledFrame mouseUp:]` now
+      returns at once on an ivar flag, ahead of the old `clickCount == 2` and `_eventInTitlebar:` test
+      and its `_handlePossibleDoubleClickWithModifiers:`. The behavior moved into gesture recognizers:
+      `NSTitledFrame.doubleClick` on the frame view, and `NSTitlebarContainerView.doubleClick` on the
+      title bar's container. With `.fullSizeContentView` and a transparent title bar, a press in the
+      row hit-tests into the content, so the container's recognizer, a sibling's, never sees it. The
+      frame view's delegate declined the press there (`shouldAttemptToRecognizeWithEvent:` answered
+      `NO`), even with a content view that let the press fall through to the frame view itself. It
+      answered `YES` with an opaque title bar, and with the private
+      `titlebarHandlesDoubleClickWhenTransparent` set, which also makes the container take the hit,
+      and with it every click meant for the strip. So from 27 `BrowserContentView` performs what
+      `AppleActionOnDoubleClick` asks for itself (`TitleBarDoubleClickAction`): `performZoom` for
+      Maximize and Fill, `performMiniaturize`, or nothing. Fill is the private `_zoomFill:`, and for
+      this window it lands where zoom does, the screen's `visibleFrame`.
+      - **AppKit registers `Maximize` for that key**, in the registration domain, so a process reads
+        it on a Mac whose setting was never changed, where `defaults read -g` finds nothing. That is
+        why `TitleBarDoubleClickTests` ran here.
+      - **Checked live with a background double-click, both builds.** The release build in
+        `/Applications`, without the fix, stayed 1368 × 788. `build/live-copy` with it went from
+        1300 × 750 to `(0, 33, 1728, 1019)`, back to exactly `(214, 168, 1300, 750)` on the next
+        double-click, and a double-click on a tab chip left it alone.
   - **Trailing accessories line up from the window's corner in the order they are added**: the first
     added is rightmost. `setFrameSize` to zero width on one reflows the row, and its frame then reads
     back at the edge, so the row's reach is the sum of their widths whatever is showing. Measured the
@@ -2516,6 +2586,24 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
     a SwiftUI `Button` fails), and pins the platform fact, so a macOS that backs SwiftUI buttons
     with `NSButton` again says so. The buttons inside Settings' two `.alert`s were left alone and
     not measured. An alert answers Return and Escape, so it works without Tab either way.
+  - **From macOS 27.2 a menu-style SwiftUI `Picker` has no `NSPopUpButton` behind it either.** Probed
+    2026-11-24 on 27.2.1 with `KeyboardReachableControlsTests`' grouped `Form`: the switch, the
+    segmented picker, the color well and the stepper were still `PlatformSwitch`,
+    `SwiftUISegmentedControl`, `PlatformColorWell` and `EditTrackingStepper`, each under its AppKit
+    class, and the menu picker had no AppKit view at all. So the patch cannot reach it, which is what
+    failed `swiftUIControlsAreReachable`. Settings has three such pickers (Language, Compare files
+    with, Edit files with) and one in each color rule. Its segmented ones (Row height, Size
+    visualization, Syntax colors) are unaffected. `SettingsPopUp` wraps an `NSPopUpButton` for all
+    four, the way `SettingsButton` wraps a button, and the same patch puts it on the loop.
+    `SettingsPopUpTests` hosts the real General and Operations tabs, and failed with the Language
+    `Picker` put back. Not checked with a real keyboard.
+    - **On 27.2 an `NSPopUpButton` sizes to its widest item and is 24 pt tall.** Rendered beside
+      the `Picker` it replaced, a short choice ("Built-in") left a gap before the chevron in the
+      trailing-aligned row, so a labelled `SettingsPopUp` sizes to the selected title (a throwaway
+      `NSPopUpButtonCell` holding only that title) and invalidates its size on each update. The
+      color rules' unlabelled one keeps the widest width, so a column of them lines up. The rows
+      came out about 1.5 pt taller than the picker's, the same 24 pt as `SettingsButton`'s push
+      button, and were left so.
   - **A tab selector's focus ring vanishes on the selected tab, because it is the same accent drawn
     flush against an accent fill.** Plainly visible around an unselected tab, next to nothing around
     the selected one, which is where focus lands first. `NSTabView` draws the ring around
@@ -2551,8 +2639,9 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
     an `NSSwitch` subclass, so patching `NSButton` left every Settings switch out of the loop. That
     got recorded here at first as "SwiftUI overrides `canBecomeKeyView`", which was wrong. Walking
     the class chains settles it: no SwiftUI control class overrides `canBecomeKeyView` (menu
-    `Picker` → `NSPopUpButton`, segmented `Picker` → `NSSegmentedControl`, `Stepper` → `NSStepper`,
-    `ColorPicker` → `NSColorWell`, `Slider` → `NSSlider`). The one that stays out is the *checkbox*-style `Toggle`
+    `Picker` → `NSPopUpButton` on macOS 26, and no AppKit view at all from 27.2, above; segmented
+    `Picker` → `NSSegmentedControl`, `Stepper` → `NSStepper`, `ColorPicker` → `NSColorWell`,
+    `Slider` → `NSSlider`). The one that stays out is the *checkbox*-style `Toggle`
     (`FocusRingNSButton`), which answers `acceptsFirstResponder == false` itself. Settings draws none.
   - **A focused color well draws no focus ring with the system switch off, so Dirnex draws one.**
     Measured live on the Settings wells on 2026-09-13. The well really is first responder:
@@ -3450,6 +3539,14 @@ Measured 2026-11-08 for M37's byte view, whose table has a row for every 16 byte
     non-editable, selectable field draws differently from an editable one in both appearances (no
     fill, a fainter border), and one clicked into takes focus and shows its selection but draws no
     ring. So a read-only box makes its inert field read-only and turns its scroll view's ring off.
+  - **From macOS 27.2 an empty field draws the same bezel editable, read-only or disabled.** Probed
+    2026-11-24 on 27.2.1 with 300 × 96 fields: 0 pixels apart between any two states in
+    `cacheDisplay`, in both appearances, before and after a display pass on screen. A window capture agreed in Dark
+    Mode, where it was steady (in Light Mode two captures of the same window differed). Only a
+    disabled field's *text* dims. The bezel is still `_NSCoreHostingView<AppKitTextField>`, and a
+    `MultiLineField` still matches a field in all six cases, so the box needed no change.
+    `MultiLineFieldTests.looksLikeAField` now checks the inert field's `isEditable` and `isEnabled`
+    directly, and on 27 pins that the states draw alike.
   - **A field on screen animates a state change**, so a pixel test that sets editable, read-only
     or disabled *after* the field is in a window catches it mid-change: the read-only case differed
     in Light Mode that way. Set the state before hosting.
@@ -4163,8 +4260,13 @@ Measured 2026-11-08 for M37's byte view, whose table has a row for every 16 byte
     find's starting point still read `visiblePages.first`, so a search begun in that gap started on
     page two: one CI failure in the full suite, and none in three runs of the suite alone. It reads
     the top edge's page now too (`findAnchorOffset`).
-  - The document view is **not flipped**: toward the end of the document is down the y axis, and a
-    scroll written for a flipped text or table view goes the wrong way.
+  - The document view is **not flipped** up to macOS 26: toward the end of the document is down the y
+    axis, and a scroll written for a flipped text or table view goes the wrong way.
+    - **From macOS 27.2 it is flipped.** Seen 2026-11-24 on 27.2.1:
+      `QuickViewScrollPageTests.pdfScrolls` read `isFlipped == true`. Quick View's PDF keys were unaffected, because `scrollDocument` takes
+      its direction from `isFlipped` rather than assuming one. In `build/live-copy`, ⇧→ went to the
+      end of an eight-page PDF, ⇧← to the top of page 1, and ⇧↓ toward the end. Read the axis off the
+      view; the test now does too.
 - **`PDFDocument.string` is exactly the pages' strings joined by one `\n`, it is cached after the
   first call, and it is safe to read off the main thread.** All measured 2026-09-17 before the PDF
   find was written, on real documents of 1, 78 and 231 pages: re-joining the pages reproduced the

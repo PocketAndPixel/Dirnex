@@ -95,6 +95,10 @@ so a trap goes here only if it can bite any live run; one tied to an area goes u
       day his app had nothing open in it (`lsof`), and what the folder held before is unknown.
       Before launching a copy, list `/var/folders/…/T/DirnexRemote` (the app's `TMPDIR`, from
       `ps eww`, not the shell's) and check `lsof -p <his pid>` for it.
+      - **The app test suite leaves files there too, so a full folder is not his.** Seen 2026-11-24:
+        104 files, all `report.pdf` and `a.txt` in folders dated during that day's test runs, and
+        the copy's launch emptied it. `ditto` the folder aside before the launch and back after it
+        costs nothing whoever wrote them.
   - **Its first launch asks macOS about every cloud provider, on Oleg's screen.** Seen 2026-11-10: the
     copy showed no window, its main thread sat in `open` under `CloudStorageMounts.entryDirectory`, and
     he got "“Dirnex.app” wants to access files managed by “Box”", one per provider, which screenshots

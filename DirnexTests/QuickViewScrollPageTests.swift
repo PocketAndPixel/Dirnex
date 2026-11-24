@@ -34,9 +34,10 @@ struct QuickViewScrollPageTests {
         return true
     }
 
-    /// A PDF's document view is not flipped (measured), so this is the walk above with the axis
-    /// reversed: toward the end is *down* the y axis.
-    @Test("a PDF scrolls toward its end down an unflipped axis, and reaches both ends")
+    /// A PDF's document view was not flipped up to macOS 26 and is from 27.2 (both measured), so this
+    /// is the walk above with the axis read off the view: toward the end is down the y axis in an
+    /// unflipped view and up it in a flipped one.
+    @Test("a PDF scrolls toward its end whichever way its axis runs, and reaches both ends")
     func pdfScrolls() async throws {
         let fixture = try await pdfFixture(pages: 8)
         let surface = fixture.surface
@@ -44,22 +45,28 @@ struct QuickViewScrollPageTests {
         defer { window.orderOut(nil) }
         let scrollView = try #require(surface.pdfView.documentView?.enclosingScrollView)
         let document = try #require(scrollView.documentView)
-        #expect(!document.isFlipped)
+        let flipped = document.isFlipped
+        // +1 when the end is up the y axis, −1 when it is down it.
+        let down: CGFloat = flipped ? 1 : -1
+        let frame = document.frame
+        // The edges of what is in view nearest the document's first and last pages.
+        let leading = { flipped ? scrollView.documentVisibleRect.minY : scrollView.documentVisibleRect.maxY }
+        let trailing = { flipped ? scrollView.documentVisibleRect.maxY : scrollView.documentVisibleRect.minY }
 
         fixture.preview.scrollContent(.end)
-        #expect(scrollView.documentVisibleRect.minY <= document.frame.minY + 1)
+        let end = flipped ? frame.maxY : frame.minY
+        #expect(down * (trailing() - end) >= -1)
         #expect(try await showsPage(7, in: surface))
 
-        // At the top the view rests a title bar's height above the document (the fixture's window has
+        // At the top the view rests a title bar's height before the document (the fixture's window has
         // a full-size content view), so the document's top is in view rather than at the clip's edge.
         fixture.preview.scrollContent(.top)
-        let top = scrollView.documentVisibleRect.maxY
+        let top = leading()
+        let start = flipped ? frame.minY : frame.maxY
         #expect(try await showsPage(0, in: surface))
-        #expect(top >= document.frame.maxY - 1)
+        #expect(down * (start - top) >= -1)
         fixture.preview.scrollContent(.lineDown)
-        #expect(
-            abs(scrollView.documentVisibleRect.maxY - (top - QuickViewScrollFixtures.lineStep)) < 0.5
-        )
+        #expect(abs(leading() - (top + down * QuickViewScrollFixtures.lineStep)) < 0.5)
     }
 
     /// `PDFView` posts no `PDFViewPageChanged` for a move of its clip view (measured), and the find

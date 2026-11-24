@@ -336,9 +336,13 @@ struct MergeSaveTests {
             $0.hasPrefix("1 conflict is still open, so the result can’t be saved yet.")
         })
         let buttons = CompareSaveRig.buttons(in: sheet.contentView)
+        // Each by its title: the order an alert's buttons sit in its view tree is NSAlert's own, and on
+        // macOS 27.2 it came out reversed in a full run while this suite alone read it in order.
         // Cancel in the default slot; `EscapeToDismissTests` pins what Return and ⎋ do there.
-        #expect(buttons.map(\.title) == ["Cancel", "Don’t Save"])
-        #expect(buttons.last?.keyEquivalent == "d")
+        #expect(buttons.map(\.title).sorted() == ["Cancel", "Don’t Save"])
+        #expect(buttons.first { $0.title == "Cancel" }?.keyEquivalent == "\r")
+        let discard = buttons.first { $0.title == "Don’t Save" }
+        #expect(discard?.keyEquivalent == "d" && discard?.keyEquivalentModifierMask == .command)
         try await rig.answer(.alertFirstButtonReturn)
         await cancelled.value
         #expect(closes.closed == 0, "Cancel kept the window")
