@@ -152,7 +152,8 @@ decided, and rejected — live in **[docs/HISTORY.md](docs/HISTORY.md)**; source
 
 ### Next
 
-**M42 is open.** M36–M41 are archived in [docs/HISTORY.md](docs/HISTORY.md).
+**M42 is open.** M36–M41 are archived in [docs/HISTORY.md](docs/HISTORY.md), and so is the
+2026-11-24 pass over what the update to macOS 27.2 broke.
 
 #### M42 — Video and audio in Quick View (L)
 
@@ -606,115 +607,6 @@ stays open source, fully usable without paying, and it never asks a server wheth
 real. Before the store opens (the private repo's C12), the licensing switch goes on for stable, and
 two small changes are proposed: Help ▸ Release Notes opening the website's changelog, and a "Lost
 your key?" link in Settings ▸ License.
-
-#### macOS 27.2 — what the update broke
-
-Found 2026-11-24 running every suite after the update to macOS 27.2.1 (Xcode 27.2, Swift 6.4.2). The
-same commit passed CI on macOS 26.6.2 two days earlier, so each item is a change in macOS until shown
-otherwise. CI still runs 26.6.2 and sees none of them. The core suite (6177 tests) and both linters
-are clean. In the order to take them:
-
-- [x] **The divider tests' press is delayed, and it can hang the whole app suite.** The frame view's
-  new gesture recognizers hold a press sent through `window.sendEvent`, and one held that way hung a
-  full run for ten minutes. The press now goes straight to the split view the hit test names, and all
-  six drags pass. The real divider, dragged in `build/live-copy`, followed the pointer outside the
-  detent and snapped to the even split inside it (docs/NOTES.md ▸ Testing).
-- [x] **A double-click on the title bar's free space doesn't zoom.** A real regression in the app,
-  not the tests: on 27.2 the frame view's `mouseUp` does nothing, and AppKit's recognizers act on no
-  double-click under a transparent title bar. The release build did not zoom under a live
-  double-click. `BrowserContentView` now does what `AppleActionOnDoubleClick` asks
-  (`TitleBarDoubleClickAction`), from 27 only, and the copy zoomed to the visible frame, came back
-  exactly, and left the window alone for a chip. Fill zooms, since AppKit's own call for it is
-  private. The tests ran because AppKit registers `Maximize` for the key (docs/NOTES.md ▸ Windows).
-- [x] **A pointer click on a Quick View header style picks nothing.** A different cause: a button
-  tracks through an `NSControlGestureRecognizer` on 27.2 and ignores a `mouseDown` sent straight to
-  it once drawn. From 27 the test sends the click through the window (docs/NOTES.md ▸ Testing).
-- [x] **PDFKit's document view is now flipped.** The app was right: the scroll reads `isFlipped`, and
-  ⇧→, ⇧← and ⇧↓ on an eight-page PDF in `build/live-copy` went to the end, the top and on. The test
-  reads the axis off the view now (docs/NOTES.md ▸ Previews).
-- [x] **`MultiLineFieldTests.looksLikeAField` can no longer tell a field's states apart.** On 27.2 an
-  empty field draws the same bezel in all three states, and the box still matches a field in all six
-  cases, so `MultiLineField` needed nothing. The test checks the inert field's state directly and
-  pins the platform fact (docs/NOTES.md ▸ Text fields).
-- [x] **The merge window's close prompt, in a full run only.** Nothing was left behind: the test read
-  the alert's buttons in view-tree order, which NSAlert does not keep. It names each by title now and
-  checks Cancel takes Return and Don't Save ⌘D, and passed in the full run (docs/NOTES.md ▸ Testing).
-  Its Return check read Cancel's `keyEquivalent`, which the sheet's presentation clears, and a later
-  full run read `""`. It reads the sheet's `defaultButtonCell` now (below).
-- [x] **Flaky under load: three of the four explained, and two more found.** Three full app runs on
-  2026-11-24 with SFTP, FTP, Apache WebDAV and the NTLM stand-in up. The first failed 6 issues, and
-  the two after the fixes passed with none (2855 tests, 74–78 s). Core suite and both linters clean,
-  and all 74 defaults keys unchanged by content.
-  - `aStaleTagRefusesEveryRange` came back, with two other NTLM tests in the same second. The cause
-    was our proxy: `socketserver` listens with a backlog of 5, and macOS resets a burst of connects
-    past it. With a temporary message on the test, every range read `couldNotConnect`, curl's exit
-    7, and the proxy's log never saw the requests. `Tooling/fake-ntlm-proxy.py` listens at 128 now.
-    60 parallel sign-ins: 35 reset before, none in three rounds after (docs/NOTES.md ▸ Live suites).
-  - `arrivalFillsRows` passed in 63, 52 and 48 s through waits of 30 s, and
-    `renderedPageScrolls` in 17–20 s through waits of 10 s. Both suites' waits for something now
-    have 60 s. Their fixed holds are unchanged.
-  - New in the first run: the merge prompt's Return check (above), and
-    `TabStripOverflowTests.paneIsNotWidened`, which read its baseline width before the window's
-    first layout (0 against 260). It lays the window out first now, and still fails with the strip's
-    old required clipping put back. The merge test failed with `enableEscapeToCancel` taken out.
-  - The merge close test took 63, 54 and 51 s through four waits of 30 s, none run out. Watch it.
-    Ten more full runs the same evening: 50–53 s in the 74–77 s ones, and 61, 80 and 82 s in three
-    runs stretched to 86–113 s while Chrome played a video. None ran out.
-- [x] **`QuickViewPDFScanFindTests`' "Reading 0 of 1 scanned page": PDFKit's Live Text, as
-  suspected.** It came back in the sibling suite on the second of ten full runs the same evening:
-  `anUnreadablePageDoesNotStall` found 3 matches where 2 were expected and asked for `[2]` only, so
-  the page drawn as a picture of "delta beta" already had "beta" in its text layer. Only OCR can put
-  it there, and the suite reads through a fake. Logging each page's text at the end of every test
-  across three full runs showed page 1, which shows under page 0, filled in 27 of 33 tests, and 7
-  snapshots short a page. Alone, the two suites take 0.56 s and nothing was filled in five runs. The
-  fixture's scanned pages for the fake are now `.picture`, an even gray with no words, since the
-  fake's answers never came from the pixels. Three more full runs: no page filled, no short
-  snapshot. The real-recognizer test keeps its lettered page (docs/NOTES.md ▸ Vision).
-- [x] **Found on the way: back-to-back runs locked the SFTP suites out of the throwaway `sshd`.**
-  The sixth full run against one server failed 613 issues in fifteen suites over SFTP, with FTP and
-  WebDAV fine. OpenSSH 10.5's per-source penalties had added up over the runs' deliberate failed
-  sign-ins and dropped every login from 127.0.0.1. `scripts/live_test_servers.sh` turns them off
-  where `sshd` knows the keyword, and four more full runs logged no penalty (docs/NOTES.md ▸ Live
-  suites). Final run: 2857 tests passed in 77 s, core 6177, both linters clean, all 74 defaults keys
-  unchanged by content, `known_hosts` and the preview cache as they were.
-- [x] **With a real keyboard, since nothing above was checked this way:** Tab round the Compare and
-  Merge windows' toolbars; Tab and Space on Settings' Language, Compare files with and Edit files
-  with pop-ups and a color rule's; Space on the license reminder's buttons. Done 2026-11-24 in
-  `build/live-copy` with full-screen computer use, whose keys go through the window server to the
-  key window as a pressed key's do, and an env-gated log of the first responder after each key. All
-  passed, in the tests' own orders:
-  - **Compare:** left pane, right pane, changes, copy, swap, the whitespace pop-up, Ignore Case,
-    Ignore Line Endings, and round, with ⇧Tab the exact reverse. The accent on the pane name told
-    the two `notes.txt` panes apart.
-  - **Merge**, opened with the copy's own `--git-merge`: Result, Theirs, conflicts, take, Show Base,
-    Yours, with Save passed over while disabled. Space on the take control took Yours, after which
-    Save joined the loop, both ways. On the close prompts Return pressed the default (Save, then
-    Cancel with a conflict open), ⌘D was Don't Save, and the command exited 0 and 1 as it should.
-  - **Settings:** Tab reached Language, Compare files with, Edit files with and a new color rule's
-    pop-up. Space opened each with its choice ticked, and Return kept it.
-  - **License reminder:** shown with `-DirnexDebugLicenseDaysAhead 31`. Nothing had focus when it
-    opened, Tab went Buy, Enter License…, OK and round, and Space on OK closed it. Buy was not
-    pressed, since it opens the store page in the browser.
-- [x] **Found by that run, and fixed the same day (Oleg: "fix both").**
-  - The color rules' add, remove and move buttons were plain SwiftUI `Button`s, so Tab passed
-    them, as it passed every SwiftUI button on 26.7 (docs/NOTES.md ▸ Keyboard focus). They are
-    `SettingsIconButton`s now: `SettingsButton` with a symbol, its help text as tooltip and
-    VoiceOver label, all 32 pt wide. `SettingsButtonTests.colorRuleButtons` hosts the real section
-    and failed with add put back as a SwiftUI `Button`. With real keys in `build/live-copy`, Tab
-    reached +, Space added a rule, then − removed it, and ▲ moved the second of two rules up.
-  - The merge window's close prompt with a conflict open opened with the focus on **Don't Save**,
-    so Space dropped the choices. An alert opens focused on its last button, and this one adds
-    Cancel first. It now sets Cancel as `initialFirstResponder`, the line the September sweep gave
-    the trust alerts. The sweep had missed one more: the recursive attributes report, whose Space
-    pressed **Apply as Administrator…**. Its alert moved into
-    `BrowserWindowController.administratorOffer`, which starts on OK. Both tests failed with the
-    line removed. Live, the prompt opened on Cancel and Space kept the window. The report was not
-    seen live, since it needs items only root can change. Every other alert whose safe button is
-    not its last was checked: each has the line, `focusFirstButton()`, or a single button.
-- [x] **Tab and Space in a test window that is not key** (`KeyWindowStandIn`, docs/NOTES.md ▸
-  Testing): Compare and Merge Tab, the shortcut recorder and the license reminder pass again.
-- [x] **Settings' menu pickers on the Tab loop** (`SettingsPopUp`, docs/NOTES.md ▸ AppKit ▸ Keyboard
-  focus): a menu `Picker` has no `NSPopUpButton` behind it on 27.2.
 
 ### Still open
 
