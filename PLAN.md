@@ -595,9 +595,54 @@ clean. One flake is still unexplained (below). The keyboard checks then passed w
 turned up two older gaps, both fixed below: the color rules' buttons off the Tab loop, and two
 alerts whose Space pressed the action rather than the safe choice.
 
-**Left undone so far:** VP8, Theora, VC-1 and WMV, RealVideo, MS-MPEG-4 v3 and DTS, which macOS cannot
+**DTS. Asked and landed 2026-11-24 (Oleg):** "can we make it possible to play dts audio tracks too the
+quick view?" No Mac decodes DTS (`kAudioFormatProperty_DecodeFormatIDs` lists no `dtsc` on 27.2.1
+either), so the core does: a decoder for the core of DTS Coherent Acoustics (ETSI TS 102 114 §5), which
+every DTS stream carries, DTS-HD's included, its extensions passed over as the core is built for.
+**Decided with him:** a decoder of our own from the specification rather than a library; and the two
+vector code books of Annex D.10, which no edition prints ("Due to its extensive size, this table is not
+included here") and every frame of the film needs (97 % predict, the rest use high-frequency VQ), taken
+from FFmpeg's `libavcodec/dcadata.c` (n8.0, LGPL), and nothing else from it (NOTICE). Probed first: the
+film's four DTS tracks are plain core, 5.1 at 48 kHz, 1 509 kbit/s, 512 samples a frame. The other
+tables are generated from V1.2.1 and V1.6.1 of the specification, each checked against the other
+(`scripts/generate_dts_tables.py`; docs/NOTES.md ▸ Previews: Quick Look, PDF and images), the code books
+by `scripts/generate_dts_vector_tables.py`. Core: `DTSCoreHeader` (the four storage forms, and
+`DTSChannelLayout`, each order a Core Audio layout by its tag), `DTSCoreSyntax`, `DTSHuffman`,
+`DTSCoreDecoder` and its `+Subframe`, `DTSSynthesis` (the 32-band filter bank and the LFE's, in vDSP: a
+Debug core doing it in Swift ran the film at 1.6 times real time, and runs it at 14 now),
+`DTSDecodingDemuxer` (DTS packets out as float PCM, timed by their samples, `MediaSampleClock`),
+`MediaSampleFormat.Audio.channelLayoutTag`, `.dts` in `AudioFrameHeader` for an AVI, and
+`MatroskaFile.firstKeyframes(tracks:)`. App: `SampleBufferPreparation.decodingDTS` gives a DTS track the
+format it decodes to, read from its first frame, and wraps the demuxer; the bridge passes the layout's
+tag on. So DTS plays where the core's player plays, Matroska and AVI, and an English Dirnex now opens the
+film on its English DTS original (track 9) where it played the Russian AC-3 dub. Measured against
+FFmpeg's own decoder: the film at 95 to 110 dB SNR on all six channels over a loud passage, the error
+flat at −164 to −175 dB in every subband, the VQ ones included; FFmpeg's encoder's test tones back at
+their levels (0.25 → 0.25004). 16 core tests over two fixtures libavcodec's encoder wrote from tones
+(72 KB), 3 more that run only where the film is, and 3 app tests. Negative controls, each failing its
+tests: prediction off, the centre first, the gain doubled, 14-bit words unmasked, the VQ subbands silent,
+the app's format swap off, and the container's times in place of the samples'.
+
+Live in `build/live-copy`, over a hard link to the film in `build/`, with no permission request in the
+log: the film opened on track 9, the renderer `.rendering` with no error; two seeks (to 9:36 and 3:21)
+and a step through tracks 9 → 10 → 2 → 3 (DTS, AC-3, AC-3, DTS) all clean; an AVI holding DTS played.
+**Found live: clicks ("with artifacts", Oleg). Fixed the same day.** The decoded packets kept the times
+mkvmerge gave them, each block of eight 10.667 ms frames stamped in whole milliseconds: 252 of 1 999
+joins started 333 or 666 µs before or after the packet ahead ended, and PCM handed over that way clicks
+at each. The packets are now timed by their samples, every join exact over 2 000 packets; Oleg: "clean".
+The first live run was muted by a probe, which went unsaid until he heard nothing. **Not handled**: DTS in
+an MP4 or MOV, which AVFoundation's player plays silent as before; the extensions (XCh's sixth channel,
+X96, DTS-HD's lossless and LBR); DTS-HD in an AVI, whose substream defeats the splitter's check of the
+next header; a Matroska DTS track of frames other than 512 samples with no `DefaultDuration`, timed by
+the demuxer as 512 (its packets still join end to end); the stream's dynamic range and dialogue level,
+which a preview leaves alone. Matroska PCM (`A_PCM`) may click the same way, unchecked. **Not run
+live**: a translation, full window and full screen, and the perfect-reconstruction filter, which no
+stream on this Mac uses. The last full app run had two waits run out (`RowIconLoaderTests`,
+`ArchiveNameEncodingGestureTests`), both passing alone.
+
+**Left undone so far:** VP8, Theora, VC-1 and WMV, RealVideo and MS-MPEG-4 v3, which macOS cannot
 decode. Any codec library (ffmpeg, libVLC, libvpx), for the licence, the size, and §2's rule that bytes
-go through the core. Subtitles. Streaming a server's file without fetching it, since the remote
+go through the core; DTS took a decoder of the core's own instead. Subtitles. Streaming a server's file without fetching it, since the remote
 preview's size allowance still applies. Video in the slideshow.
 
 The app's share of selling Dirnex (the private companion repo `dirnex-home`, milestones C1–C15) was

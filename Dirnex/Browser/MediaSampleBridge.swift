@@ -60,7 +60,7 @@ enum MediaSampleBridge {
         // A layout is required of anything past stereo: AVFoundation raises on a six-channel format
         // without one (seen 2026-11-20 with E-AC-3 5.1).
         var layout = AudioChannelLayout()
-        layout.mChannelLayoutTag = layoutTag(channels: audio.channels)
+        layout.mChannelLayoutTag = audio.channelLayoutTag ?? layoutTag(channels: audio.channels)
         var description: CMAudioFormatDescription?
         let cookie = audio.magicCookie ?? Data()
         let status = cookie.withUnsafeBytes { raw in
@@ -95,7 +95,8 @@ enum MediaSampleBridge {
 
     /// Whether this Mac decodes `format`: a VideoToolbox session that opens for a picture, and for a
     /// sound a format AudioToolbox lists among those it decodes. Measured 2026-11-20 (P1): `vp08`
-    /// fails the first with -12906, and `dtsc` is missing from the second.
+    /// fails the first with -12906, and `dtsc` is missing from the second, which is why DTS reaches
+    /// here already decoded by the core, as PCM (`SampleBufferPreparation.decodingDTS`).
     static func canDecode(_ format: MediaSampleFormat) -> Bool {
         guard let description = formatDescription(format) else { return false }
         switch format {

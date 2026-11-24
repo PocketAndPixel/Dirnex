@@ -59,6 +59,21 @@ VC-5 wavelet codec GoPro RAW (.GPR) files use; macOS ships none.
 
     Tiny JPEG Encoder, by Sergio Gonzalez — public domain.
 
+DTS Coherent Acoustics tables. Dirnex's DTS decoder (DirnexCore, DTS*.swift) is
+its own, written from ETSI TS 102 114 ("DTS Coherent Acoustics; Core and
+Extensions", Copyright European Telecommunications Standards Institute), whose
+Annex D tables are compiled into the app, generated from V1.2.1 and V1.6.1 of
+the specification by scripts/generate_dts_tables.py.
+  The specification leaves out two of its normative tables, the vector code
+  books of Annex D.10 (4 096 ADPCM prediction vectors and 1 024 high-frequency
+  vectors). Those numbers, and nothing else, are taken from FFmpeg
+  (https://ffmpeg.org), libavcodec/dcadata.c at tag n8.0, Copyright (C) 2004
+  Gildas Bazin, Copyright (c) 2006 Benjamin Larsson, which FFmpeg licenses under
+  the GNU Lesser General Public License, version 2.1 or later. They are
+  generated into DTSVectorTablesPrediction.swift and
+  DTSVectorTablesHighFrequency.swift by scripts/generate_dts_vector_tables.py,
+  which records the source file's SHA-256.
+
 LICENSE TEXTS
 -------------
 

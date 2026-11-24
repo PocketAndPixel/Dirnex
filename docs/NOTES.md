@@ -268,6 +268,10 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
   one-line message repeated under *Testing failed* and no `file:line: error:` to grep. The crash log
   names the test function. `#expect(ObjectIdentifier(x as AnyObject) == ObjectIdentifier(y))`
   compiles and says the same.
+- **A suite's trait cannot name the suite it is on.** Seen 2026-11-24 on Xcode 27.2:
+  `@Suite(.enabled(if: FileManager.default.fileExists(atPath: DTSFilmTests.path))) struct DTSFilmTests`
+  failed to build with *"circular reference resolving attached macro 'Suite'"* and *"unknown attribute
+  'Suite'"*. The same condition read from a type of its own (`enum DTSFilm { static let path }`) builds.
 - **`#expect(optionalNumeric == arithmeticExpression)` can report a false failure** even when
   both operands display as equal. Confirmed on Swift 6.3 / Xcode 26:
   `let v: Int64? = 1_048_576; #expect(v == 1024 * 1024)` FAILS, while `#expect(v == 1_048_576)`
@@ -4583,6 +4587,38 @@ Measured 2026-11-08 for M37's byte view, whose table has a row for every 16 byte
   a test waited 22 minutes; most likely GCD's rule that `ProcessWaiting.pipeQueue` records, a global
   queue's block starting only while fewer threads are busy than there are CPUs. `SampleBufferFeed`'s
   `deinit` now stops both requests; `SampleBufferFeedTests` holds it, and failed without it.
+- **No Mac decodes DTS, and the core does its core** (PLAN.md §M42 ▸ DTS, 2026-11-24). macOS 27.2.1
+  still lists no `dtsc` among `kAudioFormatProperty_DecodeFormatIDs`. ETSI TS 102 114 is free from ETSI,
+  and three things about it cost time:
+  - **No edition prints the two vector code books (Annex D.10)**, which it calls normative: V1.6.1 says
+    "Due to its extensive size, this table is not included here", V1.2.1 stops after the heading, and
+    V1.1.1 has no tables at all. Every frame of the film needs one or the other (97 % predict, the rest
+    code their top subbands by VQ). Only GPL and LGPL decoders carry them; Dirnex takes them from
+    FFmpeg's `dcadata.c` (NOTICE), whose first entry is the 9928 D.10.1 quotes.
+  - **The editions disagree, and each is wrong somewhere.** V1.6.1's D65 stops at ±30 and its D129 prints
+    −37 as "37"; V1.2.1 has both right. V1.6.1's perfect-reconstruction filter differs from V1.2.1's in all
+    512 taps (by up to 6e-6), and libavcodec carries V1.2.1's, found as float32 in VLC's build, so that is
+    the one streams are played with. The generator reads both editions and stops on any other difference.
+  - **A table read from the PDF needs its rows kept together and its digits regrouped.** PDFKit's plain
+    `string` runs side-by-side tables into each other; its line selections (`selectionsByLine`) keep a
+    row, and their x positions say whose column a value is (`scripts/pdf_lines.swift`). ETSI writes 1379
+    as "1 379", and a Huffman book is only right when its codes are a complete prefix code (the Kraft sum
+    exactly 1) holding each level once, which caught every misread here.
+- **PCM handed to `AVSampleBufferAudioRenderer` has to be timed by its samples, not by the container.**
+  Heard live 2026-11-24 as clicks in the film's decoded DTS: mkvmerge stamps each block of eight 10.667 ms
+  frames in whole milliseconds, so 252 of 1 999 packets started 333 or 666 µs before or after the one
+  ahead ended. Timed by the sample count from an anchor (`MediaSampleClock`), every join exact, the
+  clicks were gone. Compressed sound never showed it: the system's decoder keeps its own count, and
+  AC-3's 256 ms blocks round evenly anyway.
+- **A decoder in the core has to keep up in a Debug build, where the core is `-Onone`.** The DTS filter
+  bank written as Swift loops ran the film at 1.6 times real time there (release: 190). A sample of the
+  process showed generic metadata lookups at the top, `stride(from:to:by:)` inside the inner loop among
+  them. The same arithmetic in vDSP, and flat buffers in place of nested arrays, made it 14 times, with
+  the output equal to 129 dB.
+- **A decoder started cold after a seek gets its first two frames wrong.** DTS predicts each subband from
+  the frame before: a fresh decoder's first frame came out at 2 to 5 dB SNR against one that had run from
+  the start, the second near 20, the third at 40 to 84. The core's player seeks 100 ms ahead of where it
+  plays from (`SampleBufferFeed.displayLead`), which covers it at nine frames.
 
 ### Previews: web views
 
@@ -6048,6 +6084,25 @@ against a fake.
     beat its own interval however fast the host, so there is nothing for CI to drift past
     (`ProcessWaitingReapTests`, whose negative control fails that one test at 63 ms and leaves its
     three narrowness controls green).
+
+### FFmpeg and VLC, as references for a decoder
+
+Homebrew's `ffmpeg` (9.1) is on the development Mac since 2026-11-24. Both are oracles for the core's
+DTS decoder, and both have traps (PLAN.md §M42 ▸ DTS).
+
+- **VLC's transcode low-passes, and its WAV output reorders a 5.1 sound.** `--sout
+  "#transcode{acodec=fl32}:std{mux=wav,…}"` gave a film's 5.1 with the surrounds inverted, the LFE silent,
+  and only 18 to 25 dB of agreement with a decoder that later agreed with FFmpeg to 100. `mux=raw` gives
+  the channels as decoded, in VLC's order L R Ls Rs C LFE. Its default resampler (soxr) then still
+  filtered: tones at 19.2, 21.3 and 23.1 kHz came back at 0.72, 0.14 and 0.003 of their level.
+  `--audio-resampler=ugly` passes them whole.
+- **VLC's DTS encoder writes stereo only** (asked for 6 channels, from either WAV channel mask) and needs
+  `--sout-avcodec-strict=-2`; `--sout-avcodec-options={dca_adpcm=1}` did not reach it. `ffmpeg -c:a dca
+  -strict -2 -dca_adpcm 1` writes 5.1(side) with its LFE and with prediction, but never high-frequency VQ.
+- **Steam's bundled libavcodec has no DTS decoder** registered, though its name is in the codec list, and
+  VLC's plugin exports none of libavcodec's symbols: neither stands in for `ffmpeg`.
+- **FFmpeg's AVI muxer writes an empty chunk per tick of a DTS stream**, so a 0.25 s file came to 1.2 MB
+  of chunk headers and index, which a sparse capture does not shrink.
 
 ### mdfind
 

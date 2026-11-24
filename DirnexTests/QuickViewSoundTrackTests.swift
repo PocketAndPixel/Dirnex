@@ -39,7 +39,7 @@ struct QuickViewSoundTrackTests {
     private static let budget = Duration.seconds(60)
 
     /// A Matroska film with an English AAC sound, the default, then a Russian Opus one, and with
-    /// `dts` a Ukrainian DTS one after them, which nothing here decodes.
+    /// `dts` a Ukrainian DTS one after them with no frames, which cannot play.
     private func film(in tree: TempDirectory, seconds: Int = 1, dts: Bool = false) async throws -> URL {
         let url = tree.root.appendingPathComponent("film.mkv")
         var sounds = [

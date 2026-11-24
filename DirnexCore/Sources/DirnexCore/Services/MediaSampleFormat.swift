@@ -43,6 +43,9 @@ public enum MediaSampleFormat: Equatable, Sendable {
         /// theirs: an `ES_Descriptor` around AAC's `AudioSpecificConfig`, Opus's `OpusHead`, Vorbis's three
         /// headers as Matroska laces them, a whole `dfLa` box for FLAC.
         public var magicCookie: Data?
+        /// The channels' order as an `AudioChannelLayoutTag`, where the usual layout for the count is not
+        /// it: DTS decoded by the core (`DTSChannelLayout`). `nil` means the usual one.
+        public var channelLayoutTag: UInt32?
 
         public init(
             formatID: UInt32,
@@ -50,7 +53,8 @@ public enum MediaSampleFormat: Equatable, Sendable {
             channels: Int,
             framesPerPacket: Int,
             pcm: PCMLayout? = nil,
-            magicCookie: Data? = nil
+            magicCookie: Data? = nil,
+            channelLayoutTag: UInt32? = nil
         ) {
             self.formatID = formatID
             self.sampleRate = sampleRate
@@ -58,6 +62,7 @@ public enum MediaSampleFormat: Equatable, Sendable {
             self.framesPerPacket = framesPerPacket
             self.pcm = pcm
             self.magicCookie = magicCookie
+            self.channelLayoutTag = channelLayoutTag
         }
 
         /// How long one packet plays, in nanoseconds, for a format whose packets all last the same.

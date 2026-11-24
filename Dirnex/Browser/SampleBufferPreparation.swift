@@ -41,6 +41,11 @@ struct SampleBufferPreparation: @unchecked Sendable {
             let key = track.codecID == "V_VP9" ? try? file.firstKeyframe(track: track.number) : nil
             formats[track.number] = track.sampleFormat(firstFrame: key)
         }
+        let dtsTracks = Set(formats.compactMap { $0.value.isDTS ? $0.key : nil })
+        let firstFrames = dtsTracks.isEmpty ? [:] : (try? file.firstKeyframes(tracks: dtsTracks)) ?? [
+            :
+        ]
+        let decoded = decodingDTS(&formats) { firstFrames[$0] }
         let plan = MatroskaPlaybackPlan(tracks: file.tracks, language: language) { track in
             track.frameEncoding.isReadable
                 && formats[track.number].map(MediaSampleBridge.canDecode) == true
@@ -56,11 +61,17 @@ struct SampleBufferPreparation: @unchecked Sendable {
             audioTracks: audioTracks,
             sounds: sounds(plan),
             statedDuration: file.info.durationSeconds,
-            demuxer: MatroskaDemuxer(file: file, tracks: [picture, plan.audio].compactMap(\.self)),
+            demuxer: decoding(
+                MatroskaDemuxer(file: file, tracks: [picture, plan.audio].compactMap(\.self)),
+                decoded
+            ),
             makeDemuxer: { number in
-                MatroskaDemuxer(
-                    file: file,
-                    tracks: [picture, file.track(number: number)].compactMap(\.self)
+                decoding(
+                    MatroskaDemuxer(
+                        file: file,
+                        tracks: [picture, file.track(number: number)].compactMap(\.self)
+                    ),
+                    decoded
                 )
             }
         )
@@ -73,23 +84,29 @@ struct SampleBufferPreparation: @unchecked Sendable {
     static func prepare(_ file: AVIFile, language: String?) -> SampleBufferPreparation? {
         guard let index = try? file.index() else { return nil }
         var formats: [Int: MediaSampleFormat] = [:]
+        var firstChunks: [UInt64: Data] = [:]
         for stream in file.streams where stream.isEnabled && (
             stream.kind == .video || stream.kind == .audio
         ) {
             let first = try? index.entries(stream.number).first { $0.size > 0 }.map(file.read)
             formats[stream.number] = stream.sampleFormat(firstFrame: first)
+            firstChunks[UInt64(stream.number)] = first
         }
+        var numbered = Dictionary(uniqueKeysWithValues: formats.map { (UInt64($0.key), $0.value) })
+        let decoded = decodingDTS(&numbered) { firstChunks[$0] }
+        formats = Dictionary(uniqueKeysWithValues: numbered.map { (Int($0.key), $0.value) })
         let plan = AVIPlaybackPlan(tracks: file.streams, language: language) { stream in
             formats[stream.number].map(MediaSampleBridge.canDecode) == true
         }
         let picture = plan.video
         guard plan.isPlayable,
-              let demuxer = try? AVIDemuxer(
+              let base = try? AVIDemuxer(
                   file: file,
                   index: index,
                   streams: [picture, plan.audio].compactMap(\.self)
               )
         else { return nil }
+        let demuxer = decoding(base, decoded)
         let audioTracks = decodableSounds(
             plan.audioTracks.map { (UInt64($0.track.number), $0.isDecodable) }
         ) { formats[Int($0)] }
@@ -102,13 +119,38 @@ struct SampleBufferPreparation: @unchecked Sendable {
             demuxer: demuxer,
             makeDemuxer: { number in
                 let sound = file.streams.first { UInt64($0.number) == number }
-                return try? AVIDemuxer(
+                return (try? AVIDemuxer(
                     file: file,
                     index: index,
                     streams: [picture, sound].compactMap(\.self)
-                )
+                )).map { decoding($0, decoded) }
             }
         )
+    }
+
+    /// DTS, which no Mac decodes (PLAN.md §M42 ▸ DTS): each DTS track's format in `formats` becomes the
+    /// PCM the core decodes it to, read from its first frame (`firstFrame`), or `nil` where that frame is
+    /// not one the core plays, which leaves the track undecodable as before. Returns the decoded formats
+    /// by track, for `decoding(_:_:)`.
+    static func decodingDTS(
+        _ formats: inout [UInt64: MediaSampleFormat],
+        firstFrame: (UInt64) -> Data?
+    ) -> [UInt64: MediaSampleFormat.Audio] {
+        var decoded: [UInt64: MediaSampleFormat.Audio] = [:]
+        for (number, format) in formats where format.isDTS {
+            let pcm = firstFrame(number).flatMap(MediaSampleFormat.Audio.decodedDTS(firstFrame:))
+            decoded[number] = pcm
+            formats[number] = pcm.map(MediaSampleFormat.audio)
+        }
+        return decoded
+    }
+
+    /// `demuxer` with the DTS tracks in `decoded` handed over as PCM.
+    static func decoding(
+        _ demuxer: any MediaDemuxing,
+        _ decoded: [UInt64: MediaSampleFormat.Audio]
+    ) -> any MediaDemuxing {
+        decoded.isEmpty ? demuxer : DTSDecodingDemuxer(demuxer, decoding: decoded)
     }
 
     /// The tracks among `sounds` that decode, by number, each with its format, which a switch hands the

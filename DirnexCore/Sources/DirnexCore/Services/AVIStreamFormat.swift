@@ -123,7 +123,7 @@ extension AVIStream {
             guard first.isEmpty || header(.ac3) != nil else { return nil }
             return plain("ac-3", 1536)
         case 0x2001:
-            return plain("dtsc", 512)
+            return plain("dtsc", header(.dts)?.samples ?? 512)
         case let tag where Self.aacTags.contains(tag):
             return aacFormat(rate: rate, channels: audio.channels, adts: header(.adts))
         default:
@@ -174,6 +174,7 @@ extension AVIStream {
             return bytes > 0 ? .pcm(bytesPerFrame: bytes) : nil
         case 0x0050, 0x0055: return .framed(.mpeg)
         case 0x2000: return .framed(.ac3)
+        case 0x2001: return .framed(.dts)
         case let tag where Self.aacTags.contains(tag):
             return AudioFrameHeader.confirmed(in: first, syntax: .adts) == nil ? .chunk : .framed(
                 .adts

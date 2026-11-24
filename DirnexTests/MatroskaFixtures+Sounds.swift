@@ -28,7 +28,8 @@ extension MatroskaFixtures {
     }
 
     /// A track of silence in `codecID`: AAC or Opus as AudioToolbox encodes them, or DTS with no
-    /// packets, which no decoder here would read.
+    /// packets, which has no first frame to read a layout from and so stays a sound that cannot play
+    /// (DTS with frames plays: `QuickViewDTSTests`).
     nonisolated private static func soundTrack(
         _ codecID: String,
         number: UInt64,

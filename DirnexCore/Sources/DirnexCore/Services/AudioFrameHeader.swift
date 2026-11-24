@@ -14,6 +14,8 @@ struct AudioFrameHeader: Equatable, Sendable {
         case ac3
         /// AAC behind ADTS headers (ISO/IEC 13818-7 §6.2), which the decoder does not want.
         case adts
+        /// DTS Coherent Acoustics' core (ETSI TS 102 114 §5.4.2), in 16-bit big-endian words.
+        case dts
     }
 
     /// The whole frame's length, its header included.
@@ -49,12 +51,15 @@ struct AudioFrameHeader: Equatable, Sendable {
 
     /// The header at `index` of `bytes`, or `nil` when none starts there.
     static func parse(_ bytes: [UInt8], at index: Int, syntax: Syntax) -> AudioFrameHeader? {
-        guard index + 7 <= bytes.count else { return nil }
-        let head = Array(bytes[index..<index + 7])
+        // DTS's header runs to 15 bytes with its CRC; the others' fit in 7.
+        let size = syntax == .dts ? 15 : 7
+        guard index + size <= bytes.count else { return nil }
+        let head = Array(bytes[index..<index + size])
         return switch syntax {
         case .mpeg: mpeg(head)
         case .ac3: ac3(head)
         case .adts: adts(head)
+        case .dts: dts(head)
         }
     }
 
@@ -106,6 +111,20 @@ struct AudioFrameHeader: Equatable, Sendable {
         )
         header.layer = layer
         return header
+    }
+
+    /// The core frame's own size, which leaves out a DTS-HD substream after it, and what it decodes to.
+    private static func dts(_ head: [UInt8]) -> AudioFrameHeader? {
+        guard head.starts(with: [0x7F, 0xFE, 0x80, 0x01]), let header = DTSCoreHeader(Data(head)),
+              let channels = header.layout?.channels
+        else { return nil }
+        return AudioFrameHeader(
+            length: header.frameSize,
+            headerLength: 0,
+            samples: header.samples,
+            sampleRate: header.sampleRate,
+            channels: channels
+        )
     }
 
     private static let ac3Rates = [

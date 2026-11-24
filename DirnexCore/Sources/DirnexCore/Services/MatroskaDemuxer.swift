@@ -229,4 +229,22 @@ extension MatroskaFile {
         }
         return nil
     }
+
+    /// The first key frame of each of `tracks`, read in one pass over the first `clusters` clusters:
+    /// DTS's layout is read from its first frame, and a film can carry four DTS tracks.
+    public func firstKeyframes(tracks: Set<UInt64>, searching clusters: Int = 8) throws -> [
+        UInt64: Data
+    ] {
+        var found: [UInt64: Data] = [:]
+        var offset = firstClusterOffset
+        for _ in 0..<clusters where found.count < tracks.count {
+            guard let at = offset, let cluster = try cluster(from: at) else { break }
+            for block in cluster.blocks where tracks.contains(block.track) && found[block.track] == nil
+                && block.isKeyframe && !block.frames.isEmpty {
+                found[block.track] = try frame(0, of: block)
+            }
+            offset = cluster.nextOffset
+        }
+        return found
+    }
 }
