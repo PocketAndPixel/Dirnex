@@ -1965,6 +1965,16 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
   never-accepting listener took 40 connects made one after another, so only a burst shows it.
   pyftpdlib defaults to 100, Apache to 511 and `sshd` to 128. The other Python fakes in `Tooling/`
   are run by hand, one client at a time, and keep the default.
+- **OpenSSH's per-source penalties outlive a run, so back-to-back runs against one `sshd` add up to
+  a lockout.** Seen 2026-11-24 on OpenSSH 10.5 (macOS 27.2): the suites fail sign-ins on purpose,
+  and each full app run left one or two `srclimit_penalise: … deferred penalty of 5.000 seconds`
+  lines on 127.0.0.1. The sixth run against the same server crossed the 15 s minimum
+  (`activating ipv4 penalty of 15.851 seconds`), and every login after it was `drop connection …
+  penalty: failed authentication`: 613 issues in fifteen suites over SFTP, all `.io(code: 5)` or a
+  `nil` shortcut, which reads as SFTP broken everywhere at once. FTP and WebDAV were fine in the same
+  run, which is the tell, and the server's log says it outright. `scripts/live_test_servers.sh` writes
+  `PerSourcePenalties no` where `sshd -T` knows the keyword. With it, four more full runs logged no
+  penalty at all. A server left up all day for many runs is the case it bites, and a fresh `up` hides it.
 
 #### Values that expire: probe sizes and pinned answers
 
@@ -11563,13 +11573,21 @@ overturned the obvious implementation.
     first page between `showPDFDocument` and the keystroke. A fixture here may therefore not assume
     **how many** of a document's pages need reading. Give it enough scanned pages that a page or two
     being taken cannot empty the set, and make every wait relative to the count before it.
-  - **On macOS 27.2 it did not happen in a quiet run, on screen or off.** Probed 2026-11-24 with
-    the find suite's own fixture (a text page, then two scanned ones) and with three scanned pages,
-    watched for 8 s each, with the test window hidden and then ordered front and displayed: no page
-    gained text, though `visiblePages` named pages 0 and 1. Yet that suite's count line read
-    "Reading 0 of 1 scanned page" once in a full run, so one scanned page had text by the time the
-    layers were read, and the probe did not find how. `theCountLineDoesNotLie` now names the pages
-    left to read and the pages asked for when it fails.
+  - **On macOS 27.2 it did not happen in a quiet run, on screen or off, and it happened in most
+    tests of a full one.** Probed 2026-11-24 with the find suite's own fixture (a text page, then
+    two scanned ones), watched for 8 s with the test window hidden and then ordered front: no page
+    gained text, though `visiblePages` named pages 0 and 1. Five runs of the two scan suites alone
+    (0.56 s each) agreed. Logging each page's `string` at the end of every test across three full
+    app runs, where the same suites take 71 s, showed the opposite: page 1, the scanned page
+    showing under page 0, had its 10 characters in **27 of 33** three-page records, page 2 only
+    once a test had scrolled to it, and **7** snapshots had already lost a page to it. Two of
+    those were failures, "Reading 0 of 1 scanned page" and `asked → [2]`; the rest passed because
+    their tests did not look.
+    - **So a fixture the fake reads draws a picture with no words.** The fake's answers do not come
+      from the pixels, so the words were only ever there for PDFKit to find. An even light gray has
+      no edge Live Text can take for a letter or a dash. Three more full runs logged no text on any
+      scanned page and no short snapshot. Only the real-recognizer test keeps a lettered page, and
+      it never puts that page in a `PDFView`.
 
 ## Design lessons that generalize
 

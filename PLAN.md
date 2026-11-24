@@ -658,11 +658,25 @@ are clean. In the order to take them:
     first layout (0 against 260). It lays the window out first now, and still fails with the strip's
     old required clipping put back. The merge test failed with `enableEscapeToCancel` taken out.
   - The merge close test took 63, 54 and 51 s through four waits of 30 s, none run out. Watch it.
-- [ ] **Unexplained, not seen again in three full runs:** `QuickViewPDFScanFindTests` read
-  "Reading 0 of 1 scanned page" where 2 was expected, so one scanned page had text when the layers
-  were read. Live Text was the suspect (docs/NOTES.md ▸ Vision), but on 27.2 it filled no page of
-  the fixture in 8 s, hidden or on screen. The test's message now names the pages left to read and
-  the pages asked for. Read it if the test fails again.
+    Ten more full runs the same evening: 50–53 s in the 74–77 s ones, and 61, 80 and 82 s in three
+    runs stretched to 86–113 s while Chrome played a video. None ran out.
+- [x] **`QuickViewPDFScanFindTests`' "Reading 0 of 1 scanned page": PDFKit's Live Text, as
+  suspected.** It came back in the sibling suite on the second of ten full runs the same evening:
+  `anUnreadablePageDoesNotStall` found 3 matches where 2 were expected and asked for `[2]` only, so
+  the page drawn as a picture of "delta beta" already had "beta" in its text layer. Only OCR can put
+  it there, and the suite reads through a fake. Logging each page's text at the end of every test
+  across three full runs showed page 1, which shows under page 0, filled in 27 of 33 tests, and 7
+  snapshots short a page. Alone, the two suites take 0.56 s and nothing was filled in five runs. The
+  fixture's scanned pages for the fake are now `.picture`, an even gray with no words, since the
+  fake's answers never came from the pixels. Three more full runs: no page filled, no short
+  snapshot. The real-recognizer test keeps its lettered page (docs/NOTES.md ▸ Vision).
+- [x] **Found on the way: back-to-back runs locked the SFTP suites out of the throwaway `sshd`.**
+  The sixth full run against one server failed 613 issues in fifteen suites over SFTP, with FTP and
+  WebDAV fine. OpenSSH 10.5's per-source penalties had added up over the runs' deliberate failed
+  sign-ins and dropped every login from 127.0.0.1. `scripts/live_test_servers.sh` turns them off
+  where `sshd` knows the keyword, and four more full runs logged no penalty (docs/NOTES.md ▸ Live
+  suites). Final run: 2857 tests passed in 77 s, core 6177, both linters clean, all 74 defaults keys
+  unchanged by content, `known_hosts` and the preview cache as they were.
 - [x] **With a real keyboard, since nothing above was checked this way:** Tab round the Compare and
   Merge windows' toolbars; Tab and Space on Settings' Language, Compare files with and Edit files
   with pop-ups and a color rule's; Space on the license reminder's buttons. Done 2026-11-24 in

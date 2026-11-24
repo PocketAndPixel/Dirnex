@@ -7,16 +7,24 @@ import Testing
 
 /// A PDF with scanned pages in it, and a stand-in for what reads them.
 ///
-/// A *scanned* page here is a real one: the word is drawn into a bitmap and the bitmap into the
-/// page, so the page carries no text layer at all — `PDFPage.string` is `nil`, which is the state
-/// the whole feature exists for and which a page drawn with glyphs cannot reproduce.
+/// A *scanned* page here is a real one: a bitmap drawn into the page, so the page carries no text
+/// layer at all — `PDFPage.string` is `nil`, which is the state the whole feature exists for and
+/// which a page drawn with glyphs cannot reproduce.
 @MainActor
 enum QuickViewPDFScanFixtures {
     enum Page {
         /// A page drawn with real glyphs, so it carries its own text.
         case text(String)
-        /// A page that is a picture of its words, so it carries none.
+        /// A page that is a picture of its words, so it carries none — for the real recognizer,
+        /// which has to have something to read.
+        ///
+        /// Never show one in a `PDFView` for the fake to read: PDFKit runs Live Text on a page it
+        /// displays and puts the words in its text layer by itself, and the page then needs no
+        /// reading at all (docs/NOTES.md ▸ Vision).
         case scanned(String)
+        /// A page that is a picture with no words in it: no text layer, and nothing for PDFKit's
+        /// own Live Text to put in one. What the fake is told the page says stands for its words.
+        case picture
     }
 
     struct Fixture {
@@ -37,9 +45,14 @@ enum QuickViewPDFScanFixtures {
     ///
     /// The fake's answers stand for what reading them would find — `beta` on the first and `beta
     /// omega` on the second — because what Vision makes of a picture is not this suite's subject.
+    ///
+    /// The two are pictures with no words in them. With the words drawn, a full run on macOS 27.2
+    /// had PDFKit's Live Text fill page 1's text layer in most of these tests, and in some before
+    /// the find had read the layers, so the page was rightly never read and a test expecting it to
+    /// be failed (PLAN.md ▸ macOS 27.2).
     static func scanned(function: String = #function) async throws -> Fixture {
         try await fixture(
-            pages: [.text("alpha beta gamma"), .scanned("delta beta"), .scanned("beta omega")],
+            pages: [.text("alpha beta gamma"), .picture, .picture],
             answers: [
                 1: recognizedLine("delta beta"),
                 2: recognizedLine("beta omega")
@@ -135,6 +148,10 @@ enum QuickViewPDFScanFixtures {
             if let image = raster(line, size: box.size) {
                 context.draw(image, in: box)
             }
+        case .picture:
+            if let image = raster(nil, size: box.size) {
+                context.draw(image, in: box)
+            }
         }
         context.endPDFPage()
         context.closePDF()
@@ -150,12 +167,13 @@ enum QuickViewPDFScanFixtures {
         CTLineDraw(drawn, context)
     }
 
-    /// The words as pixels — what makes the page a scan rather than a page of text.
+    /// The words as pixels — what makes the page a scan rather than a page of text. With no words,
+    /// an even light gray: no edge in it for Live Text to take for a letter or a dash.
     ///
     /// Drawn at 3× and large, because the point of this fixture is that the *real* recognizer can
     /// read one of them: at the page's own 72 dpi a rendered word is too coarse to be read back
     /// reliably, which would make that one test flaky about the framework rather than about us.
-    private static func raster(_ line: String, size: CGSize) -> CGImage? {
+    private static func raster(_ line: String?, size: CGSize) -> CGImage? {
         let scale: CGFloat = 3
         let width = Int(size.width * scale)
         let height = Int(size.height * scale)
@@ -168,8 +186,9 @@ enum QuickViewPDFScanFixtures {
             space: CGColorSpaceCreateDeviceGray(),
             bitmapInfo: CGImageAlphaInfo.none.rawValue
         ) else { return nil }
-        context.setFillColor(CGColor(gray: 1, alpha: 1))
+        context.setFillColor(CGColor(gray: line == nil ? 0.9 : 1, alpha: 1))
         context.fill(CGRect(x: 0, y: 0, width: width, height: height))
+        guard let line else { return context.makeImage() }
         context.setFillColor(CGColor(gray: 0, alpha: 1))
         let drawn = CTLineCreateWithAttributedString(NSAttributedString(
             string: line,
