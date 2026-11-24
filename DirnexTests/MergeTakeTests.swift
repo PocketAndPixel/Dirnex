@@ -338,9 +338,14 @@ struct MergeSaveTests {
         let buttons = CompareSaveRig.buttons(in: sheet.contentView)
         // Each by its title: the order an alert's buttons sit in its view tree is NSAlert's own, and on
         // macOS 27.2 it came out reversed in a full run while this suite alone read it in order.
-        // Cancel in the default slot; `EscapeToDismissTests` pins what Return and ⎋ do there.
+        // Cancel in the default slot; `EscapeToDismissTests` pins what Return and ⎋ do there. Read
+        // through the sheet's `defaultButtonCell`, as `RemoteFetchPromptTests` reads its own: putting
+        // the sheet up takes Return off the button's `keyEquivalent` and leaves it on the cell, and
+        // Return still presses Cancel (probed on 27.2). A read of `keyEquivalent` passed only when it
+        // came before that, and a full run read "" (2026-11-24).
         #expect(buttons.map(\.title).sorted() == ["Cancel", "Don’t Save"])
-        #expect(buttons.first { $0.title == "Cancel" }?.keyEquivalent == "\r")
+        let cancel = try #require(buttons.first { $0.title == "Cancel" })
+        #expect(sheet.defaultButtonCell?.controlView === cancel)
         let discard = buttons.first { $0.title == "Don’t Save" }
         #expect(discard?.keyEquivalent == "d" && discard?.keyEquivalentModifierMask == .command)
         try await rig.answer(.alertFirstButtonReturn)

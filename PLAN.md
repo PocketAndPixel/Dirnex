@@ -587,6 +587,12 @@ that 27.2's gesture recognizers, a flipped PDF view and a field bezel that draws
 took away. The full app run took about two minutes with no hang, and only two waits ran out, both
 passing alone. Left: the keyboard checks a person has to make.
 
+**The same day, the flaky items.** Three full runs with the live servers up. The NTLM failures were
+the stand-in proxy's listen backlog, and that is fixed. Two suites' waits got 60 s, and two tests
+that only passed when they won a race read their state after it now. Two full runs then passed
+clean. One flake is still unexplained (below). The keyboard checks then passed with real keys, and
+turned up two older gaps, listed below with no decision yet.
+
 **Left undone so far:** VP8, Theora, VC-1 and WMV, RealVideo, MS-MPEG-4 v3 and DTS, which macOS cannot
 decode. Any codec library (ffmpeg, libVLC, libvpx), for the licence, the size, and §2's rule that bytes
 go through the core. Subtitles. Streaming a server's file without fetching it, since the remote
@@ -632,15 +638,55 @@ are clean. In the order to take them:
 - [x] **The merge window's close prompt, in a full run only.** Nothing was left behind: the test read
   the alert's buttons in view-tree order, which NSAlert does not keep. It names each by title now and
   checks Cancel takes Return and Don't Save ⌘D, and passed in the full run (docs/NOTES.md ▸ Testing).
-- [ ] **Flaky under load, once each.** `QuickViewPDFScanFindTests` ("Reading 0 of 1 scanned page"
-  where 2 was expected), and `WebDAVLiveIntegrationTests.aStaleTagRefusesEveryRange` over the NTLM
-  stand-in (`.unreadableSegment(number: 3)`). In the full run after the fixes, two more, each a wait
-  running out and each passing alone twice: `RowIconArrivalTests.arrivalFillsRows` (`settleUntil`,
-  78 s) and `QuickViewScrollPageTests.renderedPageScrolls` (its 10 s wall-clock wait for the page to
-  lay out). Watch them, and act if any comes back.
-- [ ] **With a real keyboard, since nothing above was checked this way:** Tab round the Compare and
+  Its Return check read Cancel's `keyEquivalent`, which the sheet's presentation clears, and a later
+  full run read `""`. It reads the sheet's `defaultButtonCell` now (below).
+- [x] **Flaky under load: three of the four explained, and two more found.** Three full app runs on
+  2026-11-24 with SFTP, FTP, Apache WebDAV and the NTLM stand-in up. The first failed 6 issues, and
+  the two after the fixes passed with none (2855 tests, 74–78 s). Core suite and both linters clean,
+  and all 74 defaults keys unchanged by content.
+  - `aStaleTagRefusesEveryRange` came back, with two other NTLM tests in the same second. The cause
+    was our proxy: `socketserver` listens with a backlog of 5, and macOS resets a burst of connects
+    past it. With a temporary message on the test, every range read `couldNotConnect`, curl's exit
+    7, and the proxy's log never saw the requests. `Tooling/fake-ntlm-proxy.py` listens at 128 now.
+    60 parallel sign-ins: 35 reset before, none in three rounds after (docs/NOTES.md ▸ Live suites).
+  - `arrivalFillsRows` passed in 63, 52 and 48 s through waits of 30 s, and
+    `renderedPageScrolls` in 17–20 s through waits of 10 s. Both suites' waits for something now
+    have 60 s. Their fixed holds are unchanged.
+  - New in the first run: the merge prompt's Return check (above), and
+    `TabStripOverflowTests.paneIsNotWidened`, which read its baseline width before the window's
+    first layout (0 against 260). It lays the window out first now, and still fails with the strip's
+    old required clipping put back. The merge test failed with `enableEscapeToCancel` taken out.
+  - The merge close test took 63, 54 and 51 s through four waits of 30 s, none run out. Watch it.
+- [ ] **Unexplained, not seen again in three full runs:** `QuickViewPDFScanFindTests` read
+  "Reading 0 of 1 scanned page" where 2 was expected, so one scanned page had text when the layers
+  were read. Live Text was the suspect (docs/NOTES.md ▸ Vision), but on 27.2 it filled no page of
+  the fixture in 8 s, hidden or on screen. The test's message now names the pages left to read and
+  the pages asked for. Read it if the test fails again.
+- [x] **With a real keyboard, since nothing above was checked this way:** Tab round the Compare and
   Merge windows' toolbars; Tab and Space on Settings' Language, Compare files with and Edit files
-  with pop-ups and a color rule's; Space on the license reminder's buttons.
+  with pop-ups and a color rule's; Space on the license reminder's buttons. Done 2026-11-24 in
+  `build/live-copy` with full-screen computer use, whose keys go through the window server to the
+  key window as a pressed key's do, and an env-gated log of the first responder after each key. All
+  passed, in the tests' own orders:
+  - **Compare:** left pane, right pane, changes, copy, swap, the whitespace pop-up, Ignore Case,
+    Ignore Line Endings, and round, with ⇧Tab the exact reverse. The accent on the pane name told
+    the two `notes.txt` panes apart.
+  - **Merge**, opened with the copy's own `--git-merge`: Result, Theirs, conflicts, take, Show Base,
+    Yours, with Save passed over while disabled. Space on the take control took Yours, after which
+    Save joined the loop, both ways. On the close prompts Return pressed the default (Save, then
+    Cancel with a conflict open), ⌘D was Don't Save, and the command exited 0 and 1 as it should.
+  - **Settings:** Tab reached Language, Compare files with, Edit files with and a new color rule's
+    pop-up. Space opened each with its choice ticked, and Return kept it.
+  - **License reminder:** shown with `-DirnexDebugLicenseDaysAhead 31`. Nothing had focus when it
+    opened, Tab went Buy, Enter License…, OK and round, and Space on OK closed it. Buy was not
+    pressed, since it opens the store page in the browser.
+- [ ] **Found by that run.** Neither has a decision yet.
+  - The color rules' add, remove and move buttons are plain SwiftUI `Button`s, so Tab passes them,
+    as it passed every SwiftUI button on 26.7 (docs/NOTES.md ▸ Keyboard focus). Older than 27.2,
+    then. Adding a rule took a click.
+  - The merge window's close prompt with a conflict open opens with the focus ring on **Don't
+    Save**, so Space discards the choices while Return keeps them. The Save prompt opens with it on
+    Cancel. Not checked on 26.
 - [x] **Tab and Space in a test window that is not key** (`KeyWindowStandIn`, docs/NOTES.md ▸
   Testing): Compare and Merge Tab, the shortcut recorder and the license reminder pass again.
 - [x] **Settings' menu pickers on the Tab loop** (`SettingsPopUp`, docs/NOTES.md ▸ AppKit ▸ Keyboard

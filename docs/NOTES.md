@@ -620,8 +620,17 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
   Seen 2026-11-24 on macOS 27.2.1: `MergeTakeTests.closeWhileOpen` walked the sheet's views and read
   Cancel, Don't Save when run alone, and Don't Save, Cancel in both full runs that reached it. The
   response codes follow `NSAlert.buttons`, which is the order of `addButton`, and so does
-  `enableEscapeToCancel`. Name a button by its title and check its key equivalent (`"\r"` for the
-  default), as the compare tests already did.
+  `enableEscapeToCancel`. Name a button by its title, as the compare tests already did. Find the
+  default through the sheet's `defaultButtonCell`, not a `"\r"` key equivalent, which the sheet's
+  presentation clears: the same test then read Cancel's as `""` in a third full run (▸ AppKit ▸ The
+  keyboard in a dialog).
+- **A window whose content controller is a pane takes the pane's unlaid width, 0, until its first
+  layout.** Seen 2026-11-24 in `TabStripOverflowTests.paneIsNotWidened`: `windowedPane` makes the
+  window 480 wide, and setting `contentViewController` sizes it to the pane's view, which has no
+  width until a layout makes it 260. Alone, a layout had run by the time the first listing landed,
+  and the baseline read 260. In a full run the listing landed first, and the test compared 260
+  against 0. Lay the window out before reading a frame to compare against. With the strip's old
+  required clipping put back, the fixed test still failed on the width.
 
 ### Waits, run loops and timing
 
@@ -1944,6 +1953,18 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
     reaches the user as `.io(code: 5)` too — a number nobody can look up — where the stderr naming
     `kex_exchange_identification` is sitting right there. The same shape ▸ curl for S3 records for a
     generic 403 telling the user to grant Full Disk Access.
+- **A Python stand-in listens with a backlog of 5, and macOS resets a burst past it instead of
+  queueing it.** Seen 2026-11-24 in a full app run: three WebDAV tests on the NTLM stand-in failed
+  in the same second. One step of each never reached the proxy's log, though other tests' requests
+  were served through it in that second. The segmented download's four ranges answered curl exit 7,
+  `couldNotConnect`, which reads as the app unable to reach a server that is up. `socketserver`'s
+  `request_queue_size` is 5. A probe against a listener that accepts slowly reset 54 of 60 parallel
+  connects at 5 and none at 128. With the real proxy and 60 parallel `curl` sign-ins it was 35
+  resets at 5 (exit 56, and in a second round exit 7 too) and none in three rounds at 128.
+  `Tooling/fake-ntlm-proxy.py` now listens at 128, `kern.ipc.somaxconn`, the cap. A
+  never-accepting listener took 40 connects made one after another, so only a burst shows it.
+  pyftpdlib defaults to 100, Apache to 511 and `sshd` to 128. The other Python fakes in `Tooling/`
+  are run by hand, one client at a time, and keep the default.
 
 #### Values that expire: probe sizes and pinned answers
 
@@ -2363,6 +2384,20 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
   `NSTextView` also needs `insertTab`/`insertBacktab` overridden to move the focus, or Tab types a
   tab and the keyboard cannot leave the field.
 
+- **Putting an alert up as a sheet takes Return off the default button's `keyEquivalent` and
+  leaves it on the window's `defaultButtonCell`, so a test reads which button Return presses
+  there.** Probed 2026-11-24 on macOS 27.2 over six button layouts: OK and Cancel, the merge
+  prompt's Cancel and Don't Save, Cancel alone, a Russian pair, Close and Don't Save, and Save,
+  Cancel and Don't Save. The
+  first button read `"\r"` after `enableEscapeToCancel` and `""` once `beginSheetModal` had run.
+  `defaultButtonCell` named it before and after, and `performKeyEquivalent` with Return still
+  pressed it, so nothing changes for the user. Escape stays on its button. `RemoteFetchPromptTests`
+  had already recorded the same live-sheet shape on macOS 26. A test that reads `keyEquivalent ==
+  "\r"` after presenting passes only when it beats the presentation: `MergeTakeTests` passed alone
+  and read `""` in a full run, whose sheet wait had taken most of a minute. Read
+  `sheet.defaultButtonCell?.controlView` instead, as `TrashlessVolumeHarness` and
+  `ArchiveNameEncodingGestureTests` do. A read of an alert that was never presented is unaffected.
+
 #### Presenting a dialog: `runModal`, sheets and movable windows
 
 - **`NSAlert.runModal()` centers on the *display*, not on the window that raised it** — measured, a
@@ -2586,6 +2621,11 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
     a SwiftUI `Button` fails), and pins the platform fact, so a macOS that backs SwiftUI buttons
     with `NSButton` again says so. The buttons inside Settings' two `.alert`s were left alone and
     not measured. An alert answers Return and Escape, so it works without Tab either way.
+    - **The color rules' four icon buttons were missed.** Found 2026-11-24 with real keys on 27.2.1:
+      Tab went from the Marked files color well to the next switch, past add, remove, move up and
+      move down, which `FileColorRulesSection` builds as plain `.bordered` SwiftUI `Button`s. With
+      a rule added, the list itself, the rule's color well, its two fields and its pop-up were
+      stops. A first rule has to be added with the mouse.
   - **From macOS 27.2 a menu-style SwiftUI `Picker` has no `NSPopUpButton` behind it either.** Probed
     2026-11-24 on 27.2.1 with `KeyboardReachableControlsTests`' grouped `Form`: the switch, the
     segmented picker, the color well and the stepper were still `PlatformSwitch`,
@@ -11507,6 +11547,13 @@ overturned the obvious implementation.
     first page between `showPDFDocument` and the keystroke. A fixture here may therefore not assume
     **how many** of a document's pages need reading. Give it enough scanned pages that a page or two
     being taken cannot empty the set, and make every wait relative to the count before it.
+  - **On macOS 27.2 it did not happen in a quiet run, on screen or off.** Probed 2026-11-24 with
+    the find suite's own fixture (a text page, then two scanned ones) and with three scanned pages,
+    watched for 8 s each, with the test window hidden and then ordered front and displayed: no page
+    gained text, though `visiblePages` named pages 0 and 1. Yet that suite's count line read
+    "Reading 0 of 1 scanned page" once in a full run, so one scanned page had text by the time the
+    layers were read, and the probe did not find how. `theCountLineDoesNotLie` now names the pages
+    left to read and the pages asked for when it fails.
 
 ## Design lessons that generalize
 

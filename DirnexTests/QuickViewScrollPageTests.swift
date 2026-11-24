@@ -13,6 +13,12 @@ import WebKit
 @Suite("Quick View scroll pages", .serialized)
 @MainActor
 struct QuickViewScrollPageTests {
+    /// How long each wait for a page, a layout or a scroll may take. Every one is a wait *for*
+    /// something and returns once it is there, so the length only sets how late the main actor may be.
+    /// It was 10 s, and in full runs on 2026-11-24 "a rendered page steps…" passed in 17–20 s across
+    /// five such waits after its first had once run out (PLAN.md ▸ macOS 27.2).
+    private static let budget: TimeInterval = 60
+
     // MARK: - PDF
 
     private func pdfFixture(pages: Int) async throws -> QuickViewPDFFindFixtures.Fixture {
@@ -26,7 +32,7 @@ struct QuickViewScrollPageTests {
     /// pages read did not include the first.
     private func showsPage(_ index: Int, in surface: QuickViewPDFSurface) async throws -> Bool {
         let document = try #require(surface.pdfView.document)
-        let deadline = Date().addingTimeInterval(10)
+        let deadline = Date().addingTimeInterval(Self.budget)
         while !surface.pdfView.visiblePages.contains(where: { document.index(for: $0) == index }) {
             guard Date() < deadline else { return false }
             try await Task.sleep(for: .milliseconds(10))
@@ -120,7 +126,7 @@ struct QuickViewScrollPageTests {
         at expected: Double,
         sourceLocation: SourceLocation = #_sourceLocation
     ) async throws {
-        let deadline = Date().addingTimeInterval(10)
+        let deadline = Date().addingTimeInterval(Self.budget)
         var last: Double?
         while Date() < deadline {
             last = await scrollY(webView, frame: frame)
@@ -146,7 +152,7 @@ struct QuickViewScrollPageTests {
             style: .rendered
         )
         let webView = try await QuickViewZoomFixtures.webView(in: preview)
-        let deadline = Date().addingTimeInterval(10)
+        let deadline = Date().addingTimeInterval(Self.budget)
         while (await javaScript("return document.scrollingElement.scrollHeight", in: webView) ?? 0)
             < 2000 {
             try #require(Date() < deadline, "the page never laid out")
@@ -196,7 +202,7 @@ struct QuickViewScrollPageTests {
         """.utf8).write(to: page)
         surface.showConverted(page: page, bundle: bundle, allowsJavaScript: false, fitWidth: nil)
 
-        let deadline = Date().addingTimeInterval(10)
+        let deadline = Date().addingTimeInterval(Self.budget)
         var sheet: WKFrameInfo?
         while sheet == nil {
             try #require(Date() < deadline, "the sheet's frame never loaded")

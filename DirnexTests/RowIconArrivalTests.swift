@@ -24,7 +24,7 @@ struct RowIconArrivalTests {
         defer { loads.stop() }
 
         try await fixture.drawRows()
-        try await settleUntil { fixture.allLoaded }
+        try await settleUntil(within: rowIconBudget) { fixture.allLoaded }
         #expect(loads.counts.count == IconFixture.names.count)
         #expect(loads.counts.values.allSatisfy { $0 == 1 })
     }
@@ -36,7 +36,7 @@ struct RowIconArrivalTests {
         let loads = LoadCounter(under: fixture.directory)
         defer { loads.stop() }
         try await fixture.drawRows()
-        try await settleUntil { fixture.allLoaded }
+        try await settleUntil(within: rowIconBudget) { fixture.allLoaded }
         let drawn = fixture.images
         let before = loads.counts
         try #require(before.count == IconFixture.names.count)
@@ -83,7 +83,7 @@ struct RowIconArrivalTests {
             ))
         }
         RowIconLoader.shared.holdsLoads = false
-        try await settleUntil { fixture.allLoaded }
+        try await settleUntil(within: rowIconBudget) { fixture.allLoaded }
         #expect(loads.counts.count == IconFixture.names.count)
     }
 
@@ -100,7 +100,7 @@ struct RowIconArrivalTests {
         defer { RowIconLoader.shared.didStore = nil }
 
         try await fixture.drawRows()
-        try await settleUntil { fixture.allLoaded }
+        try await settleUntil(within: rowIconBudget) { fixture.allLoaded }
         let settled = loads.counts
         try await Task.sleep(for: .milliseconds(500))
         #expect(fixture.allLoaded)
@@ -108,6 +108,12 @@ struct RowIconArrivalTests {
         #expect(loads.counts == settled, "loads went on: \(settled) then \(loads.counts)")
     }
 }
+
+/// How long each wait for a load, a listing or a draw may take. 60 s rather than the house 30: in a
+/// full run on 2026-11-24 the first test here passed in 52 s and 63 s across three waits, and one had
+/// run out at 30 s before (PLAN.md ▸ macOS 27.2). A wait for something returns as soon as it is true,
+/// so this costs a green run nothing; the fixed holds after a forget are claims and stay as they are.
+private let rowIconBudget = Duration.seconds(60)
 
 /// Three real folders in a folder of their own, and a pane drawing them.
 @MainActor
@@ -149,8 +155,8 @@ private struct IconFixture {
     /// Let the table make its own visible cells. A cell requested with `makeIfNecessary` can
     /// differ from the cell AppKit later draws for that row.
     func drawRows() async throws {
-        try await settleUntil { source.pane.tabs[0].hasLoaded }
-        try await settleUntil {
+        try await settleUntil(within: rowIconBudget) { source.pane.tabs[0].hasLoaded }
+        try await settleUntil(within: rowIconBudget) {
             source.window.layoutIfNeeded()
             source.window.displayIfNeeded()
             return images.allSatisfy { $0 != nil }

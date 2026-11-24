@@ -744,6 +744,17 @@ so a trap goes here only if it can bite any live run; one tied to an area goes u
   control) the same key arrived at once. The compare window and `TabShortcuts` both work this way.
   The window's toolbar buttons still work from the background. Its Edit ▸ Undo does not: with the
   window not key, the probe read the item as plain "Undo", disabled.
+- **A Tab-order check runs under full-screen control, read back from a log of the first responder.**
+  Done 2026-11-24 for the macOS 27.2 keyboard checks in `build/live-copy`. A background `app_key
+  tab` on the license reminder's sheet was refused outright. Full-screen keys reached the key window as
+  pressed keys do, Space opened pop-ups and pressed buttons, and ⌘W, ⌘D and Return answered the
+  merge prompts. The witness was a temporary env-gated probe. It logged each `keyDown` from a local
+  monitor, and a 0.1 s `.common`-mode timer logged `NSApp.keyWindow?.firstResponder` whenever it
+  changed, with its class, title and accessibility label, to a file. Keys a menu's tracking takes,
+  Return in an open pop-up among them, never reach the monitor. Two stops with the same description,
+  such as Compare's two panes over files both named `notes.txt`, log as one, so tell them apart on
+  screen (the accent on the focused pane's name). Escape cannot be sent this way (below), so close a
+  pop-up with Return on its ticked item, which changes nothing.
 - **computer-use will not send ⌘Q without a separate grant, and Dirnex ▸ Quit Dirnex does the same
   thing.** Seen 2026-10-25 checking the compare window's quit prompt: ⌘Q came back "a system-level
   shortcut" needing the `systemKeyCombos` grant. The menu item runs the same `terminate:`, so

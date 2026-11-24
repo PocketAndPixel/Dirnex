@@ -121,8 +121,14 @@ struct QuickViewPDFScanFindTests {
             localized: "No matches",
             comment: "Quick View text find: the count when the text is found nowhere in the file."
         )))
-        // "Reading 0 of 2 scanned pages" — the total is what has to be read, not the page count.
-        #expect(line.contains("2"))
+        // "Reading 0 of 2 scanned pages" — the total is what has to be read, not the page count. The
+        // message says which pages the count came from: a full run on 2026-11-24 read "0 of 1", so one
+        // of the scanned pages had text by the time it was read, and nothing said which (PLAN.md ▸
+        // macOS 27.2).
+        #expect(
+            line.contains("2"),
+            "left to read \(surface.pages.unreadPages), asked for \(fixture.recognizer.asked)"
+        )
 
         fixture.recognizer.releaseAll()
         await Scans.finishReading(surface)
