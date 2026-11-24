@@ -591,7 +591,8 @@ passing alone. Left: the keyboard checks a person has to make.
 the stand-in proxy's listen backlog, and that is fixed. Two suites' waits got 60 s, and two tests
 that only passed when they won a race read their state after it now. Two full runs then passed
 clean. One flake is still unexplained (below). The keyboard checks then passed with real keys, and
-turned up two older gaps, listed below with no decision yet.
+turned up two older gaps, both fixed below: the color rules' buttons off the Tab loop, and two
+alerts whose Space pressed the action rather than the safe choice.
 
 **Left undone so far:** VP8, Theora, VC-1 and WMV, RealVideo, MS-MPEG-4 v3 and DTS, which macOS cannot
 decode. Any codec library (ffmpeg, libVLC, libvpx), for the licence, the size, and §2's rule that bytes
@@ -680,13 +681,22 @@ are clean. In the order to take them:
   - **License reminder:** shown with `-DirnexDebugLicenseDaysAhead 31`. Nothing had focus when it
     opened, Tab went Buy, Enter License…, OK and round, and Space on OK closed it. Buy was not
     pressed, since it opens the store page in the browser.
-- [ ] **Found by that run.** Neither has a decision yet.
-  - The color rules' add, remove and move buttons are plain SwiftUI `Button`s, so Tab passes them,
-    as it passed every SwiftUI button on 26.7 (docs/NOTES.md ▸ Keyboard focus). Older than 27.2,
-    then. Adding a rule took a click.
-  - The merge window's close prompt with a conflict open opens with the focus ring on **Don't
-    Save**, so Space discards the choices while Return keeps them. The Save prompt opens with it on
-    Cancel. Not checked on 26.
+- [x] **Found by that run, and fixed the same day (Oleg: "fix both").**
+  - The color rules' add, remove and move buttons were plain SwiftUI `Button`s, so Tab passed
+    them, as it passed every SwiftUI button on 26.7 (docs/NOTES.md ▸ Keyboard focus). They are
+    `SettingsIconButton`s now: `SettingsButton` with a symbol, its help text as tooltip and
+    VoiceOver label, all 32 pt wide. `SettingsButtonTests.colorRuleButtons` hosts the real section
+    and failed with add put back as a SwiftUI `Button`. With real keys in `build/live-copy`, Tab
+    reached +, Space added a rule, then − removed it, and ▲ moved the second of two rules up.
+  - The merge window's close prompt with a conflict open opened with the focus on **Don't Save**,
+    so Space dropped the choices. An alert opens focused on its last button, and this one adds
+    Cancel first. It now sets Cancel as `initialFirstResponder`, the line the September sweep gave
+    the trust alerts. The sweep had missed one more: the recursive attributes report, whose Space
+    pressed **Apply as Administrator…**. Its alert moved into
+    `BrowserWindowController.administratorOffer`, which starts on OK. Both tests failed with the
+    line removed. Live, the prompt opened on Cancel and Space kept the window. The report was not
+    seen live, since it needs items only root can change. Every other alert whose safe button is
+    not its last was checked: each has the line, `focusFirstButton()`, or a single button.
 - [x] **Tab and Space in a test window that is not key** (`KeyWindowStandIn`, docs/NOTES.md ▸
   Testing): Compare and Merge Tab, the shortcut recorder and the license reminder pass again.
 - [x] **Settings' menu pickers on the Tab loop** (`SettingsPopUp`, docs/NOTES.md ▸ AppKit ▸ Keyboard

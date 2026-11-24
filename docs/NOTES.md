@@ -2253,6 +2253,17 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
     costs the test host's main actor ~0.29 s to begin and ~0.27 s to end, every time and with any
     animation setting. Four at once failed a main-actor timing suite in 3 of 3 full runs (0 of 2 with
     them skipped); three, serialized, passed 3 of 3.
+  - **Which button an alert opens on, measured again 2026-11-24 on macOS 27.2.1**, presented as a
+    sheet in the test host and read back with `initialFirstResponder`. Two buttons with the safe
+    one first opened on the other one, in English and with Russian titles alike. Three buttons with
+    the safe one second (Save, Cancel, Don't Save) opened on the second, also with Russian titles
+    and with Cancel retitled, so that is by position and needs no line. A warning given the line
+    before presenting kept it, and a critical alert with a long text still lost it. Two alerts
+    added after the September sweep had missed the line: the merge window's close prompt with a
+    conflict open (Space was Don't Save) and the recursive attributes report (Space was Apply as
+    Administrator…). Both have it now, pinned in `MergeTakeTests` and `SafeButtonFocusTests`. To
+    find the next one, list `enableEscapeToCancel(safe:` and look for a safe button that is not
+    the last of exactly two.
 - **A dialog raised by a modifier chord is unanswerable until the user lifts the modifier, and it
   reads as a broken binding.** AppKit matches a key equivalent on the character **and** the exact
   modifier mask, so ⌃⎋ and ⌃⏎ are refused by an alert whose buttons carry bare ⎋ and ⏎ — measured on
@@ -2625,7 +2636,12 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
       Tab went from the Marked files color well to the next switch, past add, remove, move up and
       move down, which `FileColorRulesSection` builds as plain `.bordered` SwiftUI `Button`s. With
       a rule added, the list itself, the rule's color well, its two fields and its pop-up were
-      stops. A first rule has to be added with the mouse.
+      stops. A first rule had to be added with the mouse. They are `SettingsIconButton`s now, an
+      icon-only `SettingsButton`. Two things it took: an AppKit push button holding only a symbol
+      is 37.5 pt wide for `plus` and `minus` and 38.5 pt for the chevrons on 27.2, so the four are
+      given one width (32 pt) to line up, as the SwiftUI ones shared one frame. And
+      `NSButton(image:target:action:)` leaves "Button" as its title, which VoiceOver does not read
+      on an image-only button (it read the image's description, the tooltip), but which is cleared.
   - **From macOS 27.2 a menu-style SwiftUI `Picker` has no `NSPopUpButton` behind it either.** Probed
     2026-11-24 on 27.2.1 with `KeyboardReachableControlsTests`' grouped `Form`: the switch, the
     segmented picker, the color well and the stepper were still `PlatformSwitch`,

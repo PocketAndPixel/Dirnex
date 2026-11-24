@@ -84,3 +84,50 @@ struct SettingsButton: NSViewRepresentable {
         }
     }
 }
+
+/// `SettingsButton` with a symbol for its label: an icon-only AppKit push button, so Tab reaches it
+/// for the same reason. Its help text is the tooltip and what VoiceOver reads.
+///
+/// Made for the color rules' add, remove and move buttons, which were SwiftUI `Button`s and which Tab
+/// passed (found with a real keyboard 2026-11-24). They share one width, as the SwiftUI ones shared
+/// one frame: `plus` and the chevrons are drawn at different widths, and a row of buttons sized to
+/// them would not line up.
+struct SettingsIconButton: NSViewRepresentable {
+    let symbol: String
+    let help: String
+    let action: () -> Void
+
+    /// Every button's width, whatever its symbol. Its own natural width was 37.5 or 38.5 pt depending
+    /// on the symbol (measured on macOS 27.2), wider than SwiftUI's bordered buttons it replaced and
+    /// not equal, while a push button's bezel stretches to any width that holds its image.
+    static let width: CGFloat = 32
+
+    func makeCoordinator() -> SettingsButton.Coordinator {
+        SettingsButton.Coordinator(action: action)
+    }
+
+    func makeNSView(context: Context) -> NSButton {
+        let button = NSButton(
+            image: NSImage(systemSymbolName: symbol, accessibilityDescription: help) ?? NSImage(),
+            target: context.coordinator,
+            action: #selector(SettingsButton.Coordinator.press)
+        )
+        // `NSButton(image:…)` leaves the placeholder title "Button" behind the image.
+        button.title = ""
+        button.bezelStyle = .push
+        button.imagePosition = .imageOnly
+        button.setContentHuggingPriority(.required, for: .horizontal)
+        return button
+    }
+
+    func updateNSView(_ button: NSButton, context: Context) {
+        context.coordinator.action = action
+        button.toolTip = help
+        button.image?.accessibilityDescription = help
+        button.isEnabled = context.environment.isEnabled
+    }
+
+    func sizeThatFits(_: ProposedViewSize, nsView button: NSButton, context _: Context) -> CGSize? {
+        CGSize(width: Self.width, height: button.intrinsicContentSize.height)
+    }
+}

@@ -348,6 +348,9 @@ struct MergeSaveTests {
         #expect(sheet.defaultButtonCell?.controlView === cancel)
         let discard = buttons.first { $0.title == "Don’t Save" }
         #expect(discard?.keyEquivalent == "d" && discard?.keyEquivalentModifierMask == .command)
+        // And the keyboard focus, since Space presses the focused button and the alert would open on
+        // its last one, Don't Save (docs/NOTES.md ▸ The keyboard in a dialog). Read after presenting.
+        #expect(sheet.initialFirstResponder === cancel)
         try await rig.answer(.alertFirstButtonReturn)
         await cancelled.value
         #expect(closes.closed == 0, "Cancel kept the window")
@@ -371,6 +374,11 @@ struct MergeSaveTests {
         #expect(CompareSaveRig.texts(in: sheet.contentView).contains(
             "Do you want to save the merge of “notes.txt”?"
         ))
+        let cancel = CompareSaveRig.buttons(in: sheet.contentView).first { $0.title == "Cancel" }
+        #expect(
+            cancel != nil && sheet.initialFirstResponder === cancel,
+            "the focus starts on Cancel"
+        )
         try await rig.answer(.alertFirstButtonReturn)
         await closing.value
         #expect(rig.contents == "a\nY\nc\nd\nE\nf\nG\nh\nI\nK\nj\n")
