@@ -116,7 +116,7 @@ struct FTPTreeRefreshTests {
     private static func pane(over transport: RecordingFTPTransport) -> PanelViewController {
         let root = FTPTreeFixture.path("/")
         let acme = root.appending("ACME")
-        let export = acme.appending("EXPORT")
+        let exportFolder = acme.appending("EXPORT")
         let pane = PanelViewController(
             backend: FTPTreeFixture.composite(with: transport),
             restoration: nil,
@@ -127,10 +127,10 @@ struct FTPTreeRefreshTests {
             path: root, entries: [directory("ACME", at: acme)]
         )))
         panel.enterTreeMode()
-        panel.setTreeChildListing(acme, entries: [directory("EXPORT", at: export)])
+        panel.setTreeChildListing(acme, entries: [directory("EXPORT", at: exportFolder)])
         panel.expand(acme)
-        panel.setTreeChildListing(export, entries: [])
-        panel.expand(export)
+        panel.setTreeChildListing(exportFolder, entries: [])
+        panel.expand(exportFolder)
         pane.panel = panel
         return pane
     }
@@ -160,9 +160,9 @@ struct FTPTreeRefreshTests {
 
         pane.refreshTree()
 
-        let export = FTPTreeFixture.path("/ACME/EXPORT")
+        let exportFolder = FTPTreeFixture.path("/ACME/EXPORT")
         let names = await Self.waitForNames(
-            pane, under: export, toContain: "orders.xml"
+            pane, under: exportFolder, toContain: "orders.xml"
         )
         #expect(names.contains("orders.xml"))
         #expect(transport.batches.count == 1)

@@ -14850,7 +14850,7 @@ flips files, and ⇧ now separates the two: before, every arrow went to the flip
   linters clean. No user-visible strings. Changes left uncommitted.
 
 **2026-10-19: a file dragged off a server keeps its mode and date.** Reported by Oleg with three
-screenshots. He dragged `orders.xml` from an FTP pane into a local one, and Quick View
+screenshots. He dragged an XML file from an FTP pane into a local one, and Quick View
 showed the copy only as a generic XML icon, while the same file on the server previewed as a table.
 The copy was `----------`, so nothing could read it, and its date was the time of the copy. Its
 ctime equalled that mtime: the `chmod` had run and no `utimes` had followed it.
@@ -14889,8 +14889,8 @@ ctime equalled that mtime: the `chmod` had run and no `utimes` had followed it.
   and passes when its suite runs alone (twice). No user-visible strings. Changes left uncommitted.
 
 **2026-10-19: a file written to an FTP folder shows up without reopening the tab.** Reported by Oleg
-with a screenshot of a tree on an FTPES server, ACME and EXPORT open: a freshly generated
-`orders.xml` did not appear until the tab was closed and opened again, "but it could
+with a screenshot of a tree on an FTPES server, two folders open: a freshly generated
+XML file did not appear until the tab was closed and opened again, "but it could
 be a server lag". It was not the server.
 
 - **Measured on the running app, against the real server, before any Swift.** The poll's `curl`
@@ -24035,7 +24035,7 @@ values, the way the JSON tree reads an object, rather than as `dict`, `key` and 
 survey behind the questions covered 4,707 XML-family files under `~/Dev`, `~/Documents`, `~/Downloads`,
 `~/Library/Preferences`, `/etc` and `/opt/homebrew/etc`: 2,331 `.plist` (938 binary), 1,505 `.xml`, then
 `.xaml`, `.xib`, `.xcprivacy`, `.props`, `.csproj`, `.svg`, `.targets` and `.storyboard`; 534 of the
-2,372 non-plist files had a root of like records (`catalog.xml`'s 535 `<Book>`, Android's
+2,372 non-plist files had a root of like records (a 535-record XML export, Android's
 `<resources>`).
 
 - **The parser was decided by a probe (docs/NOTES.md ▸ AppKit).** `XMLParser` returned one tag's five
@@ -24098,7 +24098,7 @@ only, XML not routed to the tree, and plists read as elements. Validation: both 
 scripts (1,031 keys), 3,583 core tests, and the app suite (1,297 tests, the one pre-existing known
 issue). Live, in the Debug build launched by path with the full-window preview over copies of real files:
 a `.csproj` as a tree under "1 Source · 2 Tree" with its `@` rows and `/Project` in the strip; an XML
-`Info.plist` and a binary preferences plist as keys and values with a Key column; `catalog.xml`
+`Info.plist` and a binary preferences plist as keys and values with a Key column; a 535-record XML export
 and an Android `values-uk.xml` as tables headed "2 Table", the second after the fix reading the whole
 placeholder sentence under a filter for `APPLICATION_NAME`; the tree's filter over the `.csproj`
 counting "2 of 408 values" with the matches marked and

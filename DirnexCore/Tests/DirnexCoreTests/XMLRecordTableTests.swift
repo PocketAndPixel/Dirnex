@@ -38,8 +38,7 @@ struct XMLRecordTableTests {
         #expect(parsed.values(ofRow: 0) == [
             "0001",
             "B-0001",
-            "<Authors><Author><AuthorId>42</AuthorId></Author>"
-                + "</Authors>"
+            "<Authors><Author><AuthorId>42</AuthorId></Author></Authors>"
         ])
         #expect(parsed.values(ofRow: 1) == ["0002", "B-0002", ""])
     }

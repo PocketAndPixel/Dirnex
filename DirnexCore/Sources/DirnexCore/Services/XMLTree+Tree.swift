@@ -148,7 +148,7 @@ extension XMLTree: TreeDocument {
 
     /// The table the root's children make, when they are all one element: a row for each, a column
     /// for each attribute (`@name`) and each child element's name in the order they first appear, and
-    /// `#text` for a child's own text — so `<Books>` of `<Book>` elements, and Android's
+    /// `#text` for a child's own text — so `<books>` of `<book>` elements, and Android's
     /// `<resources>` of `<string name="…">` elements, read the way a CSV does. `nil` for a single child, children of more than one name, text at the root, or records
     /// with too little in common (`RecordTableBuilder.coverage`).
     ///
